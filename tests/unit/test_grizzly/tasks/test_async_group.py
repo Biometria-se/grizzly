@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from os import environ
-from typing import TYPE_CHECKING, List, cast
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -36,7 +36,7 @@ class TestAsyncRequestGroup:
 
     def test_add(self) -> None:
         task_factory = AsyncRequestGroupTask(name='test')
-        requests = cast(List[RequestTask], task_factory.tasks)
+        requests = cast(list[RequestTask], task_factory.tasks)
         assert len(requests) == 0
 
         task_factory.add(RequestTask(RequestMethod.GET, name='test', endpoint='/api/test'))
@@ -72,7 +72,7 @@ class TestAsyncRequestGroup:
         parent = grizzly_fixture()
 
         task_factory = AsyncRequestGroupTask(name='test-async-group')
-        requests = cast(List[RequestTask], task_factory.tasks)
+        requests = cast(list[RequestTask], task_factory.tasks)
         task = task_factory()
 
         with pytest.raises(NotImplementedError, match='tests.helpers.TestUser_001 does not inherit AsyncRequests'):

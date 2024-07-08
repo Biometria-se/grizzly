@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from importlib import import_module
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic, Optional, Set, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Optional, TypeVar, Union, cast
 from urllib.parse import urlparse
 
 from azure.core.credentials import AccessToken
@@ -40,9 +40,9 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
     host: str
     environment: Environment
     credential: Optional[AzureAadCredential] = None
-    metadata: Dict[str, Any]
-    cookies: Dict[str, str]
-    __context__: ClassVar[Dict[str, Any]] = {
+    metadata: dict[str, Any]
+    cookies: dict[str, str]
+    __context__: ClassVar[dict[str, Any]] = {
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
@@ -68,7 +68,7 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
     session_started: Optional[float]
     grizzly: GrizzlyContext
     _scenario: GrizzlyContextScenario
-    _context: Dict[str, Any]
+    _context: dict[str, Any]
 
     def add_metadata(self, key: str, value: str) -> None:
         if self._context.get('metadata', None) is None:
@@ -77,25 +77,25 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
         cast(dict, self._context['metadata']).update({key: value})
 
     @property
-    def __context_change_history__(self) -> Set[str]:
-        return cast(Set[str], self._context['__context_change_history__'])
+    def __context_change_history__(self) -> set[str]:
+        return cast(set[str], self._context['__context_change_history__'])
 
     @property
-    def __cached_auth__(self) -> Dict[str, AzureAadCredential]:
+    def __cached_auth__(self) -> dict[str, AzureAadCredential]:
         # clients might not cache auth tokens, let's set it to an empty dict
         # which could be refered to later, without updating client implementation
         if '__cached_auth__' not in self._context:
             self._context['__cached_auth__'] = {}
-        return cast(Dict[str, AzureAadCredential], self._context['__cached_auth__'])
+        return cast(dict[str, AzureAadCredential], self._context['__cached_auth__'])
 
 
 AuthenticatableFunc = TypeVar('AuthenticatableFunc', bound=Callable[..., GrizzlyResponse])
 
 
 class refresh_token(Generic[P]):
-    impl: Type[RefreshToken]
+    impl: type[RefreshToken]
 
-    def __init__(self, impl: Union[Type[RefreshToken], str]) -> None:
+    def __init__(self, impl: Union[type[RefreshToken], str]) -> None:
         if isinstance(impl, str):
             if impl.count('.') > 1:
                 module_name, class_name = impl.rsplit('.', 1)
@@ -108,7 +108,7 @@ class refresh_token(Generic[P]):
             assert issubclass(dynamic_impl, RefreshToken), f'{module_name}.{class_name} is not a subclass of {RefreshToken.__module__}.{RefreshToken.__name__}'
             impl = dynamic_impl
 
-        self.impl = cast(Type[RefreshToken], impl)
+        self.impl = cast(type[RefreshToken], impl)
 
     def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:
         @wraps(func)
@@ -196,7 +196,7 @@ class refresh_token(Generic[P]):
 
 
 def render(client: GrizzlyHttpAuthClient) -> None:
-    variables = cast(Dict[str, Any], client._context.get('variables', {}))
+    variables = cast(dict[str, Any], client._context.get('variables', {}))
     host = client.grizzly.state.jinja2.from_string(client.host).render(**variables)
     parsed = urlparse(host)
 
@@ -210,7 +210,7 @@ def render(client: GrizzlyHttpAuthClient) -> None:
 
 
 class RefreshToken(metaclass=ABCMeta):
-    __TOKEN_CREDENTIAL_TYPE__: ClassVar[Type[AzureAadCredential]]
+    __TOKEN_CREDENTIAL_TYPE__: ClassVar[type[AzureAadCredential]]
 
     @classmethod
     def initialize(cls, client: GrizzlyHttpAuthClient) -> None:
@@ -224,6 +224,7 @@ class RefreshToken(metaclass=ABCMeta):
 
             username = auth_user.get('username', None)
             password = auth_user.get('password', None) or auth_client.get('secret', None)
+            otp_secret = auth_user.get('otp_secret', None)
             client_id = auth_client.get('id', None)
 
             # nothing has changed, use existing crendential
@@ -274,6 +275,7 @@ class RefreshToken(metaclass=ABCMeta):
                 client_id=client_id,
                 redirect=redirect_uri,
                 initialize=initialize_uri,
+                otp_secret=otp_secret,
             )
 
 

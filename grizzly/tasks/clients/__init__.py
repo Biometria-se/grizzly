@@ -26,7 +26,7 @@ from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
 from time import perf_counter as time
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, List, Optional, Type, cast, final
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast, final
 from urllib.parse import unquote, urlparse
 
 from grizzly.tasks import GrizzlyMetaRequestTask, grizzlytask, template
@@ -38,6 +38,8 @@ from grizzly_extras.text import has_separator
 from grizzly_extras.transformer import TransformerContentType
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Generator
+
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
     from grizzly.scenarios import GrizzlyScenario
 
@@ -47,14 +49,14 @@ if TYPE_CHECKING:  # pragma: no cover
 class ClientTask(GrizzlyMetaRequestTask):
     __scenario__: ClassVar[GrizzlyContextScenario]
     _scenario: GrizzlyContextScenario
-    _schemes: List[str]
+    _schemes: list[str]
     _scheme: str
     _short_name: str
-    _direction_arrow: ClassVar[Dict[RequestDirection, str]] = {
+    _direction_arrow: ClassVar[dict[RequestDirection, str]] = {
         RequestDirection.FROM: '<-',
         RequestDirection.TO: '->',
     }
-    _context: ClassVar[Dict[str, Any]] = {}
+    _context: ClassVar[dict[str, Any]] = {}
 
     host: str
     grizzly: GrizzlyContext
@@ -233,11 +235,11 @@ class ClientTask(GrizzlyMetaRequestTask):
         raise NotImplementedError(message)
 
     @contextmanager
-    def action(self, parent: GrizzlyScenario, action: Optional[str] = None, *, suppress: bool = False) -> Generator[Dict[str, Any], None, None]:
+    def action(self, parent: GrizzlyScenario, action: Optional[str] = None, *, suppress: bool = False) -> Generator[dict[str, Any], None, None]:
         exception: Optional[Exception] = None
         response_length = 0
         start_time = time()
-        meta: Dict[str, Any] = {}
+        meta: dict[str, Any] = {}
 
         try:
             # get metadata back from actual implementation
@@ -276,7 +278,7 @@ class ClientTask(GrizzlyMetaRequestTask):
 
                 meta.get('request', {}).update({'time': response_time})
 
-                request_log: Dict[str, Any] = {
+                request_log: dict[str, Any] = {
                     'stacktrace': None,
                     'response': meta.get('response'),
                     'request': meta.get('request'),
@@ -299,8 +301,8 @@ class ClientTask(GrizzlyMetaRequestTask):
 
 
 class client:
-    available: ClassVar[Dict[str, Type[ClientTask]]] = {}
-    schemes: List[str]
+    available: ClassVar[dict[str, type[ClientTask]]] = {}
+    schemes: list[str]
 
     def __init__(self, scheme: str, *additional_schemes: str) -> None:
         schemes = [scheme]
@@ -308,7 +310,7 @@ class client:
             schemes += list(additional_schemes)
         self.schemes = schemes
 
-    def __call__(self, impl: Type[ClientTask]) -> Type[ClientTask]:
+    def __call__(self, impl: type[ClientTask]) -> type[ClientTask]:
         available = {scheme: impl for scheme in self.schemes}
         impl._schemes = self.schemes
         client.available.update(available)

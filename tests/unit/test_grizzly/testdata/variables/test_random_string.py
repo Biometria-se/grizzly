@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, List, Set
+from typing import TYPE_CHECKING
 
 import gevent
 import pytest
@@ -129,7 +129,7 @@ class TestAtomicRandomString:
                 message = f'func1 did not validate for {greenlet}'
                 raise RuntimeError(message)
 
-            values: Set[str] = set()
+            values: set[str] = set()
 
             def func1() -> None:
                 for _ in range(num_iterations):
@@ -138,7 +138,7 @@ class TestAtomicRandomString:
                     assert value not in values
                     values.add(value)
 
-            greenlets: List[Greenlet] = []
+            greenlets: list[Greenlet] = []
             for _ in range(num_greenlets):
                 greenlet = gevent.spawn(func1)
                 greenlet.link_exception(exception_handler)

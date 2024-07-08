@@ -17,7 +17,7 @@ from os import environ
 from pathlib import Path
 from secrets import token_urlsafe
 from threading import Thread
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Type, TypedDict, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, TypedDict, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
@@ -76,7 +76,7 @@ class FormPostParser(HTMLParser):
 
         return self._payload
 
-    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
         if tag == 'form':
             for attr, value in attrs:
                 if attr == 'action':
@@ -152,7 +152,7 @@ class AzureAadWebserver:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> bool:
@@ -184,7 +184,7 @@ class AzureAadCredential(TokenCredential):
     _access_token: AccessToken | None
     _webserver: AzureAadWebserver
     _refreshed: bool
-    _token_payload: Optional[Dict[str, Any]]
+    _token_payload: Optional[dict[str, Any]]
 
     def __init__(  # noqa: PLR0913
         self,
@@ -353,7 +353,7 @@ class AzureAadCredential(TokenCredential):
                 message = f'no config found in response from {response.url}'
                 raise ValueError(message)
 
-            return cast(Dict[str, Any], json.loads(f'{{{match.group(1)}}}'))
+            return cast(dict[str, Any], json.loads(f'{{{match.group(1)}}}'))
 
         def update_state(
             state: dict[str, str], response: requests.Response,
@@ -391,7 +391,7 @@ class AzureAadCredential(TokenCredential):
             message = 'neither initialize or redirect URIs has been set'
             raise AzureAadError(message)
 
-        headers_ua: Dict[str, str] = {
+        headers_ua: dict[str, str] = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0',
         }
 
@@ -411,12 +411,12 @@ class AzureAadCredential(TokenCredential):
             retries = Retry(total=3, connect=3, read=3, status=0, backoff_factor=0.1)
             session.mount('https://', HTTPAdapter(max_retries=retries))
 
-            headers: Dict[str, str]
-            payload: Dict[str, Any]
+            headers: dict[str, str]
+            payload: dict[str, Any]
             code_verifier: Optional[str] = None
             code_challenge: Optional[str] = None
-            data: Dict[str, Any]
-            state: Dict[str, str] = {
+            data: dict[str, Any]
+            state: dict[str, str] = {
                 'hpgact': '',
                 'hpgid': '',
                 'sFT': '',
@@ -442,7 +442,7 @@ class AzureAadCredential(TokenCredential):
 
                 url = f'{provider_url}/authorize'
 
-                params: Dict[str, List[str]] = {
+                params: dict[str, list[str]] = {
                     'response_type': ['id_token'],
                     'client_id': [client_id],
                     'redirect_uri': [redirect_uri],
@@ -577,7 +577,7 @@ class AzureAadCredential(TokenCredential):
                 message = f'user auth request 2: {response.url} had unexpected status code {response.status_code}'
                 raise AzureAadFlowError(message)
 
-            data = cast(Dict[str, Any], json.loads(response.text))
+            data = cast(dict[str, Any], json.loads(response.text))
             if 'error' in data:
                 error = data['error']
                 message = f'error response from {url}: code={error["code"]}, message={error["message"]}'

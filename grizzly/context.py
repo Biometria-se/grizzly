@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
 import yaml
 from jinja2 import Environment
@@ -27,10 +27,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
-def load_configuration_file() -> Dict[str, Any]:
+def load_configuration_file() -> dict[str, Any]:
     """Load a grizzly environment file and flatten the structure."""
     configuration_file = environ.get('GRIZZLY_CONFIGURATION_FILE', None)
-    configuration: Dict[str, Any] = {}
+    configuration: dict[str, Any] = {}
 
     if configuration_file is None:
         return configuration
@@ -123,11 +123,11 @@ class GrizzlyContextState:
     spawning_complete: bool = field(default=False)
     background_section_done: bool = field(default=False)
     variables: GrizzlyVariables = field(init=False, default_factory=GrizzlyVariables)
-    configuration: Dict[str, Any] = field(init=False, default_factory=load_configuration_file)
-    alias: Dict[str, str] = field(init=False, default_factory=dict)
+    configuration: dict[str, Any] = field(init=False, default_factory=load_configuration_file)
+    alias: dict[str, str] = field(init=False, default_factory=dict)
     verbose: bool = field(default=False)
     locust: Union[MasterRunner, WorkerRunner, LocalRunner] = field(init=False, repr=False)
-    persistent: Dict[str, str] = field(init=False, repr=False, default_factory=dict)
+    persistent: dict[str, str] = field(init=False, repr=False, default_factory=dict)
     _jinja2: Environment = field(init=False, repr=False, default_factory=jinja2_environment_factory)
 
     @property
@@ -187,10 +187,10 @@ class GrizzlyContextTasksTmp:
     _conditional: Optional[ConditionalTask]
     _loop: Optional[LoopTask]
 
-    _timers: Dict[str, Optional[TimerTask]]
-    _custom: Dict[str, Optional[GrizzlyTaskWrapper]]
+    _timers: dict[str, Optional[TimerTask]]
+    _custom: dict[str, Optional[GrizzlyTaskWrapper]]
 
-    __stack__: List[GrizzlyTaskWrapper]
+    __stack__: list[GrizzlyTaskWrapper]
 
     def __init__(self) -> None:
         self.__stack__ = []
@@ -215,25 +215,25 @@ class GrizzlyContextTasksTmp:
         return self._loop
 
     @property
-    def custom(self) -> Dict[str, Optional[GrizzlyTaskWrapper]]:
+    def custom(self) -> dict[str, Optional[GrizzlyTaskWrapper]]:
         return self._custom
 
     @custom.setter
-    def custom(self, value: Dict[str, Optional[GrizzlyTaskWrapper]]) -> None:
+    def custom(self, value: dict[str, Optional[GrizzlyTaskWrapper]]) -> None:
         self._custom = value
 
     @property
-    def timers(self) -> Dict[str, Optional[TimerTask]]:
+    def timers(self) -> dict[str, Optional[TimerTask]]:
         return self._timers
 
     @timers.setter
-    def timers(self, value: Dict[str, Optional[TimerTask]]) -> None:
+    def timers(self, value: dict[str, Optional[TimerTask]]) -> None:
         self._timers = value
 
 
-class GrizzlyContextTasks(List['GrizzlyTask']):
+class GrizzlyContextTasks(list['GrizzlyTask']):
     _tmp: GrizzlyContextTasksTmp
-    behave_steps: Dict[int, str]
+    behave_steps: dict[int, str]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -245,8 +245,8 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
     def tmp(self) -> GrizzlyContextTasksTmp:
         return self._tmp
 
-    def __call__(self, *filtered_type: type[GrizzlyTask]) -> List[GrizzlyTask]:
-        tasks = self.tmp.__stack__[-1].peek() if len(self.tmp.__stack__) > 0 else cast(List['GrizzlyTask'], self)
+    def __call__(self, *filtered_type: type[GrizzlyTask]) -> list[GrizzlyTask]:
+        tasks = self.tmp.__stack__[-1].peek() if len(self.tmp.__stack__) > 0 else cast(list['GrizzlyTask'], self)
 
         if len(filtered_type) > 0:
             tasks = [task for task in tasks if isinstance(task, filtered_type)]
@@ -271,11 +271,11 @@ class GrizzlyContextScenario:
     pace: Optional[str] = field(init=False, repr=False, hash=False, compare=False, default=None)
 
     behave: Scenario = field(init=True, repr=False, hash=False, compare=False)
-    context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
+    context: dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
     _tasks: GrizzlyContextTasks = field(init=False, repr=False, hash=False, compare=False)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
-    failure_exception: Optional[Type[Exception]] = field(init=False, default=None)
-    orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
+    failure_exception: Optional[type[Exception]] = field(init=False, default=None)
+    orphan_templates: list[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
 
     def __post_init__(self) -> None:
         self.name = self.behave.name
@@ -315,7 +315,7 @@ class GrizzlyContextScenario:
         )
 
 
-class GrizzlyContextSetupLocustMessages(Dict[MessageDirection, Dict[str, MessageCallback]]):
+class GrizzlyContextSetupLocustMessages(dict[MessageDirection, dict[str, MessageCallback]]):
     def register(self, direction: MessageDirection, message_type: str, callback: MessageCallback) -> None:
         if direction not in self:
             self[direction] = {}
@@ -336,21 +336,21 @@ class GrizzlyContextSetupLocust:
 class GrizzlyContextSetup:
     log_level: str = field(init=False, default='INFO')
 
-    global_context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
+    global_context: dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
 
     user_count: Optional[int] = field(init=False, default=None)
     spawn_rate: Optional[float] = field(init=False, default=None)
     timespan: Optional[str] = field(init=False, default=None)
-    dispatcher_class: Optional[Type[UsersDispatcher]] = field(init=False, default=None)
+    dispatcher_class: Optional[type[UsersDispatcher]] = field(init=False, default=None)
 
     statistics_url: Optional[str] = field(init=False, default=None)
 
     locust: GrizzlyContextSetupLocust = field(init=False, default_factory=GrizzlyContextSetupLocust)
 
 
-class GrizzlyContextScenarios(List[GrizzlyContextScenario]):
-    def __call__(self) -> List[GrizzlyContextScenario]:
-        return cast(List[GrizzlyContextScenario], self)
+class GrizzlyContextScenarios(list[GrizzlyContextScenario]):
+    def __call__(self) -> list[GrizzlyContextScenario]:
+        return cast(list[GrizzlyContextScenario], self)
 
     def find_by_class_name(self, class_name: str) -> Optional[GrizzlyContextScenario]:
         return self._find(class_name, 'class_name')

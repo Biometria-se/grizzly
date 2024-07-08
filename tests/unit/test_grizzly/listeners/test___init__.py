@@ -5,7 +5,7 @@ import logging
 from contextlib import suppress
 from os import environ
 from secrets import choice
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 import pytest
 from locust.stats import RequestStats, StatsError
@@ -123,8 +123,8 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == cast(Dict[str, Callable], {
-            'test_message': callback,
+        assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
+            'test_message': (callback, False),
         })
     finally:
         if runner is not None:
@@ -149,8 +149,8 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
         init_function(runner)
 
         assert environ.get('TESTDATA_PRODUCER_ADDRESS', None) == 'tcp://localhost:5555'
-        assert runner.custom_messages == cast(Dict[str, Callable], {
-            'grizzly_worker_quit': grizzly_worker_quit,
+        assert runner.custom_messages == cast(dict[str, tuple[Callable, bool]], {
+            'grizzly_worker_quit': (grizzly_worker_quit, False),
         })
 
         def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
@@ -166,9 +166,9 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == cast(Dict[str, Callable], {
-            'grizzly_worker_quit': grizzly_worker_quit,
-            'test_message_ack': callback_ack,
+        assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
+            'grizzly_worker_quit': (grizzly_worker_quit, False),
+            'test_message_ack': (callback_ack, False),
         })
     finally:
         if runner is not None:
@@ -212,9 +212,9 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == cast(Dict[str, Callable], {
-            'test_message': callback,
-            'test_message_ack': callback_ack,
+        assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
+            'test_message': (callback, False),
+            'test_message_ack': (callback_ack, False),
         })
     finally:
         if runner is not None:

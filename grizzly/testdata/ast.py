@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import itertools
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Optional
 
 from jinja2 import Environment as Jinja2Environment
 from jinja2 import nodes as j2
@@ -11,12 +11,14 @@ from jinja2 import nodes as j2
 from . import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Generator
+
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 logger = logging.getLogger(__name__)
 
 
-class AstVariableNameSet(Set[str]):
+class AstVariableNameSet(set[str]):
     def add(self, variable: str) -> None:
         if '.' in variable:
             variable = GrizzlyVariables.get_initialization_value(variable)
@@ -26,11 +28,11 @@ class AstVariableNameSet(Set[str]):
             super().add(variable)
 
 
-class AstVariableSet(Dict[str, Set[str]]):
+class AstVariableSet(dict[str, set[str]]):
     __conditional__: AstVariableNameSet
-    __map__: Dict[str, str]
-    __init_map__: Dict[str, Set[str]]
-    __local__: Set[str]
+    __map__: dict[str, str]
+    __init_map__: dict[str, set[str]]
+    __local__: set[str]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -170,11 +172,11 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
     return filtered_template_variables
 
 
-def walk_attr(node: j2.Getattr) -> List[str]:
+def walk_attr(node: j2.Getattr) -> list[str]:
     """Recursivley walk an AST node to get a complete variable name."""
 
-    def _walk_attr(parent: j2.Getattr) -> List[str]:
-        attributes: List[str] = []
+    def _walk_attr(parent: j2.Getattr) -> list[str]:
+        attributes: list[str] = []
         attr = getattr(parent, 'attr', None)
         if attr is not None:
             attributes.append(attr)
@@ -196,11 +198,11 @@ def walk_attr(node: j2.Getattr) -> List[str]:
     return attributes
 
 
-def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: Jinja2Environment) -> AstVariableSet:  # noqa: C901, PLR0915
+def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]], *, env: Jinja2Environment) -> AstVariableSet:  # noqa: C901, PLR0915
     variables = AstVariableSet()
 
-    def _getattr(node: j2.Node) -> Generator[List[str], None, None]:  # noqa: C901, PLR0912, PLR0915
-        attributes: Optional[List[str]] = None
+    def _getattr(node: j2.Node) -> Generator[list[str], None, None]:  # noqa: C901, PLR0912, PLR0915
+        attributes: Optional[list[str]] = None
 
         if isinstance(node, j2.Getattr):
             child_node = getattr(node, 'node', None)
@@ -319,7 +321,7 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
         if attributes is not None:
             yield attributes
 
-    def _build_variable(attributes: List[str]) -> Optional[str]:
+    def _build_variable(attributes: list[str]) -> Optional[str]:
         if len(attributes) == 0:
             return None
 

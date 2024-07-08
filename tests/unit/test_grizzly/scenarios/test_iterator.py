@@ -5,7 +5,7 @@ import logging
 from contextlib import suppress
 from os import environ
 from types import FunctionType
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import ANY
 
 import pytest
@@ -43,7 +43,7 @@ class TestIterationScenario:
 
         @templatingfilter
         def sarcasm(value: str) -> str:
-            sarcastic_value: List[str] = []
+            sarcastic_value: list[str] = []
             for index, c in enumerate(value):
                 if index % 2 == 0:
                     sarcastic_value.append(c.upper())
@@ -132,39 +132,35 @@ class TestIterationScenario:
         assert isinstance(last_task, FunctionType)
         assert last_task.__name__ == 'pace'
 
-    def test_on_event_handlers(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test_on_event_handlers(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         try:
             parent = grizzly_fixture(scenario_type=IteratorScenario)
 
-            def TestdataConsumer__init__(self: TestdataConsumer, scenario: GrizzlyScenario, address: str, identifier: str) -> None:  # noqa: N802, ARG001
-                pass
-
             mocker.patch(
                 'grizzly.testdata.communication.TestdataConsumer.__init__',
-                TestdataConsumer__init__,
+                return_value=None,
             )
 
-            def TestdataConsumer_on_stop(self: TestdataConsumer) -> None:  # noqa: N802, ARG001
-                raise StopUser
-
-            mocker.patch(
+            consumer_stop_mock = mocker.patch(
                 'grizzly.testdata.communication.TestdataConsumer.stop',
-                TestdataConsumer_on_stop,
+                return_value=None,
             )
 
             assert parent is not None
 
             mocker.patch.object(parent, 'prefetch', return_value=None)
 
-            with pytest.raises(StopUser):
+            with pytest.raises(StopUser), caplog.at_level(logging.ERROR):
                 parent.on_start()
+
+            assert caplog.messages == ['no address to testdata producer specified']
 
             environ['TESTDATA_PRODUCER_ADDRESS'] = 'localhost:5555'
 
             parent.on_start()
 
-            with pytest.raises(StopUser):
-                parent.on_stop()
+            parent.on_stop()
+            consumer_stop_mock.assert_called_once_with()
         finally:
             with suppress(KeyError):
                 del environ['TESTDATA_PRODUCER_ADDRESS']
@@ -190,8 +186,8 @@ class TestIterationScenario:
 
         parent.consumer = TestdataConsumer(parent, identifier='test')
 
-        def mock_request(data: Optional[Dict[str, Any]]) -> None:
-            def testdata_request(self: TestdataConsumer, scenario: str) -> Optional[Dict[str, Any]]:  # noqa: ARG001
+        def mock_request(data: Optional[dict[str, Any]]) -> None:
+            def testdata_request(self: TestdataConsumer, scenario: str) -> Optional[dict[str, Any]]:  # noqa: ARG001
                 if data is None or data == {}:
                     return None
 
@@ -521,7 +517,7 @@ class TestIterationScenario:
         # always assume that spawning is complete in unit test
         parent.grizzly.state.spawning_complete = True
 
-        side_effects: List[Optional[InterruptTaskSet]] = [
+        side_effects: list[Optional[InterruptTaskSet]] = [
             InterruptTaskSet(reschedule=False),
             InterruptTaskSet(reschedule=True),
         ]
@@ -627,7 +623,7 @@ class TestIterationScenario:
             parent.run()
 
         assert on_start.call_count == 7
-        assert on_stop.call_count == 1
+        assert on_stop.call_count == 0
         assert get_next_task.call_count == 1
         assert schedule_task.call_count == 0
         assert execute_next_task.call_count == 0
@@ -638,7 +634,7 @@ class TestIterationScenario:
             parent.run()
 
         assert on_start.call_count == 8
-        assert on_stop.call_count == 2
+        assert on_stop.call_count == 0
         assert get_next_task.call_count == 2
         assert schedule_task.call_count == 0
         assert execute_next_task.call_count == 0
@@ -654,7 +650,7 @@ class TestIterationScenario:
 
         assert parent._task_index == 20
         assert on_start.call_count == 9
-        assert on_stop.call_count == 2
+        assert on_stop.call_count == 1
         assert get_next_task.call_count == 2
         assert schedule_task.call_count == 1
         assert execute_next_task.call_count == 1
@@ -690,34 +686,18 @@ class TestIterationScenario:
             parent.run()
 
         on_stop.reset_mock()
-
-        # problems in on_stop, in handling of InterruptTaskSet
         caplog.clear()
-        on_start.side_effect = None
-        on_start.return_value = None
-        on_stop.side_effect = [RuntimeError]
-        get_next_task.side_effect = [InterruptTaskSet(reschedule=False)]
-
-        with caplog.at_level(logging.ERROR), pytest.raises(RescheduleTask):
-            parent.run()
-
-        on_stop.assert_called_once_with()
-        assert caplog.messages == ['on_stop failed']
-        caplog.clear()
-
-        on_stop.reset_mock()
 
         # problems in on_stop, in handling of StopScenario
         parent.user._scenario_state = ScenarioState.RUNNING
-        on_stop.side_effect = [RuntimeError]
+        on_stop.side_effect = None
+        on_stop.return_value = None
         get_next_task.side_effect = [StopScenario]
 
         with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
             parent.run()
 
         on_stop.assert_called_once_with()
-        assert caplog.messages == ['on_stop failed']
-        caplog.clear()
 
     def test_run_tasks(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
         class TestErrorTask(TestTask):

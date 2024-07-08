@@ -6,7 +6,7 @@ from json import dumps as jsondumps
 from json import loads as jsonloads
 from os import environ, sep
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from jinja2.filters import FILTERS
@@ -396,7 +396,7 @@ write this "hello "{{ test }}"!"
 
 
 def test__objectify() -> None:
-    testdata: Dict[str, Any] = {
+    testdata: dict[str, Any] = {
         'AtomicIntegerIncrementer': {
             'test': 1337,
         },
@@ -499,7 +499,7 @@ def test_transform(behave_fixture: BehaveFixture, cleanup: AtomicVariableCleanup
 
     try:
         grizzly = cast(GrizzlyContext, behave.grizzly)
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             'AtomicIntegerIncrementer.test': 1337,
             'test': 1338,
             'AtomicCsvReader.input.test1': 'hello',

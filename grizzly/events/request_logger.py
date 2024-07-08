@@ -6,7 +6,7 @@ import traceback
 from datetime import datetime, timedelta
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import urlparse, urlunparse
 
 from jinja2 import Template
@@ -41,7 +41,7 @@ payload:
 
 
 class RequestLogger(GrizzlyEventHandler):
-    _context: Dict[str, Any]
+    _context: dict[str, Any]
 
     log_dir: Path
 
@@ -72,8 +72,8 @@ class RequestLogger(GrizzlyEventHandler):
         request: RequestTask,
         context: GrizzlyResponse,
         exception: Optional[Exception],
-        kwargs: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        kwargs: dict[str, Any],
+    ) -> dict[str, Any]:
         parsed = urlparse(self.user.host or '')
         sep = ''
         if (len(parsed.path) > 0 and parsed.path[-1] != '/' and request.endpoint[0] != '/') or (parsed.path == '' and request.endpoint[0] != '/'):
@@ -82,9 +82,9 @@ class RequestLogger(GrizzlyEventHandler):
         parsed = parsed._replace(path=f'{parsed.path}{sep}{request.endpoint}')
         url = urlunparse(parsed)
 
-        request_metadata: Optional[Dict[str, Any]] = None
+        request_metadata: Optional[dict[str, Any]] = None
         request_payload: Optional[str] = None
-        response_metadata: Optional[Dict[str, Any]] = None
+        response_metadata: Optional[dict[str, Any]] = None
         response_payload: Optional[str] = None
 
         response_metadata, response_payload = context
@@ -140,7 +140,7 @@ class RequestLogger(GrizzlyEventHandler):
 
         log_date = datetime.now().astimezone()
 
-        variables: Dict[str, Any] = {
+        variables: dict[str, Any] = {
             'method': request.method.name,
             'stacktrace': None,
             'request': {

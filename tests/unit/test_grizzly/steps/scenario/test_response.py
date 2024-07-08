@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from itertools import product
-from typing import TYPE_CHECKING, Callable, Dict, List, cast
+from typing import TYPE_CHECKING, Callable, cast
 
 import pytest
 from parse import compile
@@ -84,7 +84,7 @@ def test_step_response_save(grizzly_fixture: GrizzlyFixture, response_target: Re
     behave = grizzly_fixture.behave.context
     grizzly = grizzly_fixture.grizzly
     request = cast(RequestTask, grizzly.scenario.tasks()[0])
-    kwargs: Dict[str, Any] = {
+    kwargs: dict[str, Any] = {
         'context': behave,
         'target': response_target,
         'expression': '$.test.value',
@@ -215,7 +215,7 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
 
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='step table is missing')]}
 
-    rows: List[Row] = []
+    rows: list[Row] = []
     rows.append(Row(['test'], ['-200,400']))
     rows.append(Row(['test'], ['302']))
     behave.table = Table(['test'], rows=rows)

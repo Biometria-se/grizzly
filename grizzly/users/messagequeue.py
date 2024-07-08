@@ -128,7 +128,7 @@ from __future__ import annotations
 import inspect
 import logging
 from contextlib import contextmanager, suppress
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, Optional, Set, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import zmq.green as zmq
@@ -136,6 +136,7 @@ import zmq.green as zmq
 from grizzly.exceptions import StopScenario
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
 from grizzly.utils import merge_dicts
+from grizzly.utils.protocols import zmq_disconnect
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
@@ -143,6 +144,8 @@ from grizzly_extras.async_message.utils import async_message_request
 from . import GrizzlyUser, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Generator
+
     from grizzly.tasks import RequestTask
     from grizzly.types.locust import Environment
 
@@ -169,7 +172,7 @@ except:
     },
 })
 class MessageQueueUser(GrizzlyUser):
-    __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
@@ -238,10 +241,21 @@ class MessageQueueUser(GrizzlyUser):
         if header_type == 'none':
             header_type = None
 
+        key_file = auth_context.get('key_file', None)
+
+        if key_file is not None:
+            key_file_path = self._context_root / f'{key_file}.kdb'
+
+            if not key_file_path.exists():
+                message = f'{self.__class__.__name__} key file {key_file} does not exist'
+                raise ValueError(message)
+
+            key_file = key_file_path.resolve().with_suffix('').as_posix()
+
         self.am_context.update({
             'username': username,
             'password': auth_context.get('password', None),
-            'key_file': auth_context.get('key_file', None),
+            'key_file': key_file,
             'cert_label': auth_context.get('cert_label', None) or username,
             'ssl_cipher': auth_context.get('ssl_cipher', None) or 'ECDHE_RSA_AES_256_GCM_SHA384',
             'message_wait': message_context.get('wait', None),
@@ -266,6 +280,7 @@ class MessageQueueUser(GrizzlyUser):
                 'context': self.am_context,
             }):
                 self.zmq_client = self.zmq_context.socket(zmq.REQ)
+                self.zmq_client.setsockopt(zmq.LINGER, 0)
                 self.zmq_client.connect(self.zmq_url)
         except Exception as e:
             self.logger.exception('on_start failed')
@@ -285,18 +300,18 @@ class MessageQueueUser(GrizzlyUser):
             pass
 
         with suppress(Exception):
-            self.zmq_client.disconnect(self.zmq_url)
+            zmq_disconnect(self.zmq_client, destroy_context=False)
 
         self.worker_id = None
 
         super().on_stop()
 
     @contextmanager
-    def _request_context(self, am_request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
+    def _request_context(self, am_request: AsyncMessageRequest) -> Generator[dict[str, Any], None, None]:
         self.logger.debug('%s request context: %r', inspect.stack()[1][3], am_request)
 
         response: Optional[AsyncMessageResponse] = None
-        context: Dict[str, Any] = {
+        context: dict[str, Any] = {
             'metadata': None,
             'payload': None,
         }
@@ -311,7 +326,7 @@ class MessageQueueUser(GrizzlyUser):
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         am_context = cast(AsyncMessageContext, merge_dicts(
-            cast(Dict[str, Any], self.am_context),
+            cast(dict[str, Any], self.am_context),
             {
                 'endpoint': request.endpoint,
                 'metadata': request.metadata,

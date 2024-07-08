@@ -5,7 +5,7 @@ import gzip
 import time
 import xml.etree.ElementTree as XML  # noqa: N814
 from struct import pack, unpack
-from typing import Dict, List, Optional
+from typing import Optional
 
 try:
     import pymqi
@@ -61,7 +61,7 @@ class Rfh2Decoder:
             raise ValueError(msg) from e
 
     def _parse_name_values(self) -> None:
-        self.name_value_parts: List[XML.Element] = []
+        self.name_value_parts: list[XML.Element] = []
         pos = 0
         maxpos = len(self.name_values) - 1
         if maxpos == -1:
@@ -110,7 +110,7 @@ class Rfh2Encoder:
         md.Encoding = Rfh2Encoder.ENCODING
         return md
 
-    def __init__(self, payload: bytes, queue_name: str, encoding: str = 'gzip', tstamp: Optional[str] = None, metadata: Optional[Dict[str, str]] = None) -> None:
+    def __init__(self, payload: bytes, queue_name: str, encoding: str = 'gzip', tstamp: Optional[str] = None, metadata: Optional[dict[str, str]] = None) -> None:
         if encoding != 'gzip':
             msg = 'Only gzip encoding is implemented'
             raise NotImplementedError(msg)

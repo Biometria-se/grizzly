@@ -2,15 +2,17 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from contextlib import suppress
 from time import perf_counter, sleep, time
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 from urllib.parse import urlparse
 
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
 from azure.servicebus._pyamqp import ReceiveClient
 from azure.servicebus.amqp import AmqpMessageBodyType
+from azure.servicebus.exceptions import ServiceBusError
 from azure.servicebus.management import ServiceBusAdministrationClient, SqlRuleFilter, TopicProperties
 
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
@@ -35,17 +37,17 @@ __all__ = [
 ]
 
 
-handlers: Dict[str, AsyncMessageRequestHandler] = {}
+handlers: dict[str, AsyncMessageRequestHandler] = {}
 
 GenericCacheValue = Union[ServiceBusSender, ServiceBusReceiver]
-GenericCache = Dict[str, GenericCacheValue]
+GenericCache = dict[str, GenericCacheValue]
 GenericInstance = Callable[..., GenericCacheValue]
 
 
 class AsyncServiceBusHandler(AsyncMessageHandler):
-    _sender_cache: Dict[str, ServiceBusSender]
-    _receiver_cache: Dict[str, ServiceBusReceiver]
-    _arguments: Dict[str, Dict[str, str]]
+    _sender_cache: dict[str, ServiceBusSender]
+    _receiver_cache: dict[str, ServiceBusReceiver]
+    _arguments: dict[str, dict[str, str]]
 
     _client: Optional[ServiceBusClient] = None
     mgmt_client: Optional[ServiceBusAdministrationClient] = None
@@ -94,11 +96,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 self.logger.debug('closing management client')
                 self.mgmt_client.close()
 
-    def get_sender_instance(self, arguments: Dict[str, str]) -> ServiceBusSender:
+    def get_sender_instance(self, arguments: dict[str, str]) -> ServiceBusSender:
         endpoint_type = arguments['endpoint_type']
         endpoint_name = arguments['endpoint']
 
-        sender_arguments: Dict[str, str] = {'client_identifier': self.worker}
+        sender_arguments: dict[str, str] = {'client_identifier': self.worker}
 
         sender_type: Callable[..., ServiceBusSender]
 
@@ -117,13 +119,13 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         return sender_type(**sender_arguments)
 
-    def get_receiver_instance(self, arguments: Dict[str, str]) -> ServiceBusReceiver:
+    def get_receiver_instance(self, arguments: dict[str, str]) -> ServiceBusReceiver:
         endpoint_type = arguments['endpoint_type']
         endpoint_name = arguments['endpoint']
         subscription_name = arguments.get('subscription')
         message_wait = arguments.get('wait')
 
-        receiver_arguments: Dict[str, Any] = {
+        receiver_arguments: dict[str, Any] = {
             'client_identifier': self.worker,
         }
         receiver_type: Callable[..., ServiceBusReceiver]
@@ -144,12 +146,12 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         return receiver_type(**receiver_arguments)
 
     @classmethod
-    def from_message(cls, message: Optional[ServiceBusMessage]) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-        def to_dict(obj: Optional[DictMixin]) -> Dict[str, Any]:
+    def from_message(cls, message: Optional[ServiceBusMessage]) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+        def to_dict(obj: Optional[DictMixin]) -> dict[str, Any]:
             if obj is None:
                 return {}
 
-            result: Dict[str, Any] = {}
+            result: dict[str, Any] = {}
 
             for key, value in obj.items():
                 result[key] = value
@@ -180,7 +182,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         return metadata, payload
 
     @classmethod
-    def get_endpoint_arguments(cls, instance_type: str, endpoint: str) -> Dict[str, str]:
+    def get_endpoint_arguments(cls, instance_type: str, endpoint: str) -> dict[str, str]:
         arguments = parse_arguments(endpoint, ':')
 
         if 'queue' not in arguments and 'topic' not in arguments:
@@ -554,7 +556,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         self.logger.info('handling request towards %s', cache_endpoint)
 
         message: Optional[ServiceBusMessage] = None
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[dict[str, Any]] = None
         payload = request.get('payload', None)
         client = request.get('client', -1)
 
@@ -674,6 +676,20 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         raise StopIteration
 
                     break
+                except ServiceBusError as e:
+                    if any(msg in str(e) for msg in ['Connection to remote host was lost', 'socket is already closed']):
+                        if retry < 3:
+                            self.logger.warning('connection unexpectedly closed, reconnecting', exc_info=True)
+                            self._hello(request, force=True)
+                            receiver = self._receiver_cache[cache_endpoint]
+                            message = None
+                            continue
+
+                        error_message = 'could not reconnect on last retry'
+                    else:
+                        error_message = 'unhandled service bus error'
+
+                    raise AsyncMessageError(error_message) from e
                 except StopIteration:
                     delta = perf_counter() - wait_start
 

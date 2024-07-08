@@ -4,7 +4,7 @@ from __future__ import annotations
 import shutil
 from contextlib import suppress
 from os import environ
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 from unittest.mock import ANY
 
 import pytest
@@ -137,7 +137,7 @@ class TestGrizzlyContextSetup:
         grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly_setup = grizzly.setup
 
-        expected_properties: Dict[str, Optional[Tuple[Any, Any]]] = {
+        expected_properties: dict[str, Optional[tuple[Any, Any]]] = {
             'log_level': ('INFO', 'DEBUG'),
             'user_count': (None, 10),
             'spawn_rate': (None, 2),

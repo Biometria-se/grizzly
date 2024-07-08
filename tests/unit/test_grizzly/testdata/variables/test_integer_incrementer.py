@@ -4,7 +4,7 @@ from __future__ import annotations
 import threading
 from contextlib import suppress
 from json import dumps as jsondumps
-from typing import TYPE_CHECKING, List, Set
+from typing import TYPE_CHECKING
 
 import gevent
 import pytest
@@ -168,7 +168,7 @@ class TestAtomicIntegerIncrementer:
 
             t = AtomicIntegerIncrementer('thread_var', start_value)
 
-            values: Set[int] = set()
+            values: set[int] = set()
 
             def func1() -> None:
                 for _ in range(num_iterations):
@@ -178,7 +178,7 @@ class TestAtomicIntegerIncrementer:
                     assert value not in values
                     values.add(value)
 
-            threads: List[threading.Thread] = []
+            threads: list[threading.Thread] = []
             for _ in range(num_threads):
                 thread = threading.Thread(target=func1)
                 threads.append(thread)
@@ -202,7 +202,7 @@ class TestAtomicIntegerIncrementer:
 
             t = AtomicIntegerIncrementer('greenlet_var', start_value)
 
-            values: Set[int] = set()
+            values: set[int] = set()
 
             def exception_handler(greenlet: gevent.Greenlet) -> None:
                 message = f'func1 did not validate for {greenlet}'
@@ -216,7 +216,7 @@ class TestAtomicIntegerIncrementer:
                     assert value not in values
                     values.add(value)
 
-            greenlets: List[Greenlet] = []
+            greenlets: list[Greenlet] = []
             for _ in range(num_threads):
                 greenlet = gevent.spawn(func1)
                 greenlet.link_exception(exception_handler)

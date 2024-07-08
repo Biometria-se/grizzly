@@ -79,7 +79,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import contextmanager, suppress
-from typing import Any, ClassVar, Dict, Generator, Optional, Set, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 from urllib.parse import parse_qs, urlparse
 
 import zmq.green as zmq
@@ -88,11 +88,15 @@ from grizzly.tasks import RequestTask
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
 from grizzly.types.locust import Environment, StopUser
 from grizzly.utils import has_parameter, has_template
+from grizzly.utils.protocols import zmq_disconnect
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
 
 from . import GrizzlyUser, grizzlycontext
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 MAX_LENGTH = 65
 
@@ -110,14 +114,14 @@ MAX_LENGTH = 65
     },
 })
 class ServiceBusUser(GrizzlyUser):
-    __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
     zmq_context = zmq.Context()
     zmq_client: zmq.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
-    hellos: Set[str]
+    hellos: set[str]
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -188,6 +192,7 @@ class ServiceBusUser(GrizzlyUser):
         super().on_start()
 
         self.zmq_client = self.zmq_context.socket(zmq.REQ)
+        self.zmq_client.setsockopt(zmq.LINGER, 0)
         self.zmq_client.connect(self.zmq_url)
 
         for task in self._scenario.tasks:
@@ -204,7 +209,7 @@ class ServiceBusUser(GrizzlyUser):
 
                 self.disconnect(task)
 
-        self.zmq_client.disconnect(self.zmq_url)
+        zmq_disconnect(self.zmq_client, destroy_context=False)
 
         super().on_stop()
 
@@ -306,7 +311,7 @@ class ServiceBusUser(GrizzlyUser):
         self.hellos.add(description)
 
     @contextmanager
-    def request_context(self, task: RequestTask, request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
+    def request_context(self, task: RequestTask, request: AsyncMessageRequest) -> Generator[dict[str, Any], None, None]:
         name = task.name
 
         if len(name) > MAX_LENGTH:
@@ -319,7 +324,7 @@ class ServiceBusUser(GrizzlyUser):
 
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
         request['context'].update({'connection': connection})
-        context: Dict[str, Any] = {
+        context: dict[str, Any] = {
             'metadata': None,
             'payload': None,
         }

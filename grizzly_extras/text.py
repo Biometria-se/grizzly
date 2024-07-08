@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum, EnumMeta
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional
 
 
 class permutation:
@@ -32,9 +32,9 @@ class permutation:
     See {@pylink grizzly_extras.text.PermutationEnum.__vector__} for an explanation of possible values and their meaning.
     """
 
-    vector: Optional[Tuple[bool, bool]]
+    vector: Optional[tuple[bool, bool]]
 
-    def __init__(self, *, vector: Optional[Tuple[bool, bool]]) -> None:
+    def __init__(self, *, vector: Optional[tuple[bool, bool]]) -> None:
         self.vector = vector
 
     def __call__(self, func: Callable[[str], Any]) -> Callable[[str], Any]:
@@ -55,7 +55,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     [`grizzly-ls`](https://github.com/Biometria-se/grizzly-lsp) can make educated suggestions on possible step expressions.
     """
 
-    __vector__: Optional[Tuple[bool, bool]]
+    __vector__: Optional[tuple[bool, bool]]
     """
     This class variable represents `(x, y)` dimensions on how the values can expand in a step expression.
 
@@ -137,7 +137,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     """
 
     @classmethod
-    def get_vector(cls) -> Optional[Tuple[bool, bool]]:
+    def get_vector(cls) -> Optional[tuple[bool, bool]]:
         return getattr(cls, '__vector__', None)
 
     @classmethod

@@ -43,7 +43,7 @@ from __future__ import annotations
 import json
 import logging
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Type, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 from gevent import sleep as gsleep
 
@@ -69,8 +69,8 @@ class UntilRequestTask(GrizzlyTask):
     request: GrizzlyMetaRequestTask
     condition: str
 
-    transform: Optional[Type[Transformer]]
-    matcher: Callable[[Any], List[str]]
+    transform: Optional[type[Transformer]]
+    matcher: Callable[[Any], list[str]]
 
     retries: int
     wait: float
@@ -177,7 +177,7 @@ class UntilRequestTask(GrizzlyTask):
                 # remove any errors produced during until loop
                 error_count_after = len(parent.user.environment.stats.errors.keys())
                 if error_count_after > error_count_before:
-                    error_keys: List[str] = []
+                    error_keys: list[str] = []
                     for error_key, error in parent.user.environment.stats.errors.items():
                         if error.name == f'{parent.user._scenario.identifier} {self.request.name}':
                             error_keys.append(error_key)

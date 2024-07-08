@@ -39,7 +39,7 @@ from __future__ import annotations
 from contextlib import suppress
 from secrets import choice, randbelow
 from string import ascii_letters
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Set, Type, cast
+from typing import Any, Callable, ClassVar, Optional, cast
 from uuid import uuid4
 
 from grizzly.types import bool_type, int_rounded_float_type
@@ -92,13 +92,13 @@ class AtomicRandomString(AtomicVariable[str]):
     __base_type__ = atomicrandomstring__base_type__
     __initialized: bool = False
 
-    _strings: Dict[str, List[str]]
-    arguments: ClassVar[Dict[str, Any]] = {'upper': bool_type, 'count': int_rounded_float_type}
+    _strings: dict[str, list[str]]
+    arguments: ClassVar[dict[str, Any]] = {'upper': bool_type, 'count': int_rounded_float_type}
 
     @staticmethod
-    def get_generators(format_string: str) -> List[Callable[[AtomicRandomString], str]]:
+    def get_generators(format_string: str) -> list[Callable[[AtomicRandomString], str]]:
         """Map format modifiers to generator functions."""
-        formats: List[Callable[[AtomicRandomString], str]] = []
+        formats: list[Callable[[AtomicRandomString], str]] = []
         # first item is either empty, or it's a static character
         for format_modifier in format_string.split('%')[1:]:
             generator_name = format_modifier[0]  # could be static characters in the pattern, only supports one character formatters
@@ -151,8 +151,8 @@ class AtomicRandomString(AtomicVariable[str]):
     def _generate_g(self) -> str:
         return str(uuid4())
 
-    def _generate_strings(self, string_pattern: str, settings: Dict[str, Any]) -> List[str]:
-        generated_strings: Set[str] = set()
+    def _generate_strings(self, string_pattern: str, settings: dict[str, Any]) -> list[str]:
+        generated_strings: set[str] = set()
         generators = self.__class__.get_generators(string_pattern)
 
         string_pattern = string_pattern.replace('%g', '%s')
@@ -172,7 +172,7 @@ class AtomicRandomString(AtomicVariable[str]):
         return list(generated_strings)
 
     @classmethod
-    def clear(cls: Type[AtomicRandomString]) -> None:
+    def clear(cls: type[AtomicRandomString]) -> None:
         super().clear()
 
         instance = cast(AtomicRandomString, cls.get())

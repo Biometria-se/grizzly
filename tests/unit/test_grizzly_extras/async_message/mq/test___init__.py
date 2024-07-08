@@ -5,7 +5,7 @@ import subprocess
 import sys
 from contextlib import suppress
 from os import environ
-from typing import TYPE_CHECKING, Any, ClassVar, List, Tuple, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 import pytest
 
@@ -42,7 +42,7 @@ def test_no_pymqi_dependencies() -> None:
     output = out.decode()
     assert process.returncode == 1
     assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
-    assert 'NotImplementedError: AsyncMessageQueueHandler could not import pymqi, have you installed IBM MQ dependencies?' in output
+    assert 'NotImplementedError: AsyncMessageQueueHandler could not import pymqi, have you installed IBM MQ dependencies and set environment variable LD_LIBRARY_PATH?' in output
 
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
@@ -593,7 +593,7 @@ class TestAsyncMessageQueueHandler:
         # Mocked representation of pymqi Queue
         class DummyQueue:
             # List with (comp, reason) errors to raise, -1 in comp means skip
-            error_list: ClassVar[List[Tuple[int, int]]] = []
+            error_list: ClassVar[list[tuple[int, int]]] = []
 
             def __init__(self) -> None:
                 self.msg_ix = 0

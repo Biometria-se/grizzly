@@ -1,5 +1,5 @@
 # [Choice] Python version (use -bullseye variants on local arm64/Apple Silicon): 3, 3.10, 3.9, 3.8, 3.7, 3.6, 3-bullseye, 3.10-bullseye, 3.9-bullseye, 3.8-bullseye, 3.7-bullseye, 3.6-bullseye, 3-buster, 3.10-buster, 3.9-buster, 3.8-buster, 3.7-buster, 3.6-buster
-ARG VARIANT="3.11"
+ARG VARIANT="3.12"
 
 # IBM MQ libraries dependencies
 FROM alpine:latest as dependencies
@@ -12,7 +12,7 @@ RUN mkdir /root/ibm && cd /root/ibm && \
 # End IBM MQ libraries dependencies
 # See here for image contents: https://github.com/microsoft/vscode-dev-containers/tree/v0.209.5/containers/python-3/.devcontainer/base.Dockerfile
 
-FROM mcr.microsoft.com/vscode/devcontainers/python:0-${VARIANT}
+FROM mcr.microsoft.com/vscode/devcontainers/python:1-${VARIANT}
 
 RUN rm  -rf /etc/apt/sources.list.d/yarn.list || true && \
     apt-get update

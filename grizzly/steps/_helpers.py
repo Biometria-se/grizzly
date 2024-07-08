@@ -5,7 +5,7 @@ import logging
 import re
 from errno import ENAMETOOLONG
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Type, cast
+from typing import TYPE_CHECKING, Optional, cast
 from urllib.parse import urlparse
 
 import jinja2 as j2
@@ -33,7 +33,7 @@ def create_request_task(
     source: Optional[str],
     endpoint: str,
     name: Optional[str] = None,
-    substitutes: Optional[Dict[str, str]] = None,
+    substitutes: Optional[dict[str, str]] = None,
     content_type: Optional[TransformerContentType] = None,
 ) -> RequestTask:
     return _create_request_task(context.config.base_dir, method, source, endpoint, name, substitutes=substitutes, content_type=content_type)
@@ -45,7 +45,7 @@ def _create_request_task(
     source: Optional[str],
     endpoint: str,
     name: Optional[str] = None,
-    substitutes: Optional[Dict[str, str]] = None,
+    substitutes: Optional[dict[str, str]] = None,
     content_type: Optional[TransformerContentType] = None,
 ) -> RequestTask:
     path = Path(base_dir) / 'requests'
@@ -108,14 +108,14 @@ def add_request_task(
     endpoint: Optional[str] = None,
     *,
     in_scenario: Optional[bool] = True,
-) -> List[Tuple[RequestTask, Dict[str, str]]]:
+) -> list[tuple[RequestTask, dict[str, str]]]:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     scenario_tasks_count = len(grizzly.scenario.tasks())
 
-    request_tasks: List[Tuple[RequestTask, Dict[str, str]]] = []
+    request_tasks: list[tuple[RequestTask, dict[str, str]]] = []
 
-    table: List[Optional[Row]]
+    table: list[Optional[Row]]
     content_type: Optional[TransformerContentType] = None
 
     if endpoint is not None and ('$env::' in endpoint or '$conf::' in endpoint):
@@ -142,7 +142,7 @@ def add_request_task(
         orig_name = name
         orig_source = source
 
-        substitutes: Dict[str, str] = {}
+        substitutes: dict[str, str] = {}
 
         if row is not None:
             for key, value in row.as_dict().items():
@@ -256,7 +256,7 @@ def normalize_step_name(step_name: str) -> str:
     return re.sub(r'"[^"]*"', '""', step_name)
 
 
-def get_task_client(grizzly: GrizzlyContext, endpoint: str) -> Type[ClientTask]:
+def get_task_client(grizzly: GrizzlyContext, endpoint: str) -> type[ClientTask]:
     scheme = urlparse(endpoint).scheme
 
     if not (scheme is not None and len(scheme) > 0):

@@ -42,7 +42,7 @@ Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 from __future__ import annotations
 
 import gzip
-from typing import TYPE_CHECKING, Any, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 from urllib.parse import parse_qs, urlparse
 
 from azure.iot.device import IoTHubDeviceClient
@@ -101,7 +101,7 @@ class IotHubUser(GrizzlyUser):
             message = f'{self.__class__.__name__} has not implemented {request.method.name}'
             raise NotImplementedError(message)
 
-        storage_info: Optional[Dict[str, Any]] = None
+        storage_info: Optional[dict[str, Any]] = None
         try:
             if not request.source:
                 message = f'Cannot upload empty payload to endpoint {request.endpoint} in IotHubUser'
@@ -109,7 +109,7 @@ class IotHubUser(GrizzlyUser):
 
             filename = request.endpoint
 
-            storage_info = cast(Dict[str, Any], self.iot_client.get_storage_info_for_blob(filename))
+            storage_info = cast(dict[str, Any], self.iot_client.get_storage_info_for_blob(filename))
 
             sas_url = 'https://{}/{}/{}{}'.format(
                 storage_info['hostName'],

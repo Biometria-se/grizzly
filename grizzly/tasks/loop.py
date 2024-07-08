@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from json import loads as jsonloads
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from gevent import sleep as gsleep
 
@@ -39,7 +39,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @template('values', 'tasks')
 class LoopTask(GrizzlyTaskWrapper):
-    tasks: List[GrizzlyTask]
+    tasks: list[GrizzlyTask]
 
     name: str
     values: str
@@ -62,7 +62,7 @@ class LoopTask(GrizzlyTaskWrapper):
             task.name = f'{self.name}:{task_name}'
         self.tasks.append(task)
 
-    def peek(self) -> List[GrizzlyTask]:
+    def peek(self) -> list[GrizzlyTask]:
         return self.tasks
 
     def __call__(self) -> grizzlytask:

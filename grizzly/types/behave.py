@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from functools import wraps
-from typing import Any, Callable, Dict, List, TypeVar, cast
+from typing import Any, Callable, TypeVar, cast
 
 import behave
 from behave.model import Feature, Row, Scenario, Status, Step, Table
@@ -31,7 +31,7 @@ def error_handler(func: StepFunctionType) -> StepFunctionType:
 
             exception = StepError(e, context.step).with_traceback(e.__traceback__) if isinstance(e, AssertionError) else e
 
-            cast(Dict[str, List[Exception]], context.exceptions).update({
+            cast(dict[str, list[Exception]], context.exceptions).update({
                 context.scenario.name: [*context.exceptions.get(context.scenario.name, []), exception],
             })
 
