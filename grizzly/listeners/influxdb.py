@@ -224,12 +224,41 @@ class InfluxDbListener:
             if not self.finished:
                 gevent.sleep(0.5)
 
+    def _override_event(self, event: InfluxDbPoint, context: dict[str, Any]) -> None:
+        # override values set in context
+        for key, value in context.items():
+            if not key.startswith('__') and not key.endswith('__'):
+                continue
+
+            override_key = key[2:-2]
+
+            if override_key.startswith('fields_'):
+                override_key = override_key[7:]
+
+                if override_key not in event['fields']:
+                    continue
+
+                event['fields'].update({override_key: value})
+            elif override_key.startswith('tags_'):
+                override_key = override_key[5:]
+
+                if override_key not in event['tags']:
+                    continue
+
+                event['tags'].update({override_key: value})
+            else:
+                if override_key not in event:
+                    continue
+
+                event.update({override_key: value})  # type: ignore[misc]
+
     def _log_request(
         self,
         request_type: str,
         name: str,
         result: str,
         metrics: dict[str, Any],
+        context: dict[str, Any],
         exception: Optional[Any] = None,
     ) -> None:
         if exception is not None:
@@ -288,6 +317,8 @@ class InfluxDbListener:
             },
         }
 
+        self._override_event(event, context)
+
         self._events.append(event)
 
     def request(
@@ -296,6 +327,7 @@ class InfluxDbListener:
         name: str,
         response_time: Any,
         response_length: Any,
+        context: dict[str, Any],
         exception: Optional[Any] = None,
         **_kwargs: Any,
     ) -> None:
@@ -316,7 +348,7 @@ class InfluxDbListener:
                 logger_method = self.logger.debug
 
             logger_method(message_to_log)
-            self._log_request(request_type, name, result, metrics, exception)
+            self._log_request(request_type, name, result, metrics, context, exception)
         except Exception:
             self.logger.exception('failed to write metric for "%s %s"', request_type, name)
 
