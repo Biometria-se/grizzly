@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import logging
 from concurrent import futures
+from contextlib import suppress
 from json import dumps as jsondumps
 from json import loads as jsonloads
+from multiprocessing import Process
 from signal import SIGINT, SIGTERM, Signals, signal
 from threading import Event
 from time import sleep
@@ -31,21 +33,6 @@ from . import (
 if TYPE_CHECKING:  # pragma: no cover
     from types import FrameType, TracebackType
 
-abort: bool = False
-
-def signal_handler(signum: Union[int, Signals], _frame: Optional[FrameType]) -> None:
-    logger = logging.getLogger('signal_handler')
-    logger.debug('received signal %r', signum)
-
-    global abort  # noqa: PLW0603
-    if not abort:
-        logger.info('aborting due to %r', signum)
-        abort = True
-
-
-signal(SIGTERM, signal_handler)
-signal(SIGINT, signal_handler)
-
 
 class ThreadPoolExecutor(futures.ThreadPoolExecutor):
     def __exit__(
@@ -54,7 +41,7 @@ class ThreadPoolExecutor(futures.ThreadPoolExecutor):
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[False]:
-        self.shutdown(wait=False)
+        self.shutdown(wait=False, cancel_futures=True)
         return False
 
 
@@ -67,16 +54,12 @@ class Worker:
 
     _event: Event
 
-    def __init__(self, context: zmq.Context, identity: str) -> None:
+    def __init__(self, context: zmq.Context, identity: str, event: Optional[Event] = None) -> None:
         self.logger = logging.getLogger(f'worker::{identity}')
         self.identity = identity
         self.context = context
         self.integration = None
-
-        self._event = Event()
-
-    def stop(self) -> None:
-        self._event.set()
+        self._event = Event() if event is None else event
 
     def run(self) -> None:
         self.socket = self.context.socket(zmq.REQ)
@@ -93,7 +76,7 @@ class Worker:
                 sleep(0.1)
                 continue
 
-            self.logger.debug("i'm alive! abort=%r, received=%r", abort, received)
+            self.logger.debug("i'm alive! run_daemon=%r, received=%r", self._event.is_set(), received)
 
             if not request_proto:
                 self.logger.error('empty msg')
@@ -164,9 +147,8 @@ def create_router_socket(context: zmq.Context) -> zmq.Socket:
     return socket
 
 
-def router() -> None:  # noqa: C901, PLR0915
+def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
     logger = logging.getLogger('router')
-    proc.setproctitle('grizzly-async-messaged')  # set appl name on ibm mq
     logger.debug('starting')
 
     context = zmq.Context()
@@ -186,31 +168,34 @@ def router() -> None:  # noqa: C901, PLR0915
         def spawn_worker() -> None:
             identity = str(uuid4())
 
-            worker = Worker(context, identity)
+            worker = Worker(context, identity, run_daemon)
 
             future = executor.submit(worker.run)
             workers.update({identity: (future, worker)})
             logger.info('spawned worker %s', identity)
 
         workers_available: list[str] = []
-
         client_worker_map: dict[str, str] = {}
+        worker_identifiers_map: dict[str, bytes] = {}
 
         spawn_worker()
 
         worker_id: str
 
-        while not abort:
+        while not run_daemon.is_set():
             socks = dict(poller.poll(timeout=1000))
 
             if not socks:
                 continue
+
+            logger.debug('got sockets, run_daemon=%r', run_daemon.is_set())
 
             logger.debug("i'm alive!")
 
             if socks.get(backend) == zmq.POLLIN:
                 logger.debug('polling backend')
                 try:
+                    logger.debug('waiting for backend')
                     backend_response = backend.recv_multipart(flags=zmq.NOBLOCK)
                 except zmq.Again:
                     sleep(0.1)
@@ -223,6 +208,8 @@ def router() -> None:  # noqa: C901, PLR0915
                 reply = backend_response[2:]
                 worker_id = backend_response[0].decode()
 
+                worker_identifiers_map.update({worker_id: reply[0]})
+
                 if reply[0] != LRU_READY.encode():
                     logger.debug('sending %r', reply)
                     frontend.send_multipart(reply)
@@ -234,6 +221,7 @@ def router() -> None:  # noqa: C901, PLR0915
             if socks.get(frontend) == zmq.POLLIN:
                 logger.debug('polling frontend')
                 try:
+                    logger.debug('waiting for frontend')
                     msg = frontend.recv_multipart(flags=zmq.NOBLOCK)
                 except zmq.Again:
                     sleep(0.1)
@@ -284,12 +272,9 @@ def router() -> None:  # noqa: C901, PLR0915
                 backend.send_multipart(backend_request)
 
         logger.info('stopping')
-        # for identity, (future, worker) in workers.items():
         for identity, (future, worker) in workers.items():
             if not future.running():
                 continue
-
-            worker.stop()
 
             # tell client that we aborted
             if worker.integration is not None:
@@ -300,7 +285,7 @@ def router() -> None:  # noqa: C901, PLR0915
                 }
 
                 response_proto = [
-                    worker.identity.encode(),
+                    worker_identifiers_map.get(identity),
                     SPLITTER_FRAME,
                     jsondumps(response, cls=JsonBytesEncoder).encode(),
                 ]
@@ -309,13 +294,12 @@ def router() -> None:  # noqa: C901, PLR0915
 
                 worker.logger.debug('sent abort to client')
 
-
                 worker.integration.close()
                 worker.socket.close()
                 worker.logger.info('socket closed')
 
                 # stop worker
-                cancelled = future.cancel()
+                cancelled = future.cancel()  # let's try at least...
                 logger.info('worker %s cancelled: %r', identity, cancelled)
             else:
                 # should complete when `worker.stop()` has had effect
@@ -329,10 +313,46 @@ def router() -> None:  # noqa: C901, PLR0915
 
     logger.info('stopped')
 
+    if not run_daemon.is_set():
+        run_daemon.set()
+
 def main() -> int:
+    logger = logging.getLogger('main')
+    run_daemon = Event()
+    process = Process(target=router, args=(run_daemon,))
+
+    def signal_handler(signum: Union[int, Signals], _frame: Optional[FrameType]) -> None:
+        if run_daemon.is_set():
+            return
+
+        logger.info('received signal %r', signum)
+        run_daemon.set()
+
+    signal(SIGTERM, signal_handler)
+    signal(SIGINT, signal_handler)
+
+    proc.setproctitle('grizzly-async-messaged')  # set appl name on ibm mq
+
     try:
-        router()
+        # start router I/O loop
+        process.start()
+
+        # wait for event to be set, which would be in `signal_handler` or when router I/O loop ends
+        run_daemon.wait()
+
+        # this should terminate the process, by sending SIGTERM to it
+        process.terminate()
+
+        # wait up to 3 seconds (socket poll timeout is 1 second) for the process to finish,
+        # ignore any exception that might happen during that time
+        with suppress(Exception):
+            process.join(timeout=3.0)
+
+        # if the process is still alive after timeout, forcefully kill it
+        if process.is_alive():
+            process.kill()
+
     except KeyboardInterrupt:
         return 1
     else:
-        return 0
+        return process.exitcode or 1

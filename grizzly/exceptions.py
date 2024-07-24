@@ -13,6 +13,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 __all__ = [
     'StopUser',
+    'AsyncMessageAbort',
 ]
 
 
@@ -27,7 +28,7 @@ class RestartScenario(Exception):  # noqa: N818
     pass
 
 
-class StopScenario(AsyncMessageAbort):
+class StopScenario(Exception):  # noqa: N818
     pass
 
 class AssertionErrors(Exception):  # noqa: N818
