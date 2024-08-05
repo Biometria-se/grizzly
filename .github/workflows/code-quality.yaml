@@ -21,7 +21,7 @@ jobs:
       id: setup-python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
         cache: 'pip'
 
     - name: install python dependencies
@@ -52,7 +52,7 @@ jobs:
         python-version: ['3.9', '3.10', '3.11', '3.12']
         runs-on: ['ubuntu-latest']
         include:
-          - python-version: '3.11'
+          - python-version: '3.12'
             runs-on: windows-latest
 
     env:
@@ -118,7 +118,7 @@ jobs:
       id: setup-python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
         cache: 'pip'
 
     - name: setup environment
@@ -195,7 +195,7 @@ jobs:
       id: setup-python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
         cache: 'pip'
 
     - name: install python dependencies
@@ -225,7 +225,7 @@ jobs:
       id: setup-python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
         cache: 'pip'
 
     - name: setup node
