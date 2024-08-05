@@ -388,7 +388,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.quitting._handlers) == 0
 
         environment.events.spawning_complete._handlers = []  # grizzly handler should only append
-        grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
+        grizzly.setup.statistics_url = 'influxdb://influx.example.com:1230/testdb'
 
         setup_environment_listeners(behave, testdata={})
 
@@ -429,7 +429,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.quitting._handlers) == 1
 
         AtomicIntegerIncrementer.destroy()
-        grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
+        grizzly.setup.statistics_url = 'influxdb://influx.example.com:1231/testdb'
         environment.events.spawning_complete._handlers = []
 
         setup_environment_listeners(behave, testdata=testdata)

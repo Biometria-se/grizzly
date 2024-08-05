@@ -142,11 +142,13 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
 
     # check except between declared variables and variables found in templates
     missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - template_variables.__conditional__
-    assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates:\n{"\n".join(sorted(missing_in_templates))}'
+    missing_in_templates_message = '\n'.join(sorted(missing_in_templates))
+    assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates:\n{missing_in_templates_message}'
 
     # check if any variable hasn't first been declared
     missing_declarations = {variable for variable in found_variables if variable not in declared_variables} - template_variables.__conditional__ - template_variables.__local__
-    assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared:\n{"\n".join(sorted(missing_declarations))}'
+    missing_declarations_message = '\n'.join(sorted(missing_declarations))
+    assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared:\n{missing_declarations_message}'
 
     # only include variables that has been declared, filtering out conditional ones
     filtered_template_variables: dict[str, set[str]] = {}

@@ -79,7 +79,6 @@ class Worker:
             self.logger.debug("i'm alive! run_daemon=%r, received=%r", self._event.is_set(), received)
 
             if not request_proto:
-                self.logger.error('empty msg')
                 continue
 
             request = cast(
