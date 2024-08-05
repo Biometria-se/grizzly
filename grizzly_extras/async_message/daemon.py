@@ -120,9 +120,7 @@ class Worker:
                 }
 
             if response is None and self.integration is not None:
-                self.logger.debug('send request to handler')
                 response = self.integration.handle(request)
-                self.logger.debug('got response from handler')
 
             response_proto = [
                 request_proto[0],
@@ -132,6 +130,7 @@ class Worker:
 
             self.socket.send_multipart(response_proto)
 
+        self.logger.info('stopping')
         if self.integration is not None:
             self.integration.close()
 
@@ -187,8 +186,6 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
 
             if not socks:
                 continue
-
-            logger.debug('got sockets, run_daemon=%r', run_daemon.is_set())
 
             logger.debug("i'm alive!")
 
@@ -355,4 +352,4 @@ def main() -> int:
     except KeyboardInterrupt:
         return 1
     else:
-        return process.exitcode or 1
+        return process.exitcode or 0

@@ -1,8 +1,11 @@
 """Unit tests of grizzly_extras.async_message.daemon."""
 from __future__ import annotations
 
+import logging
+from concurrent.futures import ThreadPoolExecutor
 from itertools import cycle
 from json import dumps as jsondumps
+from multiprocessing import Process
 from threading import Event
 from typing import TYPE_CHECKING, Any, cast
 
@@ -154,7 +157,6 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
 
 
 def test_router(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
-    from grizzly_extras.async_message.daemon import Worker
     context_mock = mocker.MagicMock()
     create_context_mock = mocker.patch('zmq.green.Context.__new__', return_value=context_mock)
 
@@ -164,17 +166,26 @@ def test_router(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
 
     poller_mock = mocker.MagicMock()
     create_poller_mock = mocker.patch('zmq.green.Poller.__new__', return_value=poller_mock)
-    poller_mock.poll.side_effect = [RuntimeError]
-    thread_mock = mocker.patch('grizzly_extras.async_message.daemon.Thread')
+
+    thread_pool_executor_mock = mocker.MagicMock(spec=ThreadPoolExecutor)
+    mocker.patch('grizzly_extras.async_message.daemon.ThreadPoolExecutor.__new__', return_value=thread_pool_executor_mock)
+
+    worker_mock = mocker.MagicMock(spec=Worker)
+    worker_mock.integration = mocker.PropertyMock()
+    worker_mock.logger = logging.getLogger('worker')
+    worker_mock.socket = mocker.PropertyMock()
+    mocker.patch('grizzly_extras.async_message.daemon.Worker.__new__', side_effect=[worker_mock, mocker.MagicMock(spec=Worker)])
 
     mocker.patch('grizzly_extras.async_message.daemon.uuid4', return_value='foobar')
 
-    run_daemon = Event()
+    run_daemon = mocker.MagicMock(spec=Event)
 
-    with pytest.raises(RuntimeError):
-        router(run_daemon)
+    mocker.patch.object(run_daemon, 'is_set', side_effect=[False, True, False])
+
+    router(run_daemon)
 
     assert 'spawned worker foobar' in caplog.messages[0]
+    assert 'stopped' in caplog.messages[-1]
     caplog.clear()
 
     create_context_mock.assert_called_once_with(
@@ -193,14 +204,38 @@ def test_router(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
 
     poller_mock.register.assert_has_calls([mocker.call(frontend_mock, zmq.POLLIN), mocker.call(backend_mock, zmq.POLLIN)])
 
-    thread_mock.assert_called_once_with(target=worker, args=(context_mock, 'foobar'))
+    worker_mock.integration.close.assert_called_once_with()
+    worker_mock.socket.close.assert_called_once_with()
+    run_daemon.set.assert_called_once_with()
+    thread_pool_executor_mock.__enter__.return_value.submit.assert_called_once_with(worker_mock.run)
+    thread_pool_executor_mock.__exit__.assert_called_once_with(None, None, None)
 
 
 def test_main(mocker: MockerFixture) -> None:
-    mocker.patch(
-        'grizzly_extras.async_message.daemon.router',
-        side_effect=[None, KeyboardInterrupt],
-    )
+    run_daemon_mock = mocker.patch('grizzly_extras.async_message.daemon.Event', spec=Event)
+
+    setproctitle_mock = mocker.patch('grizzly_extras.async_message.daemon.proc.setproctitle', return_value=None)
+
+    process_mock = mocker.patch('grizzly_extras.async_message.daemon.Process', spec=Process)
+    process_mock.return_value.exitcode = None
+    process_mock.return_value.is_alive.return_value = True
+
+    router_mock = mocker.patch('grizzly_extras.async_message.daemon.router', return_value=None)
 
     assert main() == 0
+    setproctitle_mock.assert_called_once_with('grizzly-async-messaged')
+    setproctitle_mock.reset_mock()
+    process_mock.assert_called_once_with(target=router_mock, args=(run_daemon_mock.return_value,))
+    process_mock.return_value.start.assert_called_once_with()
+    run_daemon_mock.return_value.wait.assert_called_once_with()
+    process_mock.return_value.terminate.assert_called_once_with()
+    process_mock.return_value.join.assert_called_once_with(timeout=3.0)
+    process_mock.return_value.is_alive.assert_called_once_with()
+    process_mock.return_value.kill.assert_called_once_with()
+    process_mock.reset_mock()
+    run_daemon_mock.reset_mock()
+
+    process_mock.return_value.start.side_effect = [KeyboardInterrupt]
+
     assert main() == 1
+    run_daemon_mock.return_value.wait.assert_not_called()
