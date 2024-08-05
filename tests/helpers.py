@@ -7,11 +7,13 @@ import re
 import signal
 import stat
 import subprocess
+import sys
 from abc import ABCMeta
 from contextlib import suppress
 from copy import deepcopy
 from pathlib import Path
 from re import Pattern
+from shutil import rmtree
 from types import MethodType, TracebackType
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 from unittest.mock import MagicMock
@@ -269,7 +271,10 @@ def run_command(command: list[str], env: Optional[dict[str, str]] = None, cwd: O
     return process.returncode, output
 
 
-def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:  # noqa: ARG001
+def onerror(func: Callable, path: str, exc_info: Union[  # noqa: ARG001
+        BaseException,
+        tuple[type[BaseException], BaseException, Optional[TracebackType]],
+]) -> None:
     """Error handler for shutil.rmtree.
 
     If the error is due to an access error (read only file)
@@ -283,7 +288,19 @@ def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:  # noqa
         _path.chmod(stat.S_IWUSR)
         func(path)
     else:
-        raise
+        raise  # pylint: disable=E0704
+
+
+def rm_rf(path: Union[str, Path]) -> None:
+    """Remove the path contents recursively, even if some elements
+    are read-only.
+    """
+    p = path.as_posix() if isinstance(path, Path) else path
+
+    if sys.version_info >= (3, 12):
+        rmtree(p, onexc=onerror)
+    else:
+        rmtree(p, onerror=onerror)
 
 
 # prefix components:

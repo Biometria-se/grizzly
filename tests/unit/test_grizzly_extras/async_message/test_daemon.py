@@ -1,16 +1,15 @@
 """Unit tests of grizzly_extras.async_message.daemon."""
 from __future__ import annotations
 
-from importlib import reload
 from itertools import cycle
 from json import dumps as jsondumps
-from signal import SIGINT
+from threading import Event
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 import zmq.green as zmq
 
-from grizzly_extras.async_message.daemon import main, router, signal_handler, worker
+from grizzly_extras.async_message.daemon import Worker, main, router
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -18,18 +17,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock.plugin import MockerFixture
 
     from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
-
-
-def test_signal_handler() -> None:
-    from grizzly_extras.async_message import daemon
-
-    assert not getattr(daemon, 'abort')  # noqa: B009
-
-    signal_handler(SIGINT, None)
-
-    assert daemon.abort
-
-    reload(daemon)
 
 
 @pytest.mark.parametrize(('scheme', 'implementation'), [
@@ -67,7 +54,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
     mock_recv_multipart({'worker': 'ID-54321', 'context': {'url': f'{scheme}://dummy'}})
 
     with pytest.raises(StopAsyncIteration):
-        worker(context_mock, 'ID-12345')
+        Worker(context_mock, 'ID-12345').run()
 
     worker_mock.send_multipart.assert_called_once_with([
         b'ID-54321',
@@ -84,7 +71,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
     mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': 'http://www.example.com'}})
 
     with pytest.raises(StopAsyncIteration):
-        worker(context_mock, 'ID-12345')
+        Worker(context_mock, 'ID-12345').run()
 
     worker_mock.send_multipart.assert_called_once_with([
         b'ID-12345',
@@ -115,7 +102,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
     })
 
     with pytest.raises(StopAsyncIteration):
-        worker(context_mock, 'ID-12345')
+        Worker(context_mock, 'ID-12345').run()
 
     integration_spy.assert_called_once_with('ID-12345')
     integration_spy.reset_mock()
@@ -135,10 +122,10 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
     ])
     worker_mock.send_multipart.reset_mock()
 
-    from grizzly_extras.async_message import daemon
+    worker = Worker(context_mock, 'F00B4R')
 
     def hack(*_args: Any, **_kwargs: Any) -> None:
-        daemon.abort = True
+        worker._event.set()
 
     worker_mock.send_multipart = hack
 
@@ -159,9 +146,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
         return_value=None,
     )
 
-    worker(context_mock, 'F00B4R')
-
-    reload(daemon)
+    worker.run()
 
     integration_close_spy.assert_called_once_with()
 
@@ -169,7 +154,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
 
 
 def test_router(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
-    from grizzly_extras.async_message.daemon import worker
+    from grizzly_extras.async_message.daemon import Worker
     context_mock = mocker.MagicMock()
     create_context_mock = mocker.patch('zmq.green.Context.__new__', return_value=context_mock)
 
@@ -184,8 +169,10 @@ def test_router(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
 
     mocker.patch('grizzly_extras.async_message.daemon.uuid4', return_value='foobar')
 
+    run_daemon = Event()
+
     with pytest.raises(RuntimeError):
-        router()
+        router(run_daemon)
 
     assert 'spawned worker foobar' in caplog.messages[0]
     caplog.clear()

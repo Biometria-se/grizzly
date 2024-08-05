@@ -5,7 +5,6 @@ import logging
 from contextlib import suppress
 from json import loads as jsonloads
 from os import environ
-from shutil import rmtree
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -17,7 +16,7 @@ from grizzly.testdata.utils import templatingfilter
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.types.locust import StopUser
 from grizzly.users import GrizzlyUser
-from tests.helpers import ANY
+from tests.helpers import ANY, rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
@@ -117,7 +116,7 @@ class TestGrizzlyUser:
             with suppress(KeyError):
                 del FILTERS['uppercase']
 
-            rmtree(test_context)
+            rm_rf(test_context)
 
             with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
@@ -173,7 +172,7 @@ class TestGrizzlyUser:
             assert data['MeasureResult']['name'] == user.context_variables['name']
             assert data['MeasureResult']['value'] == user.context_variables['value']
         finally:
-            rmtree(test_context.parent.parent)
+            rm_rf(test_context.parent.parent)
             with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
 

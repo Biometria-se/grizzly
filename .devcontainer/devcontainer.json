@@ -24,6 +24,7 @@
                     "*.j2.json": "jinja-json",
                     "*.j2.xml": "jinja-xml"
                 },
+                "mypy-type-checker.ignorePatterns": ["tests/project/**/*.py"],
                 "mypy.targets": [
                     "grizzly/",
                     "grizzly_extras/",

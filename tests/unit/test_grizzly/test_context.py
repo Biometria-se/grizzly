@@ -1,7 +1,6 @@
 """Unit tests for grizzly.context."""
 from __future__ import annotations
 
-import shutil
 from contextlib import suppress
 from os import environ
 from typing import TYPE_CHECKING, Any, Optional, cast
@@ -27,7 +26,7 @@ from grizzly.locust import FixedUsersDispatcher
 from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, ExplicitWaitTask, LogMessageTask, LoopTask, RequestTask
 from grizzly.types import MessageDirection, RequestMethod
 from grizzly.types.behave import Scenario
-from tests.helpers import TestTask, get_property_decorated_attributes
+from tests.helpers import TestTask, get_property_decorated_attributes, rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
@@ -126,7 +125,7 @@ configuration:
             'additional.conf': 'foobar',
         }
     finally:
-        shutil.rmtree(configuration_file.parent)
+        rm_rf(configuration_file.parent)
         with suppress(KeyError):
             del environ['GRIZZLY_CONFIGURATION_FILE']
 
@@ -269,7 +268,7 @@ class TestGrizzlyContextState:
             }
 
         finally:
-            shutil.rmtree(configuration_file.parent)
+            rm_rf(configuration_file.parent)
             with suppress(KeyError):
                 del environ['GRIZZLY_CONFIGURATION_FILE']
 

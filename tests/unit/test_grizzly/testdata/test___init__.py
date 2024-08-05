@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from contextlib import suppress
 from os import environ
-from shutil import rmtree
 from typing import TYPE_CHECKING, Optional
 
 import pytest
@@ -11,6 +10,7 @@ import pytest
 from grizzly.context import GrizzlyContext
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.variables import AtomicCsvReader, AtomicIntegerIncrementer
+from tests.helpers import rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
@@ -183,7 +183,7 @@ class TestGrizzlyVariables:
             with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
 
-            rmtree(test_context_root)
+            rm_rf(test_context_root)
             cleanup()
 
     def test_atomic_csv_reader(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
@@ -217,7 +217,7 @@ value1,value2
             with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
 
-            rmtree(test_context_root)
+            rm_rf(test_context_root)
             cleanup()
 
     def test_atomic_date(self, cleanup: AtomicVariableCleanupFixture) -> None:
@@ -383,5 +383,5 @@ value3,value4
                 with suppress(KeyError):
                     del environ['GRIZZLY_CONTEXT_ROOT']
 
-                rmtree(test_context_root)
+                rm_rf(test_context_root)
                 cleanup()
