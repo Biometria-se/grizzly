@@ -54,7 +54,7 @@ class ResponseHandlerAction(ABC):
 
         """
         input_content_type, input_payload = input_context
-        j2env = self.grizzly.state.jinja2
+        j2env = user._scenario.jinja2
         rendered_expression = j2env.from_string(self.expression).render(user.context_variables)
         rendered_match_with = j2env.from_string(self.match_with).render(user.context_variables)
         rendered_expected_matches = int(j2env.from_string(self.expected_matches).render(user.context_variables))

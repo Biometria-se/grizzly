@@ -30,3 +30,4 @@ docs/_site
 docs/_build*
 grizzly/__version__.py
 .pytest_tmp/
+tests/project

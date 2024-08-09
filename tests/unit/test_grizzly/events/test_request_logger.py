@@ -4,7 +4,6 @@ from __future__ import annotations
 from contextlib import suppress
 from os import environ
 from pathlib import Path
-from shutil import rmtree
 from typing import TYPE_CHECKING, Callable
 
 import pytest
@@ -12,6 +11,7 @@ import pytest
 from grizzly.events import RequestLogger
 from grizzly.tasks import RequestTask
 from grizzly.types import RequestMethod
+from tests.helpers import rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import GrizzlyFixture
@@ -49,7 +49,7 @@ class TestRequestLogger:
             with suppress(KeyError):
                 del environ['GRIZZLY_LOG_DIR']
 
-            rmtree(log_root)
+            rm_rf(log_root)
 
     def test__remove_secrets_attribute(self) -> None:
         assert RequestLogger._remove_secrets_attribute({

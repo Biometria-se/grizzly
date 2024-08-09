@@ -1,14 +1,11 @@
 """Unit tests for grizzly.context."""
 from __future__ import annotations
 
-import shutil
 from contextlib import suppress
 from os import environ
 from typing import TYPE_CHECKING, Any, Optional, cast
-from unittest.mock import ANY
 
 import pytest
-from jinja2.environment import Template
 
 from grizzly.context import (
     GrizzlyContext,
@@ -27,7 +24,7 @@ from grizzly.locust import FixedUsersDispatcher
 from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, ExplicitWaitTask, LogMessageTask, LoopTask, RequestTask
 from grizzly.types import MessageDirection, RequestMethod
 from grizzly.types.behave import Scenario
-from tests.helpers import TestTask, get_property_decorated_attributes
+from tests.helpers import SOME, TestTask, get_property_decorated_attributes, rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
@@ -126,7 +123,7 @@ configuration:
             'additional.conf': 'foobar',
         }
     finally:
-        shutil.rmtree(configuration_file.parent)
+        rm_rf(configuration_file.parent)
         with suppress(KeyError):
             del environ['GRIZZLY_CONFIGURATION_FILE']
 
@@ -205,20 +202,22 @@ class TestGrizzlyContextSetupLocustMessages:
 
 
 class TestGrizzlyContextState:
-    def test(self) -> None:
-        state = GrizzlyContextState()
+    def test(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
+        state = GrizzlyContextState(grizzly.scenarios)
 
         expected_properties = {
             'spawning_complete': (False, True),
             'background_section_done': (False, True),
-            'variables': ({}, {'test': 'hello'}),
             'configuration': ({}, {'sut.host': 'http://example.com'}),
             'alias': ({}, {'AtomicIntegerIncrementer.test': 'auth.randomseed'}),
             'verbose': (False, True),
             'persistent': ({}, {'AtomicIntegerIncrementer.persist': '1 | step=10, persist=True'}),
-            '_jinja2': (ANY, ANY),
         }
         actual_attributes = list(state.__dict__.keys())
+        actual_attributes.remove('variables')  # @TODO: remove...
         actual_attributes.sort()
         expected_attributes = list(expected_properties.keys())
         expected_attributes.sort()
@@ -232,7 +231,16 @@ class TestGrizzlyContextState:
             setattr(state, test_attribute_name, test_value)
             assert getattr(state, test_attribute_name) == test_value
 
-    def test_configuration(self, tmp_path_factory: TempPathFactory) -> None:
+        assert state.variables == {}
+        state.variables.update({'test': 'hello'})
+
+        for scenario in grizzly.scenarios:
+            assert scenario.jinja2.globals == SOME(dict, test='hello')
+
+    def test_configuration(self, grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+
         configuration_file = tmp_path_factory.mktemp('configuration_file') / 'configuration.yaml'
         try:
             configuration_file.write_text("""
@@ -249,7 +257,7 @@ class TestGrizzlyContextState:
                                 redirect_uri: "https://www.example.com/authenticated"
             """)
 
-            state = GrizzlyContextState()
+            state = GrizzlyContextState(grizzly.scenarios)
 
             assert state.configuration == {}
 
@@ -257,7 +265,7 @@ class TestGrizzlyContextState:
 
             environ['GRIZZLY_CONFIGURATION_FILE'] = str(configuration_file)
 
-            state = GrizzlyContextState()
+            state = GrizzlyContextState(grizzly.scenarios)
 
             assert state.configuration == {
                 'sut.host': 'https://backend.example.com',
@@ -269,7 +277,7 @@ class TestGrizzlyContextState:
             }
 
         finally:
-            shutil.rmtree(configuration_file.parent)
+            rm_rf(configuration_file.parent)
             with suppress(KeyError):
                 del environ['GRIZZLY_CONFIGURATION_FILE']
 
@@ -320,7 +328,9 @@ class TestGrizzlyContext:
 
 
 class TestGrizzlyContextScenarios:
-    def test(self) -> None:
+    def test(self, grizzly_fixture: GrizzlyFixture) -> None:
+        # setup env variable GRIZZLY_CONTEXT_ROOT
+        _ = grizzly_fixture()
         scenarios = GrizzlyContextScenarios()
 
         assert issubclass(scenarios.__class__, list)
@@ -391,7 +401,7 @@ class TestGrizzlyContextScenario:
 
         second_request = RequestTask(RequestMethod.POST, name='Second Request', endpoint='/api/test/2')
         second_request.source = '{"hello": "world!"}'
-        assert isinstance(second_request.template, Template)
+        assert second_request.template is None
 
         scenario.tasks.add(second_request)
         assert scenario.tasks() == [request, second_request]

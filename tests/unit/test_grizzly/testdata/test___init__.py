@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from contextlib import suppress
 from os import environ
-from shutil import rmtree
 from typing import TYPE_CHECKING, Optional
 
 import pytest
@@ -11,22 +10,28 @@ import pytest
 from grizzly.context import GrizzlyContext
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.variables import AtomicCsvReader, AtomicIntegerIncrementer
+from tests.helpers import SOME, rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
 
-    from tests.fixtures import AtomicVariableCleanupFixture
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture
 
 
 class TestGrizzlyVariables:
-    def test_static_str(self) -> None:
-        t = GrizzlyVariables()
+    def test_static_str(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-3'))
+
+        t = GrizzlyVariables(scenarios=grizzly.scenarios)
 
         t['test1'] = 'hallo'
         assert isinstance(t['test1'], str)
 
-        t['test7'] = '"true"'
-        assert isinstance(t['test7'], str)
+        t['test2'] = '"true"'
+        assert isinstance(t['test2'], str)
 
         t['test4'] = "'1337'"
         assert isinstance(t['test4'], str)
@@ -47,45 +52,69 @@ class TestGrizzlyVariables:
         assert isinstance(t['test8'], str)
         assert t['test8'] == '02002-00000'
 
-    def test_static_float(self) -> None:
-        t = GrizzlyVariables()
+        for scenario in grizzly.scenarios:
+            assert scenario.jinja2.globals == SOME(dict, test1='hallo', test2='true', test4='1337', test5='1337', test6='True', test7='00004302', test8='02002-00000')
 
-        t['test2'] = 1.337
+    def test_static_float(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-3'))
+
+        t = GrizzlyVariables(scenarios=grizzly.scenarios)
+
+        t['test1'] = 1.337
+        assert isinstance(t['test1'], float)
+
+        t['test2'] = -1.337
         assert isinstance(t['test2'], float)
 
-        t['test2.1'] = -1.337
-        assert isinstance(t['test2.1'], float)
+        t['test3'] = '1.337'
+        assert isinstance(t['test3'], float)
+        assert t['test3'] == 1.337
 
-        t['test2.2'] = '1.337'
-        assert isinstance(t['test2.2'], float)
-        assert t['test2.2'] == 1.337
+        t['test4'] = '-1.337'
+        assert isinstance(t['test4'], float)
+        assert t['test4'] == -1.337
 
-        t['test2.3'] = '-1.337'
-        assert isinstance(t['test2.3'], float)
-        assert t['test2.3'] == -1.337
+        t['test5'] = '0.01'
+        assert isinstance(t['test5'], float)
+        assert t['test5'] == 0.01
 
-        t['test2.4'] = '0.01'
-        assert isinstance(t['test2.4'], float)
-        assert t['test2.4'] == 0.01
+        for scenario in grizzly.scenarios:
+            assert scenario.jinja2.globals == SOME(dict, test1=1.337, test2=-1.337, test3=1.337, test4=-1.337, test5=0.01)
 
-    def test_static_int(self) -> None:
-        t = GrizzlyVariables()
-        t['test3'] = 1337
+    def test_static_int(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-3'))
+
+        t = GrizzlyVariables(scenarios=grizzly.scenarios)
+        t['test1'] = 1337
+        assert isinstance(t['test1'], int)
+
+        t['test2'] = -1337
+        assert isinstance(t['test2'], int)
+
+        t['test3'] = '1337'
         assert isinstance(t['test3'], int)
+        assert t['test3'] == 1337
 
-        t['test3.1'] = 1337
-        assert isinstance(t['test3.1'], int)
+        t['test4'] = '-1337'
+        assert isinstance(t['test4'], int)
+        assert t['test4'] == -1337
 
-        t['test3.2'] = '1337'
-        assert isinstance(t['test3.2'], int)
-        assert t['test3.2'] == 1337
+        for scenario in grizzly.scenarios:
+            assert scenario.jinja2.globals == SOME(dict, test1=1337, test2=-1337, test3=1337, test4=-1337)
 
-        t['test3.3'] = '-1337'
-        assert isinstance(t['test3.3'], int)
-        assert t['test3.3'] == -1337
+    def test_static_bool(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-3'))
 
-    def test_static_bool(self) -> None:
-        t: GrizzlyVariables = GrizzlyVariables()
+        t: GrizzlyVariables = GrizzlyVariables(scenarios=grizzly.scenarios)
 
         t['test6'] = True
         assert isinstance(t['test6'], bool)
@@ -104,9 +133,17 @@ class TestGrizzlyVariables:
         assert isinstance(t['test11'], bool)
         assert t.__getitem__('test11') is False
 
-    def test_atomic_integer_incrementer(self, cleanup: AtomicVariableCleanupFixture) -> None:
+        for scenario in grizzly.scenarios:
+            assert scenario.jinja2.globals == SOME(dict, test6=True, test8=True, test9=False, test10=True, test11=False)
+
+    def test_atomic_integer_incrementer(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-3'))
+
         try:
-            t = GrizzlyVariables()
+            t = GrizzlyVariables(scenarios=grizzly.scenarios)
             t['AtomicIntegerIncrementer.test1'] = 1337
             assert isinstance(t['AtomicIntegerIncrementer.test1'], str)
 
@@ -139,27 +176,41 @@ class TestGrizzlyVariables:
 
             t['AtomicIntegerIncrementer.test10'] = '1.337 | step=-1'
             assert t['AtomicIntegerIncrementer.test10'] == '1 | step=-1'
+
+            for scenario in grizzly.scenarios:
+                assert 'AtomicIntegerIncrementer.test6' not in scenario.jinja2.globals
+                assert scenario.jinja2.globals == SOME(dict, {
+                    'AtomicIntegerIncrementer.test1': '1337',
+                    'AtomicIntegerIncrementer.test2': '-1337',
+                    'AtomicIntegerIncrementer.test3': '1337',
+                    'AtomicIntegerIncrementer.test4': '-1337',
+                    'AtomicIntegerIncrementer.test5': '1',
+                    'AtomicIntegerIncrementer.test7': '1337 | step=10',
+                    'AtomicIntegerIncrementer.test8': '1337 | step=1',
+                    'AtomicIntegerIncrementer.test9': '-1337 | step=-10',
+                    'AtomicIntegerIncrementer.test10': '1 | step=-1',
+                })
         finally:
             cleanup()
 
-    def test_atomic_directory_contents(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
-        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
-        test_context.mkdir()
-        test_context_root = test_context.parent.as_posix()
-        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
+    def test_atomic_directory_contents(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-3'))
 
         try:
-            t = GrizzlyVariables()
+            t = GrizzlyVariables(scenarios=grizzly.scenarios)
 
             with pytest.raises(ValueError, match='is not a directory in'):
                 t['AtomicDirectoryContents.test1'] = 'doesnotexist/'
 
-            (test_context / 'notadirectory').write_text('test')
+            (grizzly_fixture.test_context / 'requests' / 'notadirectory').write_text('test')
 
             with pytest.raises(ValueError, match='is not a directory in'):
                 t['AtomicDirectoryContents.test2'] = 'notadirectory'
 
-            (test_context / 'adirectory').mkdir()
+            (grizzly_fixture.test_context / 'requests' / 'adirectory').mkdir()
 
             t['AtomicDirectoryContents.test3'] = 'adirectory'
 
@@ -167,30 +218,37 @@ class TestGrizzlyVariables:
                 t['AtomicDirectoryContents.test4'] = 'adirectory | repeat=asdf'
 
             with pytest.raises(ValueError, match='argument prefix is not allowed'):
-                t['AtomicDirectoryContents.test4'] = 'adirectory | repeat=True, prefix="test-"'
+                t['AtomicDirectoryContents.test5'] = 'adirectory | repeat=True, prefix="test-"'
 
-            t['AtomicDirectoryContents.test4'] = 'adirectory | repeat=True'
+            t['AtomicDirectoryContents.test6'] = 'adirectory | repeat=True'
 
-            t['AtomicDirectoryContents.test5'] = 'adirectory|repeat=True'
-            assert t['AtomicDirectoryContents.test5'] == 'adirectory | repeat=True'
+            t['AtomicDirectoryContents.test7'] = 'adirectory|repeat=True'
+            assert t['AtomicDirectoryContents.test7'] == 'adirectory | repeat=True'
 
-            t['AtomicDirectoryContents.test6'] = 'adirectory| random=True'
-            assert t['AtomicDirectoryContents.test6'] == 'adirectory | random=True'
+            t['AtomicDirectoryContents.test8'] = 'adirectory| random=True'
+            assert t['AtomicDirectoryContents.test8'] == 'adirectory | random=True'
 
-            t['AtomicDirectoryContents.test7'] = 'adirectory|repeat=True, random=True'
-            assert t['AtomicDirectoryContents.test7'] == 'adirectory | repeat=True, random=True'
+            t['AtomicDirectoryContents.test9'] = 'adirectory|repeat=True, random=True'
+            assert t['AtomicDirectoryContents.test9'] == 'adirectory | repeat=True, random=True'
+
+            for scenario in grizzly.scenarios:
+                assert all(f'AtomicDirectoryContents.{name}' not in scenario.jinja2.globals for name in ['test1', 'test2', 'test4', 'test5'])
+                assert scenario.jinja2.globals == SOME(dict, {
+                    'AtomicDirectoryContents.test3': 'adirectory',
+                    'AtomicDirectoryContents.test6': 'adirectory | repeat=True',
+                    'AtomicDirectoryContents.test7': 'adirectory | repeat=True',
+                    'AtomicDirectoryContents.test8': 'adirectory | random=True',
+                    'AtomicDirectoryContents.test9': 'adirectory | repeat=True, random=True',
+                })
         finally:
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
-
-            rmtree(test_context_root)
             cleanup()
 
-    def test_atomic_csv_reader(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
-        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
-        test_context.mkdir()
-        test_context_root = test_context.parent.as_posix()
-        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
+    def test_atomic_csv_reader(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-3'))
+        test_context = grizzly_fixture.test_context / 'requests'
 
         (test_context / 'test.csv').write_text("""header1,header2
 header1,header2
@@ -198,62 +256,81 @@ value1,value2
 """)
 
         try:
-            t = GrizzlyVariables()
+            t = GrizzlyVariables(scenarios=grizzly.scenarios)
 
             with pytest.raises(ValueError, match='is not a file in'):
-                t['AtomicCsvReader.test'] = 'doesnotexist.csv'
+                t['AtomicCsvReader.test1'] = 'doesnotexist.csv'
 
-            t['AtomicCsvReader.test'] = 'test.csv'
+            t['AtomicCsvReader.test2'] = 'test.csv'
 
             with pytest.raises(ValueError, match='asdf is not a valid boolean'):
-                t['AtomicCsvReader.test2'] = 'test.csv | repeat=asdf'
+                t['AtomicCsvReader.test3'] = 'test.csv | repeat=asdf'
 
             with pytest.raises(ValueError, match='argument suffix is not allowed'):
-                t['AtomicCsvReader.test2'] = 'test.csv | repeat=True, suffix=True'
+                t['AtomicCsvReader.test4'] = 'test.csv | repeat=True, suffix=True'
 
-            t['AtomicCsvReader.test2'] = 'test.csv|repeat=True'
-            assert t['AtomicCsvReader.test2'] == 'test.csv | repeat=True'
+            t['AtomicCsvReader.test5'] = 'test.csv|repeat=True'
+            assert t['AtomicCsvReader.test5'] == 'test.csv | repeat=True'
+
+            for scenario in grizzly.scenarios:
+                assert all(f'AtomicCsvReader.{name}' not in scenario.jinja2.globals for name in ['test1', 'test3', 'test4'])
+                assert scenario.jinja2.globals == SOME(dict, {
+                    'AtomicCsvReader.test2': 'test.csv',
+                    'AtomicCsvReader.test5': 'test.csv | repeat=True',
+                })
         finally:
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
-
-            rmtree(test_context_root)
             cleanup()
 
-    def test_atomic_date(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_atomic_date(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-3'))
+
         try:
-            t = GrizzlyVariables()
+            t = GrizzlyVariables(scenarios=grizzly.scenarios)
             with pytest.raises(TypeError, match='is not a string'):
                 t['AtomicDate.test1'] = 1337
 
             with pytest.raises(ValueError, match='Unknown string format: hello'):
-                t['AtomicDate.test6'] = 'hello'
+                t['AtomicDate.test2'] = 'hello'
 
-            t['AtomicDate.test2'] = '2021-03-29'
-            assert isinstance(t['AtomicDate.test2'], str)
-            assert t['AtomicDate.test2'] == '2021-03-29'
+            t['AtomicDate.test3'] = '2021-03-29'
+            assert t['AtomicDate.test3'] == '2021-03-29'
 
-            t['AtomicDate.test3'] = '2021-03-29 16:43:49'
-            assert isinstance(t['AtomicDate.test3'], str)
-            assert t['AtomicDate.test3'] == '2021-03-29 16:43:49'
+            t['AtomicDate.test4'] = '2021-03-29 16:43:49'
+            assert t['AtomicDate.test4'] == '2021-03-29 16:43:49'
 
-            t['AtomicDate.test4'] = 'now|format="%Y-%m-%d"'
-            assert isinstance(t['AtomicDate.test4'], str)
-            assert t['AtomicDate.test4'] == 'now | format="%Y-%m-%d"'
+            t['AtomicDate.test5'] = 'now|format="%Y-%m-%d"'
+            assert t['AtomicDate.test5'] == 'now | format="%Y-%m-%d"'
 
             with pytest.raises(ValueError, match='Unknown string format: asdf'):
-                t['AtomicDate.test5'] = 'asdf|format="%Y-%m-%d"'
+                t['AtomicDate.test6'] = 'asdf|format="%Y-%m-%d"'
 
             with pytest.raises(ValueError, match='incorrect format in arguments: ""'):
-                t['AtomicDate.test6'] = 'now|'
+                t['AtomicDate.test7'] = 'now|'
 
-            t['AtomicDate.test7'] = 'now | format="%Y-%m-%dT%H:%M:%S.000Z"'
+            t['AtomicDate.test8'] = 'now | format="%Y-%m-%dT%H:%M:%S.000Z"'
+
+            for scenario in grizzly.scenarios:
+                assert all(f'AtomicDate.{name}' not in scenario.jinja2.globals for name in ['test1', 'test2', 'test6', 'test7'])
+                assert scenario.jinja2.globals == SOME(dict, {
+                    'AtomicDate.test3': '2021-03-29',
+                    'AtomicDate.test4': '2021-03-29 16:43:49',
+                    'AtomicDate.test5': 'now | format="%Y-%m-%d"',
+                    'AtomicDate.test8': 'now | format="%Y-%m-%dT%H:%M:%S.000Z"',
+                })
         finally:
             cleanup()
 
-    def test_atomic_random_integer(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_atomic_random_integer(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-3'))
+
         try:
-            t = GrizzlyVariables()
+            t = GrizzlyVariables(scenarios=grizzly.scenarios)
 
             with pytest.raises(ValueError, match='10 is not a valid value format, must be: "a..b"'):
                 t['AtomicRandomInteger.test1'] = '10'
@@ -262,14 +339,19 @@ value1,value2
                 t['AtomicRandomInteger.test2'] = '1.17..5.0'
 
             with pytest.raises(ValueError, match='1.0 is not a valid integer'):
-                t['AtomicRandomInteger.test5'] = '1.0..3.5'
+                t['AtomicRandomInteger.test3'] = '1.0..3.5'
 
             with pytest.raises(ValueError, match='first value needs to be less than second value'):
-                t['AtomicRandomInteger.test3'] = '100..10'
+                t['AtomicRandomInteger.test4'] = '100..10'
 
-            t['AtomicRandomInteger.test4'] = '1..10'
-            assert isinstance(t['AtomicRandomInteger.test4'], str)
-            assert t['AtomicRandomInteger.test4'] == '1..10'
+            t['AtomicRandomInteger.test5'] = '1..10'
+            assert t['AtomicRandomInteger.test5'] == '1..10'
+
+            for scenario in grizzly.scenarios:
+                assert all(f'AtomicRandomInteger.{name}' not in scenario.jinja2.globals for name in ['test1', 'test2', 'test3', 'test4'])
+                assert scenario.jinja2.globals == SOME(dict, {
+                    'AtomicRandomInteger.test5': '1..10',
+                })
         finally:
             cleanup()
 
@@ -383,5 +465,5 @@ value3,value4
                 with suppress(KeyError):
                     del environ['GRIZZLY_CONTEXT_ROOT']
 
-                rmtree(test_context_root)
+                rm_rf(test_context_root)
                 cleanup()

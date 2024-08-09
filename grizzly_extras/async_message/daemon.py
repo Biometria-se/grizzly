@@ -4,10 +4,13 @@ Based on ZMQ PUB/SUB, where each request type is handled to a worker which is fo
 from __future__ import annotations
 
 import logging
+from concurrent import futures
+from contextlib import suppress
 from json import dumps as jsondumps
 from json import loads as jsonloads
+from multiprocessing import Process
 from signal import SIGINT, SIGTERM, Signals, signal
-from threading import Thread
+from threading import Event
 from time import sleep
 from typing import TYPE_CHECKING, Optional, Union, cast
 from urllib.parse import urlparse
@@ -15,6 +18,7 @@ from uuid import uuid4
 
 import setproctitle as proc
 import zmq.green as zmq
+from typing_extensions import Literal
 
 from grizzly_extras.transformer import JsonBytesEncoder
 
@@ -27,23 +31,110 @@ from . import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from types import FrameType
-
-abort: bool = False
+    from types import FrameType, TracebackType
 
 
-def signal_handler(signum: Union[int, Signals], _frame: Optional[FrameType]) -> None:
-    logger = logging.getLogger('signal_handler')
-    logger.debug('received signal %r', signum)
+class ThreadPoolExecutor(futures.ThreadPoolExecutor):
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Literal[False]:
+        self.shutdown(wait=False, cancel_futures=True)
+        return False
 
-    global abort  # noqa: PLW0603
-    if not abort:
-        logger.info('aborting due to %r', signum)
-        abort = True
 
+class Worker:
+    logger: logging.Logger
+    identity: str
+    context: zmq.Context
 
-signal(SIGTERM, signal_handler)
-signal(SIGINT, signal_handler)
+    integration: Optional[AsyncMessageHandler]
+
+    _event: Event
+
+    def __init__(self, context: zmq.Context, identity: str, event: Optional[Event] = None) -> None:
+        self.logger = logging.getLogger(f'worker::{identity}')
+        self.identity = identity
+        self.context = context
+        self.integration = None
+        self._event = Event() if event is None else event
+
+    def run(self) -> None:
+        self.socket = self.context.socket(zmq.REQ)
+        self.socket.setsockopt_string(zmq.IDENTITY, self.identity)
+        self.socket.connect('inproc://workers')
+        self.socket.send_string(LRU_READY)
+
+        while not self._event.is_set():
+            received = False
+            try:
+                request_proto = self.socket.recv_multipart(flags=zmq.NOBLOCK)
+                received = True
+            except zmq.Again:
+                sleep(0.1)
+                continue
+
+            self.logger.debug("i'm alive! run_daemon=%r, received=%r", self._event.is_set(), received)
+
+            if not request_proto:
+                continue
+
+            request = cast(
+                AsyncMessageRequest,
+                jsonloads(request_proto[-1].decode()),
+            )
+
+            response: Optional[AsyncMessageResponse] = None
+
+            try:
+                if request['worker'] != self.identity:
+                    message = f'got {request["worker"]}, expected {self.identity}'
+                    raise RuntimeError(message)
+
+                if self.integration is None:
+                    integration_url = request.get('context', {}).get('url', None)
+                    if integration_url is None:
+                        message = 'no url found in request context'
+                        raise RuntimeError(message)
+
+                    parsed = urlparse(integration_url)
+
+                    if parsed.scheme in ['mq', 'mqs']:
+                        from .mq import AsyncMessageQueueHandler
+                        self.integration = AsyncMessageQueueHandler(self.identity)
+                    elif parsed.scheme == 'sb':
+                        from .sb import AsyncServiceBusHandler
+                        self.integration = AsyncServiceBusHandler(self.identity)
+                    else:
+                        message = f'integration for {parsed.scheme}:// is not implemented'
+                        raise RuntimeError(message)
+            except Exception as e:
+                response = {
+                    'worker': self.identity,
+                    'response_time': 0,
+                    'success': False,
+                    'message': str(e),
+                }
+
+            if response is None and self.integration is not None:
+                response = self.integration.handle(request)
+
+            response_proto = [
+                request_proto[0],
+                SPLITTER_FRAME,
+                jsondumps(response, cls=JsonBytesEncoder).encode(),
+            ]
+
+            self.socket.send_multipart(response_proto)
+
+        self.logger.info('stopping')
+        if self.integration is not None:
+            self.integration.close()
+
+        self.socket.close()
+        self.logger.info('stopped')
 
 
 def create_router_socket(context: zmq.Context) -> zmq.Socket:
@@ -54,9 +145,8 @@ def create_router_socket(context: zmq.Context) -> zmq.Socket:
     return socket
 
 
-def router() -> None:  # noqa: C901, PLR0912, PLR0915
+def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
     logger = logging.getLogger('router')
-    proc.setproctitle('grizzly-async-messaged')  # set appl name on ibm mq
     logger.debug('starting')
 
     context = zmq.Context()
@@ -70,212 +160,195 @@ def router() -> None:  # noqa: C901, PLR0912, PLR0915
     poller.register(frontend, zmq.POLLIN)
     poller.register(backend, zmq.POLLIN)
 
-    worker_threads: list[Thread] = []
+    workers: dict[str, tuple[futures.Future, Worker]] = {}
 
-    def spawn_worker() -> None:
-        identity = str(uuid4())
+    with ThreadPoolExecutor() as executor:
+        def spawn_worker() -> None:
+            identity = str(uuid4())
 
-        thread = Thread(target=worker, args=(context, identity))
-        thread.daemon = True
-        worker_threads.append(thread)
-        thread.start()
-        logger.info('spawned worker %s (%d)', identity, thread.ident)
+            worker = Worker(context, identity, run_daemon)
 
-    workers_available: list[str] = []
+            future = executor.submit(worker.run)
+            workers.update({identity: (future, worker)})
+            logger.info('spawned worker %s', identity)
 
-    client_worker_map: dict[str, str] = {}
+        workers_available: list[str] = []
+        client_worker_map: dict[str, str] = {}
+        worker_identifiers_map: dict[str, bytes] = {}
 
-    spawn_worker()
+        spawn_worker()
 
-    worker_id: str
+        worker_id: str
 
-    while not abort:
-        socks = dict(poller.poll(timeout=1000))
+        while not run_daemon.is_set():
+            socks = dict(poller.poll(timeout=1000))
 
-        if not socks:
-            continue
-
-        logger.debug("i'm alive!")
-
-        if socks.get(backend) == zmq.POLLIN:
-            logger.debug('polling backend')
-            try:
-                backend_response = backend.recv_multipart(flags=zmq.NOBLOCK)
-            except zmq.Again:
-                sleep(0.1)
+            if not socks:
                 continue
 
-            if not backend_response:
-                continue
+            logger.debug("i'm alive!")
 
-            reply = backend_response[2:]
-            worker_id = backend_response[0].decode()
+            if socks.get(backend) == zmq.POLLIN:
+                logger.debug('polling backend')
+                try:
+                    logger.debug('waiting for backend')
+                    backend_response = backend.recv_multipart(flags=zmq.NOBLOCK)
+                except zmq.Again:
+                    sleep(0.1)
+                    continue
 
-            if reply[0] != LRU_READY.encode():
-                frontend.send_multipart(reply)
-                logger.debug('forwarding backend response from %s', worker_id)
-            else:
-                logger.info('worker %s ready', worker_id)
-                workers_available.append(worker_id)
+                if not backend_response:
+                    continue
 
-        if socks.get(frontend) == zmq.POLLIN:
-            logger.debug('polling frontend')
-            try:
-                msg = frontend.recv_multipart(flags=zmq.NOBLOCK)
-            except zmq.Again:
-                sleep(0.1)
-                continue
+                logger.debug('backend_response: %r', backend_response)
+                reply = backend_response[2:]
+                worker_id = backend_response[0].decode()
 
-            request_id = msg[0]
-            payload = cast(AsyncMessageRequest, jsonloads(msg[-1].decode()))
+                worker_identifiers_map.update({worker_id: reply[0]})
 
-            request_worker_id = payload.get('worker', None)
-            request_client_id = payload.get('client', None)
-            client_key: Optional[str] = None
-
-            logger.debug('request_worker_id=%r (%r), request_client_id=%r (%r)', request_worker_id, type(request_worker_id), request_client_id, type(request_client_id))
-
-            if request_client_id is not None:
-                integration_url = payload.get('context', {}).get('url', None)
-                parsed = urlparse(integration_url)
-                scheme = parsed.scheme
-                if isinstance(scheme, bytes):
-                    scheme = scheme.decode()
-
-                client_key = f'{request_client_id}::{scheme}'
-
-            if request_worker_id is None and client_key is not None:
-                request_worker_id = client_worker_map.get(client_key)
-
-            if request_worker_id is None:
-                worker_id = workers_available.pop()
-
-                if client_key is not None:
-                    client_worker_map.update({client_key: worker_id})
-
-                payload['worker'] = worker_id
-                logger.info('assigned worker %s to %s', worker_id, client_key)
-
-                if len(workers_available) == 0:
-                    logger.debug('spawning an additional worker, for next client')
-                    spawn_worker()
-            else:
-                logger.debug('%s is assigned %s', request_client_id, request_worker_id)
-                worker_id = request_worker_id
-
-                if payload.get('worker', None) is None:
-                    payload['worker'] = worker_id
-
-            request = jsondumps(payload).encode()
-            backend_request = [worker_id.encode(), SPLITTER_FRAME, request_id, SPLITTER_FRAME, request]
-            backend.send_multipart(backend_request)
-
-    logger.info('stopping')
-    for worker_thread in worker_threads:
-        logger.debug('waiting for %d', worker_thread.ident)
-        worker_thread.join()
-
-    try:
-        context.destroy(linger=0)
-    except:
-        logger.exception('failed to destroy zmq context')
-
-    logger.info('stopped')
-
-
-def worker(context: zmq.Context, identity: str) -> None:  # noqa: PLR0912, PLR0915
-    logger = logging.getLogger(f'worker::{identity}')
-    worker = context.socket(zmq.REQ)
-
-    worker.setsockopt_string(zmq.IDENTITY, identity)
-    worker.connect('inproc://workers')
-    worker.send_string(LRU_READY)
-
-    integration: Optional[AsyncMessageHandler] = None
-
-    while not abort:
-        try:
-            request_proto = worker.recv_multipart(flags=zmq.NOBLOCK)
-        except zmq.Again:
-            sleep(0.1)
-            continue
-
-        logger.debug("i'm alive! abort=%r", abort)
-
-        if not request_proto:
-            logger.error('empty msg')
-            continue
-
-        request = cast(
-            AsyncMessageRequest,
-            jsonloads(request_proto[-1].decode()),
-        )
-
-        response: Optional[AsyncMessageResponse] = None
-
-        try:
-            if request['worker'] != identity:
-                message = f'got {request["worker"]}, expected {identity}'
-                raise RuntimeError(message)
-
-            if integration is None:
-                integration_url = request.get('context', {}).get('url', None)
-                if integration_url is None:
-                    message = 'no url found in request context'
-                    raise RuntimeError(message)
-
-                parsed = urlparse(integration_url)
-
-                if parsed.scheme in ['mq', 'mqs']:
-                    from .mq import AsyncMessageQueueHandler
-                    integration = AsyncMessageQueueHandler(identity)
-                elif parsed.scheme == 'sb':
-                    from .sb import AsyncServiceBusHandler
-                    integration = AsyncServiceBusHandler(identity)
+                if reply[0] != LRU_READY.encode():
+                    logger.debug('sending %r', reply)
+                    frontend.send_multipart(reply)
+                    logger.debug('forwarding backend response from %s', worker_id)
                 else:
-                    message = f'integration for {parsed.scheme}:// is not implemented'
-                    raise RuntimeError(message)
-        except Exception as e:
-            response = {
-                'worker': identity,
-                'response_time': 0,
-                'success': False,
-                'message': str(e),
-            }
+                    logger.info('worker %s ready', worker_id)
+                    workers_available.append(worker_id)
 
-        if response is None and integration is not None:
-            logger.debug('send request to handler')
-            response = integration.handle(request)
-            logger.debug('got response from handler')
+            if socks.get(frontend) == zmq.POLLIN:
+                logger.debug('polling frontend')
+                try:
+                    logger.debug('waiting for frontend')
+                    msg = frontend.recv_multipart(flags=zmq.NOBLOCK)
+                except zmq.Again:
+                    sleep(0.1)
+                    continue
 
-        response_proto = [
-            request_proto[0],
-            SPLITTER_FRAME,
-            jsondumps(response, cls=JsonBytesEncoder).encode(),
-        ]
+                request_id = msg[0]
+                payload = cast(AsyncMessageRequest, jsonloads(msg[-1].decode()))
 
-        worker.send_multipart(response_proto)
+                request_worker_id = payload.get('worker', None)
+                request_client_id = payload.get('client', None)
+                client_key: Optional[str] = None
 
-    logger.debug("i'm going to die! abort=%r", abort)
-    logger.info('stopping')
-    if integration is not None:
-        logger.debug('closing %s', integration.__class__.__name__)
+                logger.debug('request_worker_id=%r (%r), request_client_id=%r (%r)', request_worker_id, type(request_worker_id), request_client_id, type(request_client_id))
+
+                if request_client_id is not None:
+                    integration_url = payload.get('context', {}).get('url', None)
+                    parsed = urlparse(integration_url)
+                    scheme = parsed.scheme
+                    if isinstance(scheme, bytes):
+                        scheme = scheme.decode()
+
+                    client_key = f'{request_client_id}::{scheme}'
+
+                if request_worker_id is None and client_key is not None:
+                    request_worker_id = client_worker_map.get(client_key)
+
+                if request_worker_id is None:
+                    worker_id = workers_available.pop()
+
+                    if client_key is not None:
+                        client_worker_map.update({client_key: worker_id})
+
+                    payload['worker'] = worker_id
+                    logger.info('assigned worker %s to %s', worker_id, client_key)
+
+                    if len(workers_available) == 0:
+                        logger.debug('spawning an additional worker, for next client')
+                        spawn_worker()
+                else:
+                    logger.debug('%s is assigned %s', request_client_id, request_worker_id)
+                    worker_id = request_worker_id
+
+                    if payload.get('worker', None) is None:
+                        payload['worker'] = worker_id
+
+                request = jsondumps(payload).encode()
+                backend_request = [worker_id.encode(), SPLITTER_FRAME, request_id, SPLITTER_FRAME, request]
+                backend.send_multipart(backend_request)
+
+        logger.info('stopping')
+        for identity, (future, worker) in workers.items():
+            if not future.running():
+                continue
+
+            # tell client that we aborted
+            if worker.integration is not None:
+                response = {
+                    'success': False,
+                    'worker': identity,
+                    'message': 'abort',
+                }
+
+                response_proto = [
+                    worker_identifiers_map.get(identity),
+                    SPLITTER_FRAME,
+                    jsondumps(response, cls=JsonBytesEncoder).encode(),
+                ]
+
+                frontend.send_multipart(response_proto)
+
+                worker.logger.debug('sent abort to client')
+
+                worker.integration.close()
+                worker.socket.close()
+                worker.logger.info('socket closed')
+
+                # stop worker
+                cancelled = future.cancel()  # let's try at least...
+                logger.info('worker %s cancelled: %r', identity, cancelled)
+            else:
+                # should complete when `worker.stop()` has had effect
+                futures.wait([future])
+
         try:
-            integration.close()
-        except:  # pragma: no cover
-            logger.exception('failed to close integration')
+            logger.debug('destroy zmq context')
+            context.destroy(linger=0)
+        except:
+            logger.exception('failed to destroy zmq context')
 
-    try:
-        worker.close()
-    except:  # pragma: no cover
-        logger.exception('failed to close worker')
     logger.info('stopped')
 
+    if not run_daemon.is_set():
+        run_daemon.set()
 
 def main() -> int:
+    logger = logging.getLogger('main')
+    run_daemon = Event()
+    process = Process(target=router, args=(run_daemon,))
+
+    def signal_handler(signum: Union[int, Signals], _frame: Optional[FrameType]) -> None:
+        if run_daemon.is_set():
+            return
+
+        logger.info('received signal %r', signum)
+        run_daemon.set()
+
+    signal(SIGTERM, signal_handler)
+    signal(SIGINT, signal_handler)
+
+    proc.setproctitle('grizzly-async-messaged')  # set appl name on ibm mq
+
     try:
-        router()
+        # start router I/O loop
+        process.start()
+
+        # wait for event to be set, which would be in `signal_handler` or when router I/O loop ends
+        run_daemon.wait()
+
+        # this should terminate the process, by sending SIGTERM to it
+        process.terminate()
+
+        # wait up to 3 seconds (socket poll timeout is 1 second) for the process to finish,
+        # ignore any exception that might happen during that time
+        with suppress(Exception):
+            process.join(timeout=3.0)
+
+        # if the process is still alive after timeout, forcefully kill it
+        if process.is_alive():
+            process.kill()
+
     except KeyboardInterrupt:
         return 1
     else:
-        return 0
+        return process.exitcode or 0

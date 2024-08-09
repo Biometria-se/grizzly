@@ -154,7 +154,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
                 buffer.append(f'Scenario: {scenario_name}')
             else:
                 buffer.append('')
-            buffer.extend([indent(str(exception), '    ') for exception in exceptions])
+            buffer.extend([str(exception).replace('\n', '\n    ') for exception in exceptions])
             buffer.append('')
 
         failure_summary = indent('\n'.join(buffer), '    ')

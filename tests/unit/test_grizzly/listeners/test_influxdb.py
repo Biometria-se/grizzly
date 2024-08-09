@@ -45,32 +45,32 @@ def patch_influxdblistener(mocker: MockerFixture) -> Callable[[], None]:
 
 class TestInfluxDb:
     def test___init__(self) -> None:
-        client = InfluxDb('https://influx.example.com', 1337, 'testdb')
+        client = InfluxDb('https://influx.example.com', 1232, 'testdb')
         assert client.host == 'https://influx.example.com'
-        assert client.port == 1337
+        assert client.port == 1232
         assert client.database == 'testdb'
         assert client.username is None
         assert client.password is None
 
-        client = InfluxDb('https://influx.example.com', 8888, 'testdb', 'test-user', 'secret!')
+        client = InfluxDb('https://influx.example.com', 1233, 'testdb', 'test-user', 'secret!')
         assert client.host == 'https://influx.example.com'
-        assert client.port == 8888
+        assert client.port == 1233
         assert client.database == 'testdb'
         assert client.username == 'test-user'
         assert client.password == 'secret!'  # noqa: S105
 
     def test_connect(self) -> None:
-        client = InfluxDb('https://influx.example.com', 1337, 'testdb')
+        client = InfluxDb('https://influx.example.com', 1234, 'testdb')
 
         assert client.connect() is client
 
     def test___enter__(self) -> None:
-        client = InfluxDb('https://influx.example.com', 1337, 'testdb')
+        client = InfluxDb('https://influx.example.com', 1235, 'testdb')
 
         assert client.__enter__() is client
 
     def test___exit__(self, mocker: MockerFixture) -> None:
-        influx = InfluxDb('https://influx.example.com', 1337, 'testdb').connect()
+        influx = InfluxDb('https://influx.example.com', 1236, 'testdb').connect()
 
         def noop___exit__(*_args: Any, **_kwargs: Any) -> None:
             pass
@@ -96,7 +96,7 @@ class TestInfluxDb:
         class ResultContainer:
             raw: dict[str, Any]
 
-        influx = InfluxDb('https://influx.example.com', 1337, 'testdb').connect()
+        influx = InfluxDb('https://influx.example.com', 1237, 'testdb').connect()
 
         def test_query(table: str, columns: list[str]) -> None:
             def query(_instance: InfluxDBClient, _query: str) -> ResultContainer:
@@ -134,7 +134,7 @@ class TestInfluxDb:
             return_value=None,
         )
 
-        influx = InfluxDb('https://influx.example.com', 1337, 'testdb').connect()
+        influx = InfluxDb('https://influx.example.com', 1238, 'testdb').connect()
 
         def logger_debug(_logger: logging.Logger, msg: str, count: int, database: str, host: str, port: int) -> None:
             assert count == 0
@@ -208,10 +208,10 @@ class TestInfluxDblistener:
 
         listener = InfluxDbListener(
             locust_fixture.environment,
-            'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+            'https://influx.test.com:1239/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
         assert len(locust_fixture.environment.events.request._handlers) == 2
-        assert listener.influx_port == 1337
+        assert listener.influx_port == 1239
         assert listener._testplan == 'unittest-plan'
         assert listener._target_environment == 'local'
         assert listener._hostname == socket.gethostname()
@@ -240,7 +240,7 @@ class TestInfluxDblistener:
 
         listener = InfluxDbListener(
             locust_fixture.environment,
-            'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+            'https://influx.test.com:1240/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
         write_spy = mocker.patch.object(listener.connection, 'write', return_value=None)
@@ -280,7 +280,7 @@ class TestInfluxDblistener:
 
         listener = InfluxDbListener(
             locust_fixture.environment,
-            'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+            'https://influx.test.com:1241/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
         mocker.patch(
@@ -344,7 +344,7 @@ class TestInfluxDblistener:
 
         listener = InfluxDbListener(
             grizzly_fixture.behave.locust.environment,
-            'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+            'https://influx.test.com:1242/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
         listener._override_event(event, {
@@ -382,7 +382,7 @@ class TestInfluxDblistener:
 
         listener = InfluxDbListener(
             grizzly_fixture.behave.locust.environment,
-            'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+            'https://influx.test.com:1243/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
         assert len(listener._events) == 0
@@ -485,7 +485,7 @@ class TestInfluxDblistener:
 
         listener = InfluxDbListener(
             locust_fixture.environment,
-            'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+            'https://influx.example.com:1244/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
         mocker.patch(
@@ -509,7 +509,7 @@ class TestInfluxDblistener:
     ) -> None:
         listener = InfluxDbListener(
             locust_fixture.environment,
-            'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+            'https://influx.example.com:1245/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
         mocker.patch.object(listener, '_create_metrics', side_effect=[Exception])
 
@@ -524,7 +524,7 @@ class TestInfluxDblistener:
 
         listener = InfluxDbListener(
             locust_fixture.environment,
-            'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+            'https://influx.example.com:1246/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
         expected_keys = ['response_time', 'response_length']
 

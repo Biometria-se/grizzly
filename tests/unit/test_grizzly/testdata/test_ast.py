@@ -45,7 +45,7 @@ def test__parse_template(request_task: RequestTaskFixture, caplog: LogCaptureFix
     templates = {scenario: set(request.get_templates())}
 
     with caplog.at_level(logging.WARNING):
-        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates)
 
         expected_variables = {
             'IteratorScenario_001': {
@@ -123,7 +123,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
     templates = {scenario: set(request.get_templates())}
 
     with caplog.at_level(logging.WARNING):
-        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates)
 
         assert actual_variables == {
             'IteratorScenario_001': {
@@ -144,7 +144,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
 
         templates = {scenario: set(request.get_templates())}
 
-        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates)
 
         assert actual_variables == {
             'IteratorScenario_001': {
@@ -163,7 +163,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
 
         templates = {scenario: set(request.get_templates())}
 
-        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates)
 
         assert actual_variables == {
             'IteratorScenario_001': {
@@ -211,7 +211,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         scenario.tasks.add(request)
         templates = {scenario: set(request.get_templates())}
 
-        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates)
 
         expected_variables = {
             'IteratorScenario_001': {
@@ -238,7 +238,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         scenario.tasks.add(request)
         templates = {scenario: set(request.get_templates())}
 
-        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates)
 
         assert actual_variables == {
             'IteratorScenario_001': {
@@ -289,7 +289,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         scenario.tasks.add(request)
         templates = {scenario: set(request.get_templates())}
 
-        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates)
 
         expected_variables = {
             'IteratorScenario_001': {
@@ -382,13 +382,14 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
         }
 
         del grizzly.state.variables['foo']
+        del grizzly.state.variables['env']
 
-        with pytest.raises(AssertionError, match='variables has been found in templates, but have not been declared: foo'):
+        with pytest.raises(AssertionError, match='variables has been found in templates, but have not been declared:\nenv\nfoo'):
             get_template_variables(grizzly)
 
-        grizzly.state.variables.update({'foo': 'bar', 'bar': 'foo'})
+        grizzly.state.variables.update({'foo': 'bar', 'bar': 'foo', 'baz': 'zab'})
 
-        with pytest.raises(AssertionError, match='variables has been declared, but cannot be found in templates: bar'):
+        with pytest.raises(AssertionError, match='variables has been declared, but cannot be found in templates:\nbar\nbaz'):
             get_template_variables(grizzly)
 
     assert caplog.messages == []

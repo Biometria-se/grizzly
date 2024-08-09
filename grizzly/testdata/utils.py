@@ -20,6 +20,8 @@ from grizzly.utils import has_template, is_file, merge_dicts, unflatten
 from . import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
+    from jinja2 import Environment
+
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 
@@ -150,8 +152,8 @@ def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str, 
     return transformed
 
 
-def resolve_template(grizzly: GrizzlyContext, value: str) -> str:
-    template = grizzly.state.jinja2.from_string(value)
+def resolve_template(env: Environment, value: str) -> str:
+    template = env.from_string(value)
     template_parsed = template.environment.parse(value)
     template_variables = find_undeclared_variables(template_parsed)
 
@@ -159,9 +161,9 @@ def resolve_template(grizzly: GrizzlyContext, value: str) -> str:
         if f'{template_variable} is defined' in value or f'{template_variable} is not defined' in value:
             continue
 
-        assert template_variable in grizzly.state.variables, f'value contained variable "{template_variable}" which has not been declared'
+        assert template_variable in env.globals, f'value contained variable "{template_variable}" which has not been declared'
 
-    return template.render(**grizzly.state.variables)
+    return template.render()
 
 
 def resolve_parameters(grizzly: GrizzlyContext, value: str) -> str:
@@ -204,10 +206,15 @@ def read_file(value: str) -> str:
         return value
 
 
-def resolve_variable(grizzly: GrizzlyContext, value: str, *, guess_datatype: Optional[bool] = True, only_grizzly: bool = False) -> GrizzlyVariableType:
+def resolve_variable(
+        grizzly: GrizzlyContext, value: str, *, guess_datatype: Optional[bool] = True, only_grizzly: bool = False, env: Optional[Environment] = None,
+) -> GrizzlyVariableType:
     """Resolve a value to its actual value, since it can be a jinja2 template or any dollar reference. Return type can be actual type of the value."""
     if len(value) < 1:
         return value
+
+    if env is None:
+        env = grizzly.scenario.jinja2
 
     quote_char: Optional[str] = None
     if value[0] in ['"', "'"] and value[0] == value[-1]:
@@ -218,7 +225,7 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, *, guess_datatype: Opt
         value = read_file(value)
 
     if has_template(value) and not only_grizzly:
-        value = resolve_template(grizzly, value)
+        value = resolve_template(env, value)
 
     if '$conf' in value or '$env' in value:
         value = resolve_parameters(grizzly, value)

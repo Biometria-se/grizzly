@@ -13,6 +13,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 __all__ = [
     'StopUser',
+    'AsyncMessageAbort',
 ]
 
 
@@ -27,7 +28,7 @@ class RestartScenario(Exception):  # noqa: N818
     pass
 
 
-class StopScenario(AsyncMessageAbort):
+class StopScenario(Exception):  # noqa: N818
     pass
 
 class AssertionErrors(Exception):  # noqa: N818
@@ -64,7 +65,7 @@ class StepError(AssertionError):
         self.error = error
 
     def __str__(self) -> str:
-        return '\n'.join([f'{self.step.keyword} {self.step.name} # {self.step.location}', f'    ! {self.error!s}'])
+        return '\n'.join([f'    {self.step.keyword} {self.step.name} # {self.step.location}', f'    ! {self.error!s}'])
 
 
 class ScenarioError(AssertionError):
@@ -73,7 +74,7 @@ class ScenarioError(AssertionError):
         self.error = error
 
     def __str__(self) -> str:
-        return f'    ! {self.error!s}'
+        return f'! {self.error!s}'
 
 
 class FeatureError(Exception):
@@ -81,4 +82,4 @@ class FeatureError(Exception):
         self.error = error
 
     def __str__(self) -> str:
-        return f'    {self.error!s}'
+        return f'{self.error!s}'

@@ -21,10 +21,10 @@ class TestServiceBusClientTask:
     def test___init__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         context_mock = mocker.patch('grizzly.tasks.clients.servicebus.zmq.Context', autospec=True)
 
-        cls_task = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+        task_type = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
 
         # <!-- connection string
-        task = cls_task(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
+        task = task_type(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
 
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324='
         assert task.context == {
@@ -45,7 +45,7 @@ class TestServiceBusClientTask:
         # // -->
 
         # <!-- credential
-        task = cls_task(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com', 'test')
+        task = task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com', 'test')
 
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net'
         assert task.context == {
@@ -65,7 +65,7 @@ class TestServiceBusClientTask:
         context_mock.reset_mock()
         # // -->
 
-        task = cls_task(
+        task = task_type(
             RequestDirection.TO,
             'sb://my-sbns.servicebus.windows.net/queue:my-queue;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'test',
@@ -95,7 +95,7 @@ class TestServiceBusClientTask:
         grizzly.state.configuration.update({'sbns.host': 'sb.windows.net', 'sbns.key.name': 'KeyName', 'sbns.key.secret': 'SeCrEtKeY=='})
         grizzly.state.variables.update({'foobar': 'none'})
 
-        task = cls_task(
+        task = task_type(
             RequestDirection.FROM,
             (
                 'sb://$conf::sbns.host$/topic:my-topic/subscription:"my-subscription-{{ id }}"/expression:$.hello.world'
@@ -129,7 +129,7 @@ class TestServiceBusClientTask:
 
         grizzly.state.variables.update({'barfoo': 'none'})
 
-        task = cls_task(
+        task = task_type(
             RequestDirection.FROM,
             (
                 'sb://$conf::sbns.host$/topic:my-topic/subscription:"my-subscription-{{ id }}"/expression:$.hello.world'
@@ -162,7 +162,7 @@ class TestServiceBusClientTask:
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
 
-        task = cls_task(
+        task = task_type(
             RequestDirection.FROM, (
                 'sb://my-sbns/topic:my-topic/subscription:my-subscription/expression:$.name|=\'["hello", "world"]\''
                 ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
@@ -187,7 +187,7 @@ class TestServiceBusClientTask:
         context_mock.reset_mock()
 
         with pytest.raises(AssertionError, match='MessageWait parameter in endpoint fragment is not a valid integer'):
-            cls_task(
+            task_type(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=foo',
                 'test',
@@ -195,7 +195,7 @@ class TestServiceBusClientTask:
         context_mock.assert_not_called()
 
         with pytest.raises(AssertionError, match='Consume parameter in endpoint fragment is not a valid boolean'):
-            cls_task(
+            task_type(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Consume=foo',
                 'test',
@@ -203,7 +203,7 @@ class TestServiceBusClientTask:
         context_mock.assert_not_called()
 
         with pytest.raises(ValueError, match='"foo" is an unknown response content type'):
-            cls_task(
+            task_type(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#ContentType=foo',
                 'test',
@@ -211,7 +211,7 @@ class TestServiceBusClientTask:
         context_mock.assert_not_called()
 
         with pytest.raises(AssertionError, match='Tenant fragment in endpoint is not allowed when using connection string'):
-            cls_task(
+            task_type(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Tenant=example.com',
                 'test',
@@ -219,7 +219,7 @@ class TestServiceBusClientTask:
         context_mock.assert_not_called()
 
         with pytest.raises(AssertionError, match='no query string found in endpoint'):
-            cls_task(
+            task_type(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription#ContentType=xml',
                 'test',
@@ -227,7 +227,7 @@ class TestServiceBusClientTask:
         context_mock.assert_not_called()
 
         with pytest.raises(AssertionError, match='SharedAccessKey not found in query string of endpoint'):
-            cls_task(
+            task_type(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey',
                 'test',
@@ -235,7 +235,7 @@ class TestServiceBusClientTask:
         context_mock.assert_not_called()
 
         with pytest.raises(AssertionError, match='SharedAccessKeyName not found in query string of endpoint'):
-            cls_task(
+            task_type(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKey=AccessKey',
                 'test',
@@ -243,15 +243,15 @@ class TestServiceBusClientTask:
         context_mock.assert_not_called()
 
         with pytest.raises(AssertionError, match='Tenant not found in fragment of endpoint'):
-            cls_task(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/', 'test')
+            task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/', 'test')
         context_mock.assert_not_called()
 
         with pytest.raises(AssertionError, match='query string found in endpoint, which is not allowed when using credential authentication'):
-            cls_task(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/;SharedAccessKeyName=key;SharedAccessKey=asdf#Tenant=example.com', 'test')
+            task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/;SharedAccessKeyName=key;SharedAccessKey=asdf#Tenant=example.com', 'test')
         context_mock.assert_not_called()
 
         with pytest.raises(AssertionError, match='subscription name is too long, max length is 50 characters'):
-            cls_task(
+            task_type(
                 RequestDirection.FROM, (
                     'sb://my-sbns/topic:my-topic/subscription:my-subscriptionaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
                     ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
@@ -260,7 +260,7 @@ class TestServiceBusClientTask:
             )
 
         with pytest.raises(AssertionError, match='subscription name is too long, max length is 42 characters'):
-            cls_task(
+            task_type(
                 RequestDirection.FROM, (
                     'sb://my-sbns/topic:my-topic/subscription:my-subscriptionaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
                     ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
@@ -270,8 +270,8 @@ class TestServiceBusClientTask:
             )
 
     def test_text(self, grizzly_fixture: GrizzlyFixture) -> None:
-        ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
-        task = ServiceBusClientTask(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
+        task_type = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+        task = task_type(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
 
         assert task.text is None
 
@@ -294,8 +294,8 @@ class TestServiceBusClientTask:
 
         grizzly_fixture.grizzly.state.configuration.update({'sbns.key.secret': 'fooBARfoo'})
 
-        ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
-        task = ServiceBusClientTask(
+        task_type = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+        task = task_type(
             RequestDirection.FROM,
             'sb://my-sbns.servicebus.windows.net/queue:my-queue;SharedAccessKeyName=AccessKey;SharedAccessKey=$conf::sbns.key.secret$',
             'test',
@@ -328,8 +328,8 @@ class TestServiceBusClientTask:
         async_message_request_mock = mocker.patch('grizzly.utils.protocols.async_message_request')
         zmq_disconnect_mock = mocker.patch('grizzly.tasks.clients.servicebus.zmq_disconnect')
 
-        ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
-        task = ServiceBusClientTask(
+        task_type = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+        task = task_type(
             RequestDirection.FROM,
             'sb://my-sbns.servicebus.windows.net/queue:my-queue;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'test',
@@ -367,8 +367,8 @@ class TestServiceBusClientTask:
 
         async_message_request_mock = mocker.patch('grizzly.utils.protocols.async_message_request', return_value={'message': 'foobar!'})
 
-        ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
-        task = ServiceBusClientTask(
+        task_type = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+        task = task_type(
             RequestDirection.FROM,
             'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:"my-subscription-{{ id }}";SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'test',
@@ -398,7 +398,7 @@ class TestServiceBusClientTask:
         caplog.clear()
         async_message_request_mock.reset_mock()
 
-        task = ServiceBusClientTask(
+        task = task_type(
             RequestDirection.FROM,
             (
                 "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/expression:'$.`this`[bar='foo' && bar='foo']';"
@@ -440,7 +440,7 @@ class TestServiceBusClientTask:
         async_message_request_mock.reset_mock()
         caplog.clear()
 
-        task = ServiceBusClientTask(
+        task = task_type(
             RequestDirection.FROM,
             (
                 "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/"

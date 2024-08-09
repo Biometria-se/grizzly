@@ -151,7 +151,7 @@ class MessageQueueClientTask(ClientTask):
         self._zmq_context.destroy(linger=0)
 
     def create_context(self) -> None:  # noqa: PLR0915
-        endpoint = cast(str, resolve_variable(self.grizzly, self.endpoint, guess_datatype=False))
+        endpoint = cast(str, resolve_variable(self.grizzly, self.endpoint, guess_datatype=False, env=self._scenario.jinja2))
         parsed = urlparse(endpoint)
 
         if (parsed.scheme or 'none') not in ['mq', 'mqs']:

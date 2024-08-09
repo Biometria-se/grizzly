@@ -3,13 +3,13 @@ from __future__ import annotations
 
 from contextlib import suppress
 from os import environ, sep
-from shutil import rmtree
 from typing import TYPE_CHECKING
 
 import pytest
 
 from grizzly.testdata.variables import AtomicDirectoryContents
 from grizzly.testdata.variables.directory_contents import atomicdirectorycontents__base_type__
+from tests.helpers import rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
@@ -44,7 +44,7 @@ def test_atomicdirectorycontents__base_type__(tmp_path_factory: TempPathFactory)
 
         assert atomicdirectorycontents__base_type__('a-directory|random=True') == 'a-directory | random=True'
     finally:
-        rmtree(test_context_root)
+        rm_rf(test_context_root)
 
         with suppress(KeyError):
             del environ['GRIZZLY_CONTEXT_ROOT']
@@ -192,7 +192,7 @@ class TestAtomicDirectoryContents:
                 f'1-test{sep}3-test.json',
             ]
         finally:
-            rmtree(test_context_root)
+            rm_rf(test_context_root)
 
             with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
@@ -230,7 +230,7 @@ class TestAtomicDirectoryContents:
 
             AtomicDirectoryContents.destroy()
         finally:
-            rmtree(test_context_root)
+            rm_rf(test_context_root)
 
             with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']

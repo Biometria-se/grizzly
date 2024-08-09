@@ -5,7 +5,6 @@ import itertools
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
-from jinja2 import Environment as Jinja2Environment
 from jinja2 import nodes as j2
 
 from . import GrizzlyVariables
@@ -130,7 +129,7 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
             del templates[_scenario]
 
     # first find all variables in all templates grouped by scenario
-    template_variables = _parse_templates(templates, env=grizzly.state.jinja2)
+    template_variables = _parse_templates(templates)
 
     found_variables = AstVariableNameSet()
     for variable in itertools.chain(*template_variables.values()):
@@ -142,11 +141,13 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
 
     # check except between declared variables and variables found in templates
     missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - template_variables.__conditional__
-    assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates: {",".join(missing_in_templates)}'
+    missing_in_templates_message = '\n'.join(sorted(missing_in_templates))
+    assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates:\n{missing_in_templates_message}'
 
     # check if any variable hasn't first been declared
     missing_declarations = {variable for variable in found_variables if variable not in declared_variables} - template_variables.__conditional__ - template_variables.__local__
-    assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared: {",".join(missing_declarations)}'
+    missing_declarations_message = '\n'.join(sorted(missing_declarations))
+    assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared:\n{missing_declarations_message}'
 
     # only include variables that has been declared, filtering out conditional ones
     filtered_template_variables: dict[str, set[str]] = {}
@@ -198,7 +199,7 @@ def walk_attr(node: j2.Getattr) -> list[str]:
     return attributes
 
 
-def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]], *, env: Jinja2Environment) -> AstVariableSet:  # noqa: C901, PLR0915
+def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVariableSet:  # noqa: C901, PLR0915
     variables = AstVariableSet()
 
     def _getattr(node: j2.Node) -> Generator[list[str], None, None]:  # noqa: C901, PLR0912, PLR0915
@@ -347,7 +348,7 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]], *, env: 
             # json.dumps escapes quote (") causing it to be \\", which inturn causes problems for jinja
             template_normalized = template.replace('\\"', "'")
 
-            parsed = env.parse(template_normalized)
+            parsed = scenario.jinja2.parse(template_normalized)
 
             for body in getattr(parsed, 'body', []):
                 for attributes in _getattr(body):

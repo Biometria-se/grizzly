@@ -3,13 +3,13 @@ from __future__ import annotations
 
 from contextlib import suppress
 from os import environ
-from shutil import rmtree
 from typing import TYPE_CHECKING
 
 import pytest
 
 from grizzly.testdata.variables import AtomicCsvReader
 from grizzly.testdata.variables.csv_reader import atomiccsvreader__base_type__
+from tests.helpers import rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
@@ -45,7 +45,7 @@ def test_atomiccsvreader__base_type__(tmp_path_factory: TempPathFactory) -> None
 
         assert atomiccsvreader__base_type__('file1.csv|random=True') == 'file1.csv | random=True'
     finally:
-        rmtree(test_context_root)
+        rm_rf(test_context_root)
 
         with suppress(KeyError):
             del environ['GRIZZLY_CONTEXT_ROOT']
@@ -210,7 +210,7 @@ class TestAtomicCsvReader:
                 {'header13': 'value133', 'header23': 'value233', 'header33': 'value333'},
             ]
         finally:
-            rmtree(test_context_root)
+            rm_rf(test_context_root)
 
             with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
@@ -253,7 +253,7 @@ class TestAtomicCsvReader:
 
             AtomicCsvReader.destroy()
         finally:
-            rmtree(test_context_root)
+            rm_rf(test_context_root)
 
             with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
