@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import pytest
+from jinja2 import Template
 from parse import compile
 
 from grizzly.context import GrizzlyContext
@@ -13,6 +14,7 @@ from grizzly.steps import (
     step_task_request_text_with_name,
     step_task_request_text_with_name_endpoint,
 )
+from grizzly.tasks import RequestTask
 from grizzly.types import RequestDirection, RequestMethod
 from tests.helpers import ANY
 
@@ -113,6 +115,11 @@ def test_step_task_request_text_with_name_endpoint_to(behave_fixture: BehaveFixt
     behave.text = '{}'
 
     step_task_request_text_with_name_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
+
+    task = grizzly.scenario.tasks()[-1]
+    assert isinstance(task, RequestTask)
+    assert isinstance(task.template, Template)
+    assert task.source == '{}'
 
     step_task_request_text_with_name_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message=f'"from endpoint" is not allowed for {method.name}, use "to endpoint"')]}

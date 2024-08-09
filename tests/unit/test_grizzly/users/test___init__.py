@@ -37,15 +37,16 @@ class DummyGrizzlyUser(GrizzlyUser):
 
 
 class TestGrizzlyUser:
-    def test_render(self, behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> None:  # noqa: PLR0915
-        test_context = tmp_path_factory.mktemp('renderer_test') / 'requests'
-        test_context.mkdir()
+    def test_render(self, grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
+        grizzly = grizzly_fixture.grizzly
+        test_context = grizzly_fixture.test_context / 'requests'
+        test_context.mkdir(exist_ok=True)
         test_file = test_context / 'blobfile.txt'
         test_file.touch()
         environ['GRIZZLY_CONTEXT_ROOT'] = str(test_context.parent)
 
-        grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
-        grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+        grizzly.scenarios.clear()
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test scenario'))
 
         @templatingfilter
         def uppercase(value: str) -> str:
@@ -53,7 +54,7 @@ class TestGrizzlyUser:
 
         try:
             DummyGrizzlyUser.__scenario__ = grizzly.scenario
-            user = DummyGrizzlyUser(behave_fixture.locust.environment)
+            user = DummyGrizzlyUser(grizzly_fixture.behave.locust.environment)
             template = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test')
             template.source = 'hello {{ name | uppercase }}'
 
@@ -115,11 +116,6 @@ class TestGrizzlyUser:
         finally:
             with suppress(KeyError):
                 del FILTERS['uppercase']
-
-            rm_rf(test_context)
-
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
 
     @pytest.mark.usefixtures('locust_fixture')
     def test_render_nested(self, behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> None:

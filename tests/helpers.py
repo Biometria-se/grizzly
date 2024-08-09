@@ -70,13 +70,17 @@ def ANY(*cls: type, message: Optional[str] = None) -> object:  # noqa: N802
 
     return WrappedAny()
 
-def SOME(cls: type, **values: Any) -> object:  # noqa: N802
+def SOME(cls: type, *value: Any, **values: Any) -> object:  # noqa: N802
     class WrappedSome:
         def __eq__(self, other: object) -> bool:
             if issubclass(cls, dict):
-                return isinstance(other, cls) and all(other.get(attr) == value for attr, value in values.items())
+                def get_value(other: Any, attr: str) -> Any:
+                    return other.get(attr)
+            else:
+                def get_value(other: Any, attr: str) -> Any:
+                    return getattr(other, attr)
 
-            return isinstance(other, cls) and all(getattr(other, attr) == value for attr, value in values.items())
+            return isinstance(other, cls) and all(get_value(other, attr) == value for attr, value in values.items())
 
         def __ne__(self, other: object) -> bool:
             return not self.__eq__(other)
@@ -88,8 +92,20 @@ def SOME(cls: type, **values: Any) -> object:  # noqa: N802
             info = ', '.join([f"{key}={value}" for key, value in values.items()])
             return f'<SOME({cls}, {info})>'
 
-    if len(values) < 1:
+    if len(value) > 0 and len(values) > 0:
+        message = 'cannot use both positional and named arguments'
+        raise RuntimeError(message)
+
+    if len(values) < 1 and len(value) < 1:
         raise AttributeError(name='values', obj=str(type))
+
+    if len(value) > 1:
+        message = 'can only use 1 positional argument'
+        raise RuntimeError(message)
+
+    if len(value) > 0 and isinstance(value[0], dict):
+        values = {**value[0]}
+
     return WrappedSome()
 
 

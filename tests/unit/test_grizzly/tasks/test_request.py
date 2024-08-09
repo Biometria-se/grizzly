@@ -99,7 +99,7 @@ class TestRequestTask:
 
         # automagically create template if not set
         task_factory.source = 'hello {{ world }}'
-        assert isinstance(task_factory.template, Template)
+        assert task_factory.template is None
 
     def test_arguments(self) -> None:
         task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/json", foo=bar')

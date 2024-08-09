@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
 import yaml
-from jinja2 import Environment
+from jinja2 import Environment, FileSystemLoader
 from jinja2.filters import FILTERS
 
 from grizzly.types import MessageCallback, MessageDirection
@@ -86,9 +86,9 @@ class GrizzlyContext:
 
     def __init__(self) -> None:
         if not self._initialized:
-            self._state = GrizzlyContextState()
             self._setup = GrizzlyContextSetup()
             self._scenarios = GrizzlyContextScenarios()
+            self._state = GrizzlyContextState(self._scenarios)
             self._initialized = True
 
     @property
@@ -114,28 +114,26 @@ class GrizzlyContext:
 
 
 def jinja2_environment_factory() -> Environment:
-    """Create a Jinja2 environment, so same instance is used throughout grizzly, with custom filters."""
-    return Environment(autoescape=False)
+    """Create a Jinja2 environment, so same instance is used throughout each grizzly scenario, with custom filters."""
+    return Environment(autoescape=False, loader=FileSystemLoader(Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'requests'))
 
 
 @dataclass
 class GrizzlyContextState:
+    _scenarios: GrizzlyContextScenarios = field(init=True)
     spawning_complete: bool = field(default=False)
     background_section_done: bool = field(default=False)
-    variables: GrizzlyVariables = field(init=False, default_factory=GrizzlyVariables)
+    variables: GrizzlyVariables = field(init=False)
     configuration: dict[str, Any] = field(init=False, default_factory=load_configuration_file)
     alias: dict[str, str] = field(init=False, default_factory=dict)
     verbose: bool = field(default=False)
     locust: Union[MasterRunner, WorkerRunner, LocalRunner] = field(init=False, repr=False)
     persistent: dict[str, str] = field(init=False, repr=False, default_factory=dict)
-    _jinja2: Environment = field(init=False, repr=False, default_factory=jinja2_environment_factory)
 
-    @property
-    def jinja2(self) -> Environment:
-        # something might have changed in the filters department
-        self._jinja2.filters = FILTERS
-
-        return self._jinja2
+    def __post_init__(self) -> None:
+        """Workaround until grizzly.state.variables has been deprecated."""
+        self.variables = GrizzlyVariables(scenarios=self._scenarios)
+        del self._scenarios
 
 
 @dataclass
@@ -276,6 +274,14 @@ class GrizzlyContextScenario:
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
     failure_exception: Optional[type[Exception]] = field(init=False, default=None)
     orphan_templates: list[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
+    _jinja2: Environment = field(init=False, repr=False, default_factory=jinja2_environment_factory)
+
+    @property
+    def jinja2(self) -> Environment:
+        # something might have changed in the filters department
+        self._jinja2.filters = FILTERS
+
+        return self._jinja2
 
     def __post_init__(self) -> None:
         self.name = self.behave.name
@@ -371,5 +377,9 @@ class GrizzlyContextScenarios(list[GrizzlyContextScenario]):
     def create(self, behave_scenario: Scenario) -> None:
         """Create a new scenario based on the behave Scenario, and add it to the current list of scenarios in this context."""
         grizzly_scenario = GrizzlyContextScenario(len(self) + 1, behave=behave_scenario)
+
+        # inherit jinja2.globals from previous scenario
+        if len(self) > 0:
+            grizzly_scenario.jinja2.globals.update({**self[-1].jinja2.globals})
 
         self.append(grizzly_scenario)

@@ -36,28 +36,15 @@ def create_request_task(
     substitutes: Optional[dict[str, str]] = None,
     content_type: Optional[TransformerContentType] = None,
 ) -> RequestTask:
-    return _create_request_task(context.config.base_dir, method, source, endpoint, name, substitutes=substitutes, content_type=content_type)
-
-
-def _create_request_task(
-    base_dir: str,
-    method: RequestMethod,
-    source: Optional[str],
-    endpoint: str,
-    name: Optional[str] = None,
-    substitutes: Optional[dict[str, str]] = None,
-    content_type: Optional[TransformerContentType] = None,
-) -> RequestTask:
-    path = Path(base_dir) / 'requests'
-    j2env = j2.Environment(
-        autoescape=False,
-        loader=j2.FileSystemLoader(path),
-    )
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    path = Path(context.config.base_dir) / 'requests'
 
     template: Optional[j2.Template] = None
 
     if source is not None:
         original_source = source
+
+        print(f'{source=}')
 
         try:
             possible_file = path / source
@@ -71,7 +58,8 @@ def _create_request_task(
                         fd.seek(0)
                         source = fd.read()
 
-                template = j2env.get_template(source)
+                if name is None:
+                    name, _ = possible_file.name.split('.', 1)
         except (j2.exceptions.TemplateNotFound, OSError) as e:
             # `TemplateNotFound` inherits `OSError`...
             if not isinstance(e, j2.exceptions.TemplateNotFound) and e.errno != ENAMETOOLONG:
@@ -82,6 +70,8 @@ def _create_request_task(
 
         for key, value in (substitutes or {}).items():
             source = source.replace(f'{{{{ {key} }}}}', value)
+
+        template = grizzly.scenario.jinja2.from_string(source)
 
     if name is None:
         name = '<unknown>'
