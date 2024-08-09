@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 from grizzly.types import GrizzlyVariableType
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContext
+    from grizzly.context import GrizzlyContext, GrizzlyContextScenarios
     from grizzly.types.locust import MessageHandler
 
     from .variables import AtomicVariable
@@ -19,6 +19,12 @@ __all__ = [
 
 
 class GrizzlyVariables(dict):
+    scenarios: GrizzlyContextScenarios  # @TODO: remove
+
+    def __init__(self, *args: Any, scenarios: GrizzlyContextScenarios, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.scenarios = scenarios
+
     @classmethod
     def load_variable(cls, module_name: str, class_name: str) -> type[AtomicVariable]:
         if module_name not in globals():
@@ -130,6 +136,17 @@ class GrizzlyVariables(dict):
 
         return casted_value
 
+    def update(self, *args: Any, **kwargs: Any) -> None:
+        """Workaround until grizzly.state.variables has been deprecated."""
+        for arg in args:
+            if not isinstance(arg, dict):
+                continue
+
+            for scenario in self.scenarios:
+                scenario.jinja2.globals.update(arg)
+
+        super().update(*args, **kwargs)
+
     def __setitem__(self, key: str, value: GrizzlyVariableType) -> None:
         caster: Optional[Callable] = None
 
@@ -146,5 +163,9 @@ class GrizzlyVariables(dict):
             value = self.guess_datatype(value) if caster is None else caster(value)
         elif caster is not None:
             value = caster(value)
+
+        # @TODO: remove when grizzly.state.variables has been deprecated
+        for scenario in self.scenarios:
+            scenario.jinja2.globals.update({key: value})
 
         super().__setitem__(key, value)

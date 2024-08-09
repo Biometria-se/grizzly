@@ -173,6 +173,7 @@ def test_step_setup_run_time(behave_fixture: BehaveFixture) -> None:
 def test_step_setup_set_global_context_variable(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test-1'))
 
     step_setup_set_global_context_variable(behave, 'token.url', 'test')
     assert grizzly.setup.global_context == {

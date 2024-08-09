@@ -41,7 +41,7 @@ from grizzly_extras.transformer import TransformerContentType
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Generator
 
-    from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+    from grizzly.context import GrizzlyContextScenario
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -60,7 +60,6 @@ class ClientTask(GrizzlyMetaRequestTask):
     _context: ClassVar[dict[str, Any]] = {}
 
     host: str
-    grizzly: GrizzlyContext
     direction: RequestDirection
     endpoint: str
     name: Optional[str]
@@ -91,7 +90,11 @@ class ClientTask(GrizzlyMetaRequestTask):
         else:
             self._text = None
 
-        endpoint = cast(str, resolve_variable(self.grizzly, endpoint, only_grizzly=True))
+        self._scenario = copy(self.__scenario__)
+        self._scenario._tasks = self.__scenario__._tasks
+
+        endpoint = cast(str, resolve_variable(self.grizzly, endpoint, only_grizzly=True, env=self._scenario.jinja2))
+
         try:
             parsed = urlparse(endpoint)
             proto_sep = endpoint.index('://') + 3
@@ -165,8 +168,6 @@ class ClientTask(GrizzlyMetaRequestTask):
             self.log_dir /= log_dir
 
         self.log_dir.mkdir(parents=True, exist_ok=True)
-        self._scenario = copy(self.__scenario__)
-        self._scenario._tasks = self.__scenario__._tasks
         self.__class__._context = merge_dicts(self.__class__._context, self._context)
 
     def on_start(self, parent: GrizzlyScenario) -> None:

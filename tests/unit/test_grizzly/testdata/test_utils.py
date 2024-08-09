@@ -191,10 +191,17 @@ value3,value4
         cleanup()
 
 
-def test_create_context_variable() -> None:
-    grizzly = GrizzlyContext()
+def test_create_context_variable(grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly = grizzly_fixture.grizzly
 
     try:
+        grizzly.state.variables.update({'foo': 'baz'})
+        assert create_context_variable(grizzly, 'foo.bar', '{{ foo }}') == {
+            'foo': {
+                'bar': 'baz',
+            },
+        }
+
         assert create_context_variable(grizzly, 'test.value', '1') == {
             'test': {
                 'value': 1,
@@ -282,7 +289,6 @@ def test_create_context_variable() -> None:
             },
         }
     finally:
-        GrizzlyContext.destroy()
         with suppress(KeyError):
             del environ['HELLO_WORLD']
 
@@ -550,7 +556,7 @@ def test_transform(behave_fixture: BehaveFixture, cleanup: AtomicVariableCleanup
 
 
 def test_templatingfilter(grizzly_fixture: GrizzlyFixture) -> None:
-    grizzly = grizzly_fixture.grizzly
+    parent = grizzly_fixture()
 
     def testuppercase(value: str) -> str:
         return value.upper()
@@ -561,7 +567,7 @@ def test_templatingfilter(grizzly_fixture: GrizzlyFixture) -> None:
 
     assert FILTERS.get('testuppercase', None) is testuppercase
 
-    actual = grizzly.state.jinja2.from_string('{{ variable | testuppercase }}').render(variable='foobar')
+    actual = parent.user._scenario.jinja2.from_string('{{ variable | testuppercase }}').render(variable='foobar')
 
     assert actual == 'FOOBAR'
 

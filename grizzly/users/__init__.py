@@ -225,10 +225,13 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         if request_template.__rendered__:
             return request_template
 
+        if request_template.source is not None and request_template.template is None:
+            request_template._template = self._scenario.jinja2.from_string(request_template.source)
+
         request = copy(request_template)
 
         try:
-            j2env = self.grizzly.state.jinja2
+            j2env = self._scenario.jinja2
             name = j2env.from_string(request_template.name).render(**self.context_variables)
             source: Optional[str] = None
             request.name = f'{self._scenario.identifier} {name}'
@@ -275,15 +278,18 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
     def add_context(self, context: dict[str, Any]) -> None:
         self._context = merge_dicts(self._context, context)
+        self._scenario.jinja2.globals.update(**self._context['variables'])
 
     def set_context_variable(self, variable: str, value: Any) -> None:
         old_value = self._context['variables'].get(variable, None)
         self._context['variables'][variable] = value
+        self._scenario.jinja2.globals.update({variable: value})
         message = f'context {variable=}, value={old_value} -> {value}'
         self.logger.debug(message)
 
     @property
     def context_variables(self) -> dict[str, Any]:
+        # return self._scenario.jinja2.globals  # noqa: ERA001
         return cast(dict[str, Any], self._context.get('variables', {}))
 
 

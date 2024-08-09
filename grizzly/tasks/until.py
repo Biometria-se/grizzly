@@ -48,6 +48,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 from gevent import sleep as gsleep
 
 from grizzly.exceptions import StopScenario
+from grizzly.testdata.utils import resolve_variable
 from grizzly.types import RequestType
 from grizzly.types.locust import StopUser
 from grizzly.utils import safe_del
@@ -93,7 +94,7 @@ class UntilRequestTask(GrizzlyTask):
             self.condition, until_arguments = split_value(self.condition)
 
             if '{{' in until_arguments and '}}' in until_arguments:
-                until_arguments = self.grizzly.state.jinja2.from_string(until_arguments).render(**self.grizzly.state.variables)
+                until_arguments = cast(str, resolve_variable(self.grizzly, until_arguments, guess_datatype=False))
 
             arguments = parse_arguments(until_arguments)
 

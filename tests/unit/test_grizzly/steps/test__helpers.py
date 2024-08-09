@@ -47,12 +47,13 @@ def test_add_request_task_response_status_codes() -> None:
     assert request.response.status_codes == [200, 302, 400]
 
 
-@pytest.mark.parametrize('as_async', [False, True])
-def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory, *, as_async: bool) -> None:  # noqa: PLR0915
+@pytest.mark.parametrize('request_type', ['sync', 'async'])
+def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory, *, request_type: str) -> None:  # noqa: PLR0915
     behave = grizzly_fixture.behave.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test scenario'))
     grizzly.scenario.context['host'] = 'http://test'
+    as_async = request_type == 'async'
 
     if as_async:
         grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='async-test-1')

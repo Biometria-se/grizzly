@@ -5,7 +5,6 @@ import itertools
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
-from jinja2 import Environment as Jinja2Environment
 from jinja2 import nodes as j2
 
 from . import GrizzlyVariables
@@ -130,7 +129,7 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
             del templates[_scenario]
 
     # first find all variables in all templates grouped by scenario
-    template_variables = _parse_templates(templates, env=grizzly.state.jinja2)
+    template_variables = _parse_templates(templates)
 
     found_variables = AstVariableNameSet()
     for variable in itertools.chain(*template_variables.values()):
@@ -200,7 +199,7 @@ def walk_attr(node: j2.Getattr) -> list[str]:
     return attributes
 
 
-def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]], *, env: Jinja2Environment) -> AstVariableSet:  # noqa: C901, PLR0915
+def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVariableSet:  # noqa: C901, PLR0915
     variables = AstVariableSet()
 
     def _getattr(node: j2.Node) -> Generator[list[str], None, None]:  # noqa: C901, PLR0912, PLR0915
@@ -349,7 +348,7 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]], *, env: 
             # json.dumps escapes quote (") causing it to be \\", which inturn causes problems for jinja
             template_normalized = template.replace('\\"', "'")
 
-            parsed = env.parse(template_normalized)
+            parsed = scenario.jinja2.parse(template_normalized)
 
             for body in getattr(parsed, 'body', []):
                 for attributes in _getattr(body):
