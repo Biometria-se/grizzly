@@ -7,7 +7,6 @@ from contextlib import suppress
 from datetime import datetime
 from json import dumps as jsondumps
 from os import environ
-from shutil import rmtree
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Optional, cast
 
@@ -24,7 +23,7 @@ from grizzly.steps.setup import step_setup_variable_value_ask as step_both
 from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, LogMessageTask, LoopTask, TimerTask
 from grizzly.types import RequestType
 from grizzly.types.behave import Context, Feature, Status, Step
-from tests.helpers import onerror
+from tests.helpers import rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.capture import CaptureFixture
@@ -126,7 +125,7 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
             with suppress(KeyError):
                 del environ[key]
 
-        rmtree(context_root, onerror=onerror)
+        rm_rf(context_root)
 
 
 def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, capsys: CaptureFixture) -> None:  # noqa: PLR0915

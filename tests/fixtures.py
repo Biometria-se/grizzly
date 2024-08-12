@@ -10,7 +10,6 @@ from hashlib import sha1
 from json import dumps as jsondumps
 from os import chdir, environ
 from pathlib import Path
-from shutil import rmtree
 from tempfile import NamedTemporaryFile
 from textwrap import dedent, indent
 from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, cast
@@ -38,7 +37,7 @@ from grizzly.types.behave import Feature, Scenario, Step
 from grizzly.types.locust import Environment, LocustRunner
 from grizzly.utils import create_scenario_class_type, create_user_class_type
 
-from .helpers import TestScenario, TestUser, onerror, run_command
+from .helpers import TestScenario, TestUser, rm_rf, run_command
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import TracebackType
@@ -105,7 +104,7 @@ class LocustFixture:
         with suppress(KeyError):
             del environ['GRIZZLY_CONTEXT_ROOT']
 
-        rmtree(self._test_context_root)
+        rm_rf(self._test_context_root)
 
         return True
 
@@ -264,7 +263,7 @@ class RequestTaskFixture:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        rmtree(Path(self.context_root).parent)
+        rm_rf(Path(self.context_root).parent)
 
         return True
 
@@ -786,7 +785,7 @@ def step_start_webserver(context: Context, port: int) -> None:
 
             if not self.keep_files:
                 with suppress(AttributeError):
-                    rmtree(self.root.parent, onerror=onerror)
+                    rm_rf(self.root.parent)
             else:
                 print(self._root)
 

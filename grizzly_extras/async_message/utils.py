@@ -40,6 +40,7 @@ def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> A
                 break
             except ZMQAgain:
                 sleep(0.1)
+
             delta = perf_counter() - start
             if delta > 1.0:
                 logger.debug('async_message_request::recv_json took %f seconds', delta)
@@ -51,6 +52,9 @@ def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> A
         message = response.get('message', None)
 
         if not response['success']:
+            if response['message'] == 'abort':
+                raise AsyncMessageAbort
+
             raise AsyncMessageError(message)
 
     except Exception as e:

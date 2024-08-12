@@ -180,9 +180,6 @@ class RequestTask(GrizzlyMetaRequestTask):
         if self._source is None:
             return None
 
-        if self._template is None:
-            self._template = self.grizzly.state.jinja2.from_string(self._source)
-
         return self._template
 
     def add_metadata(self, key: str, value: str) -> None:

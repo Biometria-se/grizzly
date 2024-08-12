@@ -1,7 +1,6 @@
 """Unit tests of grizzly_extras.novella."""
 from __future__ import annotations
 
-from shutil import rmtree
 from typing import Union
 
 import pytest
@@ -16,6 +15,7 @@ from grizzly_extras.novella import (
     _generate_dynamic_page,
     make_human_readable,
 )
+from tests.helpers import rm_rf
 
 
 class TestMarkdownAstType:
@@ -111,7 +111,7 @@ def test__create_nav_node(tmp_path_factory: pytest.TempPathFactory) -> None:
         assert target == ['hello/index.md', {'Foobar SFTP API': 'foobar/foobar_sftp_api.md'}]
         # -->
     finally:
-        rmtree(test_context)
+        rm_rf(test_context)
 
 
 def test__generate_dynamic_page(tmp_path_factory: pytest.TempPathFactory) -> None:
@@ -169,7 +169,7 @@ title: Foobar / Foobar SFTP API
 """
         # -->
     finally:
-        rmtree(test_context)
+        rm_rf(test_context)
 
 
 class TestGrizzlyMarkdown:

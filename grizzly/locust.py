@@ -871,13 +871,9 @@ def shutdown_external_processes(processes: dict[str, subprocess.Popen], greenlet
         else:
             process.terminate()
 
-        if not abort_test:
-            process.wait()
-        else:
-            process.kill()
-            process.returncode = 1
+        process.wait()
 
-        logger.debug('process.returncode=%d', process.returncode)
+        logger.debug('%s: process.returncode=%d', dependency, process.returncode)
 
     processes.clear()
 
@@ -1017,10 +1013,14 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 def watch_running_external_processes() -> None:
                     while runner.user_count > 0:
                         _processes = processes.copy()
+                        if len(_processes) < 1:
+                            logger.error('no running processes')
+                            break
+
                         for dependency, process in _processes.items():
                             if process.poll() is not None:
-                                logger.error('%s is not running, restarting', dependency)
-                                raise SystemExit(1)
+                                logger.error('%s is not running, stop', dependency)
+                                del processes[dependency]
 
                         gevent.sleep(10.0)
 
@@ -1199,7 +1199,12 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                     return
 
                 logger.info('handling signal %s (%d)', signame, signum)
+
+                logger.debug('shutdown external processes')
+
                 abort_test = True
+                shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
+
                 if isinstance(runner, WorkerRunner):
                     runner._send_stats()
                     runner.client.send(Message('client_aborted', None, runner.client_id))
@@ -1228,7 +1233,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         return code
     finally:
-        shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
+        if not abort_test:
+            shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> list[tuple[str, str, int]]:

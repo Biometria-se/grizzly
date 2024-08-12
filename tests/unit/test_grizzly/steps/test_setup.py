@@ -69,6 +69,8 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture) -> None:
 def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('dummy-1'))
+    grizzly.scenarios.create(behave_fixture.create_scenario('dummy-2'))
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -204,6 +206,29 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
         ANY(AssertionError, message='variable dynamic_variable_value has already been initialized'),
         ANY(AssertionError, message='variable new_variable has already been initialized'),
     ]}
+
+    for scenario in grizzly.scenarios:
+        assert scenario.jinja2.globals == SOME(dict, {
+            'test_string': 'test',
+            'test_int': 1,
+            'AtomicIntegerIncrementer.test': '1 | step=10',
+            'step': 13,
+            'AtomicIntegerIncrementer.test2': '1 | step=13',
+            'csv_repeat': False,
+            'AtomicCsvReader.input': 'test/input.csv | repeat="False"',
+            'AtomicCsvReader.csv_input': 'test/input.test.csv | repeat="False"',
+            'leveranser': 100,
+            'AtomicRandomString.regnr': '%sA%s1%d%d | count=26, upper=True',
+            'AtomicDate.test': '2021-04-13',
+            'value': 'hello world!',
+            'dynamic_variable_value': 'hello world!',
+            'AtomicIntegerIncrementer.persistent': '10 | step=10, persist=True',
+            'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"',
+            'foo_value': 'foobar',
+            'bar_value': 'foobaz',
+            'custom.variable.AtomicFooBar.value': 'hello',
+            'new_variable': 'foobar',
+        })
 
 
 def test_step_setup_execute_python_script(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:

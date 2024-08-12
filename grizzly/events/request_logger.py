@@ -9,8 +9,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import urlparse, urlunparse
 
-from jinja2 import Template
-
 from grizzly.events import GrizzlyEventHandler
 from grizzly.utils import normalize
 from grizzly_extras.transformer import JsonBytesEncoder
@@ -182,7 +180,7 @@ class RequestLogger(GrizzlyEventHandler):
         name = normalize(name)
 
         log_name = f'{name}.{log_date.strftime("%Y%m%dT%H%M%S%f")}.log'
-        contents = Template(LOG_FILE_TEMPLATE).render(**variables)
+        contents = self.user._scenario.jinja2.from_string(LOG_FILE_TEMPLATE).render(**variables)
 
         log_file = self.log_dir / log_name
         log_file.write_text(contents)

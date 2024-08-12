@@ -29,7 +29,7 @@ from locust.user.users import User, UserMeta
 
 from grizzly.context import GrizzlyContext
 from grizzly.events import GrizzlyEventHook, RequestLogger, ResponseHandler
-from grizzly.exceptions import RestartScenario
+from grizzly.exceptions import AsyncMessageAbort, RestartScenario
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
 from grizzly.types.locust import Environment, StopUser
 from grizzly.utils import has_template, merge_dicts
@@ -172,8 +172,9 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
             metadata, payload = request_impl(request)
         except Exception as e:
-            message = f'request "{request.name}" failed: {str(e) or e.__class__}'
-            self.logger.exception(message)
+            if not isinstance(e, AsyncMessageAbort):
+                message = f'request "{request.name}" failed: {str(e) or e.__class__}'
+                self.logger.exception(message)
             exception = e
         finally:
             total_time = int((perf_counter() - start_time) * 1000)
@@ -196,6 +197,9 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
                     # request exception is the priority one
                     if exception is None:
                         exception = e
+
+            if isinstance(exception, AsyncMessageAbort):
+                raise StopUser
 
             self.environment.events.request.fire(
                 request_type=RequestType.from_method(request.method),
@@ -221,10 +225,13 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         if request_template.__rendered__:
             return request_template
 
+        if request_template.source is not None and request_template.template is None:
+            request_template._template = self._scenario.jinja2.from_string(request_template.source)
+
         request = copy(request_template)
 
         try:
-            j2env = self.grizzly.state.jinja2
+            j2env = self._scenario.jinja2
             name = j2env.from_string(request_template.name).render(**self.context_variables)
             source: Optional[str] = None
             request.name = f'{self._scenario.identifier} {name}'
@@ -271,15 +278,18 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
     def add_context(self, context: dict[str, Any]) -> None:
         self._context = merge_dicts(self._context, context)
+        self._scenario.jinja2.globals.update(**self._context['variables'])
 
     def set_context_variable(self, variable: str, value: Any) -> None:
         old_value = self._context['variables'].get(variable, None)
         self._context['variables'][variable] = value
+        self._scenario.jinja2.globals.update({variable: value})
         message = f'context {variable=}, value={old_value} -> {value}'
         self.logger.debug(message)
 
     @property
     def context_variables(self) -> dict[str, Any]:
+        # return self._scenario.jinja2.globals  # noqa: ERA001
         return cast(dict[str, Any], self._context.get('variables', {}))
 
 

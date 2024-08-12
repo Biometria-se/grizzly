@@ -7,11 +7,13 @@ import re
 import signal
 import stat
 import subprocess
+import sys
 from abc import ABCMeta
 from contextlib import suppress
 from copy import deepcopy
 from pathlib import Path
 from re import Pattern
+from shutil import rmtree
 from types import MethodType, TracebackType
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 from unittest.mock import MagicMock
@@ -68,13 +70,17 @@ def ANY(*cls: type, message: Optional[str] = None) -> object:  # noqa: N802
 
     return WrappedAny()
 
-def SOME(cls: type, **values: Any) -> object:  # noqa: N802
+def SOME(cls: type, *value: Any, **values: Any) -> object:  # noqa: N802
     class WrappedSome:
         def __eq__(self, other: object) -> bool:
             if issubclass(cls, dict):
-                return isinstance(other, cls) and all(other.get(attr) == value for attr, value in values.items())
+                def get_value(other: Any, attr: str) -> Any:
+                    return other.get(attr)
+            else:
+                def get_value(other: Any, attr: str) -> Any:
+                    return getattr(other, attr)
 
-            return isinstance(other, cls) and all(getattr(other, attr) == value for attr, value in values.items())
+            return isinstance(other, cls) and all(get_value(other, attr) == value for attr, value in values.items())
 
         def __ne__(self, other: object) -> bool:
             return not self.__eq__(other)
@@ -86,8 +92,20 @@ def SOME(cls: type, **values: Any) -> object:  # noqa: N802
             info = ', '.join([f"{key}={value}" for key, value in values.items()])
             return f'<SOME({cls}, {info})>'
 
-    if len(values) < 1:
+    if len(value) > 0 and len(values) > 0:
+        message = 'cannot use both positional and named arguments'
+        raise RuntimeError(message)
+
+    if len(values) < 1 and len(value) < 1:
         raise AttributeError(name='values', obj=str(type))
+
+    if len(value) > 1:
+        message = 'can only use 1 positional argument'
+        raise RuntimeError(message)
+
+    if len(value) > 0 and isinstance(value[0], dict):
+        values = {**value[0]}
+
     return WrappedSome()
 
 
@@ -269,7 +287,10 @@ def run_command(command: list[str], env: Optional[dict[str, str]] = None, cwd: O
     return process.returncode, output
 
 
-def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:  # noqa: ARG001
+def onerror(func: Callable, path: str, exc_info: Union[  # noqa: ARG001
+        BaseException,
+        tuple[type[BaseException], BaseException, Optional[TracebackType]],
+]) -> None:
     """Error handler for shutil.rmtree.
 
     If the error is due to an access error (read only file)
@@ -283,7 +304,19 @@ def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:  # noqa
         _path.chmod(stat.S_IWUSR)
         func(path)
     else:
-        raise
+        raise  # pylint: disable=E0704
+
+
+def rm_rf(path: Union[str, Path]) -> None:
+    """Remove the path contents recursively, even if some elements
+    are read-only.
+    """
+    p = path.as_posix() if isinstance(path, Path) else path
+
+    if sys.version_info >= (3, 12):
+        rmtree(p, onexc=onerror)
+    else:
+        rmtree(p, onerror=onerror)
 
 
 # prefix components:

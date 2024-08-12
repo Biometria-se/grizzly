@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 from itertools import product
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, cast
@@ -28,6 +27,7 @@ from grizzly.testdata.utils import templatingfilter
 from grizzly.types import RequestMethod, ResponseAction, ResponseTarget
 from grizzly.types.behave import Row, Table
 from grizzly_extras.transformer import TransformerContentType
+from tests.helpers import rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
@@ -47,12 +47,13 @@ def test_add_request_task_response_status_codes() -> None:
     assert request.response.status_codes == [200, 302, 400]
 
 
-@pytest.mark.parametrize('as_async', [False, True])
-def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory, *, as_async: bool) -> None:  # noqa: PLR0915
+@pytest.mark.parametrize('request_type', ['sync', 'async'])
+def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory, *, request_type: str) -> None:  # noqa: PLR0915
     behave = grizzly_fixture.behave.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test scenario'))
     grizzly.scenario.context['host'] = 'http://test'
+    as_async = request_type == 'async'
 
     if as_async:
         grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='async-test-1')
@@ -189,7 +190,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
             assert request.source == f'Hello {name} and good {time_of_day}!'
     finally:
         del os.environ['GRIZZLY_CONTEXT_ROOT']
-        shutil.rmtree(test_context_root)
+        rm_rf(test_context_root)
 
     with pytest.raises(ValueError, match='incorrect format in arguments: "world:False"'):
         add_request_task(behave, method=RequestMethod.GET, endpoint='hello | world:False', source=None, name='hello-world')

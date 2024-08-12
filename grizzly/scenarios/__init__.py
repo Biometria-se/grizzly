@@ -70,7 +70,7 @@ class GrizzlyScenario(SequentialTaskSet):
         else:
             render_variables = {**self.user._context['variables'], **variables}
 
-        return self.grizzly.state.jinja2.from_string(template).render(**render_variables)
+        return self.user._scenario.jinja2.from_string(template).render(**render_variables)
 
     def prefetch(self) -> None:
         """Do not prefetch anything by default."""

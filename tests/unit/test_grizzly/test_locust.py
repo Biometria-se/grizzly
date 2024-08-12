@@ -388,7 +388,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.quitting._handlers) == 0
 
         environment.events.spawning_complete._handlers = []  # grizzly handler should only append
-        grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
+        grizzly.setup.statistics_url = 'influxdb://influx.example.com:1230/testdb'
 
         setup_environment_listeners(behave, testdata={})
 
@@ -413,7 +413,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         grizzly.scenario.tasks.add(task)
 
         # this is a bit misplaced after a refactoring...
-        with pytest.raises(AssertionError, match='variables has been found in templates, but have not been declared: test_id'):
+        with pytest.raises(AssertionError, match='variables has been found in templates, but have not been declared:\ntest_id'):
             testdata, _, _ = initialize_testdata(grizzly)
 
         grizzly.state.variables['test_id'] = 'test-1'
@@ -429,7 +429,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.quitting._handlers) == 1
 
         AtomicIntegerIncrementer.destroy()
-        grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
+        grizzly.setup.statistics_url = 'influxdb://influx.example.com:1231/testdb'
         environment.events.spawning_complete._handlers = []
 
         setup_environment_listeners(behave, testdata=testdata)
