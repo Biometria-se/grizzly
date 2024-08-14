@@ -320,7 +320,7 @@ class TestBlobStorageClientTask:
     def test_get(self, behave_fixture: BehaveFixture, grizzly_fixture: GrizzlyFixture) -> None:
         behave = behave_fixture.context
         grizzly = cast(GrizzlyContext, behave.grizzly)
-        grizzly.state.variables['test'] = 'none'
+        grizzly.scenario.variables['test'] = 'none'
 
         BlobStorageClientTask.__scenario__ = grizzly.scenario
 
@@ -342,7 +342,7 @@ class TestBlobStorageClientTask:
 
             behave = behave_fixture.context
             grizzly = cast(GrizzlyContext, behave.grizzly)
-            grizzly.state.variables.update({
+            grizzly.scenario.variables.update({
                 'test': 'hello world',
                 'source': 'source.json',
                 'destination': 'destination.json',
@@ -379,8 +379,6 @@ class TestBlobStorageClientTask:
             parent = grizzly_fixture()
 
             request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
-
-            parent.user._context['variables'].update(grizzly.state.variables)
 
             task(parent)
 

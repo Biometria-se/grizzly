@@ -21,7 +21,7 @@ def test_step_task_date(behave_fixture: BehaveFixture) -> None:
     step_task_date(behave, '{{ datetime.now() }} | offset=1D', 'date_variable')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variable date_variable has not been initialized')]}
 
-    grizzly.state.variables['date_variable'] = 'none'
+    grizzly.scenario.variables['date_variable'] = 'none'
 
     step_task_date(behave, '{{ datetime.now() }} | offset=1D', 'date_variable')
 

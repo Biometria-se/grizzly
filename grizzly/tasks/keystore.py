@@ -63,7 +63,7 @@ class KeystoreTask(GrizzlyTask):
 
             if self.action in ['get', 'inc']:
                 assert isinstance(self.action_context, str), f'action context for {self.action} must be a string'
-                assert action_context in self.grizzly.state.variables, f'variable "{action_context}" has not been initialized'
+                assert action_context in self.grizzly.scenario.variables, f'variable "{action_context}" has not been initialized'
             else:  # == 'set'
                 assert self.action_context is not None, 'action context for set cannot be None'
         except AssertionError as e:
@@ -80,16 +80,16 @@ class KeystoreTask(GrizzlyTask):
                         parent.consumer.keystore_set(self.key, self.default_value)
                         value = cast(Any, self.default_value)
 
-                    if value is not None:
-                        parent.user._context['variables'][self.action_context] = jsonloads(parent.render(jsondumps(value)))
+                    if value is not None and self.action_context is not None:
+                        parent.user.set_variable(self.action_context, jsonloads(parent.render(jsondumps(value))))
                     else:
                         message = f'key {self.key} does not exist in keystore'
                         raise RuntimeError(message)
                 elif self.action == 'inc':
                     value = parent.consumer.keystore_inc(self.key, step=1)
 
-                    if value is not None:
-                        parent.user._context['variables'][self.action_context] = jsonloads(parent.render(jsondumps(value)))
+                    if value is not None and self.action_context is not None:
+                        parent.user.set_variable(self.action_context, jsonloads(parent.render(jsondumps(value))))
                     else:
                         message = f'key {self.key} does not exist in keystore'
                         raise RuntimeError(message)

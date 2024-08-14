@@ -3,6 +3,7 @@ Feature: grizzly example
     Given "3" users
     And spawn rate is "1" user per second
     And register callback "steps.custom.callback_client_server" for message type "client_server" from client to server
+    Given value for variable "global_var" is "foobar"
 
   Scenario: dog facts api
     Given a user of type "RestApi" load testing "$conf::facts.dog.host$"
@@ -11,6 +12,7 @@ Feature: grizzly example
     # custom step
     And also log successful requests
     Then get request with name "get-dog-facts" from endpoint "/api/v1/resources/dogs?number={{ AtomicRandomInteger.dog_facts_count }}"
+    Then log message "dog={{ global_var }}"
 
   Scenario: cat facts api
     Given a user of type "steps.custom.User" load testing "$conf::facts.cat.host$"
@@ -21,6 +23,7 @@ Feature: grizzly example
     Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"
     And send message "{'client': 'server'}"
     Then log message "foo={{ foo | touppercase }}, bar={{ bar | touppercase }}"
+    Then log message "cat={{ global_var }}"
 
   Scenario: book api
     Given a user of type "RestApi" load testing "$conf::facts.book.host$"
@@ -37,4 +40,5 @@ Feature: grizzly example
     Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"
     When response payload "$.name" is not "{{ AtomicCsvReader.books.author }}" fail request
     Then log message "AtomicCustomVariable.foobar='{{ steps.custom.AtomicCustomVariable.foobar }}'"
+    Then log message "book={{ global_var }}"
 

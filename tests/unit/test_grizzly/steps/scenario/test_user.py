@@ -64,7 +64,7 @@ def test_setup_user_type_count(behave_fixture: BehaveFixture) -> None:
     assert hasattr(grizzly.scenario, 'user')
     assert not hasattr(grizzly.scenario.user, 'class_name')
     assert 'host' not in grizzly.scenario.context
-    grizzly.state.variables['max_users'] = '10'
+    grizzly.scenario.variables['max_users'] = '10'
 
     step_user_type_count(behave, '{{ max_users * 0.1 }}', 'ServiceBus', 'sb://localhost:8000', _grammar='user')
 
@@ -105,7 +105,7 @@ def test_step_user_type(behave_fixture: BehaveFixture) -> None:
 
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='value contained variable "host" which has not been declared')]}
 
-    grizzly.state.variables['host'] = 'http://example.io:1337'
+    grizzly.scenario.variables['host'] = 'http://example.io:1337'
     step_user_type(behave, 'RestApi', '{{ host }}')
 
     assert grizzly.scenario.context['host'] == 'http://example.io:1337'
@@ -165,11 +165,11 @@ def test_step_user_type_with_weight(behave_fixture: BehaveFixture) -> None:
         ANY(AssertionError, message='value contained variable "weight" which has not been declared'),
     ]}
 
-    grizzly.state.variables['weight'] = 3
+    grizzly.scenario.variables['weight'] = 3
     step_user_type_with_weight(behave, 'RestApi', '{{ weight }}', 'http://localhost:8000')
     assert grizzly.scenario.user.weight == 3
 
-    grizzly.state.variables['weight'] = 0
+    grizzly.scenario.variables['weight'] = 0
     step_user_type_with_weight(behave, 'RestApi', '{{ weight }}', 'http://localhost:8000')
 
     assert behave.exceptions == {behave.scenario.name: [

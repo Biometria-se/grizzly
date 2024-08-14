@@ -48,6 +48,6 @@ def step_task_wait_explicit(context: Context, wait_time_expression: str) -> None
             raise AssertionError(message) from e
 
     if has_parameter(wait_time_expression):
-        wait_time_expression = resolve_parameters(grizzly, wait_time_expression)
+        wait_time_expression = resolve_parameters(grizzly.scenario, wait_time_expression)
 
     grizzly.scenario.tasks.add(ExplicitWaitTask(time_expression=wait_time_expression))

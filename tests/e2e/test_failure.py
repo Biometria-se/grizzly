@@ -109,12 +109,12 @@ def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
     Background: common configuration
         Given "3" users
         And spawn rate is "3" user per second
+        Given value for variable "var" is "foobar"
         {start_webserver_step}
     Scenario: fails 1
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "2" iterations
         And stop user on failure
-        And value for variable "var" is "foobar"
         Then get request with name "{{{{ get1 }}}}" from endpoint "/api/echo"
         Then get request with name "get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
         Then save response payload "$.hello.world" in variable "var1"
@@ -147,7 +147,7 @@ def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
 
     result = ''.join(output)
 
-    assert "HOOK-ERROR in after_feature: RuntimeError:" in result
+    assert "HOOK-ERROR in after_feature: RuntimeError: failed to prepare locust test" in result
     assert f"""Failure summary:
     Scenario: fails 1
         Then save response payload "$.hello.world" in variable "var1" # features/test_e2e_behave_failure.lock.feature:{(13 + offset)}

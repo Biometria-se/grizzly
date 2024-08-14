@@ -43,7 +43,7 @@ class WriteFileTask(GrizzlyTask):
 
         # check if content is stored in parameters
         if has_parameter(self.content):
-            self.content = resolve_parameters(self.grizzly, self.content)
+            self.content = resolve_parameters(self.grizzly.scenario, self.content)
 
         # always base64 decode, since it could be base64 encoded
         with suppress(Exception):

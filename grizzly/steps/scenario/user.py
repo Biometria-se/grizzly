@@ -19,7 +19,7 @@ def _setup_user(context: Context, user_class_name: str, host: str, *, weight: st
         user_class_name = f'{user_class_name}User'
 
     grizzly.scenario.user.class_name = user_class_name
-    grizzly.scenario.context['host'] = resolve_variable(grizzly, host)
+    grizzly.scenario.context['host'] = resolve_variable(grizzly.scenario, host)
 
     if user_count is not None and weight is not None:
         message = 'cannot combine fixed user count with user weights'
@@ -27,7 +27,7 @@ def _setup_user(context: Context, user_class_name: str, host: str, *, weight: st
 
     # use using weights
     if weight is not None:
-        weight_value = int(round(float(resolve_variable(grizzly, weight)), 0))
+        weight_value = int(round(float(resolve_variable(grizzly.scenario, weight)), 0))
 
         assert weight_value > 0, f'weight value {weight} resolved to {weight_value}, which is not valid'
         grizzly.scenario.user.weight = weight_value
@@ -41,7 +41,7 @@ def _setup_user(context: Context, user_class_name: str, host: str, *, weight: st
         grizzly.setup.dispatcher_class = FixedUsersDispatcher
 
         assert user_count[0] != '$', 'this expression does not support $conf or $env variables'
-        user_count_value = max(int(round(float(resolve_variable(grizzly, user_count)), 0)), 1)
+        user_count_value = max(int(round(float(resolve_variable(grizzly.scenario, user_count)), 0)), 1)
 
         if has_template(user_count):
             grizzly.scenario.orphan_templates.append(user_count)

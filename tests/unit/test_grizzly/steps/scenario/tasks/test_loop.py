@@ -23,6 +23,7 @@ def test_step_task_loop(behave_fixture: BehaveFixture) -> None:
     grizzly = behave_fixture.grizzly
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
+    behave_fixture.create_step('test step', in_background=False, context=behave)
 
     assert getattr(grizzly.scenario.tasks.tmp, 'loop', '') is None
 

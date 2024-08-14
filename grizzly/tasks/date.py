@@ -38,7 +38,7 @@ In addition to this it is also possible to append milliseconds with `:ms` and re
 """  # noqa: E501
 from __future__ import annotations
 
-from datetime import datetime
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 from dateutil.parser import ParserError
@@ -84,7 +84,7 @@ class DateTask(GrizzlyTask):
     def __call__(self) -> grizzlytask:
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
-            value_rendered = parent.render(self.value, {'datetime': datetime})
+            value_rendered = parent.render(self.value)
 
             arguments_rendered: dict[str, str] = {}
 
@@ -138,6 +138,10 @@ class DateTask(GrizzlyTask):
             else:
                 value = date_value.astimezone(timezone).strftime(date_format)
 
-            parent.user._context['variables'][self.variable] = value
+            with suppress(ValueError):
+                if str(int(value)) == value:
+                    value = f'"{value}"'
+
+            parent.user.set_variable(self.variable, value)
 
         return task

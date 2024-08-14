@@ -16,7 +16,7 @@ from grizzly.types import RequestMethod
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
 
-    from tests.fixtures import BehaveFixture, RequestTaskFixture
+    from tests.fixtures import BehaveFixture, GrizzlyFixture, RequestTaskFixture
 
 
 def test__parse_template(request_task: RequestTaskFixture, caplog: LogCaptureFixture) -> None:
@@ -39,7 +39,7 @@ def test__parse_template(request_task: RequestTaskFixture, caplog: LogCaptureFix
     })
 
     request.source = jsondumps(source)
-    scenario = GrizzlyContextScenario(1, behave=request_task.behave_fixture.create_scenario('TestScenario'))
+    scenario = GrizzlyContextScenario(1, behave=request_task.behave_fixture.create_scenario('TestScenario'), grizzly=request_task.behave_fixture.grizzly)
     scenario.tasks.add(request)
 
     templates = {scenario: set(request.get_templates())}
@@ -48,7 +48,7 @@ def test__parse_template(request_task: RequestTaskFixture, caplog: LogCaptureFix
         actual_variables = _parse_templates(templates)
 
         expected_variables = {
-            'IteratorScenario_001': {
+            scenario: {
                 'AtomicIntegerIncrementer.messageID',
                 'AtomicIntegerIncrementer.file_number',
                 'AtomicDirectoryContents.test',
@@ -117,7 +117,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
     source['result'] = {'FooBar': '{{ AtomicIntegerIncrementer.file_number | int }}'}
 
     request.source = jsondumps(source)
-    scenario = GrizzlyContextScenario(1, behave=request_task.behave_fixture.create_scenario('TestScenario'))
+    scenario = GrizzlyContextScenario(1, behave=request_task.behave_fixture.create_scenario('TestScenario'), grizzly=request_task.behave_fixture.grizzly)
     scenario.tasks.add(request)
 
     templates = {scenario: set(request.get_templates())}
@@ -126,7 +126,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         actual_variables = _parse_templates(templates)
 
         assert actual_variables == {
-            'IteratorScenario_001': {
+            scenario: {
                 'AtomicIntegerIncrementer.file_number',
             },
         }
@@ -147,7 +147,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         actual_variables = _parse_templates(templates)
 
         assert actual_variables == {
-            'IteratorScenario_001': {
+            scenario: {
                 'AtomicIntegerIncrementer.file_number',
             },
         }
@@ -166,7 +166,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         actual_variables = _parse_templates(templates)
 
         assert actual_variables == {
-            'IteratorScenario_001': {
+            scenario: {
                 'key',
                 'guid',
                 'AtomicDate.date',
@@ -214,7 +214,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         actual_variables = _parse_templates(templates)
 
         expected_variables = {
-            'IteratorScenario_001': {
+            scenario: {
                 'value1',
                 'value2',
                 'value3',
@@ -241,7 +241,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         actual_variables = _parse_templates(templates)
 
         assert actual_variables == {
-            'IteratorScenario_001': {
+            scenario: {
                 'foobar',
                 'world',
             },
@@ -292,7 +292,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         actual_variables = _parse_templates(templates)
 
         expected_variables = {
-            'IteratorScenario_001': {
+            scenario: {
                 'AtomicCsvReader.input.value1',
                 'AtomicCsvReader.input.value2',
                 'id',
@@ -353,9 +353,9 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
     )
 
     grizzly.scenario.orphan_templates.append('{{ foobar }}')
-    grizzly.state.variables.update({
-        'AtomicRandomString.test': 'none',
-        'AtomicRandomString.id': 'none',
+    grizzly.scenario.variables.update({
+        'AtomicRandomString.test': '%s | upper="True"',
+        'AtomicRandomString.id': '%d%d%d',
         'AtomicIntegerIncrementer.test': 2,
         'foo': 'bar',
         'env': 'none',
@@ -366,11 +366,8 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
     with caplog.at_level(logging.WARNING):
         variables = get_template_variables(grizzly)
 
-        expected_scenario_name = grizzly.scenario.class_name
-
-        assert grizzly.scenario.class_name == expected_scenario_name
         assert variables == {
-            expected_scenario_name: {
+            grizzly.scenario: {
                 'AtomicRandomString.test',
                 'AtomicRandomString.id',
                 'AtomicIntegerIncrementer.test',
@@ -381,29 +378,34 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
             },
         }
 
-        del grizzly.state.variables['foo']
-        del grizzly.state.variables['env']
+        del grizzly.scenario.variables['foo']
+        del grizzly.scenario.variables['env']
 
         with pytest.raises(AssertionError, match='variables has been found in templates, but have not been declared:\nenv\nfoo'):
             get_template_variables(grizzly)
 
-        grizzly.state.variables.update({'foo': 'bar', 'bar': 'foo', 'baz': 'zab'})
+        grizzly.scenario.variables.update({'foo': 'bar', 'bar': 'foo', 'baz': 'zab'})
 
         with pytest.raises(AssertionError, match='variables has been declared, but cannot be found in templates:\nbar\nbaz'):
             get_template_variables(grizzly)
 
     assert caplog.messages == []
 
-def test_get_template_variables_expressions(behave_fixture: BehaveFixture, caplog: LogCaptureFixture) -> None:
-    behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+def test_get_template_variables_expressions(grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+    grizzly = grizzly_fixture.grizzly
     grizzly.scenario.tasks.clear()
     grizzly.scenario.orphan_templates.clear()
     grizzly.scenario.tasks().clear()
-    grizzly.state.variables.clear()
 
-    grizzly.state.variables.update({
+    for name in grizzly.scenario.variables:
+        if name not in grizzly.scenario.jinja2._globals:
+            del grizzly.scenario.variables[name]
+
+    bob_csv = (grizzly_fixture.test_context / 'requests' / 'bob.csv')
+    bob_csv.parent.mkdir(exist_ok=True)
+    bob_csv.touch()
+
+    grizzly.scenario.variables.update({
         'foo': 'bar',
         'bar': 'none',
         'quirk': 'none',
@@ -417,21 +419,26 @@ def test_get_template_variables_expressions(behave_fixture: BehaveFixture, caplo
 
     with caplog.at_level(logging.WARNING):
         actual_variables = get_template_variables(grizzly)
-        assert actual_variables == {'IteratorScenario_001': {'AtomicCsvReader.bob.quirk', 'bar', 'foo', 'quirk'}}
+        assert actual_variables == {grizzly.scenario: {'AtomicCsvReader.bob.quirk', 'bar', 'foo', 'quirk'}}
 
     assert caplog.messages == []
 
 
-def test_get_template_variables___doc___example(behave_fixture: BehaveFixture, caplog: LogCaptureFixture) -> None:
-    behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+def test_get_template_variables___doc___example(grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+    grizzly = grizzly_fixture.grizzly
     grizzly.scenario.tasks.clear()
     grizzly.scenario.orphan_templates.clear()
     grizzly.scenario.tasks().clear()
-    grizzly.state.variables.clear()
 
-    grizzly.state.variables.update({
+    for name in grizzly.scenario.variables:
+        if name not in grizzly.scenario.jinja2._globals:
+            del grizzly.scenario.variables[name]
+
+    input_csv = (grizzly_fixture.test_context / 'requests' / 'input.csv')
+    input_csv.parent.mkdir(exist_ok=True)
+    input_csv.touch()
+
+    grizzly.scenario.variables.update({
         'AtomicCsvReader.input': 'input.csv',
         'AtomicIntegerIncrementer.id': '1',
         'foobar': 'True',
@@ -449,6 +456,6 @@ def test_get_template_variables___doc___example(behave_fixture: BehaveFixture, c
 
     with caplog.at_level(logging.WARNING):
         actual_variables = get_template_variables(grizzly)
-        assert actual_variables == {'IteratorScenario_001': {'AtomicCsvReader.input.quirk', 'AtomicCsvReader.input.name', 'AtomicIntegerIncrementer.id', 'foobar'}}
+        assert actual_variables == {grizzly.scenario: {'AtomicCsvReader.input.quirk', 'AtomicCsvReader.input.name', 'AtomicIntegerIncrementer.id', 'foobar'}}
 
     assert caplog.messages == []

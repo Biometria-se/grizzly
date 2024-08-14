@@ -425,16 +425,16 @@ class ServiceBusClientTask(ClientTask):
             'payload': None,
         }
 
-        response = self.request(parent, request)
+        response = self.request(parent, request) or {}
 
         metadata = response.get('metadata', None)
         payload = response.get('payload', None)
 
         if payload is not None and self.payload_variable is not None:
-            parent.user._context['variables'][self.payload_variable] = payload
+            parent.user.set_variable(self.payload_variable, payload)
 
         if metadata is not None and self.metadata_variable is not None:
-            parent.user._context['variables'][self.metadata_variable] = jsondumps(metadata)
+            parent.user.set_variable(self.metadata_variable, jsondumps(metadata))
 
         return metadata, payload
 

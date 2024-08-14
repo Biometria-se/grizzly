@@ -48,7 +48,7 @@ class TestServiceBusUser:
         assert user.zmq_client.type == zmq.REQ
         assert say_hello_spy.call_count == 0
 
-        scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('test'))
+        scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('test'), grizzly=behave_fixture.grizzly)
         scenario.user.class_name = 'ServiceBusUser'
 
         scenario.tasks.add(ExplicitWaitTask(time_expression='1.54'))
@@ -89,7 +89,7 @@ class TestServiceBusUser:
         assert user.zmq_client.type == zmq.REQ
         assert disconnect_spy.call_count == 0
 
-        scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('test'))
+        scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('test'), grizzly=behave_fixture.grizzly)
         scenario.user.class_name = 'ServiceBusUser'
 
         scenario.tasks.add(ExplicitWaitTask(time_expression='1.54'))
@@ -197,7 +197,7 @@ class TestServiceBusUser:
         request_context_spy = mocker.patch.object(user, 'request_context')
 
         task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:test-queue')
-        scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('test'))
+        scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('test'), grizzly=behave_fixture.grizzly)
         scenario.tasks.add(task)
         user._scenario = scenario
 
@@ -244,7 +244,7 @@ class TestServiceBusUser:
         user.hellos = {'sender=queue:test-queue'}
 
         task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:"{{ queue_name }}"')
-        scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('test'))
+        scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('test'), grizzly=behave_fixture.grizzly)
         scenario.tasks.add(task)
         user._scenario = scenario
 

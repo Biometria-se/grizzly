@@ -68,7 +68,7 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='value contained variable "user_count" which has not been declared')]}
     delattr(behave, 'exceptions')
 
-    grizzly.state.variables['user_count'] = 5
+    grizzly.scenario.variables['user_count'] = 5
     step_impl(behave, '{{ user_count }}', grammar='user')
     assert grizzly.setup.user_count == 5
 
@@ -117,7 +117,7 @@ def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
     delattr(behave, 'exceptions')
 
     grizzly.setup.spawn_rate = None
-    grizzly.state.variables['spawn_rate'] = 1
+    grizzly.scenario.variables['spawn_rate'] = 1
     step_impl(behave, '{{ spawn_rate }}', grammar='users')
     assert grizzly.setup.spawn_rate == 1.0
 

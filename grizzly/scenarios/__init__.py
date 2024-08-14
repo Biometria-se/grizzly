@@ -65,10 +65,7 @@ class GrizzlyScenario(SequentialTaskSet):
         if variables is None:
             variables = {}
 
-        if escape_values:
-            render_variables = {**self._escape_values(self.user._context['variables']), **self._escape_values(variables)}
-        else:
-            render_variables = {**self.user._context['variables'], **variables}
+        render_variables = self._escape_values(variables) if escape_values else variables
 
         return self.user._scenario.jinja2.from_string(template).render(**render_variables)
 

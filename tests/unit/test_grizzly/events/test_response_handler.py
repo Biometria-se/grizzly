@@ -95,7 +95,7 @@ class TestResponseHandlerAction:
             }],
         }
 
-        user._context['variables']['count'] = '2'
+        user.set_variable('count', '2')
         handler = TestResponseHandlerAction.Dummy('$.hello[?world="bar"].foo', '.*', '{{ count }}', as_json=True)
         match, _, _ = handler.get_match((TransformerContentType.JSON, response), user)
         assert match == '["1", "2"]'
@@ -170,7 +170,7 @@ class TestValidationHandlerAction:
                 handler((TransformerContentType.JSON, ['STTO_1337', 'STTO_31337', 'STTO_73313']), parent.user)
 
             # 1 match in multiple values (list)
-            parent.user.set_context_variable('format', 'XML')
+            parent.user.set_variable('format', 'XML')
             handler = ValidationHandlerAction(
                 condition=True,
                 expression='$.*..GlossSeeAlso[*]',
@@ -189,7 +189,7 @@ class TestValidationHandlerAction:
                 return value.lower()
 
             # no match in multiple values (list)
-            parent.user.set_context_variable('format', 'yaml')
+            parent.user.set_variable('format', 'yaml')
             handler = ValidationHandlerAction(
                 condition=True,
                 expression='$.*..GlossSeeAlso[*]',
@@ -197,8 +197,8 @@ class TestValidationHandlerAction:
             )
             handler((TransformerContentType.JSON, JSON_EXAMPLE), parent.user)
 
-            parent.user.set_context_variable('property', 'TITLE')
-            parent.user.set_context_variable('regexp', '.*ary$')
+            parent.user.set_variable('property', 'TITLE')
+            parent.user.set_variable('regexp', '.*ary$')
             handler = ValidationHandlerAction(
                 condition=True,
                 expression='$.glossary.{{ property | lowercase }}',
@@ -229,7 +229,7 @@ class TestValidationHandlerAction:
                 with suppress(KeyError):
                     del FILTERS[filter_name]
 
-            assert parent.user._context['variables'] is not parent.user.__class__(grizzly_fixture.behave.locust.environment)._context['variables']
+            assert parent.user._context is not parent.user.__class__(grizzly_fixture.behave.locust.environment)._context
 
     def test___call___false(self, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture()
@@ -244,8 +244,8 @@ class TestValidationHandlerAction:
             handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), parent.user)
 
         # regexp match expression value
-        parent.user.set_context_variable('expression', '$.test.value')
-        parent.user.set_context_variable('value', 'test')
+        parent.user.set_variable('expression', '$.test.value')
+        parent.user.set_variable('value', 'test')
         handler = ValidationHandlerAction(
             condition=False,
             expression='{{ expression }}',
@@ -345,7 +345,7 @@ class TestSaveHandlerAction:
     def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture()
 
-        assert 'test' not in parent.user.context_variables
+        assert 'test' not in parent.user._scenario.variables
 
         handler = SaveHandlerAction('test', expression='.*', match_with='.*')
         with pytest.raises(TypeError, match='could not find a transformer for UNDEFINED'):
@@ -357,28 +357,28 @@ class TestSaveHandlerAction:
         handler = SaveHandlerAction('test', expression='$.test.value', match_with='.*')
 
         handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), parent.user)
-        assert parent.user.context_variables.get('test', None) == 'test'
-        del parent.user.context_variables['test']
+        assert parent.user._scenario.variables.get('test', None) == 'test'
+        del parent.user._scenario.variables['test']
 
         handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), parent.user)
-        assert parent.user.context_variables.get('test', None) == 'nottest'
-        del parent.user.context_variables['test']
+        assert parent.user._scenario.variables.get('test', None) == 'nottest'
+        del parent.user._scenario.variables['test']
 
-        parent.user.set_context_variable('value', 'test')
+        parent.user.set_variable('value', 'test')
         handler = SaveHandlerAction('test', expression='$.test.value', match_with='.*({{ value }})$')
 
         handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), parent.user)
-        assert parent.user.context_variables.get('test', None) == 'test'
-        del parent.user.context_variables['test']
+        assert parent.user._scenario.variables.get('test', None) == 'test'
+        del parent.user._scenario.variables['test']
 
         handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), parent.user)
-        assert parent.user.context_variables.get('test', None) == 'test'
-        del parent.user.context_variables['test']
+        assert parent.user._scenario.variables.get('test', None) == 'test'
+        del parent.user._scenario.variables['test']
 
         # failed
         with pytest.raises(ResponseHandlerError, match='did not match value'):
             handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), parent.user)
-        assert parent.user.context_variables.get('test', 'test') is None
+        assert parent.user._scenario.variables.get('test', 'test') is None
 
 
         for failure_exception in [None, StopUser, RestartScenario]:
@@ -391,7 +391,7 @@ class TestSaveHandlerAction:
         handler = SaveHandlerAction('test', expression='$.test[*].value', match_with='.*t.*')
         with pytest.raises(ResponseHandlerError, match='did not match value'):
             handler((TransformerContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), parent.user)
-        assert parent.user._context['variables']['test'] is None
+        assert parent.user._scenario.variables.get('test', None) is None
 
         # save object dict
         handler = SaveHandlerAction(
@@ -429,7 +429,7 @@ class TestSaveHandlerAction:
             parent.user,
         )
 
-        test_object = parent.user.context_variables.get('test_object', None)
+        test_object = parent.user._scenario.variables.get('test_object', None)
         assert jsonloads(test_object) == {
             'prop21': False,
             'prop22': 100,
@@ -477,7 +477,7 @@ class TestSaveHandlerAction:
             parent.user,
         )
 
-        test_list = parent.user.context_variables.get('test_list', None)
+        test_list = parent.user._scenario.variables.get('test_list', None)
         assert jsonloads(test_list) == [
             'prop41',
             True,
@@ -485,7 +485,7 @@ class TestSaveHandlerAction:
             300,
         ]
 
-        parent.user._context['variables']['count'] = '-1'
+        parent.user.set_variable('count', '-1')
 
         handler = SaveHandlerAction(
             'test_list',
@@ -510,7 +510,7 @@ class TestSaveHandlerAction:
             parent.user,
         )
 
-        test_list = parent.user.context_variables.get('test_list', None)
+        test_list = parent.user._scenario.variables.get('test_list', None)
         assert jsonloads(test_list) == [
             'prop41',
         ]
@@ -534,7 +534,7 @@ class TestSaveHandlerAction:
             parent.user,
         )
 
-        test_list = parent.user.context_variables.get('test_list', None)
+        test_list = parent.user._scenario.variables.get('test_list', None)
         assert jsonloads(test_list) == [
             'prop41',
             'prop42',

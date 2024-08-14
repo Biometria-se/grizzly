@@ -41,10 +41,10 @@ def step_task_wait_between_random(context: Context, min_time: str, max_time: str
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     if has_parameter(min_time):
-        min_time = resolve_parameters(grizzly, min_time)
+        min_time = resolve_parameters(grizzly.scenario, min_time)
 
     if has_parameter(max_time):
-        max_time = resolve_parameters(grizzly, max_time)
+        max_time = resolve_parameters(grizzly.scenario, max_time)
 
     grizzly.scenario.tasks.add(WaitBetweenTask(min_time=min_time, max_time=max_time))
 
@@ -78,6 +78,6 @@ def step_task_wait_between_constant(context: Context, time: str) -> None:
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     if has_parameter(time):
-        time = resolve_parameters(grizzly, time)
+        time = resolve_parameters(grizzly.scenario, time)
 
     grizzly.scenario.tasks.add(WaitBetweenTask(time))

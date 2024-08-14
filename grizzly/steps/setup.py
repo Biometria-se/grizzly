@@ -11,10 +11,10 @@ from grizzly.context import GrizzlyContext
 from grizzly.locust import on_worker
 from grizzly.tasks import SetVariableTask
 from grizzly.testdata import GrizzlyVariables
-from grizzly.testdata.utils import resolve_variable
+from grizzly.testdata.utils import create_context_variable, resolve_variable
 from grizzly.types import VariableType
 from grizzly.types.behave import Context, Feature, given, then
-from grizzly.utils import has_template
+from grizzly.utils import has_template, merge_dicts
 
 
 @then('ask for value of variable "{name}"')
@@ -43,10 +43,16 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
 
     value = environ.get(f'TESTDATA_VARIABLE_{name}', None)
     assert value is not None, f'variable "{name}" does not have a value'
-    assert name not in grizzly.state.variables, f'variable "{name}" has already been set'
+    assert name not in grizzly.scenario.variables, f'variable "{name}" has already been set'
 
     try:
-        grizzly.state.variables[name] = value
+        if not context.step.in_background:
+            resolved_value = resolve_variable(grizzly.scenario, value, guess_datatype=True)
+            grizzly.scenario.variables.update({name: resolved_value})
+        else:
+            for scenario in grizzly.scenarios:
+                resolved_value = resolve_variable(scenario, value, guess_datatype=True)
+                scenario.variables.update({name: resolved_value})
     except ValueError as e:
         raise AssertionError(e) from e
 
@@ -112,21 +118,26 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
     try:
         # if the scenario doesn't have any tasks, we'll assume that the scenario is trying to initialize a new variable
         # but, we want to allow initializing new variables after tasks in an scenario as well
-        if len(grizzly.scenario.tasks) < 1 or partial_name not in grizzly.state.variables:
-            # so make sure it hasn't already been initialized
-            assert partial_name not in grizzly.state.variables, f'variable {partial_name} has already been initialized'
+        if len(grizzly.scenario.tasks) < 1 or partial_name not in grizzly.scenario.variables:
+            # make sure it hasn't already been initialized
+            assert partial_name not in grizzly.scenario.variables, f'variable {partial_name} has already been initialized'
 
             # data type will be guessed when setting the variable
             if name not in grizzly.state.persistent:
-                resolved_value = resolve_variable(grizzly, value, guess_datatype=False)
-                if has_template(value):
+                resolved_value = resolve_variable(grizzly.scenario, value, guess_datatype=False)
+                if isinstance(value, str) and has_template(value):
                     grizzly.scenario.orphan_templates.append(value)
             else:
                 resolved_value = grizzly.state.persistent[name]
 
-            grizzly.state.variables[name] = resolved_value
+            if not context.step.in_background:
+                grizzly.scenario.variables.update({name: resolved_value})
+            else:
+                for scenario in grizzly.scenarios:
+                    scenario.variables.update({name: resolved_value})
         else:
-            assert partial_name in grizzly.state.variables, f'variable {partial_name} has not been initialized'
+            assert not context.step.in_background, 'cannot add runtime variables in `Background`-section'
+            assert partial_name in grizzly.scenario.variables, f'variable {partial_name} has not been initialized'
             grizzly.scenario.tasks.add(SetVariableTask(name, value, VariableType.VARIABLES))
     except Exception as e:
         if not isinstance(e, AssertionError):
@@ -188,3 +199,50 @@ def step_setup_execute_python_script_inline(context: Context) -> None:
 
     """
     _execute_python_script(context, context.text)
+
+
+@given('set context variable "{variable}" to "{value}"')
+def step_setup_set_context_variable(context: Context, variable: str, value: str) -> None:
+    """Set a context variable.
+
+    If used in the `Background`-section the context variable will be used in all scenarios and their respective user. If used in a `Scenario` section
+    it will only be set for that user.
+
+    If this step is before any step that adds a task in the scenario, it will be added to the context which the user is initialized with at start.
+    If it is after any tasks, it will be added as a task which will change the context variable value during runtime.
+
+    Variable names can contain (one or more) dot (`.`) or slash (`/`) to indicate that the variable has a nested structure. E.g. `token.url`
+    and `token/url` results in `{'token': {'url': '<value'>}}`
+
+    It is also possible to have spaces in a variable names, they will then be replaced with underscore (`_`), and the name will be
+    converted to lowercase.
+
+    E.g. `Client ID` results in `client_id`.
+
+    Example:
+    ```gherkin
+    And set context variable "token.url" to "https://example.com/api/auth"
+    And set context variable "token/client_id" to "aaaa-bbbb-cccc-dddd"
+    And set context variable "token/client secret" to "aasdfasdfasdf=="
+    And set context variable "token.resource" to "0000-aaaaaaa-1111-1111-1111"
+    And set context variable "log_all_requests" to "True"
+    And set context variable "validate_certificates" to "False"
+    ```
+
+    Args:
+        variable (str): name, can contain `.` and `/`
+        value (str): value, data type will be guessed and casted
+
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    if len(grizzly.scenario.tasks) < 1:
+        context_variable = create_context_variable(grizzly.scenario, variable, value)
+
+        if not context.step.in_background:
+            grizzly.scenario.context = merge_dicts(grizzly.scenario.context, context_variable)
+        else:
+            grizzly.setup.global_context = merge_dicts(grizzly.setup.global_context, context_variable)
+    else:
+        assert not context.step.in_background, 'cannot create a context task while in background section'
+        grizzly.scenario.tasks.add(SetVariableTask(variable, value, VariableType.CONTEXT))

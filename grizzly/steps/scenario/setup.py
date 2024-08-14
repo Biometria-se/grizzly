@@ -10,12 +10,11 @@ import parse
 from grizzly.auth import GrizzlyHttpAuthClient
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
-from grizzly.tasks import GrizzlyTask, RequestTask, SetVariableTask
-from grizzly.testdata.utils import create_context_variable, resolve_variable
-from grizzly.types import VariableType
+from grizzly.tasks import GrizzlyTask, RequestTask
+from grizzly.testdata.utils import resolve_variable
 from grizzly.types.behave import Context, given, register_type, then
 from grizzly.types.locust import StopUser
-from grizzly.utils import has_template, merge_dicts
+from grizzly.utils import has_template
 from grizzly_extras.text import permutation
 
 
@@ -28,46 +27,6 @@ def parse_iteration_gramatical_number(text: str) -> str:
 register_type(
     IterationGramaticalNumber=parse_iteration_gramatical_number,
 )
-
-
-@given('set context variable "{variable}" to "{value}"')
-def step_setup_set_context_variable(context: Context, variable: str, value: str) -> None:
-    """Set a variable in the scenario and user context.
-
-    If this step is before any step that adds a task in the scenario, it will be added to the context which the user is initialized with at start.
-    If it is after any tasks, it will be added as a task which will change the context variable value during runtime.
-
-    Variable names can contain (one or more) dot (`.`) or slash (`/`) to indicate that the variable has a nested structure. E.g. `token.url`
-    and `token/url` results in `{'token': {'url': '<value'>}}`
-
-    It is also possible to have spaces in a variable names, they will then be replaced with underscore (`_`), and the name will be
-    converted to lowercase.
-
-    E.g. `Client ID` results in `client_id`.
-
-    Example:
-    ```gherkin
-    And set context variable "token.url" to "https://example.com/api/auth"
-    And set context variable "token/client_id" to "aaaa-bbbb-cccc-dddd"
-    And set context variable "token/client secret" to "aasdfasdfasdf=="
-    And set context variable "token.resource" to "0000-aaaaaaa-1111-1111-1111"
-    And set context variable "log_all_requests" to "True"
-    And set context variable "validate_certificates" to "False"
-    ```
-
-    Args:
-        variable (str): name, can contain `.` and `/`
-        value (str): value, data type will be guessed and casted
-
-    """
-    grizzly = cast(GrizzlyContext, context.grizzly)
-
-    if len(grizzly.scenario.tasks) < 1:
-        context_variable = create_context_variable(grizzly, variable, value)
-
-        grizzly.scenario.context = merge_dicts(grizzly.scenario.context, context_variable)
-    else:
-        grizzly.scenario.tasks.add(SetVariableTask(variable, value, VariableType.CONTEXT))
 
 
 @given('repeat for "{value}" {iteration_number:IterationGramaticalNumber}')
@@ -91,7 +50,7 @@ def step_setup_iterations(context: Context, value: str, *_args: Any, **_kwargs: 
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     should_resolve = has_template(value) or value[0] == '$'
-    iterations = max(int(round(float(resolve_variable(grizzly, value)), 0)), 0)
+    iterations = max(int(round(float(resolve_variable(grizzly.scenario, value)), 0)), 0)
 
     if has_template(value):
         grizzly.scenario.orphan_templates.append(value)
@@ -157,7 +116,7 @@ def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -
 
     base_variable = '.'.join(variable.split('.')[:2]) if variable.count('.') > 1 else variable
 
-    assert base_variable in grizzly.state.variables, f'variable {base_variable} has not been declared'
+    assert base_variable in grizzly.scenario.variables, f'variable {base_variable} has not been declared'
     assert variable not in grizzly.state.alias, f'alias for variable {variable} already exists: {grizzly.state.alias[variable]}'
 
     grizzly.state.alias[variable] = alias
@@ -242,7 +201,7 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
 
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
-    casted_value = resolve_variable(grizzly, value)
+    casted_value = resolve_variable(grizzly.scenario, value)
 
     previous_task: Optional[GrizzlyTask] = None
     tasks = grizzly.scenario.tasks()

@@ -240,7 +240,7 @@ def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: 
     async_message_request_mock.reset_mock()
 
     # template to render, variable set
-    parent.user._context['variables'].update({'world': 'foobar'})
+    parent.user.set_variable('world', 'foobar')
 
     async_message_request_wrapper(parent, client_mock, request)
 

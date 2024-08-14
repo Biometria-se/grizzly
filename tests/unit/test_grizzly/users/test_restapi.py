@@ -13,7 +13,6 @@ from locust.contrib.fasthttp import FastHttpSession, LocustUserAgent, insecure_s
 from locust.exception import ResponseError
 
 from grizzly.auth.aad import AAD
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.types import GrizzlyResponse, RequestMethod
@@ -39,7 +38,6 @@ class TestRestApiUser:
         assert parent.user.host == 'http://example.net'
         assert parent.user._context == {
             'host': 'http://example.net',
-            'variables': {},
             'log_all_requests': False,
             'verify_certificates': True,
             'auth': {
@@ -281,7 +279,7 @@ class TestRestApiUser:
         request.async_request = is_async_request
 
         remote_variables = {
-            'variables': transform(GrizzlyContext(), {
+            'variables': transform(grizzly_fixture.grizzly.scenario, {
                 'AtomicIntegerIncrementer.messageID': 1,
                 'AtomicDate.now': '',
                 'messageID': 137,

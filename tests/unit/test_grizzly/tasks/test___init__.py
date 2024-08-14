@@ -160,15 +160,16 @@ class TestGrizzlyTask:
 
         grizzly = grizzly_fixture.grizzly
 
-        scenario_context = GrizzlyContextScenario(3, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+        scenario_context = GrizzlyContextScenario(3, behave=grizzly_fixture.behave.create_scenario('test scenario'), grizzly=grizzly)
         grizzly.scenarios.clear()
         grizzly.scenarios.append(scenario_context)
+        grizzly.scenarios.deselect()
+        parent.user._scenario = scenario_context
 
-        grizzly.state.variables['endpoint_suffix'] = parent.user._context['variables']['endpoint_suffix'] = 'none'
+        parent.user.set_variable('endpoint_suffix', 'none')
 
         # conditional -> loop -> request
         conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}')
-
         conditional_factory.switch(pointer=True)
 
         loop_factory = LoopTask('loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix')

@@ -32,7 +32,7 @@ def test_step_task_wait_explicit(behave_fixture: BehaveFixture) -> None:
     assert isinstance(task, ExplicitWaitTask)
     assert task.time_expression == '1.337'
 
-    grizzly.state.variables['wait_time'] = '126'
+    grizzly.scenario.variables['wait_time'] = '126'
 
     step_task_wait_explicit(behave, '{{ wait_time }}')
 

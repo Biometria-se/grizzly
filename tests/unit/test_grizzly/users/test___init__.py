@@ -5,22 +5,20 @@ import logging
 from contextlib import suppress
 from json import loads as jsonloads
 from os import environ
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import pytest
 from jinja2.filters import FILTERS
 
-from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import templatingfilter
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.types.locust import StopUser
 from grizzly.users import GrizzlyUser
-from tests.helpers import ANY, rm_rf
+from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
-    from _pytest.tmpdir import TempPathFactory
     from pytest_mock import MockerFixture
 
     from tests.fixtures import BehaveFixture, GrizzlyFixture
@@ -66,7 +64,7 @@ class TestGrizzlyUser:
             assert request.arguments is None
             assert request.metadata == {}
 
-            user.set_context_variable('name', 'alice')
+            user.set_variable('name', 'alice')
             request = user.render(template)
             assert request.name == '001 test'
             assert request.endpoint == '/api/test'
@@ -75,7 +73,7 @@ class TestGrizzlyUser:
             assert request.metadata == {}
 
             template.endpoint = '/api/test?data={{ querystring | uppercase }}'
-            user.set_context_variable('querystring', 'querystring_data')
+            user.set_variable('querystring', 'querystring_data')
             request = user.render(template)
             assert request.name == '001 test'
             assert request.endpoint == '/api/test?data=QUERYSTRING_DATA'
@@ -106,7 +104,7 @@ class TestGrizzlyUser:
             test_file.write_text('this is a test {{ name }}')
             template.name = '{{ name }}'
             template.source = '{{ blobfile }}'
-            user.set_context_variable('blobfile', str(test_file))
+            user.set_variable('blobfile', str(test_file))
             request = user.render(template)
             assert request.name == '001 alice'
             assert request.endpoint == '/api/test?data=QUERYSTRING_DATA'
@@ -117,12 +115,11 @@ class TestGrizzlyUser:
             with suppress(KeyError):
                 del FILTERS['uppercase']
 
-    @pytest.mark.usefixtures('locust_fixture')
-    def test_render_nested(self, behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> None:
-        test_context = tmp_path_factory.mktemp('render_nested') / 'requests' / 'test'
+    def test_render_nested(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        test_context = grizzly_fixture.test_context / 'requests' / 'test'
         test_context.mkdir(parents=True)
         test_file = test_context / 'payload.j2.json'
-        test_file.touch()
         test_file.write_text("""
         {
             "MeasureResult": {
@@ -133,44 +130,34 @@ class TestGrizzlyUser:
         }
         """)
 
-        environ['GRIZZLY_CONTEXT_ROOT'] = str(test_context.parent.parent)
+        grizzly.scenarios.clear()
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test'))
+        DummyGrizzlyUser.__scenario__ = grizzly.scenario
+        user = DummyGrizzlyUser(grizzly_fixture.behave.locust.environment)
+        template = RequestTask(RequestMethod.POST, name='{{ name }}', endpoint='/api/test/{{ value }}')
 
-        grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
+        template.source = '{{ file_path }}'
+        template._template = grizzly.scenario.jinja2.from_string(template.source)
 
-        try:
-            grizzly.scenarios.clear()
-            grizzly._scenarios.append(GrizzlyContextScenario(999, behave=behave_fixture.create_scenario('test')))
-            DummyGrizzlyUser.__scenario__ = grizzly.scenario
-            user = DummyGrizzlyUser(behave_fixture.locust.environment)
-            template = RequestTask(RequestMethod.POST, name='{{ name }}', endpoint='/api/test/{{ value }}')
+        user._scenario.variables.update({
+            'name': 'test-name',
+            'value': 'test-value',
+            'messageID': 1337,
+            'file_path': 'test/payload.j2.json',
+        })
 
-            template.source = '{{ file_path }}'
+        request = user.render(template)
 
-            user.add_context({
-                'variables': {
-                    'name': 'test-name',
-                    'value': 'test-value',
-                    'messageID': 1337,
-                    'file_path': 'test/payload.j2.json',
-                },
-            })
+        assert request.name == '001 test-name'
+        assert request.endpoint == '/api/test/test-value'
+        assert request.source is not None
+        assert request.arguments is None
+        assert request.metadata == {}
 
-            request = user.render(template)
-
-            assert request.name == '999 test-name'
-            assert request.endpoint == '/api/test/test-value'
-            assert request.source is not None
-            assert request.arguments is None
-            assert request.metadata == {}
-
-            data = jsonloads(request.source)
-            assert data['MeasureResult']['ID'] == user.context_variables['messageID']
-            assert data['MeasureResult']['name'] == user.context_variables['name']
-            assert data['MeasureResult']['value'] == user.context_variables['value']
-        finally:
-            rm_rf(test_context.parent.parent)
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
+        data = jsonloads(request.source)
+        assert data['MeasureResult']['ID'] == user._scenario.variables['messageID']
+        assert data['MeasureResult']['name'] == user._scenario.variables['name']
+        assert data['MeasureResult']['value'] == user._scenario.variables['value']
 
     def test_request(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(user_type=DummyGrizzlyUser)
@@ -186,7 +173,7 @@ class TestGrizzlyUser:
             name='001 test',
             response_time=ANY(int),
             response_length=0,
-            context={'host': '', 'variables': {}, 'log_all_requests': False, 'metadata': None},
+            context={'host': '', 'log_all_requests': False, 'metadata': None},
             exception=ANY(NotImplementedError, message='tests.unit.test_grizzly.users.test___init__.DummyGrizzlyUser_001 has not implemented request'),
         )
 
@@ -198,10 +185,10 @@ class TestGrizzlyUser:
         context = user.context()
 
         assert isinstance(context, dict)
-        assert context == {'variables': {}, 'log_all_requests': False, 'metadata': None}
+        assert context == {'log_all_requests': False, 'metadata': None}
 
-        user.set_context_variable('test', 'value')
-        assert user.context_variables == {'test': 'value'}
+        user.set_variable('test', 'value')
+        assert user._scenario.variables == SOME(dict, {'test': 'value'})
 
     def test_stop(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(user_type=DummyGrizzlyUser)

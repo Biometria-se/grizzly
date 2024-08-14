@@ -39,7 +39,7 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
 
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
-    assert variable in grizzly.state.variables, f'variable {variable} has not been initialized'
+    assert variable in grizzly.scenario.variables, f'variable {variable} has not been initialized'
 
     grizzly.scenario.tasks.add(DateTask(
         value=value,

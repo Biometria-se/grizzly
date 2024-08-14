@@ -43,7 +43,7 @@ def test_step_task_client_get_endpoint_payload_metadata(behave_fixture: BehaveFi
         assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='MessageQueueClientTask: variable test has not been initialized')]}
         delattr(behave, 'exceptions')
 
-    grizzly.state.variables['test'] = 'none'
+    grizzly.scenario.variables['test'] = 'none'
 
     step_task_client_get_endpoint_payload_metadata(behave, 'http://www.example.org', 'step-name', 'test', 'metadata')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='HttpClientTask: variable metadata has not been initialized')]}
@@ -54,13 +54,13 @@ def test_step_task_client_get_endpoint_payload_metadata(behave_fixture: BehaveFi
         assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='MessageQueueClientTask: variable metadata has not been initialized')]}
         delattr(behave, 'exceptions')
 
-    grizzly.state.variables['metadata'] = 'none'
+    grizzly.scenario.variables['metadata'] = 'none'
 
     assert len(grizzly.scenario.tasks()) == 0
     step_task_client_get_endpoint_payload_metadata(behave, 'http://www.example.org', 'step-name', 'test', 'metadata')
     assert len(grizzly.scenario.tasks()) == 1
 
-    grizzly.state.variables['endpoint_url'] = 'https://example.org'
+    grizzly.scenario.variables['endpoint_url'] = 'https://example.org'
     step_task_client_get_endpoint_payload_metadata(behave, 'https://{{ endpoint_url }}', 'step-name', 'test', 'metadata')
 
     task = grizzly.scenario.tasks()[-1]
@@ -98,13 +98,13 @@ def test_step_task_client_get_endpoint_payload(behave_fixture: BehaveFixture) ->
         assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='MessageQueueClientTask: variable test has not been initialized')]}
         delattr(behave, 'exceptions')
 
-    grizzly.state.variables['test'] = 'none'
+    grizzly.scenario.variables['test'] = 'none'
 
     assert len(grizzly.scenario.tasks()) == 0
     step_task_client_get_endpoint_payload(behave, 'http://www.example.org', 'step-name', 'test')
     assert len(grizzly.scenario.tasks()) == 1
 
-    grizzly.state.variables['endpoint_url'] = 'https://example.org'
+    grizzly.scenario.variables['endpoint_url'] = 'https://example.org'
     step_task_client_get_endpoint_payload(behave, 'https://{{ endpoint_url }}', 'step-name', 'test')
 
     task = grizzly.scenario.tasks()[-1]

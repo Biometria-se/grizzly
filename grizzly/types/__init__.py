@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from enum import Enum, auto
 from typing import Any, Callable, Optional, TypeVar, Union, cast
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from locust.rpc.protocol import Message
 from typing_extensions import Concatenate, ParamSpec
@@ -17,11 +18,6 @@ try:
     from typing import Self
 except ImportError:
     from typing_extensions import Self
-
-try:
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-except ImportError:
-    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pyright: ignore[reportMissingImports]
 
 try:
     import pymqi
@@ -236,7 +232,7 @@ TestdataType = dict[str, dict[str, Any]]
 
 HandlerContextType = Union[dict[str, Any], Optional[Any]]
 
-GrizzlyVariableType = Union[str, float, int, bool]
+GrizzlyVariableType = Union[str, float, int, bool] # , dict, list]
 
 MessageCallback = Callable[Concatenate[Environment, Message, P], None]
 

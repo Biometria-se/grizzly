@@ -58,7 +58,7 @@ def iot_hub_parent(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> Gr
 
     request = grizzly_fixture.request_task.request
 
-    scenario = GrizzlyContextScenario(99, behave=grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
+    scenario = GrizzlyContextScenario(99, behave=grizzly_fixture.behave.create_scenario(parent.__class__.__name__), grizzly=grizzly_fixture.grizzly)
     scenario.user.class_name = 'IotHubUser'
     scenario.context['host'] = 'test'
 
@@ -123,7 +123,7 @@ class TestIotHubUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly, {
+            'variables': transform(grizzly.scenario, {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,
@@ -226,7 +226,7 @@ class TestIotHubUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly, {
+            'variables': transform(grizzly.scenario, {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,
@@ -250,8 +250,11 @@ class TestIotHubUser:
         gzip_compress.assert_called_once()
         upload_blob.assert_called_once_with(
             'this_is_compressed',
-            content_settings=SOME(ContentSettings, content_type='application/octet-stream; charset=utf-8',
-                                  content_encoding='gzip'),
+            content_settings=SOME(
+                ContentSettings,
+                content_type='application/octet-stream; charset=utf-8',
+                content_encoding='gzip',
+            ),
         )
 
         notify_blob_upload_status.assert_called_once_with(
@@ -269,7 +272,7 @@ class TestIotHubUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly, {
+            'variables': transform(grizzly.scenario, {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,
@@ -309,7 +312,7 @@ class TestIotHubUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly, {
+            'variables': transform(grizzly.scenario, {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,

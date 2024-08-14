@@ -5,6 +5,7 @@ from hashlib import sha1
 from typing import TYPE_CHECKING
 
 from grizzly.tasks import LogMessageTask, TimerTask
+from tests.helpers import SOME
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
@@ -40,13 +41,13 @@ class TestTimerTask:
         parent.tasks += [dummy_task] * 7
 
         request_fire_spy.assert_not_called()
-        assert parent.user._context['variables'] == {}
+        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
 
         parent._task_index = 1
         task(parent)
 
         request_fire_spy.assert_not_called()
-        assert parent.user._context['variables'].get(f'{expected_variable_prefix}::test-timer-1', None) == {
+        assert parent.user._scenario.variables.get(f'{expected_variable_prefix}::test-timer-1', None) == {
             'start': 2.0,
             'task-index': 1,
         }
@@ -54,7 +55,7 @@ class TestTimerTask:
         parent._task_index = 9
         task(parent)
 
-        assert parent.user._context['variables'] == {}
+        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
 
         request_fire_spy.assert_called_once_with(
             request_type='TIMR',
@@ -80,24 +81,24 @@ class TestTimerTask:
         parent.tasks += [task_2, task_1]
 
         request_fire_spy.assert_not_called()
-        assert parent.user._context['variables'] == {}
+        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
 
         parent._task_index = 1
         task_1(parent)
 
         request_fire_spy.assert_not_called()
-        assert parent.user._context['variables'] == {
+        assert parent.user._scenario.variables == SOME(dict, {
             f'{expected_variable_prefix_1}::test-timer-1': {
                 'start': 2.0,
                 'task-index': 1,
             },
-        }
+        })
 
         parent._task_index = 3
         task_2(parent)
 
         request_fire_spy.assert_not_called()
-        assert parent.user._context['variables'] == {
+        assert parent.user._scenario.variables == SOME(dict, {
             f'{expected_variable_prefix_1}::test-timer-1': {
                 'start': 2.0,
                 'task-index': 1,
@@ -106,7 +107,7 @@ class TestTimerTask:
                 'start': 3.0,
                 'task-index': 3,
             },
-        }
+        })
 
         parent._task_index = 10
         task_2(parent)
@@ -120,12 +121,12 @@ class TestTimerTask:
             exception=None,
         )
         request_fire_spy.reset_mock()
-        assert parent.user._context['variables'] == {
+        assert parent.user._scenario.variables == SOME(dict, {
             f'{expected_variable_prefix_1}::test-timer-1': {
                 'start': 2.0,
                 'task-index': 1,
             },
-        }
+        })
 
         parent._task_index = 11
         task_1(parent)
@@ -138,4 +139,4 @@ class TestTimerTask:
             context=parent.user._context,
             exception=None,
         )
-        assert parent.user._context['variables'] == {}
+        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals

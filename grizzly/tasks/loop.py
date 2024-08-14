@@ -54,7 +54,7 @@ class LoopTask(GrizzlyTaskWrapper):
 
         self.tasks = []
 
-        assert self.variable in self.grizzly.state.variables, f'{self.__class__.__name__}: {self.variable} has not been initialized'
+        assert self.variable in self.grizzly.scenario.variables, f'{self.__class__.__name__}: {self.variable} has not been initialized'
 
     def add(self, task: GrizzlyTask) -> None:
         task_name = getattr(task, 'name', None)
@@ -70,7 +70,7 @@ class LoopTask(GrizzlyTaskWrapper):
 
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
-            orig_value = parent.user._context['variables'].get(self.variable, None)
+            orig_value = parent.user._scenario.variables.get(self.variable, None)
             start = perf_counter()
             exception: Optional[Exception] = None
             task_count = len(self.tasks)
@@ -86,13 +86,13 @@ class LoopTask(GrizzlyTaskWrapper):
                 response_length = len(values)
 
                 for value in values:
-                    parent.user._context['variables'].update({self.variable: value})
+                    parent.user.set_variable(self.variable, value)
 
                     for task in tasks:
                         task(parent)
                         gsleep(parent.user.wait_time())
 
-                    parent.user._context['variables'].update({self.variable: orig_value})
+                    parent.user.set_variable(self.variable, orig_value)
             except Exception as e:
                 exception = e
             finally:

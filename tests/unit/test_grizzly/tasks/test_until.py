@@ -162,8 +162,7 @@ class TestUntilRequestTask:
         fire_spy.reset_mock()
 
         # -->
-        parent.grizzly.state.variables['wait'] = 100.0
-        parent.grizzly.state.variables['retries'] = 10
+        parent.grizzly.scenario.variables.update({'wait': 100.0, 'retries': 10})
         task_factory = UntilRequestTask(meta_request_task, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'")
         task = task_factory()
 

@@ -34,7 +34,7 @@ def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
     )
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='TransformerTask: document_id has not been initialized')]}
 
-    grizzly.state.variables['document_id'] = 'None'
+    grizzly.scenario.variables['document_id'] = 'None'
     step_task_transform(
         behave,
         jsondumps({
@@ -100,7 +100,7 @@ def test_step_task_transform_xml(behave_fixture: BehaveFixture) -> None:
     )
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='TransformerTask: document_id has not been initialized')]}
 
-    grizzly.state.variables['document_id'] = 'None'
+    grizzly.scenario.variables['document_id'] = 'None'
     step_task_transform(
         behave,
         """<?xml version="1.0" encoding="utf-8"?>

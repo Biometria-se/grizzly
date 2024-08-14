@@ -89,10 +89,10 @@ class TestdataConsumer:
 
         variables: Optional[dict[str, Any]] = None
         if 'variables' in data:
-            variables = transform(self.scenario.grizzly, data['variables'], objectify=True, scenario=self.scenario.user._scenario)
+            variables = transform(self.scenario.user._scenario, data['variables'], objectify=True)
             del data['variables']
 
-        data = transform(self.scenario.grizzly, data, objectify=False, scenario=self.scenario.user._scenario)
+        data = transform(self.scenario.user._scenario, data, objectify=False)
 
         if variables is not None:
             data['variables'] = variables

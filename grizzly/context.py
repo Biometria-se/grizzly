@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
@@ -11,10 +12,9 @@ import yaml
 from jinja2 import Environment, FileSystemLoader
 from jinja2.filters import FILTERS
 
+from grizzly.testdata import GrizzlyVariables
 from grizzly.types import MessageCallback, MessageDirection
 from grizzly.utils import MergeYamlTag, flatten, merge_dicts
-
-from .testdata import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
     from locust.dispatch import UsersDispatcher
@@ -87,8 +87,8 @@ class GrizzlyContext:
     def __init__(self) -> None:
         if not self._initialized:
             self._setup = GrizzlyContextSetup()
-            self._scenarios = GrizzlyContextScenarios()
-            self._state = GrizzlyContextState(self._scenarios)
+            self._scenarios = GrizzlyContextScenarios(self)
+            self._state = GrizzlyContextState()
             self._initialized = True
 
     @property
@@ -106,34 +106,42 @@ class GrizzlyContext:
             message = 'no scenarios created!'
             raise ValueError(message)
 
-        return self._scenarios[-1]
+        return self._scenarios[self._scenarios._active]
 
     @property
     def scenarios(self) -> GrizzlyContextScenarios:
         return self._scenarios
 
 
-def jinja2_environment_factory() -> Environment:
+class GrizzlyJinja2Environment(Environment):
+    _globals: dict[str, Any]
+    globals: GrizzlyVariables
+
+
+def jinja2_environment_factory() -> GrizzlyJinja2Environment:
     """Create a Jinja2 environment, so same instance is used throughout each grizzly scenario, with custom filters."""
-    return Environment(autoescape=False, loader=FileSystemLoader(Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'requests'))
+    environment = Environment(autoescape=False, loader=FileSystemLoader(Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'requests'))
+
+    # grizzly default globals
+    environment.globals.update({'datetime': datetime})
+
+    # default defined globals/variables
+    environment.extend(_globals={**environment.globals})
+
+    environment.globals = GrizzlyVariables(**environment.globals)
+
+    return cast(GrizzlyJinja2Environment, environment)
 
 
 @dataclass
 class GrizzlyContextState:
-    _scenarios: GrizzlyContextScenarios = field(init=True)
     spawning_complete: bool = field(default=False)
-    background_section_done: bool = field(default=False)
-    variables: GrizzlyVariables = field(init=False)
+    background_done: bool = field(default=False)
     configuration: dict[str, Any] = field(init=False, default_factory=load_configuration_file)
     alias: dict[str, str] = field(init=False, default_factory=dict)
     verbose: bool = field(default=False)
     locust: Union[MasterRunner, WorkerRunner, LocalRunner] = field(init=False, repr=False)
     persistent: dict[str, str] = field(init=False, repr=False, default_factory=dict)
-
-    def __post_init__(self) -> None:
-        """Workaround until grizzly.state.variables has been deprecated."""
-        self.variables = GrizzlyVariables(scenarios=self._scenarios)
-        del self._scenarios
 
 
 @dataclass
@@ -151,7 +159,7 @@ class GrizzlyContextScenarioValidation:
 
 @dataclass(unsafe_hash=True)
 class GrizzlyContextScenarioUser:
-    class_name: str = field(init=False, hash=True)
+    class_name: str = field(init=False, repr=False, hash=True, compare=False)
     weight: int = field(init=False, hash=True, default=1)
     fixed_count: Optional[int] = field(init=False, repr=False, hash=False, compare=False, default=None)
     sticky_tag: Optional[str] = field(init=False, repr=False, hash=False, compare=False, default=None)
@@ -268,16 +276,18 @@ class GrizzlyContextScenario:
     iterations: int = field(init=False, repr=False, hash=False, compare=False, default=1)
     pace: Optional[str] = field(init=False, repr=False, hash=False, compare=False, default=None)
 
+    grizzly: GrizzlyContext = field(init=True, repr=False, hash=False, compare=False)
     behave: Scenario = field(init=True, repr=False, hash=False, compare=False)
+
     context: dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
     _tasks: GrizzlyContextTasks = field(init=False, repr=False, hash=False, compare=False)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
     failure_exception: Optional[type[Exception]] = field(init=False, default=None)
     orphan_templates: list[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
-    _jinja2: Environment = field(init=False, repr=False, default_factory=jinja2_environment_factory)
+    _jinja2: GrizzlyJinja2Environment = field(init=False, repr=False, default_factory=jinja2_environment_factory)
 
     @property
-    def jinja2(self) -> Environment:
+    def jinja2(self) -> GrizzlyJinja2Environment:
         # something might have changed in the filters department
         self._jinja2.filters = FILTERS
 
@@ -288,6 +298,10 @@ class GrizzlyContextScenario:
         self.description = self.behave.name
 
         self._tasks = GrizzlyContextTasks()
+
+    @property
+    def variables(self) -> GrizzlyVariables:
+        return self._jinja2.globals
 
     @property
     def tasks(self) -> GrizzlyContextTasks:
@@ -341,20 +355,28 @@ class GrizzlyContextSetupLocust:
 @dataclass
 class GrizzlyContextSetup:
     log_level: str = field(init=False, default='INFO')
-
     global_context: dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
-
     user_count: Optional[int] = field(init=False, default=None)
     spawn_rate: Optional[float] = field(init=False, default=None)
     timespan: Optional[str] = field(init=False, default=None)
     dispatcher_class: Optional[type[UsersDispatcher]] = field(init=False, default=None)
-
     statistics_url: Optional[str] = field(init=False, default=None)
-
     locust: GrizzlyContextSetupLocust = field(init=False, default_factory=GrizzlyContextSetupLocust)
 
 
 class GrizzlyContextScenarios(list[GrizzlyContextScenario]):
+    grizzly: GrizzlyContext
+    _active: int
+
+    __map__: dict[Scenario, GrizzlyContextScenario]
+
+    def __init__(self, grizzly: GrizzlyContext, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.grizzly = grizzly
+        self._active = -1
+        self.__map__ = {}
+
     def __call__(self) -> list[GrizzlyContextScenario]:
         return cast(list[GrizzlyContextScenario], self)
 
@@ -367,6 +389,17 @@ class GrizzlyContextScenarios(list[GrizzlyContextScenario]):
     def find_by_description(self, description: str) -> Optional[GrizzlyContextScenario]:
         return self._find(description, 'description')
 
+    def select(self, behave: Scenario) -> None:
+        scenario = self.__map__.get(behave, None)
+        if scenario is None:
+            message = f'behave scenario "{scenario}" is not mapped to a grizzly scenario!'
+            raise ValueError(message)
+
+        self._active = self.index(scenario)
+
+    def deselect(self) -> None:
+        self._active = -1
+
     def _find(self, value: str, attribute: str) -> Optional[GrizzlyContextScenario]:
         for item in self:
             if getattr(item, attribute, None) == value:
@@ -374,12 +407,11 @@ class GrizzlyContextScenarios(list[GrizzlyContextScenario]):
 
         return None
 
-    def create(self, behave_scenario: Scenario) -> None:
+    def create(self, behave: Scenario) -> None:
         """Create a new scenario based on the behave Scenario, and add it to the current list of scenarios in this context."""
-        grizzly_scenario = GrizzlyContextScenario(len(self) + 1, behave=behave_scenario)
+        grizzly_scenario = GrizzlyContextScenario(len(self) + 1, behave=behave, grizzly=self.grizzly)
 
-        # inherit jinja2.globals from previous scenario
-        if len(self) > 0:
-            grizzly_scenario.jinja2.globals.update({**self[-1].jinja2.globals})
+        self.__map__.update({behave: grizzly_scenario})
 
         self.append(grizzly_scenario)
+        self.deselect()

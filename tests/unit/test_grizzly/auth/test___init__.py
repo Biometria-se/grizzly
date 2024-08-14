@@ -332,7 +332,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
     rendered_host = 'www.example.net' if has_template(host) else host
 
     grizzly = grizzly_fixture.grizzly
-    grizzly.state.variables.update({'foobar': 'none', 'test_host': f'http://{rendered_host}'})
+    grizzly.scenario.variables.update({'foobar': 'none', 'test_host': f'http://{rendered_host}'})
 
     http_client_task = type('TestHttpClientTask', (HttpClientTask,), {'__scenario__': grizzly.scenario})
 

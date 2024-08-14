@@ -167,10 +167,10 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
                 exception = CatchResponseError(message)
             else:
                 if self.payload_variable is not None:
-                    parent.user._context['variables'][self.payload_variable] = payload
+                    parent.user.set_variable(self.payload_variable, payload)
 
                 if self.metadata_variable is not None:
-                    parent.user._context['variables'][self.metadata_variable] = jsondumps(metadata)
+                    parent.user.set_variable(self.metadata_variable, jsondumps(metadata))
 
             meta.update({
                 'response_length': len(payload.encode()),

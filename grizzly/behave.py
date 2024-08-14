@@ -58,9 +58,14 @@ def before_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: A
 
     context.grizzly = grizzly
     context.start = time()
-    context.started = datetime.now().astimezone()
+    context.started = datetime.now(tz=None)
     context.last_task_count = {}
     context.exceptions = {}
+    context.background_steps = getattr(feature.background, 'steps', None) or []
+
+    # create context for all scenarios right of the bat
+    for scenario in feature.scenarios:
+        grizzly.scenarios.create(scenario)
 
 
 def after_feature_master(return_code: int, status: Optional[Status], context: Context, feature: Feature) -> int:
@@ -176,7 +181,9 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
 def before_scenario(context: Context, scenario: Scenario, *_args: Any, **_kwargs: Any) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    if grizzly.state.background_section_done:
+    grizzly.scenarios.select(scenario)
+
+    if grizzly.state.background_done:
         scenario.background = None
     else:
         steps = scenario.background.steps if scenario.background is not None else []
@@ -202,8 +209,6 @@ def before_scenario(context: Context, scenario: Scenario, *_args: Any, **_kwargs
             # to get a nicer error message, the step should fail before it's executed, see before_step hook
             setattr(step, IN_CORRECT_SECTION_ATTRIBUTE, 'incorrect')
 
-    grizzly.scenarios.create(scenario)
-
     if grizzly.scenario.identifier not in context.last_task_count:
         context.last_task_count[grizzly.scenario.identifier] = 0
 
@@ -212,8 +217,8 @@ def after_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     # first scenario is done, do not process background for any (possible) other scenarios
-    if not grizzly.state.background_section_done:
-        grizzly.state.background_section_done = True
+    if not grizzly.state.background_done:
+        grizzly.state.background_done = True
 
     assert grizzly.scenario.tasks.tmp.async_group is None, f'async request group "{grizzly.scenario.tasks.tmp.async_group.name}" has not been closed'
     assert grizzly.scenario.tasks.tmp.loop is None, f'loop task "{grizzly.scenario.tasks.tmp.loop.name}" has not been closed'
@@ -235,6 +240,8 @@ def before_step(context: Context, step: Step, *_args: Any, **_kwargs: Any) -> No
     # fail step if it's a @backgroundsection decorated step implementation, see before_scenario hook
     with fail_direct(context):
         assert getattr(step, 'location_status', '') != 'incorrect', 'Step is in the incorrect section'
+
+    step.in_background = step in context.background_steps
 
     # add current step to context, used else where
     context.step = step

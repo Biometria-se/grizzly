@@ -28,7 +28,7 @@ class TestWriteFile:
         task = task_factory()
         assert callable(task)
 
-        parent.user.set_context_variable('hello', 'foobar')
+        parent.user.set_variable('hello', 'foobar')
 
         expected_file = Path(task_factory._context_root) / 'requests' / 'test' / 'output.log'
 
@@ -46,7 +46,7 @@ class TestWriteFile:
         assert expected_file.read_text() == f'foobar{linesep}foobar{linesep}'
 
         task_factory = WriteFileTask(file_name='test/{{ file_name }}.log', content='{{ hello }}')
-        parent.user.set_context_variable('file_name', 'output')
+        parent.user.set_variable('file_name', 'output')
 
         task = task_factory()
 

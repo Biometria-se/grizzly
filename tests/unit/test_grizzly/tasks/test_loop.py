@@ -41,7 +41,7 @@ class TestLoopTask:
         with pytest.raises(AssertionError, match='LoopTask: asdf has not been initialized'):
             LoopTask(name='test', values='["hello", "world"]', variable='asdf')
 
-        grizzly.state.variables['asdf'] = 'none'
+        grizzly.scenario.variables['asdf'] = 'none'
         task_factory = LoopTask(name='test', values='["hello", "world"]', variable='asdf')
 
         assert task_factory.name == 'test'
@@ -51,7 +51,7 @@ class TestLoopTask:
 
     def test_add_and_peek(self, grizzly_fixture: GrizzlyFixture) -> None:
         grizzly = grizzly_fixture.grizzly
-        grizzly.state.variables['foobar'] = 'none'
+        grizzly.scenario.variables['foobar'] = 'none'
 
         task_factory = LoopTask(name='test', values='["hello", "world"]', variable='foobar')
 
@@ -86,10 +86,12 @@ class TestLoopTask:
 
         request_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
-        scenario_context = GrizzlyContextScenario(3, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+        scenario_context = GrizzlyContextScenario(3, behave=grizzly_fixture.behave.create_scenario('test scenario'), grizzly=grizzly)
+        grizzly.scenarios.clear()
+        grizzly.scenarios.append(scenario_context)
         parent.user._scenario = scenario_context
 
-        grizzly.state.variables['foobar'] = parent.user._context['variables']['foobar'] = 'none'
+        parent.user.set_variable('foobar', 'none')
 
         task_factory = LoopTask('test', '["hello", "world"]', 'foobar')
 
@@ -117,7 +119,6 @@ class TestLoopTask:
         assert request_spy.call_count == 7  # loop task + 3 tasks * 2 values
 
         actual_context = deepcopy(parent.user._context)
-        actual_context['variables'].update({'foobar': 'hello'})
 
         for i, (args, kwargs) in enumerate(request_spy.call_args_list[:3]):
             assert args == ()
@@ -129,8 +130,6 @@ class TestLoopTask:
                 'exception': None,
                 'context': actual_context,
             }
-
-        actual_context['variables'].update({'foobar': 'world'})
 
         for i, (args, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
             assert args == ()
@@ -158,15 +157,14 @@ class TestLoopTask:
         request_spy.reset_mock()
 
         # normal, variable input
-        grizzly.state.variables['json_input'] = 'none'
-        parent.user._context['variables']['json_input'] = '["foo", "bar"]'
+        grizzly.scenario.variables['json_input'] = 'none'
+        parent.user.set_variable('json_input', '["foo", "bar"]')
         task_factory.values = '{{ json_input }}'
         task(parent)
 
         assert request_spy.call_count == 7  # loop task + 3 tasks * 2 values
 
         actual_context = deepcopy(parent.user._context)
-        actual_context['variables'].update({'foobar': 'foo'})
 
         for i, (args, kwargs) in enumerate(request_spy.call_args_list[:3]):
             assert args == ()
@@ -178,8 +176,6 @@ class TestLoopTask:
                 'exception': None,
                 'context': actual_context,
             }
-
-        actual_context['variables'].update({'foobar': 'bar'})
 
         for i, (args, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
             assert args == ()
@@ -205,8 +201,7 @@ class TestLoopTask:
         }
 
         request_spy.reset_mock()
-        del grizzly.state.variables['json_input']
-        del parent.user._context['variables']['json_input']
+        del parent.user._scenario.variables['json_input']
 
         # not a valid json input
         task_factory.values = '"hello'
@@ -292,10 +287,10 @@ class TestLoopTask:
 
         grizzly = grizzly_fixture.grizzly
 
-        scenario_context = GrizzlyContextScenario(3, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+        scenario_context = GrizzlyContextScenario(3, behave=grizzly_fixture.behave.create_scenario('test scenario'), grizzly=grizzly)
         scenario_context.name = scenario_context.description = 'test scenario'
 
-        grizzly.state.variables['foobar'] = parent.user._context['variables']['foobar'] = 'none'
+        parent.user.set_variable('foobar', 'none')
 
         task_factory = LoopTask('test', '[1, 2, 3, 4]', 'foobar')
         task_factory.add(TestTask(name='test-1'))

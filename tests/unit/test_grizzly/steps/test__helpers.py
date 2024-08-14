@@ -266,13 +266,13 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool, de
     tasks.clear()
 
     assert len(tasks) == 0
-    assert len(parent.user.context_variables) == 0
+    assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
 
     # not preceeded by a request source
     with pytest.raises(AssertionError, match='variable "test-variable" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.METADATA, '$.test.value', 'test', 'test-variable', default_value=default_value)
 
-    assert len(parent.user.context_variables) == 0
+    assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
 
     # add request source
     add_request_task(behave, method=RequestMethod.GET, source='{}', name='test', endpoint='/api/v2/test')
@@ -288,64 +288,64 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool, de
         add_save_handler(grizzly, ResponseTarget.METADATA, '$.test.value', '.*', 'test-variable-metadata', default_value=default_value)
 
     try:
-        grizzly.state.variables['test-variable-metadata'] = 'none'
+        grizzly.scenario.variables['test-variable-metadata'] = 'none'
         task.response.content_type = TransformerContentType.JSON
         add_save_handler(grizzly, ResponseTarget.METADATA, '$.test.value', '.*', 'test-variable-metadata', default_value=default_value)
         assert len(task.response.handlers.metadata) == 1
         assert len(task.response.handlers.payload) == 0
     finally:
-        del grizzly.state.variables['test-variable-metadata']
+        del grizzly.scenario.variables['test-variable-metadata']
 
     with pytest.raises(AssertionError, match='variable "test-variable-payload" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value', '.*', 'test-variable-payload', default_value=default_value)
 
     try:
-        grizzly.state.variables['test-variable-payload'] = 'none'
+        grizzly.scenario.variables['test-variable-payload'] = 'none'
 
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value', '.*', 'test-variable-payload', default_value=default_value)
         assert len(task.response.handlers.metadata) == 1
         assert len(task.response.handlers.payload) == 1
     finally:
-        del grizzly.state.variables['test-variable-payload']
+        del grizzly.scenario.variables['test-variable-payload']
 
     metadata_handler = next(iter(task.response.handlers.metadata))
     payload_handler = next(iter(task.response.handlers.payload))
 
     metadata_handler((TransformerContentType.JSON, {'test': {'value': 'metadata'}}), parent.user)
-    assert parent.user.context_variables.get('test-variable-metadata', None) == 'metadata'
+    assert parent.user._scenario.variables.get('test-variable-metadata', None) == 'metadata'
 
-    del parent.user.context_variables['test-variable-metadata']
+    del parent.user._scenario.variables['test-variable-metadata']
 
     if default_value is None:
         with pytest.raises(ResponseHandlerError, match=r'"\$\.test.value" did not match value'):
             metadata_handler((TransformerContentType.JSON, {'test': {'attribute': 'metadata'}}), parent.user)
     else:
         metadata_handler((TransformerContentType.JSON, {'test': {'attribute': 'metadata'}}), parent.user)
-        assert parent.user.context_variables.get('test-variable-metadata', None) == default_value
+        assert parent.user._scenario.variables.get('test-variable-metadata', None) == default_value
 
     payload_handler((TransformerContentType.JSON, {'test': {'value': 'payload'}}), parent.user)
-    assert parent.user.context_variables.get('test-variable-payload', None) == 'payload'
+    assert parent.user._scenario.variables.get('test-variable-payload', None) == 'payload'
 
     if default_value is None:
         with pytest.raises(ResponseHandlerError, match='did not match value'):
             metadata_handler((TransformerContentType.JSON, {'test': {'name': 'metadata'}}), parent.user)
-        assert parent.user.context_variables.get('test-variable-metadata', 'metadata') is None
+        assert parent.user._scenario.variables.get('test-variable-metadata', 'metadata') is None
 
         with pytest.raises(ResponseHandlerError, match='did not match value'):
             payload_handler((TransformerContentType.JSON, {'test': {'name': 'payload'}}), parent.user)
-        assert parent.user.context_variables.get('test-variable-payload', 'payload') is None
+        assert parent.user._scenario.variables.get('test-variable-payload', 'payload') is None
 
     else:
         metadata_handler((TransformerContentType.JSON, {'test': {'name': 'metadata'}}), parent.user)
-        assert parent.user.context_variables.get('test-variable-metadata', 'metadata') == default_value
+        assert parent.user._scenario.variables.get('test-variable-metadata', 'metadata') == default_value
 
         payload_handler((TransformerContentType.JSON, {'test': {'name': 'payload'}}), parent.user)
-        assert parent.user.context_variables.get('test-variable-payload', 'payload') == default_value
+        assert parent.user._scenario.variables.get('test-variable-payload', 'payload') == default_value
 
     # previous non RequestTask task
     tasks.append(ExplicitWaitTask(time_expression='1.0'))
 
-    grizzly.state.variables['test'] = 'none'
+    grizzly.scenario.variables['test'] = 'none'
     with pytest.raises(AssertionError, match='latest task was not a request'):
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value', '.*', 'test', default_value=default_value)
 
@@ -357,7 +357,7 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool, de
         _add_response_handler(grizzly, ResponseTarget.PAYLOAD, ResponseAction.SAVE, '$test.value', '.*', variable=None)
 
     try:
-        grizzly.state.variables['test']
+        grizzly.scenario.variables['test']
 
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100', '.*', 'test', default_value=default_value)
         assert len(task.response.handlers.metadata) == 1
@@ -388,7 +388,7 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool, de
             add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100', '.*', 'test', default_value=default_value)
 
     finally:
-        del grizzly.state.variables['test']
+        del grizzly.scenario.variables['test']
 
 
 @pytest.mark.parametrize('as_async', [False, True])

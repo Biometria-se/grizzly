@@ -14,7 +14,6 @@ import zmq.green as zmq
 from zmq.error import Again as ZMQAgain
 from zmq.error import ZMQError
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import LogMessageTask
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
@@ -27,26 +26,25 @@ if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 
-    from tests.fixtures import AtomicVariableCleanupFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture, NoopZmqFixture
 
 
 class TestTestdataProducer:
     def test_run_with_behave(  # noqa: PLR0915
         self,
-        behave_fixture: BehaveFixture,
         grizzly_fixture: GrizzlyFixture,
         cleanup: AtomicVariableCleanupFixture,
         caplog: LogCaptureFixture,
     ) -> None:
         producer: Optional[TestdataProducer] = None
         context: Optional[zmq.Context] = None
-        context_root = Path(grizzly_fixture.request_task.context_root)
         request = grizzly_fixture.request_task.request
 
         success = False
 
         environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_behave.feature'
-        environ['GRIZZLY_CONTEXT_ROOT'] = Path(context_root).parent.as_posix()
+        context_root = grizzly_fixture.test_context / 'requests'
+        context_root.mkdir(exist_ok=True)
 
         try:
             parent = grizzly_fixture()
@@ -75,11 +73,11 @@ value3,value4
                 'CustomVariable': '{{ tests.helpers.AtomicCustomVariable.foo }}',
             })
 
-            grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
+            grizzly = grizzly_fixture.grizzly
             grizzly.scenarios.clear()
-            grizzly.scenarios.create(behave_fixture.create_scenario(parent.__class__.__name__))
+            grizzly.scenarios.create(grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
             grizzly.scenario.orphan_templates.append('{{ AtomicCsvWriter.output }}')
-            grizzly.state.variables.update({
+            grizzly.scenario.variables.update({
                 'messageID': 123,
                 'AtomicIntegerIncrementer.messageID': 456,
                 'AtomicDirectoryContents.test': 'adirectory',
@@ -100,6 +98,7 @@ value3,value4
             grizzly.scenario.context['host'] = 'http://test.nu'
 
             request.source = json.dumps(source)
+            request._template = grizzly.scenario.jinja2.from_string(request.source)
 
             grizzly.scenario.tasks.add(request)
             grizzly.scenario.tasks.add(LogMessageTask(message='hello {{ world }}'))
@@ -285,7 +284,6 @@ value3,value4
 
     def test_run_variable_none(
         self,
-        behave_fixture: BehaveFixture,
         grizzly_fixture: GrizzlyFixture,
         cleanup: AtomicVariableCleanupFixture,
     ) -> None:
@@ -293,12 +291,13 @@ value3,value4
         context: Optional[zmq.Context] = None
 
         try:
+            grizzly = grizzly_fixture.grizzly
             parent = grizzly_fixture()
-            context_root = Path(grizzly_fixture.request_task.context_root)
+            context_root = grizzly_fixture.test_context / 'requests'
+            context_root.mkdir(exist_ok=True)
             request = grizzly_fixture.request_task.request
             address = 'tcp://127.0.0.1:5555'
             environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
-            environ['GRIZZLY_CONTEXT_ROOT'] = Path(context_root).parent.as_posix()
 
             (context_root / 'adirectory').mkdir()
 
@@ -308,10 +307,11 @@ value3,value4
             source['result'].update({'File': '{{ AtomicDirectoryContents.file }}'})
 
             request.source = json.dumps(source)
+            request._template = grizzly.scenario.jinja2.from_string(request.source)
 
-            grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
-            grizzly.scenarios.create(behave_fixture.create_scenario(parent.__class__.__name__))
-            grizzly.state.variables.update({
+            grizzly.scenarios.clear()
+            grizzly.scenarios.create(grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
+            grizzly.scenario.variables.update({
                 'messageID': 123,
                 'AtomicIntegerIncrementer.messageID': 456,
                 'AtomicDirectoryContents.file': 'adirectory',
@@ -679,7 +679,7 @@ class TestTestdataConsumer:
                         'password': 'password',
                     },
                 },
-                'variables': transform(grizzly, {
+                'variables': transform(grizzly.scenario, {
                     'AtomicIntegerIncrementer.messageID': 100,
                     'test': 1,
                 }),
@@ -719,7 +719,7 @@ class TestTestdataConsumer:
             }, 'consume')
 
             assert consumer.testdata('test') == {
-                'variables': transform(grizzly, {
+                'variables': transform(grizzly.scenario, {
                     'AtomicIntegerIncrementer.messageID': 100,
                     'test': None,
                 }),

@@ -93,7 +93,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         self._scenario = copy(self.__scenario__)
         self._scenario._tasks = self.__scenario__._tasks
 
-        endpoint = cast(str, resolve_variable(self.grizzly, endpoint, only_grizzly=True, env=self._scenario.jinja2))
+        endpoint = cast(str, resolve_variable(self._scenario, endpoint, only_grizzly=True))
 
         try:
             parsed = urlparse(endpoint)
@@ -141,11 +141,11 @@ class ClientTask(GrizzlyMetaRequestTask):
             message = f'{self.__class__.__name__}: source argument is not applicable for direction {self.direction.name}'
             raise AssertionError(message)
 
-        if self.payload_variable is not None and self.payload_variable not in self.grizzly.state.variables:
+        if self.payload_variable is not None and self.payload_variable not in self._scenario.variables:
             message = f'{self.__class__.__name__}: variable {self.payload_variable} has not been initialized'
             raise AssertionError(message)
 
-        if self.metadata_variable is not None and self.metadata_variable not in self.grizzly.state.variables:
+        if self.metadata_variable is not None and self.metadata_variable not in self._scenario.variables:
             message = f'{self.__class__.__name__}: variable {self.metadata_variable} has not been initialized'
             raise AssertionError(message)
 

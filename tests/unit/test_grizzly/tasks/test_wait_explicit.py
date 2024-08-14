@@ -38,7 +38,7 @@ class TestExplicitWaitTask:
         request_fire_spy.assert_not_called()
 
         task_factory.time_expression = '{{ wait_time }}'
-        parent.user._context['variables']['wait_time'] = 126
+        parent.user.set_variable('wait_time', 126)
 
         task(parent)
 
@@ -66,7 +66,7 @@ class TestExplicitWaitTask:
 
         assert task_factory.get_templates() == ['{{ foobar }}']
 
-        parent.user._context['variables']['foobar'] = 'foobar'
+        parent.user.set_variable('foobar', 'foobar')
 
         with pytest.raises(StopUser):
             task(parent)

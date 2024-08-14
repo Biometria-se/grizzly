@@ -109,7 +109,7 @@ def add_request_task(
     content_type: Optional[TransformerContentType] = None
 
     if endpoint is not None and ('$env::' in endpoint or '$conf::' in endpoint):
-        endpoint = cast(str, resolve_variable(grizzly, endpoint, guess_datatype=False, only_grizzly=True))
+        endpoint = cast(str, resolve_variable(grizzly.scenario, endpoint, guess_datatype=False, only_grizzly=True))
 
     table = context.table if context.table is not None else [None]
 
@@ -169,7 +169,7 @@ def _add_response_handler(
     condition: Optional[bool] = None,
     default_value: Optional[str] = None,
 ) -> None:
-    if variable is not None and variable not in grizzly.state.variables:
+    if variable is not None and variable not in grizzly.scenario.variables:
         message = f'variable "{variable}" has not been declared'
         raise AssertionError(message)
 

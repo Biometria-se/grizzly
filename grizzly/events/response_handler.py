@@ -55,9 +55,9 @@ class ResponseHandlerAction(ABC):
         """
         input_content_type, input_payload = input_context
         j2env = user._scenario.jinja2
-        rendered_expression = j2env.from_string(self.expression).render(user.context_variables)
-        rendered_match_with = j2env.from_string(self.match_with).render(user.context_variables)
-        rendered_expected_matches = int(j2env.from_string(self.expected_matches).render(user.context_variables))
+        rendered_expression = j2env.from_string(self.expression).render()
+        rendered_match_with = j2env.from_string(self.match_with).render()
+        rendered_expected_matches = int(j2env.from_string(self.expected_matches).render())
 
         transform = transformer.available.get(input_content_type, None)
         if transform is None:
@@ -162,7 +162,7 @@ class SaveHandlerAction(ResponseHandlerAction):
 
         value = match or self.default_value
 
-        user.set_context_variable(self.variable, value)
+        user.set_variable(self.variable, value)
 
         if match is None and self.default_value is None:
             message = f'"{expression}" did not match value'
