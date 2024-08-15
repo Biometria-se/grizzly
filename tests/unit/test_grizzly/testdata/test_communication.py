@@ -395,12 +395,14 @@ value3,value4
         noop_zmq('grizzly.testdata.communication')
         mocker.patch('grizzly.testdata.communication.zmq.Context.destroy', side_effect=[RuntimeError('zmq.Context.destroy failed')] * 3)
 
-        context_root = Path(grizzly_fixture.request_task.context_root).parent
+        grizzly = grizzly_fixture.grizzly
 
-        persistent_file = context_root / 'persistent' / 'test_run_with_variable_none.json'
+        context_root = grizzly_fixture.test_context / 'requests'
+        context_root.mkdir(exist_ok=True)
+
+        persistent_file = grizzly_fixture.test_context / 'persistent' / 'test_run_with_variable_none.json'
 
         environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
-        environ['GRIZZLY_CONTEXT_ROOT'] = context_root.as_posix()
 
         try:
             with caplog.at_level(logging.DEBUG):
@@ -408,14 +410,14 @@ value3,value4
             assert 'failed to stop' in caplog.messages[-1]
             assert not persistent_file.exists()
 
-            i = AtomicIntegerIncrementer('foobar', '1 | step=1, persist=True')
+            i = AtomicIntegerIncrementer(scenario=grizzly.scenario, variable='foobar', value='1 | step=1, persist=True')
 
             i['foobar']
             i['foobar']
             actual_keystore = {'foo': ['hello', 'world'], 'bar': {'hello': 'world', 'foo': 'bar'}, 'hello': 'world'}
 
             with caplog.at_level(logging.DEBUG):
-                producer = TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}})
+                producer = TestdataProducer(grizzly_fixture.grizzly, {grizzly.scenario.class_name: {'AtomicIntegerIncrementer.foobar': i}})
                 producer.keystore.update(actual_keystore)
                 producer.stop()
 
@@ -432,7 +434,7 @@ value3,value4
             i['foobar']
 
             with caplog.at_level(logging.DEBUG):
-                producer = TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}})
+                producer = TestdataProducer(grizzly_fixture.grizzly, {grizzly.scenario.class_name: {'AtomicIntegerIncrementer.foobar': i}})
                 producer.stop()
 
             assert caplog.messages[-1] == f'feature file data persisted in {persistent_file}'
@@ -447,9 +449,6 @@ value3,value4
         finally:
             with suppress(KeyError):
                 del environ['GRIZZLY_FEATURE_FILE']
-
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
             cleanup()
 
     def test_run_type_error(
@@ -586,18 +585,19 @@ value3,value4
     ) -> None:
         noop_zmq('grizzly.testdata.communication')
 
-        context_root = Path(grizzly_fixture.request_task.context_root).parent
+        context_root = grizzly_fixture.test_context / 'requests'
+        context_root.mkdir(exist_ok=True)
+        grizzly = grizzly_fixture.grizzly
 
         persistent_file = context_root / 'persistent' / 'test_run_with_variable_none.json'
 
         environ['GRIZZLY_FEATURE_FILE'] = 'features/test_persist_data_edge_cases.feature'
-        environ['GRIZZLY_CONTEXT_ROOT'] = context_root.as_posix()
 
         try:
             assert not persistent_file.exists()
-            i = AtomicIntegerIncrementer('foobar', '1 | step=1, persist=True')
+            i = AtomicIntegerIncrementer(scenario=grizzly.scenario, variable='foobar', value='1 | step=1, persist=True')
 
-            producer = TestdataProducer(grizzly_fixture.grizzly, {'test': {'AtomicIntegerIncrementer.foobar': i}})
+            producer = TestdataProducer(grizzly_fixture.grizzly, {grizzly.scenario.class_name: {'AtomicIntegerIncrementer.foobar': i}})
             producer.has_persisted = True
 
             with caplog.at_level(logging.DEBUG):
@@ -622,9 +622,6 @@ value3,value4
             cleanup()
             with suppress(KeyError):
                 del environ['GRIZZLY_FEATURE_FILE']
-
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
 
 
 class TestTestdataConsumer:

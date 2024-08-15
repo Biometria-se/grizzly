@@ -15,7 +15,7 @@ from grizzly.testdata.variables.integer_incrementer import atomicintegerincremen
 if TYPE_CHECKING:  # pragma: no cover
     from gevent.greenlet import Greenlet
 
-    from tests.fixtures import AtomicVariableCleanupFixture
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture
 
 
 def test_atomicintegerincrementer__base_type__() -> None:
@@ -58,13 +58,22 @@ def test_atomicintegerincrementer__base_type__() -> None:
 
 
 class TestAtomicIntegerIncrementer:
-    def test_increments_on_access(self, cleanup: AtomicVariableCleanupFixture) -> None:
-        try:
-            t = AtomicIntegerIncrementer('message_id', 1)
-            assert t['message_id'] == 1
-            assert t['message_id'] == 2
+    def test_increments_on_access(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
 
-            t = AtomicIntegerIncrementer('test', '0 | step=10, persist=True')
+        try:
+            instances = [
+                AtomicIntegerIncrementer(scenario=scenario1, variable='message_id', value=1),
+                AtomicIntegerIncrementer(scenario=scenario2, variable='message_id', value=1),
+            ]
+
+            for instance in instances:
+                assert instance['message_id'] == 1
+                assert instance['message_id'] == 2
+
+            t = AtomicIntegerIncrementer(scenario=scenario1, variable='test', value='0 | step=10, persist=True')
             assert len(t._steps.keys()) == 2
             assert 'message_id' in t._steps
             assert 'test' in t._steps
@@ -80,7 +89,11 @@ class TestAtomicIntegerIncrementer:
         finally:
             cleanup()
 
-    def test_clear_and_destory(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_clear_and_destory(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
+
         try:
             with suppress(Exception):
                 AtomicIntegerIncrementer.destroy()
@@ -91,15 +104,20 @@ class TestAtomicIntegerIncrementer:
             with pytest.raises(ValueError, match='AtomicIntegerIncrementer is not instantiated'):
                 AtomicIntegerIncrementer.clear()
 
-            instance = AtomicIntegerIncrementer('dummy', '1|step=10')
+            instances = [
+                AtomicIntegerIncrementer(scenario=scenario2, variable='dummy', value='1|step=10'),
+                AtomicIntegerIncrementer(scenario=scenario1, variable='dummy', value='1|step=10'),
+            ]
 
-            assert len(instance._values.keys()) == 1
-            assert len(instance._steps.keys()) == 1
+            for instance in instances:
+                assert len(instance._values.keys()) == 1
+                assert len(instance._steps.keys()) == 1
 
             AtomicIntegerIncrementer.clear()
 
-            assert len(instance._values.keys()) == 0
-            assert len(instance._steps.keys()) == 0
+            for instance in instances:
+                assert len(instance._values.keys()) == 0
+                assert len(instance._steps.keys()) == 0
 
             AtomicIntegerIncrementer.destroy()
 
@@ -108,9 +126,11 @@ class TestAtomicIntegerIncrementer:
         finally:
             cleanup()
 
-    def test_no_redefine_value(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_no_redefine_value(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+
         try:
-            t = AtomicIntegerIncrementer('message_id', 3)
+            t = AtomicIntegerIncrementer(scenario=grizzly.scenario, variable='message_id', value=3)
             with pytest.raises(NotImplementedError, match='AtomicIntegerIncrementer has not implemented "__setitem__"'):
                 t['message_id'] = 1
 
@@ -121,10 +141,14 @@ class TestAtomicIntegerIncrementer:
         finally:
             cleanup()
 
-    def test_increments_with_step(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_increments_with_step(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
+
         try:
-            t = AtomicIntegerIncrementer('message_id', '4 | step=10, persist=True')
-            t = AtomicIntegerIncrementer('test', '10 | step=20')
+            t = AtomicIntegerIncrementer(scenario=scenario1, variable='message_id', value='4 | step=10, persist=True')
+            t = AtomicIntegerIncrementer(scenario=scenario1, variable='test', value='10 | step=20')
             assert t['message_id'] == 4
             assert t['message_id'] == 14
             assert t['test'] == 10
@@ -139,34 +163,38 @@ class TestAtomicIntegerIncrementer:
             del t['test']
 
             with pytest.raises(ValueError, match='is not a valid initial value'):
-                AtomicIntegerIncrementer('test', '| step=10')
+                AtomicIntegerIncrementer(scenario=scenario2, variable='test', value='| step=10')
 
             with pytest.raises(ValueError, match='is not a valid initial value'):
-                AtomicIntegerIncrementer('test', 'asdf | step=10')
+                AtomicIntegerIncrementer(scenario=scenario2, variable='test', value='asdf | step=10')
 
             with pytest.raises(ValueError, match=r"invalid literal for int\(\) with base 10: 'asdf'"):
-                AtomicIntegerIncrementer('test', '10 | step=asdf')
+                AtomicIntegerIncrementer(scenario=scenario2, variable='test', value='10 | step=asdf')
 
             with pytest.raises(ValueError, match='is not a valid initial value'):
-                AtomicIntegerIncrementer('test', '0xFF | step=0x01')
+                AtomicIntegerIncrementer(scenario=scenario2, variable='test', value='0xFF | step=0x01')
         finally:
             cleanup()
 
-    def test_json_serializable(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_json_serializable(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+
         try:
-            t = AtomicIntegerIncrementer('message_id', 1)
+            t = AtomicIntegerIncrementer(scenario=grizzly.scenario, variable='message_id', value=1)
             jsondumps(t['message_id'])
         finally:
             cleanup()
 
-    def test_multi_thread(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_multi_thread(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
+            grizzly = grizzly_fixture.grizzly
+
             start_value: int = 2
             num_threads: int = 20
             num_iterations: int = 1001
             expected_value = start_value + num_threads * num_iterations
 
-            t = AtomicIntegerIncrementer('thread_var', start_value)
+            t = AtomicIntegerIncrementer(scenario=grizzly.scenario, variable='thread_var', value=start_value)
 
             values: set[int] = set()
 
@@ -193,14 +221,16 @@ class TestAtomicIntegerIncrementer:
         finally:
             cleanup()
 
-    def test_multi_greenlet(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_multi_greenlet(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
+            grizzly = grizzly_fixture.grizzly
+
             start_value: int = 2
             num_threads: int = 20
             num_iterations: int = 1001
             expected_value = start_value + num_threads * num_iterations
 
-            t = AtomicIntegerIncrementer('greenlet_var', start_value)
+            t = AtomicIntegerIncrementer(scenario=grizzly.scenario, variable='greenlet_var', value=start_value)
 
             values: set[int] = set()
 

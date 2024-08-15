@@ -407,7 +407,7 @@ class GrizzlyContextScenarios(list[GrizzlyContextScenario]):
 
         return None
 
-    def create(self, behave: Scenario) -> None:
+    def create(self, behave: Scenario) -> GrizzlyContextScenario:
         """Create a new scenario based on the behave Scenario, and add it to the current list of scenarios in this context."""
         grizzly_scenario = GrizzlyContextScenario(len(self) + 1, behave=behave, grizzly=self.grizzly)
 
@@ -415,3 +415,5 @@ class GrizzlyContextScenarios(list[GrizzlyContextScenario]):
 
         self.append(grizzly_scenario)
         self.deselect()
+
+        return grizzly_scenario

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 from jinja2.filters import FILTERS
 
-from grizzly.context import GrizzlyContext
+from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import ConditionalTask, DateTask, LogMessageTask, TransformerTask, UntilRequestTask
 from grizzly.testdata.utils import (
     _objectify,
@@ -21,6 +21,7 @@ from grizzly.testdata.utils import (
     templatingfilter,
     transform,
 )
+from grizzly.testdata.variables import AtomicDate, AtomicIntegerIncrementer
 from grizzly.testdata.variables.csv_writer import atomiccsvwriter_message_handler
 from grizzly_extras.transformer import TransformerContentType
 
@@ -45,72 +46,93 @@ def test_initialize_testdata_with_tasks(
 ) -> None:
     try:
         grizzly = grizzly_fixture.grizzly
-        grizzly.scenario.variables.update({
-            'AtomicIntegerIncrementer.messageID': 1337,
-            'AtomicDate.now': 'now',
-            'transformer_task': 'none',
-            'AtomicIntegerIncrementer.value': 20,
-            'request_name': 'none',
-            'messageID': 2022,
-            'value': 'none',
-            'condition': False,
-            'timezone': 'GMT',
-            'content': 'none',
-            'days': 365,
-            'date_task_date': '2022-09-13 15:08:00',
-            'endpoint_part': '/api',
-            'message': 'hello world!',
-            'orphan': 'most likely',
-            'unused_variable': 'some value',
-        })
-        request = request_task.request
-        request.name = '{{ request_name }}'
-        request.endpoint = '/api/{{ endpoint_part }}/test'
-        request.response.content_type = TransformerContentType.JSON
-        grizzly.scenario.tasks.clear()
-        grizzly.scenario.tasks.add(request)
-        grizzly.scenario.tasks.add(LogMessageTask(message='{{ message }}'))
-        grizzly.scenario.tasks.add(DateTask(variable='date_task', value='{{ date_task_date }} | timezone="{{ timezone }}", offset="-{{ days }}D"'))
-        grizzly.scenario.tasks.add(TransformerTask(
-            expression='$.expression',
-            variable='transformer_task',
-            content='hello this is the {{ undeclared_variable if undeclared_variable is defined else content }}!',
-            content_type=TransformerContentType.JSON,
-        ))
-        request.content_type = TransformerContentType.JSON
-        grizzly.scenario.tasks.add(LogMessageTask('{{ unused_variable if unused_variable is defined else "hello" }}'))
-        grizzly.scenario.tasks.add(UntilRequestTask(request=request, condition='{{ condition }}'))
-        grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ value | int > 5 }}'))
-        grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
-        grizzly.scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
-        grizzly.scenario.orphan_templates.append('hello {{ orphan }} template')
-        grizzly.scenario.orphan_templates.append('{{ (((max_days * 0.33) + 0.5) | int) if max_days is defined else days }}')
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
+        grizzly.scenarios.clear()
 
-        scenario_name = grizzly.scenario.class_name
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('scenario1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('scenario2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('scenario3'))
+
+        scenario_map: dict[str, GrizzlyContextScenario] = {}
+
+        for scenario in grizzly.scenarios:
+            scenario_map.update({scenario.class_name: scenario})
+            grizzly.scenarios.select(scenario.behave)
+            grizzly.scenario.variables.update({
+                'AtomicIntegerIncrementer.messageID': 1337,
+                'AtomicDate.now': 'now',
+                'transformer_task': 'none',
+                'AtomicIntegerIncrementer.value': 20,
+                'request_name': 'none',
+                'messageID': 2022,
+                'value': 'none',
+                'condition': False,
+                'timezone': 'GMT',
+                'content': 'none',
+                'days': 365,
+                'date_task_date': '2022-09-13 15:08:00',
+                'endpoint_part': '/api',
+                'message': 'hello world!',
+                'orphan': 'most likely',
+                'unused_variable': 'some value',
+            })
+            request = request_task.request
+            request.name = '{{ request_name }}'
+            request.endpoint = '/api/{{ endpoint_part }}/test'
+            request.response.content_type = TransformerContentType.JSON
+            grizzly.scenario.tasks.clear()
+            grizzly.scenario.tasks.add(request)
+            grizzly.scenario.tasks.add(LogMessageTask(message='{{ message }}'))
+            grizzly.scenario.tasks.add(DateTask(variable='date_task', value='{{ date_task_date }} | timezone="{{ timezone }}", offset="-{{ days }}D"'))
+            grizzly.scenario.tasks.add(TransformerTask(
+                expression='$.expression',
+                variable='transformer_task',
+                content='hello this is the {{ undeclared_variable if undeclared_variable is defined else content }}!',
+                content_type=TransformerContentType.JSON,
+            ))
+            request.content_type = TransformerContentType.JSON
+            grizzly.scenario.tasks.add(LogMessageTask('{{ unused_variable if unused_variable is defined else "hello" }}'))
+            grizzly.scenario.tasks.add(UntilRequestTask(request=request, condition='{{ condition }}'))
+            grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ value | int > 5 }}'))
+            grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
+            grizzly.scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
+            grizzly.scenario.orphan_templates.append('hello {{ orphan }} template')
+            grizzly.scenario.orphan_templates.append('{{ (((max_days * 0.33) + 0.5) | int) if max_days is defined else days }}')
+
+        grizzly.scenarios.deselect()
+
+        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
 
         assert external_dependencies == set()
         assert message_handlers == {}
-        assert scenario_name in testdata
-        variables = testdata[scenario_name]
-        assert sorted(variables.keys()) == sorted([
-            'AtomicDate.now',
-            'AtomicIntegerIncrementer.messageID',
-            'AtomicIntegerIncrementer.value',
-            'condition',
-            'content',
-            'date_task_date',
-            'days',
-            'endpoint_part',
-            'message',
-            'messageID',
-            'orphan',
-            'request_name',
-            'transformer_task',
-            'timezone',
-            'value',
-            'unused_variable',
-        ])
+
+        for index, (scenario_name, variables) in enumerate(testdata.items(), start=1):
+            assert scenario_name == f'IteratorScenario_00{index}'
+            assert sorted(variables.keys()) == sorted([
+                'AtomicDate.now',
+                'AtomicIntegerIncrementer.messageID',
+                'AtomicIntegerIncrementer.value',
+                'condition',
+                'content',
+                'date_task_date',
+                'days',
+                'endpoint_part',
+                'message',
+                'messageID',
+                'orphan',
+                'request_name',
+                'transformer_task',
+                'timezone',
+                'value',
+                'unused_variable',
+            ])
+
+            assert isinstance(variables['AtomicDate.now'], AtomicDate)
+            assert isinstance(variables['AtomicIntegerIncrementer.messageID'], AtomicIntegerIncrementer)
+            assert isinstance(variables['AtomicIntegerIncrementer.value'], AtomicIntegerIncrementer)
+
+            assert variables['AtomicDate.now']._scenario is scenario_map[scenario_name]
+            assert variables['AtomicIntegerIncrementer.messageID']._scenario is scenario_map[scenario_name]
+            assert variables['AtomicIntegerIncrementer.value']._scenario is scenario_map[scenario_name]
     finally:
         cleanup()
 

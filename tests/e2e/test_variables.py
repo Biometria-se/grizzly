@@ -49,6 +49,6 @@ def test_e2e_variables(e2e_fixture: End2EndFixture) -> None:
     assert result.count('scenario_2=foobar') == 1
     assert result.count('background_variable=foobar') == 2
     assert result.count('Scenario 1::AtomicIntegerIncrementer.test=10') == 1
-    assert result.count('Scenario 2::AtomicIntegerIncrementer.test=11') == 1
+    assert result.count('Scenario 2::AtomicIntegerIncrementer.test=10') == 1
     assert result.count('Scenario 1::AtomicRandomString.scenario=AA') == 1
     assert result.count('Scenario 2::AtomicRandomString.scenario=BB') == 1

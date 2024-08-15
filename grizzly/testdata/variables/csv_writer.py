@@ -36,6 +36,7 @@ from grizzly_extras.arguments import parse_arguments, split_value
 from . import AtomicVariable, AtomicVariableSettable
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContextScenario
     from grizzly.types.locust import MessageHandler
 
 
@@ -111,7 +112,7 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
     _settings: dict[str, dict[str, Any]]
     arguments: ClassVar[dict[str, Any]] = {'headers': list_type, 'overwrite': bool_type}
 
-    def __init__(self, variable: str, value: str, *, outer_lock: bool = False) -> None:
+    def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: str, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
             if variable.count('.') != 0:
                 message = f'{self.__class__.__name__}.{variable} is not a valid CSV destination name, must be: {self.__class__.__name__}.<name>'
@@ -128,7 +129,7 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
                 if argument in arguments:
                     settings[argument] = caster(arguments[argument])
 
-            super().__init__(variable, value, outer_lock=True)
+            super().__init__(scenario=scenario, variable=variable, value=value, outer_lock=True)
 
             if self.__initialized:
                 if variable not in self._settings:
@@ -143,11 +144,13 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
     def clear(cls: type[AtomicCsvWriter]) -> None:
         super().clear()
 
-        instance = cast(AtomicCsvWriter, cls.get())
-        variables = list(instance._settings.keys())
+        instances = cls._instances.get(cls, {})
+        for scenario in instances:
+            instance = cast(AtomicCsvWriter, cls.get(scenario))
+            variables = list(instance._settings.keys())
 
-        for variable in variables:
-            del instance._settings[variable]
+            for variable in variables:
+                del instance._settings[variable]
 
     def __getitem__(self, variable: str) -> Optional[str]:  # pragma: no cover
         message = f'{self.__class__.__name__} has not implemented "__getitem__"'

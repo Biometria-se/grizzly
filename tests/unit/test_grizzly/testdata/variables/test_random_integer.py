@@ -10,7 +10,7 @@ from grizzly.testdata.variables import AtomicRandomInteger
 from grizzly.testdata.variables.random_integer import atomicrandominteger__base_type__
 
 if TYPE_CHECKING:  # pragma: no cover
-    from tests.fixtures import AtomicVariableCleanupFixture
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture
 
 
 def test_atomicrandominteger__base_type__() -> None:
@@ -27,16 +27,18 @@ def test_atomicrandominteger__base_type__() -> None:
 
 
 class TestAtomicRandomInteger:
-    def test_generate_random(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_generate_random(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+
         try:
-            t1 = AtomicRandomInteger('random', '1..10')
+            t1 = AtomicRandomInteger(scenario=grizzly.scenario, variable='random', value='1..10')
             v = t1['random']
             assert v >= 1
             assert v <= 10
             v = t1['random']
             assert v >= 1
             assert v <= 10
-            t2 = AtomicRandomInteger('test', '100..200')
+            t2 = AtomicRandomInteger(scenario=grizzly.scenario, variable='test', value='100..200')
             assert t2 is t1
             v = t2['test']
             assert v >= 100
@@ -51,7 +53,11 @@ class TestAtomicRandomInteger:
         finally:
             cleanup()
 
-    def test_clear_and_destroy(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_clear_and_destroy(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
+
         try:
             with suppress(Exception):
                 AtomicRandomInteger.destroy()
@@ -62,15 +68,20 @@ class TestAtomicRandomInteger:
             with pytest.raises(ValueError, match='AtomicRandomInteger is not instantiated'):
                 AtomicRandomInteger.clear()
 
-            instance = AtomicRandomInteger('dummy', '25..50')
+            instances = [
+                AtomicRandomInteger(scenario=scenario1, variable='dummy', value='25..50'),
+                AtomicRandomInteger(scenario=scenario2, variable='dummy', value='25..50'),
+            ]
 
-            assert len(instance._values.keys()) == 1
-            assert len(instance._max.keys()) == 1
+            for instance in instances:
+                assert len(instance._values.keys()) == 1
+                assert len(instance._max.keys()) == 1
 
             AtomicRandomInteger.clear()
 
-            assert len(instance._values.keys()) == 0
-            assert len(instance._max.keys()) == 0
+            for instance in instances:
+                assert len(instance._values.keys()) == 0
+                assert len(instance._max.keys()) == 0
 
             AtomicRandomInteger.destroy()
 
@@ -79,9 +90,11 @@ class TestAtomicRandomInteger:
         finally:
             cleanup()
 
-    def test_set_and_del(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_set_and_del(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+
         try:
-            instance = AtomicRandomInteger('random', '1337..31337')
+            instance = AtomicRandomInteger(scenario=grizzly.scenario, variable='random', value='1337..31337')
             v = instance['random']
             assert v >= 1337
             assert v <= 31337

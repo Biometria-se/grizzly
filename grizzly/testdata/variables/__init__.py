@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Optional, Ty
 
 from gevent.lock import DummySemaphore, Semaphore
 
-from grizzly.context import GrizzlyContext
+from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.types import bool_type
 
 T = TypeVar('T')
@@ -52,63 +52,87 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
     __message_handlers__: ClassVar[dict[str, MessageHandler]] = {}
     __on_consumer__ = False
 
-    __instance: ClassVar[Optional[AtomicVariable]] = None
+    _instances: ClassVar[dict[type[AtomicVariable], dict[GrizzlyContextScenario, AtomicVariable]]] = {}
 
     _initialized: bool
+    _scenario: GrizzlyContextScenario
     _values: dict[str, Optional[T]]
     _semaphore: Semaphore = Semaphore()
 
     arguments: ClassVar[dict[str, Any]] = {}
     grizzly: GrizzlyContext
 
-    def __new__(cls, *_args: Any, **_kwargs: Any) -> AtomicVariable[T]:
+    def __new__(cls, *, scenario: GrizzlyContextScenario, variable: str, value: Optional[T] = None, outer_lock: bool = False) -> AtomicVariable[T]:  # noqa: ARG003
         if AbstractAtomicClass in cls.__bases__:
             message = f"Can't instantiate abstract class {cls.__name__}"
             raise TypeError(message)
 
-        if cls.__instance is None:
-            cls.__instance = super().__new__(cls)
-            cls.__instance._initialized = False
-            cls.__instance.grizzly = GrizzlyContext()
+        if cls not in cls._instances:
+            cls._instances.update({cls: {}})
+
+        if cls._instances.get(cls, {}).get(scenario, None) is None:
+            instance = super().__new__(cls)
+            instance._initialized = False
+            instance.grizzly = GrizzlyContext()
+            instance._scenario = scenario
+
+            cls._instances[cls].update({scenario: instance})
+
+        if cls.__name__ not in globals():
             globals()[cls.__name__] = cls  # load it, globally, needed for custom variables mostly
 
-        return cls.__instance
+        return cls._instances[cls][scenario]
 
     @classmethod
-    def get(cls) -> AtomicVariable[T]:
-        if cls.__instance is None:
-            message = f'{cls.__name__} is not instantiated'
+    def get(cls, scenario: GrizzlyContextScenario) -> AtomicVariable[T]:
+        if cls._instances.get(cls, {}).get(scenario, None) is None:
+            message = f'{cls.__name__} is not instantiated for {scenario.name}'
             raise ValueError(message)
 
-        return cls.__instance
+        return cls._instances[cls][scenario]
 
     @classmethod
     def destroy(cls) -> None:
-        if cls.__instance is None:
+        instances = cls._instances.get(cls, None)
+
+        if instances is None or len(instances) < 1:
             message = f'{cls.__name__} is not instantiated'
             raise ValueError(message)
 
-        del cls.__instance
+        for scenario in instances.copy():
+            del instances[scenario]
 
     @classmethod
     def clear(cls) -> None:
-        if cls.__instance is None:
+        def _clear(_scenario: GrizzlyContextScenario) -> None:
+            instance = cls._instances.get(cls, {}).get(_scenario, None)
+
+            if instance is None:
+                message = f'{cls.__name__} is not instantiated for {_scenario.name}'
+                raise ValueError(message)
+
+            variables = list(instance._values.keys())
+            for variable in variables:
+                del instance._values[variable]
+
+        instances = cls._instances.get(cls, None)
+        if instances is None or len(instances) < 1:
             message = f'{cls.__name__} is not instantiated'
             raise ValueError(message)
 
-        variables = list(cls.__instance._values.keys())
-        for variable in variables:
-            del cls.__instance._values[variable]
+        for scenario in instances:
+            _clear(scenario)
 
     @classmethod
-    def obtain(cls, variable: str, value: Optional[T] = None) -> AtomicVariable[T]:
+    def obtain(cls, *, scenario: GrizzlyContextScenario, variable: str, value: Optional[T] = None) -> AtomicVariable[T]:
         with cls.semaphore():
-            if cls.__instance is not None and variable in cls.__instance._values:
-                return cls.__instance.get()
+            instance: Optional[AtomicVariable[T]] = cls._instances.get(cls, {}).get(scenario, None)
+            if instance is not None and variable in instance._values:
+                return instance
 
-            return cls(variable, value, outer_lock=True)
+            return cls(scenario=scenario, variable=variable, value=value, outer_lock=True)
 
-    def __init__(self, variable: str, value: Optional[T] = None, *, outer_lock: bool = False) -> None:
+    def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: Optional[T] = None, outer_lock: bool = False) -> None:  # noqa: ARG002
         with self.semaphore(outer=outer_lock):
             if self._initialized:
                 if variable not in self._values:

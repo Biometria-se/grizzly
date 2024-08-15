@@ -83,8 +83,9 @@ class SetVariableTask(GrizzlyTask):
                 value = parent.render(read_file(value))
 
             if self.variable_type == VariableType.VARIABLES:
+                # Atomic variables that has support for __setitem__
                 if self._variable_instance is None and self._variable_instance_type is not None:
-                    self._variable_instance = cast(MutableMapping[str, Any], self._variable_instance_type.get())
+                    self._variable_instance = cast(MutableMapping[str, Any], self._variable_instance_type.get(parent.user._scenario))
 
 
                 if self._variable_instance is not None:

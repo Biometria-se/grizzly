@@ -91,7 +91,7 @@ class GrizzlyVariables(dict):
                 value = cast(Any, '__on_consumer__')
             else:
                 try:
-                    value = variable(variable_name, default_value)
+                    value = variable(scenario=scenario, variable=variable_name, value=default_value)
                 except ValueError as e:
                     message = f'{name}: {default_value=}, exception={e!s}'
                     raise ValueError(message) from e

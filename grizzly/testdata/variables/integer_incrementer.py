@@ -76,13 +76,16 @@ value `35 | step=5, persist=True` will be read from the file and override what i
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import Any, ClassVar, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast
 
 from grizzly.types import bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
 from . import AtomicVariable, AtomicVariablePersist
+
+if TYPE_CHECKING:
+    from grizzly.context import GrizzlyContextScenario
 
 
 def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:
@@ -133,7 +136,7 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
     _steps: dict[str, Any]
     arguments: ClassVar[dict[str, Any]] = {'step': int, 'persist': bool_type}
 
-    def __init__(self, variable: str, value: Union[str, int], *, outer_lock: bool = False) -> None:
+    def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: Union[str, int], outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
             safe_value = self.__class__.__base_type__(value)
 
@@ -148,7 +151,7 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
                 step = 1
                 state = False
 
-            super().__init__(variable, int(initial_value), outer_lock=True)
+            super().__init__(scenario=scenario, variable=variable, value=int(initial_value), outer_lock=True)
 
             if self.__initialized:
                 if variable not in self._steps:
@@ -176,10 +179,12 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
     def clear(cls: type[AtomicIntegerIncrementer]) -> None:
         super().clear()
 
-        instance = cast(AtomicIntegerIncrementer, cls.get())
-        variables = list(instance._steps.keys())
-        for variable in variables:
-            del instance._steps[variable]
+        instances = cls._instances.get(cls, {})
+        for scenario in instances:
+            instance = cast(AtomicIntegerIncrementer, cls.get(scenario))
+            variables = list(instance._steps.keys())
+            for variable in variables:
+                del instance._steps[variable]
 
     def __getitem__(self, variable: str) -> Optional[int]:
         with self.semaphore():

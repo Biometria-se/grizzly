@@ -70,9 +70,6 @@ class AtomicVariableCleanupFixture:
 
         destroy_variables()
 
-        with suppress(KeyError):
-            del environ['GRIZZLY_CONTEXT_ROOT']
-
 
 class LocustFixture:
     _test_context_root: Path

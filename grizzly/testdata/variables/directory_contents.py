@@ -38,13 +38,16 @@ from contextlib import suppress
 from os import environ
 from pathlib import Path
 from secrets import randbelow
-from typing import Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 from grizzly.types import bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
 from . import AtomicVariable
+
+if TYPE_CHECKING:
+    from grizzly.context import GrizzlyContextScenario
 
 
 def atomicdirectorycontents__base_type__(value: str) -> str:
@@ -90,9 +93,10 @@ class AtomicDirectoryContents(AtomicVariable[str]):
 
     def __init__(
         self,
+        *,
+        scenario: GrizzlyContextScenario,
         variable: str,
         value: str,
-        *,
         outer_lock: bool = False,
     ) -> None:
         with self.semaphore(outer=outer_lock):
@@ -111,7 +115,7 @@ class AtomicDirectoryContents(AtomicVariable[str]):
             else:
                 directory = safe_value
 
-            super().__init__(variable, directory, outer_lock=True)
+            super().__init__(scenario=scenario, variable=variable, value=directory, outer_lock=True)
 
             if self.__initialized:
                 if variable not in self._files:
@@ -131,12 +135,14 @@ class AtomicDirectoryContents(AtomicVariable[str]):
     def clear(cls: type[AtomicDirectoryContents]) -> None:
         super().clear()
 
-        instance = cast(AtomicDirectoryContents, cls.get())
-        variables = list(instance._files.keys())
+        instances = cls._instances.get(cls, {})
+        for scenario in instances:
+            instance = cast(AtomicDirectoryContents, cls.get(scenario))
+            variables = list(instance._files.keys())
 
-        for variable in variables:
-            del instance._files[variable]
-            del instance._settings[variable]
+            for variable in variables:
+                del instance._files[variable]
+                del instance._settings[variable]
 
     def _create_file_queue(self, directory: str) -> list[str]:
         parent_part = len(str(self._requests_context_root)) + 1

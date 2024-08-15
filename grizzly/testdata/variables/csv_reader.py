@@ -59,13 +59,16 @@ from csv import DictReader
 from os import environ
 from pathlib import Path
 from secrets import randbelow
-from typing import Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 from grizzly.types import bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
 from . import AtomicVariable
+
+if TYPE_CHECKING:
+    from grizzly.context import GrizzlyContextScenario
 
 
 def atomiccsvreader__base_type__(value: str) -> str:
@@ -114,7 +117,7 @@ class AtomicCsvReader(AtomicVariable[dict[str, Any]]):
     context_root: Path
     arguments: ClassVar[dict[str, Any]] = {'repeat': bool_type, 'random': bool_type}
 
-    def __init__(self, variable: str, value: str, *, outer_lock: bool = False) -> None:
+    def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: str, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
             if variable.count('.') != 0:
                 message = f'{self.__class__.__name__}.{variable} is not a valid CSV source name, must be: {self.__class__.__name__}.<name>'
@@ -134,7 +137,7 @@ class AtomicCsvReader(AtomicVariable[dict[str, Any]]):
             else:
                 csv_file = safe_value.strip()
 
-            super().__init__(variable, {}, outer_lock=True)
+            super().__init__(scenario=scenario, variable=variable, value={}, outer_lock=True)
 
             if self.__initialized:
                 if variable not in self._rows:
@@ -161,12 +164,14 @@ class AtomicCsvReader(AtomicVariable[dict[str, Any]]):
     def clear(cls: type[AtomicCsvReader]) -> None:
         super().clear()
 
-        instance = cast(AtomicCsvReader, cls.get())
-        variables = list(instance._rows.keys())
+        instances = cls._instances.get(cls, {})
+        for scenario in instances:
+            instance = cast(AtomicCsvReader, cls.get(scenario))
+            variables = list(instance._rows.keys())
 
-        for variable in variables:
-            del instance._rows[variable]
-            del instance._settings[variable]
+            for variable in variables:
+                del instance._rows[variable]
+                del instance._settings[variable]
 
     def __getitem__(self, variable: str) -> Optional[dict[str, Any]]:
         with self.semaphore():

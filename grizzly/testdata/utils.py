@@ -34,12 +34,12 @@ def initialize_testdata(grizzly: GrizzlyContext) -> tuple[TestdataType, set[str]
 
     logger.debug('testdata: %r', template_variables)
 
-    initialized_datatypes: dict[str, Any] = {}
     external_dependencies: set[str] = set()
     message_handlers: dict[str, MessageHandler] = {}
 
     for scenario, variables in template_variables.items():
         testdata[scenario.class_name] = {}
+        initialized_datatypes: dict[str, Any] = {}
 
         for variable in variables:
             module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(variable)
@@ -51,9 +51,10 @@ def initialize_testdata(grizzly: GrizzlyContext) -> tuple[TestdataType, set[str]
                 variable_datatype = variable_name
 
             if variable_datatype not in initialized_datatypes:
-                initialized_datatypes[variable_datatype], dependencies, message_handler = GrizzlyVariables.initialize_variable(scenario, variable_datatype)
+                initialized_datatype, dependencies, message_handler = GrizzlyVariables.initialize_variable(scenario, variable_datatype)
                 external_dependencies.update(dependencies)
                 message_handlers.update(message_handler)
+                initialized_datatypes.update({variable_datatype: initialized_datatype})
 
             testdata[scenario.class_name][variable] = initialized_datatypes[variable_datatype]
 
@@ -71,7 +72,7 @@ def transform(scenario: GrizzlyContextScenario, data: dict[str, Any], *, objecti
             if module_name is not None and variable_type is not None and value == '__on_consumer__':
                 variable_type_instance = GrizzlyVariables.load_variable(module_name, variable_type)
                 initial_value = scenario.variables.get(key, None)
-                variable_instance = variable_type_instance.obtain(variable_name, initial_value)
+                variable_instance = variable_type_instance.obtain(scenario=scenario, variable=variable_name, value=initial_value)
 
                 try:
                     value = variable_instance[variable_name]  # noqa: PLW2901

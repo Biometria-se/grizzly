@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from datetime import datetime
-from typing import Any, ClassVar, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast
 
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dateparse
@@ -43,6 +43,9 @@ from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
 from . import AtomicVariable
+
+if TYPE_CHECKING:
+    from grizzly.context import GrizzlyContextScenario
 
 
 def atomicdate__base_type__(value: str) -> str:  # noqa: PLR0912
@@ -105,9 +108,10 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
 
     def __init__(
         self,
+        *,
+        scenario: GrizzlyContextScenario,
         variable: str,
         value: str,
-        *,
         outer_lock: bool = False,
     ) -> None:
         with self.semaphore(outer=outer_lock):
@@ -143,7 +147,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
 
             date_value = 'now' if initial_value is None or len(initial_value) < 1 or initial_value == 'now' else dateparse(initial_value)
 
-            super().__init__(variable, date_value, outer_lock=True)
+            super().__init__(scenario=scenario, variable=variable, value=date_value, outer_lock=True)
 
             if self.__initialized:
                 self._settings[variable] = settings
@@ -157,10 +161,12 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
     def clear(cls: type[AtomicDate]) -> None:
         super().clear()
 
-        instance = cast(AtomicDate, cls.get())
-        variables = list(instance._settings.keys())
-        for variable in variables:
-            del instance._settings[variable]
+        instances = cls._instances.get(cls, {})
+        for scenario in instances:
+            instance = cast(AtomicDate, cls.get(scenario))
+            variables = list(instance._settings.keys())
+            for variable in variables:
+                del instance._settings[variable]
 
     def __getitem__(self, variable: str) -> Optional[str]:
         with self.semaphore():
