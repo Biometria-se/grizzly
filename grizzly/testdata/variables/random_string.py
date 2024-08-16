@@ -39,7 +39,7 @@ from __future__ import annotations
 from contextlib import suppress
 from secrets import choice, randbelow
 from string import ascii_letters
-from typing import Any, Callable, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, cast
 from uuid import uuid4
 
 from grizzly.types import bool_type, int_rounded_float_type
@@ -47,6 +47,9 @@ from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
 from . import AtomicVariable
+
+if TYPE_CHECKING:
+    from grizzly.context import GrizzlyContextScenario
 
 
 def atomicrandomstring__base_type__(value: str) -> str:
@@ -111,7 +114,7 @@ class AtomicRandomString(AtomicVariable[str]):
 
         return formats
 
-    def __init__(self, variable: str, value: str, *, outer_lock: bool = False) -> None:
+    def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: str, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
             safe_value = self.__class__.__base_type__(value)
 
@@ -131,7 +134,7 @@ class AtomicRandomString(AtomicVariable[str]):
             else:
                 string_pattern = value
 
-            super().__init__(variable, string_pattern, outer_lock=True)
+            super().__init__(scenario=scenario, variable=variable, value=string_pattern, outer_lock=True)
 
             if self.__initialized:
                 if variable not in self._strings:
@@ -175,11 +178,13 @@ class AtomicRandomString(AtomicVariable[str]):
     def clear(cls: type[AtomicRandomString]) -> None:
         super().clear()
 
-        instance = cast(AtomicRandomString, cls.get())
-        variables = list(instance._strings.keys())
+        instances = cls._instances.get(cls, {})
+        for scenario in instances:
+            instance = cast(AtomicRandomString, cls.get(scenario))
+            variables = list(instance._strings.keys())
 
-        for variable in variables:
-            del instance._strings[variable]
+            for variable in variables:
+                del instance._strings[variable]
 
     def __getitem__(self, variable: str) -> Optional[str]:
         with self.semaphore():

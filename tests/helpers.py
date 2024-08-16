@@ -189,7 +189,6 @@ class TestTask(GrizzlyTask):
                 exception=None,
             )
             self.task_call_count += 1
-            parent.user.logger.debug('%s executed', self.name)
 
         @task.on_start
         def on_start(parent: GrizzlyScenario) -> None:

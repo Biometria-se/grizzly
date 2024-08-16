@@ -131,49 +131,6 @@ def test_e2e_step_setup_run_time(e2e_fixture: End2EndFixture, timespan: str) -> 
     assert rc == 0
 
 
-@pytest.mark.parametrize(('name', 'value', 'expected'), [
-    ('token.url', 'http://localhost/api/auth', '{"token": {"url": "http://localhost/api/auth"}}'),
-    ('token/client id', 'aaaa-bbbb-cccc-dddd', '{"token": {"client_id": "aaaa-bbbb-cccc-dddd"}}'),
-    ('log_all_requests', 'True', '{"log_all_requests": true}'),
-    ('run_id', '13', '{"run_id": 13}'),
-])
-def test_e2e_step_setup_global_context_variable(e2e_fixture: End2EndFixture, name: str, value: str, expected: str) -> None:
-    def validator(context: Context) -> None:
-        from json import loads as jsonloads
-        grizzly = cast(GrizzlyContext, context.grizzly)
-        data = next(iter(context.table)).as_dict()
-
-        global_context = jsonloads(data['expected'])
-        global_context['hello'] = {'world': 'foobar'}
-        if 'token' not in global_context:
-            global_context['token'] = {'client_secret': 'something'}
-        else:
-            global_context['token'].update({'client_secret': 'something'})
-
-        assert grizzly.setup.global_context == global_context
-
-    value = value.replace('localhost', e2e_fixture.host)
-
-    table: list[dict[str, str]] = [{
-        'expected': expected.replace('localhost', e2e_fixture.host),
-    }]
-
-    e2e_fixture.add_validator(validator, table=table)
-
-    feature_file = e2e_fixture.test_steps(
-        background=[
-            f'And set global context variable "{name}" to "{value}"',
-            'And set global context variable "hello.world" to "foobar"',
-            'And set global context variable "token/client_secret" to "something"',
-        ],
-        identifier=name,
-    )
-
-    rc, _ = e2e_fixture.execute(feature_file)
-
-    assert rc == 0
-
-
 @pytest.mark.parametrize(('from_node', 'to_node', 'message_type'), [
     ('server', 'client', 'server_to_client'),
     ('client', 'server', 'client_to_server'),

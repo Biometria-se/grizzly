@@ -2,209 +2,156 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from os import environ, sep
+from os import sep
 from typing import TYPE_CHECKING
 
 import pytest
 
 from grizzly.testdata.variables import AtomicDirectoryContents
 from grizzly.testdata.variables.directory_contents import atomicdirectorycontents__base_type__
-from tests.helpers import rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
-    from _pytest.tmpdir import TempPathFactory
-
-    from tests.fixtures import AtomicVariableCleanupFixture
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture
 
 
-def test_atomicdirectorycontents__base_type__(tmp_path_factory: TempPathFactory) -> None:
-    test_context = tmp_path_factory.mktemp('test_context') / 'requests'
-    test_context.mkdir()
-    test_context_root = test_context.parent.as_posix()
+def test_atomicdirectorycontents__base_type__(grizzly_fixture: GrizzlyFixture) -> None:
+    test_context = grizzly_fixture.test_context / 'requests'
+    test_context.mkdir(exist_ok=True)
 
-    try:
-        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
+    test_file = test_context / 'test.txt'
+    test_file.touch()
+    test_file.write_text('\n')
 
-        test_file = test_context / 'test.txt'
-        test_file.touch()
-        test_file.write_text('\n')
+    with pytest.raises(ValueError, match='is not a directory in'):
+        atomicdirectorycontents__base_type__('test.txt')
 
-        with pytest.raises(ValueError, match='is not a directory in'):
-            atomicdirectorycontents__base_type__('test.txt')
+    with pytest.raises(ValueError, match='is not a directory in'):
+        atomicdirectorycontents__base_type__('non-existing-directory')
 
-        with pytest.raises(ValueError, match='is not a directory in'):
-            atomicdirectorycontents__base_type__('non-existing-directory')
+    (test_context / 'a-directory').mkdir()
 
-        (test_context / 'a-directory').mkdir()
+    atomicdirectorycontents__base_type__('a-directory')
 
-        atomicdirectorycontents__base_type__('a-directory')
+    with pytest.raises(ValueError, match='argument invalidarg is not allowed'):
+        atomicdirectorycontents__base_type__('a-directory | invalidarg=True')
 
-        with pytest.raises(ValueError, match='argument invalidarg is not allowed'):
-            atomicdirectorycontents__base_type__('a-directory | invalidarg=True')
-
-        assert atomicdirectorycontents__base_type__('a-directory|random=True') == 'a-directory | random=True'
-    finally:
-        rm_rf(test_context_root)
-
-        with suppress(KeyError):
-            del environ['GRIZZLY_CONTEXT_ROOT']
+    assert atomicdirectorycontents__base_type__('a-directory|random=True') == 'a-directory | random=True'
 
 
 class TestAtomicDirectoryContents:
-    def test_variable(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:  # noqa: PLR0915
-        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
-        test_context.mkdir()
-        test_context_root = test_context.parent.as_posix()
-
-        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
+    def test_variable(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:  # noqa: PLR0915
+        test_context = grizzly_fixture.test_context / 'requests' / 'test_variable'
+        test_context.mkdir(exist_ok=True)
 
         for directory in ['1-test', '2-test', '3-test']:
             (test_context / directory).mkdir()
             for file in ['1-test.json', '2-test.json', '3-test.json']:
                 (test_context / directory / file).touch()
 
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
+
         try:
-            instance = AtomicDirectoryContents('blobfiles', '1-test/')
+            instances = [
+                AtomicDirectoryContents(scenario=scenario1, variable='blobfiles', value='test_variable/1-test/'),
+                AtomicDirectoryContents(scenario=scenario2, variable='blobfiles', value='test_variable/1-test/'),
+            ]
 
-            with pytest.raises(NotImplementedError, match='AtomicDirectoryContents has not implemented "__setitem__"'):
-                instance['blobfiles'] = None
+            for instance in instances:
+                with pytest.raises(NotImplementedError, match='AtomicDirectoryContents has not implemented "__setitem__"'):
+                    instance['blobfiles'] = None
 
-            assert instance['blobfiles'] == f'1-test{sep}1-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}2-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}3-test.json'
-            assert instance.__getitem__('blobfiles') is None
+                assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}1-test.json'
+                assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}2-test.json'
+                assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}3-test.json'
+                assert instance.__getitem__('blobfiles') is None
 
-            del instance['blobfiles']
-            del instance['blobfiles']
+                del instance['blobfiles']
+                del instance['blobfiles']
 
             instance.destroy()
 
-            instance = AtomicDirectoryContents('blobfiles2', '2-test/')
-            instance = AtomicDirectoryContents('blobfiles3', '3-test/')
+            instance = AtomicDirectoryContents(scenario=scenario1, variable='blobfiles2', value='test_variable/2-test/')
+            instance = AtomicDirectoryContents(scenario=scenario1, variable='blobfiles3', value='test_variable/3-test/')
 
-            assert instance['blobfiles2'] == f'2-test{sep}1-test.json'
-            assert instance['blobfiles3'] == f'3-test{sep}1-test.json'
-            assert instance['blobfiles2'] == f'2-test{sep}2-test.json'
-            assert instance['blobfiles3'] == f'3-test{sep}2-test.json'
-            assert instance['blobfiles2'] == f'2-test{sep}3-test.json'
-            assert instance['blobfiles3'] == f'3-test{sep}3-test.json'
+            assert instance['blobfiles2'] == f'test_variable{sep}2-test{sep}1-test.json'
+            assert instance['blobfiles3'] == f'test_variable{sep}3-test{sep}1-test.json'
+            assert instance['blobfiles2'] == f'test_variable{sep}2-test{sep}2-test.json'
+            assert instance['blobfiles3'] == f'test_variable{sep}3-test{sep}2-test.json'
+            assert instance['blobfiles2'] == f'test_variable{sep}2-test{sep}3-test.json'
+            assert instance['blobfiles3'] == f'test_variable{sep}3-test{sep}3-test.json'
             assert instance.__getitem__('blobfiles2') is None
             assert instance.__getitem__('blobfiles2') is None
             assert instance.__getitem__('blobfiles3') is None
 
-            instance = AtomicDirectoryContents('blobfiles', '.')
+            instance = AtomicDirectoryContents(scenario=scenario2, variable='blobfiles', value='test_variable/')
 
-            assert instance['blobfiles'] == f'1-test{sep}1-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}2-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}3-test.json'
-            assert instance['blobfiles'] == f'2-test{sep}1-test.json'
-            assert instance['blobfiles'] == f'2-test{sep}2-test.json'
-            assert instance['blobfiles'] == f'2-test{sep}3-test.json'
-            assert instance['blobfiles'] == f'3-test{sep}1-test.json'
-            assert instance['blobfiles'] == f'3-test{sep}2-test.json'
-            assert instance['blobfiles'] == f'3-test{sep}3-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}1-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}2-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}3-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}2-test{sep}1-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}2-test{sep}2-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}2-test{sep}3-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}3-test{sep}1-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}3-test{sep}2-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}3-test{sep}3-test.json'
             assert instance.__getitem__('blobfiles') is None
 
             del instance['blobfiles']
 
             with pytest.raises(ValueError, match='asdf is not a valid boolean'):
-                AtomicDirectoryContents('blobfiles', '1-test/ | repeat=asdf')
+                AtomicDirectoryContents(scenario=scenario1, variable='blobfiles', value='test_variable/1-test/ | repeat=asdf')
 
             with pytest.raises(ValueError, match='argument prefix is not allowed'):
-                AtomicDirectoryContents('blobfiles', '1-test/ | repeat=True, prefix="test-"')
+                AtomicDirectoryContents(scenario=scenario1, variable='blobfiles', value='test_variable/1-test/ | repeat=True, prefix="test-"')
 
-            instance = AtomicDirectoryContents('blobfiles', '1-test/ | repeat=True')
+            instance = AtomicDirectoryContents(scenario=scenario2, variable='blobfiles', value='test_variable/1-test/ | repeat=True')
 
-            assert instance['blobfiles'] == f'1-test{sep}1-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}2-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}3-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}1-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}2-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}3-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}1-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}2-test.json'
-            assert instance['blobfiles'] == f'1-test{sep}3-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}1-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}2-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}3-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}1-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}2-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}3-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}1-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}2-test.json'
+            assert instance['blobfiles'] == f'test_variable{sep}1-test{sep}3-test.json'
 
-            instance = AtomicDirectoryContents('random', '1-test/ | random=True')
+            instance = AtomicDirectoryContents(scenario=scenario1, variable='random', value='test_variable/1-test/ | random=True')
 
-            assert instance['random'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
+            exepected = [
+                f'test_variable{sep}1-test{sep}1-test.json',
+                f'test_variable{sep}1-test{sep}2-test.json',
+                f'test_variable{sep}1-test{sep}3-test.json',
             ]
-            assert instance['random'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
-            ]
-            assert instance['random'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
-            ]
+
+            assert instance['random'] in exepected
+            assert instance['random'] in exepected
+            assert instance['random'] in exepected
             assert instance.__getitem__('random') is None
 
-            instance = AtomicDirectoryContents('randomrepeat', '1-test/ | random=True, repeat=True')
+            instance = AtomicDirectoryContents(scenario=scenario2, variable='randomrepeat', value='test_variable/1-test/ | random=True, repeat=True')
 
-            assert instance['randomrepeat'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
-            ]
-            assert instance['randomrepeat'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
-            ]
-            assert instance['randomrepeat'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
-            ]
-            assert instance['randomrepeat'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
-            ]
-            assert instance['randomrepeat'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
-            ]
-            assert instance['randomrepeat'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
-            ]
-            assert instance['randomrepeat'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
-            ]
-            assert instance['randomrepeat'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
-            ]
-            assert instance['randomrepeat'] in [
-                f'1-test{sep}1-test.json',
-                f'1-test{sep}2-test.json',
-                f'1-test{sep}3-test.json',
-            ]
+            assert instance['randomrepeat'] in exepected
+            assert instance['randomrepeat'] in exepected
+            assert instance['randomrepeat'] in exepected
+            assert instance['randomrepeat'] in exepected
+            assert instance['randomrepeat'] in exepected
+            assert instance['randomrepeat'] in exepected
+            assert instance['randomrepeat'] in exepected
+            assert instance['randomrepeat'] in exepected
+            assert instance['randomrepeat'] in exepected
         finally:
-            rm_rf(test_context_root)
-
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
-
             cleanup()
 
-    def test_clear_and_destroy(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
-        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
-        test_context.mkdir()
-        test_context_root = test_context.parent.as_posix()
+    def test_clear_and_destroy(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        test_context = grizzly_fixture.test_context / 'requests' / 'test_clear_and_destory'
+        test_context.mkdir(exist_ok=True)
 
-        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
 
         try:
             with suppress(Exception):
@@ -216,23 +163,23 @@ class TestAtomicDirectoryContents:
             with pytest.raises(ValueError, match='is not instantiated'):
                 AtomicDirectoryContents.clear()
 
-            instance = AtomicDirectoryContents('test', '.')
+            instances = [
+                AtomicDirectoryContents(scenario=scenario1, variable='test', value='test_clear_and_destory/'),
+                AtomicDirectoryContents(scenario=scenario2, variable='test', value='test_clear_and_destory/'),
+            ]
 
-            assert instance.__getitem__('test') is None
+            for instance in instances:
+                assert instance.__getitem__('test') is None
 
-            assert len(instance._values.keys()) == 1
-            assert len(instance._files.keys()) == 1
+                assert len(instance._values.keys()) == 1
+                assert len(instance._files.keys()) == 1
 
             AtomicDirectoryContents.clear()
 
-            assert len(instance._values.keys()) == 0
-            assert len(instance._files.keys()) == 0
+            for instance in instances:
+                assert len(instance._values.keys()) == 0
+                assert len(instance._files.keys()) == 0
 
             AtomicDirectoryContents.destroy()
         finally:
-            rm_rf(test_context_root)
-
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
-
             cleanup()

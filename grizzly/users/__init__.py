@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta, abstractmethod
+from contextlib import suppress
 from copy import copy, deepcopy
 from errno import ENAMETOOLONG
 from json import dumps as jsondumps
@@ -66,7 +67,6 @@ class grizzlycontext:
 
 @grizzlycontext(context={
     'log_all_requests': False,
-    'variables': {},
     'metadata': None,
 })
 class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
@@ -232,13 +232,13 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
         try:
             j2env = self._scenario.jinja2
-            name = j2env.from_string(request_template.name).render(**self.context_variables)
+            name = j2env.from_string(request_template.name).render()
             source: Optional[str] = None
             request.name = f'{self._scenario.identifier} {name}'
-            request.endpoint = j2env.from_string(request_template.endpoint).render(**self.context_variables)
+            request.endpoint = j2env.from_string(request_template.endpoint).render()
 
             if request_template.template is not None:
-                source = request_template.template.render(**self.context_variables)
+                source = request_template.template.render()
 
                 try:
                     file = self._context_root / 'requests' / source
@@ -248,7 +248,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
                         # nested template
                         if has_template(source):
-                            source = j2env.from_string(source).render(**self.context_variables)
+                            source = j2env.from_string(source).render()
                 except OSError as e:  # source was definitly not a file...
                     if e.errno != ENAMETOOLONG:
                         raise
@@ -257,12 +257,12 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
             if request_template.arguments is not None:
                 arguments_json = jsondumps(request_template.arguments)
-                rendered_json = j2env.from_string(arguments_json).render(**self.context_variables)
+                rendered_json = j2env.from_string(arguments_json).render()
                 request.arguments = jsonloads(rendered_json)
 
             if request_template.metadata is not None:
                 metadata_json = jsondumps(request_template.metadata)
-                rendered_metadata = j2env.from_string(metadata_json).render(**self.context_variables)
+                rendered_metadata = j2env.from_string(metadata_json).render()
                 request.metadata = jsonloads(rendered_metadata)
 
             request.__rendered__ = True
@@ -277,20 +277,19 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         return self._context
 
     def add_context(self, context: dict[str, Any]) -> None:
-        self._context = merge_dicts(self._context, context)
-        self._scenario.jinja2.globals.update(**self._context['variables'])
+        for variable, value in context.get('variables', {}).items():
+            self.set_variable(variable, value)
 
-    def set_context_variable(self, variable: str, value: Any) -> None:
-        old_value = self._context['variables'].get(variable, None)
-        self._context['variables'][variable] = value
-        self._scenario.jinja2.globals.update({variable: value})
+        with suppress(KeyError):
+            del context['variables']
+
+        self._context = merge_dicts(self._context, context)
+
+    def set_variable(self, variable: str, value: Any) -> None:
+        old_value = self._scenario.variables.get(variable, None)
+        self._scenario.variables.update({variable: value})
         message = f'context {variable=}, value={old_value} -> {value}'
         self.logger.debug(message)
-
-    @property
-    def context_variables(self) -> dict[str, Any]:
-        # return self._scenario.jinja2.globals  # noqa: ERA001
-        return cast(dict[str, Any], self._context.get('variables', {}))
 
 
 from .blobstorage import BlobStorageUser

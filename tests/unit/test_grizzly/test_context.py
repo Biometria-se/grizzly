@@ -24,7 +24,7 @@ from grizzly.locust import FixedUsersDispatcher
 from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, ExplicitWaitTask, LogMessageTask, LoopTask, RequestTask
 from grizzly.types import MessageDirection, RequestMethod
 from grizzly.types.behave import Scenario
-from tests.helpers import SOME, TestTask, get_property_decorated_attributes, rm_rf
+from tests.helpers import TestTask, get_property_decorated_attributes, rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
@@ -202,25 +202,17 @@ class TestGrizzlyContextSetupLocustMessages:
 
 
 class TestGrizzlyContextState:
-    def test(self, grizzly_fixture: GrizzlyFixture) -> None:
-        grizzly = grizzly_fixture.grizzly
-        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
-        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
-        state = GrizzlyContextState(grizzly.scenarios)
+    def test(self) -> None:
+        state = GrizzlyContextState()
 
         expected_properties = {
             'spawning_complete': (False, True),
-            'background_section_done': (False, True),
+            'background_done': (False, True),
             'configuration': ({}, {'sut.host': 'http://example.com'}),
-            'alias': ({}, {'AtomicIntegerIncrementer.test': 'auth.randomseed'}),
             'verbose': (False, True),
-            'persistent': ({}, {'AtomicIntegerIncrementer.persist': '1 | step=10, persist=True'}),
         }
-        actual_attributes = list(state.__dict__.keys())
-        actual_attributes.remove('variables')  # @TODO: remove...
-        actual_attributes.sort()
-        expected_attributes = list(expected_properties.keys())
-        expected_attributes.sort()
+        actual_attributes = sorted(state.__dict__.keys())
+        expected_attributes = sorted(expected_properties.keys())
 
         assert actual_attributes == expected_attributes
 
@@ -230,12 +222,6 @@ class TestGrizzlyContextState:
             assert getattr(state, test_attribute_name) == default_value
             setattr(state, test_attribute_name, test_value)
             assert getattr(state, test_attribute_name) == test_value
-
-        assert state.variables == {}
-        state.variables.update({'test': 'hello'})
-
-        for scenario in grizzly.scenarios:
-            assert scenario.jinja2.globals == SOME(dict, test='hello')
 
     def test_configuration(self, grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> None:
         grizzly = grizzly_fixture.grizzly
@@ -257,7 +243,7 @@ class TestGrizzlyContextState:
                                 redirect_uri: "https://www.example.com/authenticated"
             """)
 
-            state = GrizzlyContextState(grizzly.scenarios)
+            state = GrizzlyContextState()
 
             assert state.configuration == {}
 
@@ -265,7 +251,7 @@ class TestGrizzlyContextState:
 
             environ['GRIZZLY_CONFIGURATION_FILE'] = str(configuration_file)
 
-            state = GrizzlyContextState(grizzly.scenarios)
+            state = GrizzlyContextState()
 
             assert state.configuration == {
                 'sut.host': 'https://backend.example.com',
@@ -331,7 +317,7 @@ class TestGrizzlyContextScenarios:
     def test(self, grizzly_fixture: GrizzlyFixture) -> None:
         # setup env variable GRIZZLY_CONTEXT_ROOT
         _ = grizzly_fixture()
-        scenarios = GrizzlyContextScenarios()
+        scenarios = GrizzlyContextScenarios(grizzly_fixture.grizzly)
 
         assert issubclass(scenarios.__class__, list)
         assert len(scenarios) == 0
@@ -369,7 +355,7 @@ class TestGrizzlyContextScenario:
         1004,
     ])
     def test(self, index: int, behave_fixture: BehaveFixture) -> None:
-        scenario = GrizzlyContextScenario(index, behave=behave_fixture.create_scenario('Test'))
+        scenario = GrizzlyContextScenario(index, behave=behave_fixture.create_scenario('Test'), grizzly=behave_fixture.grizzly)
         identifier = f'{index:03}'
 
         assert scenario.index == index
@@ -390,7 +376,7 @@ class TestGrizzlyContextScenario:
         assert not scenario.should_validate()
 
     def test_tasks(self, request_task: RequestTaskFixture, behave_fixture: BehaveFixture) -> None:
-        scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('TestScenario'))
+        scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('TestScenario'), grizzly=behave_fixture.grizzly)
         scenario.context['host'] = 'test'
         scenario.user.class_name = 'TestUser'
         request = request_task.request
@@ -418,13 +404,11 @@ class TestGrizzlyContextScenario:
         behave = behave_fixture.context
         grizzly = cast(GrizzlyContext, behave.grizzly)
         assert len(grizzly.scenarios()) == 0
-        assert grizzly.state.variables == {}
 
         grizzly.scenarios.create(behave_fixture.create_scenario('test1'))
         grizzly.scenario.user.class_name = 'TestUser'
         first_scenario = grizzly.scenario
         assert len(grizzly.scenarios()) == 1
-        assert grizzly.state.variables == {}
         assert grizzly.scenario.name == 'test1'
 
         grizzly.scenario.context['host'] = 'http://test:8000'
@@ -513,7 +497,7 @@ class TestGrizzlyContextTasksTmp:
 
         assert len(tmp.__stack__) == 0
 
-        grizzly.state.variables['loop_value'] = 'none'
+        grizzly.scenario.variables['loop_value'] = 'none'
 
         loop = LoopTask('loop-1', '["hello", "world"]', "loop_value")
         tmp.loop = loop
@@ -538,7 +522,7 @@ class TestGrizzlyContextTasksTmp:
 
     def test___stack__(self, grizzly_fixture: GrizzlyFixture) -> None:
         grizzly = grizzly_fixture.grizzly
-        grizzly.state.variables['loop_value'] = 'none'
+        grizzly.scenario.variables['loop_value'] = 'none'
 
         tmp = GrizzlyContextTasksTmp()
 
@@ -604,7 +588,7 @@ class TestGrizzlyContextTasks:
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:
         grizzly = grizzly_fixture.grizzly
-        grizzly.state.variables['loop_value'] = 'none'
+        grizzly.scenario.variables['loop_value'] = 'none'
 
         tasks = GrizzlyContextTasks()
 

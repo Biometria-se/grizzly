@@ -6,23 +6,20 @@ import re
 from collections import namedtuple
 from os import environ
 from pathlib import Path
-from time import perf_counter as time
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 from jinja2.filters import FILTERS
 from jinja2.meta import find_undeclared_variables
 
 from grizzly.testdata.ast import get_template_variables
-from grizzly.types import GrizzlyVariableType, RequestType, TestdataType
-from grizzly.types.locust import MessageHandler, StopUser
 from grizzly.utils import has_template, is_file, merge_dicts, unflatten
 
 from . import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
-    from jinja2 import Environment
-
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+    from grizzly.types import GrizzlyVariableType, TestdataType
+    from grizzly.types.locust import MessageHandler
 
 
 logger = logging.getLogger(__name__)
@@ -37,12 +34,12 @@ def initialize_testdata(grizzly: GrizzlyContext) -> tuple[TestdataType, set[str]
 
     logger.debug('testdata: %r', template_variables)
 
-    initialized_datatypes: dict[str, Any] = {}
     external_dependencies: set[str] = set()
     message_handlers: dict[str, MessageHandler] = {}
 
     for scenario, variables in template_variables.items():
-        testdata[scenario] = {}
+        testdata[scenario.class_name] = {}
+        initialized_datatypes: dict[str, Any] = {}
 
         for variable in variables:
             module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(variable)
@@ -54,16 +51,17 @@ def initialize_testdata(grizzly: GrizzlyContext) -> tuple[TestdataType, set[str]
                 variable_datatype = variable_name
 
             if variable_datatype not in initialized_datatypes:
-                initialized_datatypes[variable_datatype], dependencies, message_handler = GrizzlyVariables.initialize_variable(grizzly, variable_datatype)
+                initialized_datatype, dependencies, message_handler = GrizzlyVariables.initialize_variable(scenario, variable_datatype)
                 external_dependencies.update(dependencies)
                 message_handlers.update(message_handler)
+                initialized_datatypes.update({variable_datatype: initialized_datatype})
 
-            testdata[scenario][variable] = initialized_datatypes[variable_datatype]
+            testdata[scenario.class_name][variable] = initialized_datatypes[variable_datatype]
 
     return testdata, external_dependencies, message_handlers
 
 
-def transform(grizzly: GrizzlyContext, data: dict[str, Any], scenario: Optional[GrizzlyContextScenario] = None, *, objectify: Optional[bool] = True) -> dict[str, Any]:
+def transform(scenario: GrizzlyContextScenario, data: dict[str, Any], *, objectify: Optional[bool] = True) -> dict[str, Any]:
     """Transform a dictionary with static values to something that can have values which are object."""
     testdata: dict[str, Any] = {}
 
@@ -73,33 +71,16 @@ def transform(grizzly: GrizzlyContext, data: dict[str, Any], scenario: Optional[
         if '.' in key:
             if module_name is not None and variable_type is not None and value == '__on_consumer__':
                 variable_type_instance = GrizzlyVariables.load_variable(module_name, variable_type)
-                initial_value = grizzly.state.variables.get(key, None)
-                variable_instance = variable_type_instance.obtain(variable_name, initial_value)
+                initial_value = scenario.variables.get(key, None)
+                variable_instance = variable_type_instance.obtain(scenario=scenario, variable=variable_name, value=initial_value)
 
-                start_time = time()
-                exception: Optional[Exception] = None
                 try:
                     value = variable_instance[variable_name]  # noqa: PLW2901
                 except Exception as e:
-                    exception = e
                     logger.exception('failed to get value from variable instance')
-                finally:
-                    response_time = int((time() - start_time) * 1000)
-                    if scenario is not None:
-                        grizzly.state.locust.environment.events.request.fire(
-                            request_type=RequestType.VARIABLE(),
-                            name=f'{scenario.identifier} {key}',
-                            response_time=response_time,
-                            response_length=0,
-                            context=None,
-                            exception=exception,
-                        )
 
-                if exception is not None:
-                    if scenario is None:
-                        raise StopUser
-                    elif scenario.failure_exception is not None:  # noqa: RET506
-                        raise scenario.failure_exception
+                    if scenario.failure_exception is not None:
+                        raise scenario.failure_exception from e
 
             paths: list[str] = key.split('.')
             variable = paths.pop(0)
@@ -129,13 +110,13 @@ def _objectify(testdata: dict[str, Any]) -> dict[str, Any]:
     return testdata
 
 
-def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str, *, scenario: Optional[GrizzlyContextScenario] = None) -> dict[str, Any]:
+def create_context_variable(scenario: GrizzlyContextScenario, variable: str, value: str) -> dict[str, Any]:
     """Create a variable as a context variable. Handles other separators than `.`."""
     if has_template(value):
-        grizzly.scenario.orphan_templates.append(value)
+        scenario.orphan_templates.append(value)
 
-    casted_value = resolve_variable(grizzly, value)
-    casted_variable = cast(str, resolve_variable(grizzly, variable))
+    casted_value = resolve_variable(scenario, value)
+    casted_variable = cast(str, resolve_variable(scenario, variable))
 
     prefix: Optional[str] = None
 
@@ -144,7 +125,7 @@ def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str, 
 
     casted_variable = casted_variable.lower().replace(' ', '_').replace('/', '.')
 
-    transformed = transform(grizzly, {casted_variable: casted_value}, scenario=scenario, objectify=False)
+    transformed = transform(scenario, {casted_variable: casted_value}, objectify=False)
 
     if prefix is not None:
         transformed = {prefix: transformed}
@@ -152,8 +133,8 @@ def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str, 
     return transformed
 
 
-def resolve_template(env: Environment, value: str) -> str:
-    template = env.from_string(value)
+def resolve_template(scenario: GrizzlyContextScenario, value: str) -> str:
+    template = scenario.jinja2.from_string(value)
     template_parsed = template.environment.parse(value)
     template_variables = find_undeclared_variables(template_parsed)
 
@@ -161,12 +142,12 @@ def resolve_template(env: Environment, value: str) -> str:
         if f'{template_variable} is defined' in value or f'{template_variable} is not defined' in value:
             continue
 
-        assert template_variable in env.globals, f'value contained variable "{template_variable}" which has not been declared'
+        assert template_variable in scenario.variables, f'value contained variable "{template_variable}" which has not been declared'
 
     return template.render()
 
 
-def resolve_parameters(grizzly: GrizzlyContext, value: str) -> str:
+def resolve_parameters(scenario: GrizzlyContextScenario, value: str) -> str:
     regex = r"\$(conf|env)::([^\$]+)\$"
 
     matches = re.finditer(regex, value, re.MULTILINE)
@@ -176,8 +157,8 @@ def resolve_parameters(grizzly: GrizzlyContext, value: str) -> str:
         variable_name = match.group(2)
 
         if match_type == 'conf':
-            assert variable_name in grizzly.state.configuration, f'configuration variable "{variable_name}" is not set'
-            variable_value = grizzly.state.configuration[variable_name]
+            assert variable_name in scenario.grizzly.state.configuration, f'configuration variable "{variable_name}" is not set'
+            variable_value = scenario.grizzly.state.configuration[variable_name]
         elif match_type == 'env':
             assert variable_name in environ, f'environment variable "{variable_name}" is not set'
             variable_value = environ.get(variable_name, None)
@@ -207,14 +188,11 @@ def read_file(value: str) -> str:
 
 
 def resolve_variable(
-        grizzly: GrizzlyContext, value: str, *, guess_datatype: Optional[bool] = True, only_grizzly: bool = False, env: Optional[Environment] = None,
+        scenario: GrizzlyContextScenario, value: str, *, guess_datatype: bool = True, only_grizzly: bool = False,
 ) -> GrizzlyVariableType:
     """Resolve a value to its actual value, since it can be a jinja2 template or any dollar reference. Return type can be actual type of the value."""
     if len(value) < 1:
         return value
-
-    if env is None:
-        env = grizzly.scenario.jinja2
 
     quote_char: Optional[str] = None
     if value[0] in ['"', "'"] and value[0] == value[-1]:
@@ -225,10 +203,10 @@ def resolve_variable(
         value = read_file(value)
 
     if has_template(value) and not only_grizzly:
-        value = resolve_template(env, value)
+        value = resolve_template(scenario, value)
 
     if '$conf' in value or '$env' in value:
-        value = resolve_parameters(grizzly, value)
+        value = resolve_parameters(scenario, value)
 
     if guess_datatype:
         resolved_variable = GrizzlyVariables.guess_datatype(value)

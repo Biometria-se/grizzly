@@ -70,9 +70,6 @@ class AtomicVariableCleanupFixture:
 
         destroy_variables()
 
-        with suppress(KeyError):
-            del environ['GRIZZLY_CONTEXT_ROOT']
-
 
 class LocustFixture:
     _test_context_root: Path
@@ -178,6 +175,15 @@ class BehaveFixture:
 
     def create_scenario(self, name: str) -> Scenario:
         return Scenario(filename=None, line=None, keyword='', name=name)
+
+    def create_step(self, name: str, *, in_background: bool = False, context: Optional[BehaveContext] = None) -> Step:
+        step = Step(filename=None, line=None, keyword='given', step_type='given', name=name, text=None, table=None)
+        step.in_background = in_background
+
+        if context is not None:
+            context.step = step
+
+        return step
 
     def __enter__(self) -> Self:
         runner = BehaveRunner(

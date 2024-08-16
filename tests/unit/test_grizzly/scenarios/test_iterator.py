@@ -52,7 +52,7 @@ class TestIterationScenario:
 
             return ''.join(sarcastic_value)
 
-        parent.user._context['variables'].update({'are': 'foo'})
+        parent.user.set_variable('are', 'foo')
         assert parent.render('how {{ are }} we {{ doing | sarcasm }} today', variables={'doing': 'bar'}) == 'how foo we BaR today'
 
     def test_populate(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
@@ -79,7 +79,7 @@ class TestIterationScenario:
             name='001 IteratorScenario',
             response_time=ANY,
             response_length=0,
-            context={'variables': {}, 'log_all_requests': False, 'host': '', 'metadata': None},
+            context={'log_all_requests': False, 'host': '', 'metadata': None},
             exception=ANY,
         )
         args, kwargs = request_spy.call_args_list[-1]
@@ -116,7 +116,7 @@ class TestIterationScenario:
         args, _ = logger_spy.call_args_list[0]
         assert args[0] == 'hello '
 
-        parent.user.set_context_variable('world', 'world!')
+        parent.user.set_variable('world', 'world!')
 
         task_method(parent)
 
@@ -192,7 +192,7 @@ class TestIterationScenario:
                     return None
 
                 if 'variables' in data:
-                    data['variables'] = transform(grizzly, data['variables'])
+                    data['variables'] = transform(grizzly.scenario, data['variables'])
 
                 return data
 
@@ -206,14 +206,14 @@ class TestIterationScenario:
         with pytest.raises(StopScenario):
             parent.iterator()
 
-        assert parent.user.context_variables == {}
+        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
 
         mock_request({})
 
         with pytest.raises(StopScenario):
             parent.iterator()
 
-        assert parent.user.context_variables == {}
+        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
 
         mock_request({
             'variables': {
@@ -227,9 +227,9 @@ class TestIterationScenario:
 
         parent.iterator(prefetch=True)
 
-        assert parent.user.context_variables['AtomicIntegerIncrementer'].messageID == 1337
-        assert parent.user.context_variables['AtomicCsvReader'].test.header1 == 'value1'
-        assert parent.user.context_variables['AtomicCsvReader'].test.header2 == 'value2'
+        assert parent.user._scenario.variables['AtomicIntegerIncrementer'].messageID == 1337
+        assert parent.user._scenario.variables['AtomicCsvReader'].test.header1 == 'value1'
+        assert parent.user._scenario.variables['AtomicCsvReader'].test.header2 == 'value2'
         assert getattr(parent, '_prefetch', False)
 
         mock_request({
@@ -244,16 +244,16 @@ class TestIterationScenario:
 
         parent.iterator()
 
-        assert parent.user.context_variables['AtomicIntegerIncrementer'].messageID == 1337
-        assert parent.user.context_variables['AtomicCsvReader'].test.header1 == 'value1'
-        assert parent.user.context_variables['AtomicCsvReader'].test.header2 == 'value2'
+        assert parent.user._scenario.variables['AtomicIntegerIncrementer'].messageID == 1337
+        assert parent.user._scenario.variables['AtomicCsvReader'].test.header1 == 'value1'
+        assert parent.user._scenario.variables['AtomicCsvReader'].test.header2 == 'value2'
         assert not getattr(parent, '_prefetch', True)
 
         parent.iterator()
 
-        assert parent.user.context_variables['AtomicIntegerIncrementer'].messageID == 1338
-        assert parent.user.context_variables['AtomicCsvReader'].test.header1 == 'value3'
-        assert parent.user.context_variables['AtomicCsvReader'].test.header2 == 'value4'
+        assert parent.user._scenario.variables['AtomicIntegerIncrementer'].messageID == 1338
+        assert parent.user._scenario.variables['AtomicCsvReader'].test.header1 == 'value3'
+        assert parent.user._scenario.variables['AtomicCsvReader'].test.header2 == 'value4'
         assert not getattr(parent, '_prefetch', True)
 
     def test_pace(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
@@ -372,7 +372,7 @@ class TestIterationScenario:
         gsleep_spy.reset_mock()
 
         # iteration time < specified pace, variable
-        parent.user._context['variables'].update({'pace': '3000'})
+        parent.user.set_variable('pace', '3000')
         parent.start = 12.26
         parent.__class__.pace_time = '{{ pace }}'
         perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
@@ -399,7 +399,7 @@ class TestIterationScenario:
         gsleep_spy.reset_mock()
 
         # iteration time > specified pace, templating
-        parent.user._context['variables'].update({'pace': '500'})
+        parent.user.set_variable('pace', '500')
         parent.__class__.pace_time = '{{ pace }}'
         perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
 
@@ -704,9 +704,7 @@ class TestIterationScenario:
             def __call__(self) -> grizzlytask:
                 @grizzlytask
                 def task(parent: GrizzlyScenario) -> Any:
-                    parent.user.logger.debug('%s executed', self.name)
-
-                    if parent.user._context.get('variables', {}).get('foo', None) is None:
+                    if parent.user._scenario.variables.get('foo', None) is None:
                         raise RestartScenario
 
                     parent.user.stop()
@@ -762,50 +760,33 @@ class TestIterationScenario:
             expected_messages = [
                 'executing task 1 of 13: iterator',  # IteratorScenario.iterator()
                 'executing task 2 of 13: test-task-1',
-                'test-task-1 executed',
                 'executing task 3 of 13: test-task-2',
-                'test-task-2 executed',
                 'executing task 4 of 13: test-task-3',
-                'test-task-3 executed',
                 'executing task 5 of 13: test-task-4',
-                'test-task-4 executed',
                 'executing task 6 of 13: test-task-5',
-                'test-task-5 executed',
                 'executing task 7 of 13: test-error-task-1',
-                'test-error-task-1 executed',
                 'task 7 of 13: test-error-task-1, failed: RestartScenario',
                 'restarting scenario at task 7 of 13',
                 '0 tasks in queue',
                 'executing task 1 of 13: iterator',  # IteratorScenario.iterator()
                 'executing task 2 of 13: test-task-1',
-                'test-task-1 executed',
                 'executing task 3 of 13: test-task-2',
-                'test-task-2 executed',
                 'executing task 4 of 13: test-task-3',
-                'test-task-3 executed',
                 'executing task 5 of 13: test-task-4',
-                'test-task-4 executed',
                 'executing task 6 of 13: test-task-5',
-                'test-task-5 executed',
                 'executing task 7 of 13: test-error-task-1',
-                'test-error-task-1 executed',
                 'stop scenarios before stopping user',
                 'scenario state=ScenarioState.RUNNING -> ScenarioState.STOPPING',
                 'not finished with scenario, currently at task 7 of 13, let me be!',
                 'executing task 8 of 13: test-task-6',
-                'test-task-6 executed',
                 'not finished with scenario, currently at task 8 of 13, let me be!',
                 'executing task 9 of 13: test-task-7',
-                'test-task-7 executed',
                 'not finished with scenario, currently at task 9 of 13, let me be!',
                 'executing task 10 of 13: test-task-8',
-                'test-task-8 executed',
                 'not finished with scenario, currently at task 10 of 13, let me be!',
                 'executing task 11 of 13: test-task-9',
-                'test-task-9 executed',
                 'not finished with scenario, currently at task 11 of 13, let me be!',
                 'executing task 12 of 13: test-task-10',
-                'test-task-10 executed',
                 'not finished with scenario, currently at task 12 of 13, let me be!',
                 'executing task 13 of 13: pace',
                 r'^keeping pace by sleeping [0-9\.]+ milliseconds$',
@@ -814,9 +795,11 @@ class TestIterationScenario:
                 "scenario_state=STOPPED, user_state=stopping, exception=StopUser()",
             ]
 
-            assert len(caplog.messages) == len(expected_messages)
+            actual_messages = [message for message in caplog.messages if 'context variable=' not in message]
 
-            for actual, _expected in zip(caplog.messages, expected_messages):
+            assert len(actual_messages) == len(expected_messages)
+
+            for actual, _expected in zip(actual_messages, expected_messages):
                 expected = regex.possible(_expected)
                 assert actual == expected
 

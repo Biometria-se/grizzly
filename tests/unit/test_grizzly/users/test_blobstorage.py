@@ -39,7 +39,7 @@ def blob_storage_parent(grizzly_fixture: GrizzlyFixture) -> GrizzlyScenario:
     request = grizzly_fixture.request_task.request
     request.method = RequestMethod.SEND
 
-    scenario = GrizzlyContextScenario(99, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+    scenario = GrizzlyContextScenario(99, behave=grizzly_fixture.behave.create_scenario('test scenario'), grizzly=grizzly_fixture.grizzly)
     scenario.user.class_name = 'BlobStorageUser'
     scenario.context['host'] = 'test'
     scenario.tasks.clear()
@@ -153,7 +153,7 @@ class TestBlobStorageUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly, {
+            'variables': transform(grizzly.scenario, {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,
@@ -214,7 +214,7 @@ class TestBlobStorageUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly, {
+            'variables': transform(grizzly.scenario, {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,
@@ -276,7 +276,7 @@ class TestBlobStorageUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly, {
+            'variables': transform(grizzly.scenario, {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,

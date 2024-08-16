@@ -32,7 +32,7 @@ def step_log_all_requests(context: Context) -> None:
     ```
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
-    context_variable = create_context_variable(grizzly, 'log_all_requests', 'True')
+    context_variable = create_context_variable(grizzly.scenario, 'log_all_requests', 'True')
     grizzly.scenario.context = merge_dicts(grizzly.scenario.context, context_variable)
 
 

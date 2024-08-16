@@ -72,16 +72,23 @@ def test_atomiccsvwriter_message_handler(grizzly_fixture: GrizzlyFixture) -> Non
 
 
 class TestAtomicCsvWriter:
-    def test___init__(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
         try:
             with pytest.raises(ValueError, match='AtomicCsvWriter.output.foo is not a valid CSV destination name, must be: AtomicCsvWriter.<name>'):
-                AtomicCsvWriter('output.foo', 'foobar')
+                AtomicCsvWriter(scenario=scenario1, variable='output.foo', value='foobar')
 
-            t = AtomicCsvWriter('output', 'foobar.csv | headers="foo,bar"')
+            t = AtomicCsvWriter(scenario=scenario1, variable='output', value='foobar.csv | headers="foo,bar"')
 
             assert t._settings == {'output': {'headers': ['foo', 'bar'], 'destination': 'foobar.csv', 'overwrite': False}}
 
-            u = AtomicCsvWriter('foobar', 'output.csv | headers="bar,foo", overwrite=True')
+            u = AtomicCsvWriter(scenario=scenario2, variable='foobar', value='output.csv | headers="bar,foo", overwrite=True')
+
+            assert u is not t
+
+            u = AtomicCsvWriter(scenario=scenario1, variable='foobar', value='output.csv | headers="bar,foo", overwrite=True')
 
             assert u is t
 
@@ -100,23 +107,33 @@ class TestAtomicCsvWriter:
         finally:
             cleanup()
 
-    def test_clear(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_clear(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
+
         try:
-            u = AtomicCsvWriter('foobar', 'output.csv | headers="bar,foo", overwrite=True')
+            u = AtomicCsvWriter(scenario=scenario1, variable='foobar', value='output.csv | headers="bar,foo", overwrite=True')
             assert len(u._settings) == 1
 
-            t = AtomicCsvWriter('output', 'foobar.csv | headers="foo,bar"')
+            t = AtomicCsvWriter(scenario=scenario1, variable='output', value='foobar.csv | headers="foo,bar"')
             assert len(t._settings) == 2
+
+            v = AtomicCsvWriter(scenario=scenario2, variable='output', value='output.csv | headers="foz,baz"')
+            assert len(v._settings) == 1
 
             AtomicCsvWriter.clear()
 
             assert len(t._settings) == 0
+            assert len(v._settings) == 0
         finally:
             cleanup()
 
-    def test___getitem__(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test___getitem__(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+
         try:
-            u = AtomicCsvWriter('foobar', 'output.csv | headers="bar,foo", overwrite=True')
+            u = AtomicCsvWriter(scenario=grizzly.scenario, variable='foobar', value='output.csv | headers="bar,foo", overwrite=True')
 
             with pytest.raises(NotImplementedError, match='AtomicCsvWriter has not implemented "__getitem__"'):
                 _ = u['foobar']
@@ -124,10 +141,14 @@ class TestAtomicCsvWriter:
             cleanup()
 
     def test___setitem__(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, mocker: MockerFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
+
         try:
             send_message_mock = mocker.patch.object(grizzly_fixture.grizzly.state.locust, 'send_message', return_value=None)
 
-            t = AtomicCsvWriter('output', 'output.csv | headers="foo,bar"')
+            t = AtomicCsvWriter(scenario=scenario1, variable='output', value='output.csv | headers="foo,bar"')
 
             assert not hasattr(t, '_buffer')
 
@@ -152,5 +173,14 @@ class TestAtomicCsvWriter:
                 t['output.foo'] = 'world'
 
             send_message_mock.assert_not_called()
+
+            t = AtomicCsvWriter(scenario=scenario2, variable='output', value='output.csv | headers="foo,bar"')
+            t['output'] = 'world, hello'
+
+            send_message_mock.assert_called_once_with('atomiccsvwriter', {
+                'destination': 'output.csv',
+                'row': {'foo': 'world', 'bar': 'hello'},
+            })
+            send_message_mock.reset_mock()
         finally:
             cleanup()

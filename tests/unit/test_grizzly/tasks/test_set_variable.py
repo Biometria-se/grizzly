@@ -32,15 +32,15 @@ class TestSetVariableTask:
             with pytest.raises(AttributeError, match=r'grizzly\.testdata\.variables\.AtomicIntegerIncrementer is not settable'):
                 SetVariableTask('AtomicIntegerIncrementer.id', '{{ value }}', VariableType.VARIABLES)
 
-            grizzly_fixture.grizzly.state.variables.update({'AtomicIntegerIncrementer.id': 1})
-            GrizzlyVariables.initialize_variable(grizzly_fixture.grizzly, 'AtomicIntegerIncrementer.id')
+            grizzly_fixture.grizzly.scenario.variables.update({'AtomicIntegerIncrementer.id': 1})
+            GrizzlyVariables.initialize_variable(grizzly_fixture.grizzly.scenario, 'AtomicIntegerIncrementer.id')
 
             with pytest.raises(AttributeError, match=r'grizzly\.testdata\.variables\.AtomicIntegerIncrementer is not settable'):
                 SetVariableTask('AtomicIntegerIncrementer.id', '{{ value }}', VariableType.VARIABLES)
 
             # Atomic variable, settable
-            grizzly_fixture.grizzly.state.variables.update({'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"'})
-            GrizzlyVariables.initialize_variable(grizzly_fixture.grizzly, 'AtomicCsvWriter.output')
+            grizzly_fixture.grizzly.scenario.variables.update({'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"'})
+            GrizzlyVariables.initialize_variable(grizzly_fixture.grizzly.scenario, 'AtomicCsvWriter.output')
 
             task_factory = SetVariableTask('AtomicCsvWriter.output.foo', '{{ value }}', VariableType.VARIABLES)
 
@@ -69,42 +69,41 @@ class TestSetVariableTask:
 
             task = task_factory()
 
-            assert 'foobar' not in parent.user._context['variables']
+            assert 'foobar' not in parent.user._scenario.variables
 
-            parent.user._context['variables'].update({'value': 'hello world!'})
+            parent.user.set_variable('value', 'hello world!')
 
             task(parent)
 
-            assert parent.user._context['variables'].get('foobar', None) == 'hello world!'
+            assert parent.user._scenario.variables.get('foobar', None) == 'hello world!'
 
-            parent.user._context['variables'].clear()
+            parent.user._scenario.jinja2.globals = GrizzlyVariables(**parent.user._scenario.jinja2._globals)
 
             # settable Atomic variable
             set_value_mock = mocker.patch('grizzly.testdata.variables.csv_writer.AtomicCsvWriter.__setitem__', return_value=None)
 
-            grizzly_fixture.grizzly.state.variables.update({'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"'})
-            GrizzlyVariables.initialize_variable(grizzly_fixture.grizzly, 'AtomicCsvWriter.output')
-            task_factory_foo = SetVariableTask('AtomicCsvWriter.output', '{{ value }}', VariableType.VARIABLES)
-            parent.user._context['variables'].update({'value': 'hello, world!'})
+            parent.user.set_variable('AtomicCsvWriter.output', 'output.csv | headers="foo,bar"')
+            GrizzlyVariables.initialize_variable(parent.user._scenario, 'AtomicCsvWriter.output')
+            task_factory_foo = SetVariableTask('AtomicCsvWriter.output', '{{ value }} | headers="foo,bar"', VariableType.VARIABLES)
+            parent.user.set_variable('value', 'file.csv')
 
             task = task_factory_foo()
             task(parent)
 
-            set_value_mock.assert_called_once_with('output', 'hello, world!')
-            assert 'AtomicCsvWriter.output.foo' not in parent.user._context['variables']
+            set_value_mock.assert_called_once_with('output', 'file.csv | headers="foo,bar"')
+            assert 'AtomicCsvWriter.output.foo' not in parent.user._scenario.variables
 
             # set value from file runtime, and render file contents
             test_file = grizzly_fixture.test_context / 'requests' / 'test' / 'hello.foo.txt'
             test_file.parent.mkdir(exist_ok=True, parents=True)
             test_file.write_text('{{ value }}')
 
-            grizzly_fixture.grizzly.state.variables.update({'bar': 'foo'})
-            parent.user._context['variables'].update({'bar': 'foo'})
+            parent.user.set_variable('bar', 'foo')
             task_factory = SetVariableTask('foobar', 'test/hello.{{ bar }}.txt', VariableType.VARIABLES)
             task = task_factory()
 
             task(parent)
 
-            assert parent.user._context['variables']['foobar'] == 'hello, world!'
+            assert parent.user._scenario.variables['foobar'] == 'file.csv'
         finally:
             cleanup()

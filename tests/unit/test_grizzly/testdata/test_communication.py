@@ -14,7 +14,6 @@ import zmq.green as zmq
 from zmq.error import Again as ZMQAgain
 from zmq.error import ZMQError
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import LogMessageTask
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
@@ -27,26 +26,25 @@ if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 
-    from tests.fixtures import AtomicVariableCleanupFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture, NoopZmqFixture
 
 
 class TestTestdataProducer:
-    def test_run_with_behave(  # noqa: PLR0915
+    def test_run(  # noqa: PLR0915
         self,
-        behave_fixture: BehaveFixture,
         grizzly_fixture: GrizzlyFixture,
         cleanup: AtomicVariableCleanupFixture,
         caplog: LogCaptureFixture,
     ) -> None:
         producer: Optional[TestdataProducer] = None
         context: Optional[zmq.Context] = None
-        context_root = Path(grizzly_fixture.request_task.context_root)
         request = grizzly_fixture.request_task.request
 
         success = False
 
         environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_behave.feature'
-        environ['GRIZZLY_CONTEXT_ROOT'] = Path(context_root).parent.as_posix()
+        context_root = grizzly_fixture.test_context / 'requests'
+        context_root.mkdir(exist_ok=True)
 
         try:
             parent = grizzly_fixture()
@@ -75,11 +73,11 @@ value3,value4
                 'CustomVariable': '{{ tests.helpers.AtomicCustomVariable.foo }}',
             })
 
-            grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
+            grizzly = grizzly_fixture.grizzly
             grizzly.scenarios.clear()
-            grizzly.scenarios.create(behave_fixture.create_scenario(parent.__class__.__name__))
+            grizzly.scenarios.create(grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
             grizzly.scenario.orphan_templates.append('{{ AtomicCsvWriter.output }}')
-            grizzly.state.variables.update({
+            grizzly.scenario.variables.update({
                 'messageID': 123,
                 'AtomicIntegerIncrementer.messageID': 456,
                 'AtomicDirectoryContents.test': 'adirectory',
@@ -91,7 +89,7 @@ value3,value4
                 'world': 'hello!',
                 'tests.helpers.AtomicCustomVariable.foo': 'bar',
             })
-            grizzly.state.alias.update({
+            grizzly.scenario.variables.alias.update({
                 'AtomicCsvReader.test.header1': 'auth.user.username',
                 'AtomicCsvReader.test.header2': 'auth.user.password',
             })
@@ -100,6 +98,7 @@ value3,value4
             grizzly.scenario.context['host'] = 'http://test.nu'
 
             request.source = json.dumps(source)
+            request._template = grizzly.scenario.jinja2.from_string(request.source)
 
             grizzly.scenario.tasks.add(request)
             grizzly.scenario.tasks.add(LogMessageTask(message='hello {{ world }}'))
@@ -275,7 +274,9 @@ value3,value4
                 if success:
                     actual_initial_values = json.loads(persist_file.read_text())
                     assert actual_initial_values == {
-                        'AtomicIntegerIncrementer.value': '11 | step=5, persist=True',
+                        'IteratorScenario_001': {
+                            'AtomicIntegerIncrementer.value': '11 | step=5, persist=True',
+                        },
                     }
 
             if context is not None:
@@ -285,7 +286,6 @@ value3,value4
 
     def test_run_variable_none(
         self,
-        behave_fixture: BehaveFixture,
         grizzly_fixture: GrizzlyFixture,
         cleanup: AtomicVariableCleanupFixture,
     ) -> None:
@@ -293,12 +293,13 @@ value3,value4
         context: Optional[zmq.Context] = None
 
         try:
+            grizzly = grizzly_fixture.grizzly
             parent = grizzly_fixture()
-            context_root = Path(grizzly_fixture.request_task.context_root)
+            context_root = grizzly_fixture.test_context / 'requests'
+            context_root.mkdir(exist_ok=True)
             request = grizzly_fixture.request_task.request
             address = 'tcp://127.0.0.1:5555'
             environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
-            environ['GRIZZLY_CONTEXT_ROOT'] = Path(context_root).parent.as_posix()
 
             (context_root / 'adirectory').mkdir()
 
@@ -308,10 +309,11 @@ value3,value4
             source['result'].update({'File': '{{ AtomicDirectoryContents.file }}'})
 
             request.source = json.dumps(source)
+            request._template = grizzly.scenario.jinja2.from_string(request.source)
 
-            grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
-            grizzly.scenarios.create(behave_fixture.create_scenario(parent.__class__.__name__))
-            grizzly.state.variables.update({
+            grizzly.scenarios.clear()
+            grizzly.scenarios.create(grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
+            grizzly.scenario.variables.update({
                 'messageID': 123,
                 'AtomicIntegerIncrementer.messageID': 456,
                 'AtomicDirectoryContents.file': 'adirectory',
@@ -395,12 +397,16 @@ value3,value4
         noop_zmq('grizzly.testdata.communication')
         mocker.patch('grizzly.testdata.communication.zmq.Context.destroy', side_effect=[RuntimeError('zmq.Context.destroy failed')] * 3)
 
-        context_root = Path(grizzly_fixture.request_task.context_root).parent
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
 
-        persistent_file = context_root / 'persistent' / 'test_run_with_variable_none.json'
+        context_root = grizzly_fixture.test_context / 'requests'
+        context_root.mkdir(exist_ok=True)
+
+        persistent_file = grizzly_fixture.test_context / 'persistent' / 'test_run_with_variable_none.json'
 
         environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
-        environ['GRIZZLY_CONTEXT_ROOT'] = context_root.as_posix()
 
         try:
             with caplog.at_level(logging.DEBUG):
@@ -408,14 +414,20 @@ value3,value4
             assert 'failed to stop' in caplog.messages[-1]
             assert not persistent_file.exists()
 
-            i = AtomicIntegerIncrementer('foobar', '1 | step=1, persist=True')
+            i = AtomicIntegerIncrementer(scenario=scenario1, variable='foobar', value='1 | step=1, persist=True')
+            j = AtomicIntegerIncrementer(scenario=scenario2, variable='foobar', value='10 | step=10, persist=True')
 
-            i['foobar']
-            i['foobar']
+            for v in [i, j]:
+                v['foobar']
+                v['foobar']
+
             actual_keystore = {'foo': ['hello', 'world'], 'bar': {'hello': 'world', 'foo': 'bar'}, 'hello': 'world'}
 
             with caplog.at_level(logging.DEBUG):
-                producer = TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}})
+                producer = TestdataProducer(grizzly_fixture.grizzly, {
+                    scenario1.class_name: {'AtomicIntegerIncrementer.foobar': i},
+                    scenario2.class_name: {'AtomicIntegerIncrementer.foobar': j},
+                })
                 producer.keystore.update(actual_keystore)
                 producer.stop()
 
@@ -426,13 +438,22 @@ value3,value4
 
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
-                'AtomicIntegerIncrementer.foobar': '3 | step=1, persist=True',
+                'IteratorScenario_001': {
+                    'AtomicIntegerIncrementer.foobar': '3 | step=1, persist=True',
+                },
+                'IteratorScenario_002': {
+                    'AtomicIntegerIncrementer.foobar': '30 | step=10, persist=True',
+                },
             }
 
             i['foobar']
+            j['foobar']
 
             with caplog.at_level(logging.DEBUG):
-                producer = TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}})
+                producer = TestdataProducer(grizzly_fixture.grizzly, {
+                    scenario1.class_name: {'AtomicIntegerIncrementer.foobar': i},
+                    scenario2.class_name: {'AtomicIntegerIncrementer.foobar': j},
+                })
                 producer.stop()
 
             assert caplog.messages[-1] == f'feature file data persisted in {persistent_file}'
@@ -442,14 +463,16 @@ value3,value4
 
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
-                'AtomicIntegerIncrementer.foobar': '5 | step=1, persist=True',
+                'IteratorScenario_001': {
+                    'AtomicIntegerIncrementer.foobar': '5 | step=1, persist=True',
+                },
+                'IteratorScenario_002': {
+                    'AtomicIntegerIncrementer.foobar': '50 | step=10, persist=True',
+                },
             }
         finally:
             with suppress(KeyError):
                 del environ['GRIZZLY_FEATURE_FILE']
-
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
             cleanup()
 
     def test_run_type_error(
@@ -586,18 +609,19 @@ value3,value4
     ) -> None:
         noop_zmq('grizzly.testdata.communication')
 
-        context_root = Path(grizzly_fixture.request_task.context_root).parent
+        context_root = grizzly_fixture.test_context / 'requests'
+        context_root.mkdir(exist_ok=True)
+        grizzly = grizzly_fixture.grizzly
 
         persistent_file = context_root / 'persistent' / 'test_run_with_variable_none.json'
 
         environ['GRIZZLY_FEATURE_FILE'] = 'features/test_persist_data_edge_cases.feature'
-        environ['GRIZZLY_CONTEXT_ROOT'] = context_root.as_posix()
 
         try:
             assert not persistent_file.exists()
-            i = AtomicIntegerIncrementer('foobar', '1 | step=1, persist=True')
+            i = AtomicIntegerIncrementer(scenario=grizzly.scenario, variable='foobar', value='1 | step=1, persist=True')
 
-            producer = TestdataProducer(grizzly_fixture.grizzly, {'test': {'AtomicIntegerIncrementer.foobar': i}})
+            producer = TestdataProducer(grizzly_fixture.grizzly, {grizzly.scenario.class_name: {'AtomicIntegerIncrementer.foobar': i}})
             producer.has_persisted = True
 
             with caplog.at_level(logging.DEBUG):
@@ -622,9 +646,6 @@ value3,value4
             cleanup()
             with suppress(KeyError):
                 del environ['GRIZZLY_FEATURE_FILE']
-
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
 
 
 class TestTestdataConsumer:
@@ -679,7 +700,7 @@ class TestTestdataConsumer:
                         'password': 'password',
                     },
                 },
-                'variables': transform(grizzly, {
+                'variables': transform(grizzly.scenario, {
                     'AtomicIntegerIncrementer.messageID': 100,
                     'test': 1,
                 }),
@@ -719,7 +740,7 @@ class TestTestdataConsumer:
             }, 'consume')
 
             assert consumer.testdata('test') == {
-                'variables': transform(grizzly, {
+                'variables': transform(grizzly.scenario, {
                     'AtomicIntegerIncrementer.messageID': 100,
                     'test': None,
                 }),

@@ -49,7 +49,7 @@ def step_shapes_user_count(context: Context, value: str, **_kwargs: Any) -> None
         raise AssertionError(message)
 
     assert value[0] != '$', 'this expression does not support $conf or $env variables'
-    user_count = max(int(round(float(resolve_variable(grizzly, value)), 0)), 1)
+    user_count = max(int(round(float(resolve_variable(grizzly.scenario, value)), 0)), 1)
 
     if has_template(value):
         grizzly.scenario.orphan_templates.append(value)
@@ -82,7 +82,7 @@ def step_shapes_spawn_rate(context: Context, value: str, **_kwargs: Any) -> None
     assert isinstance(value, str), f'{value} is not a string'
     assert value[0] != '$', 'this expression does not support $conf or $env variables'
     grizzly = cast(GrizzlyContext, context.grizzly)
-    spawn_rate = max(float(resolve_variable(grizzly, value)), 0.01)
+    spawn_rate = max(float(resolve_variable(grizzly.scenario, value)), 0.01)
 
     if has_template(value):
         grizzly.scenario.orphan_templates.append(value)

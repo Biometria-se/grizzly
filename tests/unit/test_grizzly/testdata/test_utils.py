@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 from jinja2.filters import FILTERS
 
-from grizzly.context import GrizzlyContext
+from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import ConditionalTask, DateTask, LogMessageTask, TransformerTask, UntilRequestTask
 from grizzly.testdata.utils import (
     _objectify,
@@ -21,14 +21,14 @@ from grizzly.testdata.utils import (
     templatingfilter,
     transform,
 )
+from grizzly.testdata.variables import AtomicDate, AtomicIntegerIncrementer
 from grizzly.testdata.variables.csv_writer import atomiccsvwriter_message_handler
-from grizzly.types.behave import Scenario
 from grizzly_extras.transformer import TransformerContentType
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
 
-    from tests.fixtures import AtomicVariableCleanupFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture, RequestTaskFixture
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture, NoopZmqFixture, RequestTaskFixture
 
 
 def test_initialize_testdata_no_tasks(grizzly_fixture: GrizzlyFixture) -> None:
@@ -46,79 +46,98 @@ def test_initialize_testdata_with_tasks(
 ) -> None:
     try:
         grizzly = grizzly_fixture.grizzly
-        grizzly.state.variables.update({
-            'AtomicIntegerIncrementer.messageID': 1337,
-            'AtomicDate.now': 'now',
-            'transformer_task': 'none',
-            'AtomicIntegerIncrementer.value': 20,
-            'request_name': 'none',
-            'messageID': 2022,
-            'value': 'none',
-            'condition': False,
-            'timezone': 'GMT',
-            'content': 'none',
-            'days': 365,
-            'date_task_date': '2022-09-13 15:08:00',
-            'endpoint_part': '/api',
-            'message': 'hello world!',
-            'orphan': 'most likely',
-            'unused_variable': 'some value',
-        })
-        grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 1337
-        grizzly.state.variables['AtomicDate.now'] = 'now'
-        request = request_task.request
-        request.name = '{{ request_name }}'
-        request.endpoint = '/api/{{ endpoint_part }}/test'
-        request.response.content_type = TransformerContentType.JSON
-        grizzly.scenario.tasks.clear()
-        grizzly.scenario.tasks.add(request)
-        grizzly.scenario.tasks.add(LogMessageTask(message='{{ message }}'))
-        grizzly.scenario.tasks.add(DateTask(variable='date_task', value='{{ date_task_date }} | timezone="{{ timezone }}", offset="-{{ days }}D"'))
-        grizzly.scenario.tasks.add(TransformerTask(
-            expression='$.expression',
-            variable='transformer_task',
-            content='hello this is the {{ undeclared_variable if undeclared_variable is defined else content }}!',
-            content_type=TransformerContentType.JSON,
-        ))
-        request.content_type = TransformerContentType.JSON
-        grizzly.scenario.tasks.add(LogMessageTask('{{ unused_variable if unused_variable is defined else "hello" }}'))
-        grizzly.scenario.tasks.add(UntilRequestTask(request=request, condition='{{ condition }}'))
-        grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ value | int > 5 }}'))
-        grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
-        grizzly.scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
-        grizzly.scenario.orphan_templates.append('hello {{ orphan }} template')
-        grizzly.scenario.orphan_templates.append('{{ (((max_days * 0.33) + 0.5) | int) if max_days is defined else days }}')
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
+        grizzly.scenarios.clear()
 
-        scenario_name = grizzly.scenario.class_name
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('scenario1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('scenario2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('scenario3'))
+
+        scenario_map: dict[str, GrizzlyContextScenario] = {}
+
+        for scenario in grizzly.scenarios:
+            scenario_map.update({scenario.class_name: scenario})
+            grizzly.scenarios.select(scenario.behave)
+            grizzly.scenario.variables.update({
+                'AtomicIntegerIncrementer.messageID': 1337,
+                'AtomicDate.now': 'now',
+                'transformer_task': 'none',
+                'AtomicIntegerIncrementer.value': 20,
+                'request_name': 'none',
+                'messageID': 2022,
+                'value': 'none',
+                'condition': False,
+                'timezone': 'GMT',
+                'content': 'none',
+                'days': 365,
+                'date_task_date': '2022-09-13 15:08:00',
+                'endpoint_part': '/api',
+                'message': 'hello world!',
+                'orphan': 'most likely',
+                'unused_variable': 'some value',
+            })
+            request = request_task.request
+            request.name = '{{ request_name }}'
+            request.endpoint = '/api/{{ endpoint_part }}/test'
+            request.response.content_type = TransformerContentType.JSON
+            grizzly.scenario.tasks.clear()
+            grizzly.scenario.tasks.add(request)
+            grizzly.scenario.tasks.add(LogMessageTask(message='{{ message }}'))
+            grizzly.scenario.tasks.add(DateTask(variable='date_task', value='{{ date_task_date }} | timezone="{{ timezone }}", offset="-{{ days }}D"'))
+            grizzly.scenario.tasks.add(TransformerTask(
+                expression='$.expression',
+                variable='transformer_task',
+                content='hello this is the {{ undeclared_variable if undeclared_variable is defined else content }}!',
+                content_type=TransformerContentType.JSON,
+            ))
+            request.content_type = TransformerContentType.JSON
+            grizzly.scenario.tasks.add(LogMessageTask('{{ unused_variable if unused_variable is defined else "hello" }}'))
+            grizzly.scenario.tasks.add(UntilRequestTask(request=request, condition='{{ condition }}'))
+            grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ value | int > 5 }}'))
+            grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
+            grizzly.scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
+            grizzly.scenario.orphan_templates.append('hello {{ orphan }} template')
+            grizzly.scenario.orphan_templates.append('{{ (((max_days * 0.33) + 0.5) | int) if max_days is defined else days }}')
+
+        grizzly.scenarios.deselect()
+
+        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
 
         assert external_dependencies == set()
         assert message_handlers == {}
-        assert scenario_name in testdata
-        variables = testdata[scenario_name]
-        assert sorted(variables.keys()) == sorted([
-            'AtomicDate.now',
-            'AtomicIntegerIncrementer.messageID',
-            'AtomicIntegerIncrementer.value',
-            'condition',
-            'content',
-            'date_task_date',
-            'days',
-            'endpoint_part',
-            'message',
-            'messageID',
-            'orphan',
-            'request_name',
-            'transformer_task',
-            'timezone',
-            'value',
-            'unused_variable',
-        ])
+
+        for index, (scenario_name, variables) in enumerate(testdata.items(), start=1):
+            assert scenario_name == f'IteratorScenario_00{index}'
+            assert sorted(variables.keys()) == sorted([
+                'AtomicDate.now',
+                'AtomicIntegerIncrementer.messageID',
+                'AtomicIntegerIncrementer.value',
+                'condition',
+                'content',
+                'date_task_date',
+                'days',
+                'endpoint_part',
+                'message',
+                'messageID',
+                'orphan',
+                'request_name',
+                'transformer_task',
+                'timezone',
+                'value',
+                'unused_variable',
+            ])
+
+            assert isinstance(variables['AtomicDate.now'], AtomicDate)
+            assert isinstance(variables['AtomicIntegerIncrementer.messageID'], AtomicIntegerIncrementer)
+            assert isinstance(variables['AtomicIntegerIncrementer.value'], AtomicIntegerIncrementer)
+
+            assert variables['AtomicDate.now']._scenario is scenario_map[scenario_name]
+            assert variables['AtomicIntegerIncrementer.messageID']._scenario is scenario_map[scenario_name]
+            assert variables['AtomicIntegerIncrementer.value']._scenario is scenario_map[scenario_name]
     finally:
         cleanup()
 
 
-def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
+def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, noop_zmq: NoopZmqFixture) -> None:
     noop_zmq('grizzly.testdata.communication')
 
     try:
@@ -141,14 +160,16 @@ value3,value4
         source['result']['CsvRowValue2'] = '{{ AtomicCsvReader.test.header2 }}'
         source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
 
-        behave_scenario = Scenario(filename=None, line=None, keyword='', name=parent.__class__.__name__)
-        grizzly.scenarios.create(behave_scenario)
-        grizzly.state.variables['messageID'] = 123
-        grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
-        grizzly.state.variables['AtomicCsvReader.test'] = 'test.csv'
-        grizzly.state.variables['AtomicCsvWriter.output'] = 'output.csv | headers="foo,bar"'
-        grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
-        grizzly.state.variables['AtomicDate.now'] = 'now'
+        grizzly.scenarios.clear()
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
+        grizzly.scenario.variables.update({
+            'messageID': 123,
+            'AtomicIntegerIncrementer.messageID': 456,
+            'AtomicCsvReader.test': 'test.csv',
+            'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"',
+            'AtomicDirectoryContents.test': 'adirectory',
+            'AtomicDate.now': 'now',
+        })
         grizzly.scenario.user.class_name = 'TestUser'
         grizzly.scenario.context['host'] = 'http://test.nu'
         grizzly.scenario.iterations = 2
@@ -157,6 +178,7 @@ value3,value4
         grizzly.scenario.orphan_templates.append('{{ AtomicCsvWriter.output.foo }}')
 
         request.source = jsondumps(source)
+        request._template = grizzly.scenario.jinja2.from_string(request.source)
 
         grizzly.scenario.tasks.add(request)
 
@@ -195,79 +217,79 @@ def test_create_context_variable(grizzly_fixture: GrizzlyFixture) -> None:
     grizzly = grizzly_fixture.grizzly
 
     try:
-        grizzly.state.variables.update({'foo': 'baz'})
-        assert create_context_variable(grizzly, 'foo.bar', '{{ foo }}') == {
+        grizzly.scenario.variables.update({'foo': 'baz'})
+        assert create_context_variable(grizzly.scenario, 'foo.bar', '{{ foo }}') == {
             'foo': {
                 'bar': 'baz',
             },
         }
 
-        assert create_context_variable(grizzly, 'test.value', '1') == {
+        assert create_context_variable(grizzly.scenario, 'test.value', '1') == {
             'test': {
                 'value': 1,
             },
         }
 
-        assert create_context_variable(grizzly, 'test.value', 'trUe') == {
+        assert create_context_variable(grizzly.scenario, 'test.value', 'trUe') == {
             'test': {
                 'value': True,
             },
         }
 
-        assert create_context_variable(grizzly, 'test.value', 'AZURE') == {
+        assert create_context_variable(grizzly.scenario, 'test.value', 'AZURE') == {
             'test': {
                 'value': 'AZURE',
             },
         }
 
-        assert create_context_variable(grizzly, 'test.value', 'HOST') == {
+        assert create_context_variable(grizzly.scenario, 'test.value', 'HOST') == {
             'test': {
                 'value': 'HOST',
             },
         }
 
         with pytest.raises(AssertionError, match='environment variable "HELLO_WORLD" is not set'):
-            create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$')
+            create_context_variable(grizzly.scenario, 'test.value', '$env::HELLO_WORLD$')
 
         environ['HELLO_WORLD'] = 'environment variable value'
-        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$') == {
+        assert create_context_variable(grizzly.scenario, 'test.value', '$env::HELLO_WORLD$') == {
             'test': {
                 'value': 'environment variable value',
             },
         }
 
         environ['HELLO_WORLD'] = 'true'
-        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$') == {
+        assert create_context_variable(grizzly.scenario, 'test.value', '$env::HELLO_WORLD$') == {
             'test': {
                 'value': True,
             },
         }
 
         environ['HELLO_WORLD'] = '1337'
-        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$') == {
+        assert create_context_variable(grizzly.scenario, 'test.value', '$env::HELLO_WORLD$') == {
             'test': {
                 'value': 1337,
             },
         }
 
         with pytest.raises(AssertionError, match='configuration variable "test.auth.user.username" is not set'):
-            create_context_variable(grizzly, 'test.value', '$conf::test.auth.user.username$')
+            create_context_variable(grizzly.scenario, 'test.value', '$conf::test.auth.user.username$')
 
         grizzly.state.configuration['test.auth.user.username'] = 'username'
-        assert create_context_variable(grizzly, 'test.value', '$conf::test.auth.user.username$') == {
+        assert create_context_variable(grizzly.scenario, 'test.value', '$conf::test.auth.user.username$') == {
             'test': {
                 'value': 'username',
             },
         }
 
         grizzly.state.configuration['test.auth.refresh_time'] = 3000
-        assert create_context_variable(grizzly, 'test.value', '$conf::test.auth.refresh_time$') == {
+        assert create_context_variable(grizzly.scenario, 'test.value', '$conf::test.auth.refresh_time$') == {
             'test': {
                 'value': 3000,
             },
         }
 
-        assert create_context_variable(grizzly, 'www.example.com/auth.user.username', 'bob') == {
+        assert create_context_variable(grizzly.scenario, 'www.example.com/auth.user.username', 'bob') == {
             'www.example.com': {
                 'auth': {
                     'user': {
@@ -279,7 +301,7 @@ def test_create_context_variable(grizzly_fixture: GrizzlyFixture) -> None:
 
         grizzly.state.configuration.update({'test.host': 'www.example.net'})
 
-        assert create_context_variable(grizzly, '$conf::test.host$/auth.user.username', 'bob') == {
+        assert create_context_variable(grizzly.scenario, '$conf::test.host$/auth.user.username', 'bob') == {
             'www.example.net': {
                 'auth': {
                     'user': {
@@ -297,88 +319,88 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR
     grizzly = grizzly_fixture.grizzly
 
     try:
-        assert 'test' not in grizzly.state.variables
+        assert 'test' not in grizzly.scenario.variables
         with pytest.raises(AssertionError, match='value contained variable "test" which has not been declared'):
-            resolve_variable(grizzly, '{{ test }}')
+            resolve_variable(grizzly.scenario, '{{ test }}')
 
-        grizzly.state.variables['test'] = 'some value'
-        assert resolve_variable(grizzly, '{{ test }}') == 'some value'
+        grizzly.scenario.variables['test'] = 'some value'
+        assert resolve_variable(grizzly.scenario, '{{ test }}') == 'some value'
 
-        assert resolve_variable(grizzly, "now | format='%Y-%m-%d %H'") == "now | format='%Y-%m-%d %H'"
+        assert resolve_variable(grizzly.scenario, "now | format='%Y-%m-%d %H'") == "now | format='%Y-%m-%d %H'"
 
-        assert resolve_variable(grizzly, "{{ test }} | format='%Y-%m-%d %H'") == "some value | format='%Y-%m-%d %H'"
+        assert resolve_variable(grizzly.scenario, "{{ test }} | format='%Y-%m-%d %H'") == "some value | format='%Y-%m-%d %H'"
 
-        assert resolve_variable(grizzly, 'static value') == 'static value'
-        assert resolve_variable(grizzly, '"static value"') == 'static value'
-        assert resolve_variable(grizzly, "'static value'") == 'static value'
-        assert resolve_variable(grizzly, "'static' value") == "'static' value"
-        assert resolve_variable(grizzly, "static 'value'") == "static 'value'"
-
-        with pytest.raises(ValueError, match='is incorrectly quoted'):
-            resolve_variable(grizzly, "'static value\"")
+        assert resolve_variable(grizzly.scenario, 'static value') == 'static value'
+        assert resolve_variable(grizzly.scenario, '"static value"') == 'static value'
+        assert resolve_variable(grizzly.scenario, "'static value'") == 'static value'
+        assert resolve_variable(grizzly.scenario, "'static' value") == "'static' value"
+        assert resolve_variable(grizzly.scenario, "static 'value'") == "static 'value'"
 
         with pytest.raises(ValueError, match='is incorrectly quoted'):
-            resolve_variable(grizzly, "static 'value\"")
+            resolve_variable(grizzly.scenario, "'static value\"")
 
         with pytest.raises(ValueError, match='is incorrectly quoted'):
-            resolve_variable(grizzly, "'static\" value")
+            resolve_variable(grizzly.scenario, "static 'value\"")
 
-        grizzly.state.variables['number'] = 100
-        assert resolve_variable(grizzly, '{{ (number * 0.25) | int }}') == 25
+        with pytest.raises(ValueError, match='is incorrectly quoted'):
+            resolve_variable(grizzly.scenario, "'static\" value")
 
-        assert resolve_variable(grizzly, '{{ (number * 0.25 * 0.2) | int }}') == 5
+        grizzly.scenario.variables['number'] = 100
+        assert resolve_variable(grizzly.scenario, '{{ (number * 0.25) | int }}') == 25
+
+        assert resolve_variable(grizzly.scenario, '{{ (number * 0.25 * 0.2) | int }}') == 5
 
         with pytest.raises(ValueError, match='is not a correctly specified templating variable, variables must match'):
-            resolve_variable(grizzly, '$env::HELLO_WORLD')
+            resolve_variable(grizzly.scenario, '$env::HELLO_WORLD')
 
         with pytest.raises(AssertionError, match='environment variable "HELLO_WORLD" is not set'):
-            resolve_variable(grizzly, '$env::HELLO_WORLD$')
+            resolve_variable(grizzly.scenario, '$env::HELLO_WORLD$')
 
         environ['HELLO_WORLD'] = 'first environment variable!'
 
-        assert resolve_variable(grizzly, '$env::HELLO_WORLD$') == 'first environment variable!'
+        assert resolve_variable(grizzly.scenario, '$env::HELLO_WORLD$') == 'first environment variable!'
 
         environ['HELLO_WORLD'] = 'first "environment" variable!'
-        assert resolve_variable(grizzly, '$env::HELLO_WORLD$') == 'first "environment" variable!'
+        assert resolve_variable(grizzly.scenario, '$env::HELLO_WORLD$') == 'first "environment" variable!'
 
         with pytest.raises(ValueError, match='is not a correctly specified templating variable, variables must match'):
-            resolve_variable(grizzly, '$conf::sut.host')
+            resolve_variable(grizzly.scenario, '$conf::sut.host')
 
         with pytest.raises(AssertionError, match='configuration variable "sut.host" is not set'):
-            resolve_variable(grizzly, '$conf::sut.host$')
+            resolve_variable(grizzly.scenario, '$conf::sut.host$')
 
         grizzly.state.configuration['sut.host'] = 'http://host.docker.internal:8003'
         grizzly.state.configuration['sut.path'] = '/hello/world'
 
-        assert resolve_variable(grizzly, '$conf::sut.host$') == 'http://host.docker.internal:8003'
-        assert resolve_variable(grizzly, '$conf::sut.host$$conf::sut.path$') == 'http://host.docker.internal:8003/hello/world'
+        assert resolve_variable(grizzly.scenario, '$conf::sut.host$') == 'http://host.docker.internal:8003'
+        assert resolve_variable(grizzly.scenario, '$conf::sut.host$$conf::sut.path$') == 'http://host.docker.internal:8003/hello/world'
 
         grizzly.state.configuration['sut.greeting'] = 'hello "{{ test }}"!'
-        assert resolve_variable(grizzly, '$conf::sut.greeting$') == 'hello "{{ test }}"!'
+        assert resolve_variable(grizzly.scenario, '$conf::sut.greeting$') == 'hello "{{ test }}"!'
 
-        assert resolve_variable(grizzly, '$test::hello$') == '$test::hello$'
+        assert resolve_variable(grizzly.scenario, '$test::hello$') == '$test::hello$'
 
-        assert resolve_variable(grizzly, '') == ''
+        assert resolve_variable(grizzly.scenario, '') == ''
 
-        assert resolve_variable(grizzly, '$conf::sut.host$ blah $env::HELLO_WORLD$ blah') == 'http://host.docker.internal:8003 blah first "environment" variable! blah'
+        assert resolve_variable(grizzly.scenario, '$conf::sut.host$ blah $env::HELLO_WORLD$ blah') == 'http://host.docker.internal:8003 blah first "environment" variable! blah'
 
-        grizzly.state.variables['hello'] = 'world'
-        assert resolve_variable(grizzly, '{{ hello }} $conf::sut.host$ right?') == 'world http://host.docker.internal:8003 right?'
+        grizzly.scenario.variables['hello'] = 'world'
+        assert resolve_variable(grizzly.scenario, '{{ hello }} $conf::sut.host$ right?') == 'world http://host.docker.internal:8003 right?'
 
         @templatingfilter
         def testuppercase(value: str) -> str:
             return value.upper()
 
-        grizzly.state.variables['lowercase_value'] = 'foobar'
+        grizzly.scenario.variables['lowercase_value'] = 'foobar'
 
-        assert resolve_variable(grizzly, 'hello {{ lowercase_value | testuppercase }}!') == 'hello FOOBAR!'
+        assert resolve_variable(grizzly.scenario, 'hello {{ lowercase_value | testuppercase }}!') == 'hello FOOBAR!'
 
         # do not fail on undeclared variable if there is a check that the variable is defined or not in the template
-        assert resolve_variable(grizzly, 'hello {{ world if world is defined else "world" }}') == 'hello world'
-        assert resolve_variable(grizzly, 'hello {{ "world" if world is not defined else world }}') == 'hello world'
-        grizzly.state.variables['world'] = 'foobar'
-        assert resolve_variable(grizzly, 'hello {{ world if world is defined else "world" }}') == 'hello foobar'
-        assert resolve_variable(grizzly, 'hello {{ "world" if world is not defined else world }}') == 'hello foobar'
+        assert resolve_variable(grizzly.scenario, 'hello {{ world if world is defined else "world" }}') == 'hello world'
+        assert resolve_variable(grizzly.scenario, 'hello {{ "world" if world is not defined else world }}') == 'hello world'
+        grizzly.scenario.variables['world'] = 'foobar'
+        assert resolve_variable(grizzly.scenario, 'hello {{ world if world is defined else "world" }}') == 'hello foobar'
+        assert resolve_variable(grizzly.scenario, 'hello {{ "world" if world is not defined else world }}') == 'hello foobar'
 
         base_dir = environ.get('GRIZZLY_CONTEXT_ROOT', None)
 
@@ -391,7 +413,7 @@ hello {{ hello }}
 write this "$conf::sut.greeting$"
 """)
 
-        assert resolve_variable(grizzly, 'test/foobar.txt') == """
+        assert resolve_variable(grizzly.scenario, 'test/foobar.txt') == """
 hello world
 write this "hello "{{ test }}"!"
 """.rstrip()
@@ -475,7 +497,7 @@ def test_transform_no_objectify(grizzly_fixture: GrizzlyFixture) -> None:
         'tests.helpers.AtomicCustomVariable.hello': 'world',
     }
 
-    actual = transform(grizzly, data, objectify=False)
+    actual = transform(grizzly.scenario, data, objectify=False)
 
     assert actual == {
         'test': {
@@ -500,8 +522,12 @@ def test_transform_no_objectify(grizzly_fixture: GrizzlyFixture) -> None:
     }
 
 
-def test_transform(behave_fixture: BehaveFixture, cleanup: AtomicVariableCleanupFixture, caplog: LogCaptureFixture) -> None:
-    behave = behave_fixture.context
+def test_transform(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, caplog: LogCaptureFixture) -> None:
+    behave = grizzly_fixture.behave.context
+    grizzly = grizzly_fixture.grizzly
+
+    grizzly.scenarios.clear()
+    grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test transform'))
 
     try:
         grizzly = cast(GrizzlyContext, behave.grizzly)
@@ -517,7 +543,7 @@ def test_transform(behave_fixture: BehaveFixture, cleanup: AtomicVariableCleanup
             'tests.helpers.AtomicCustomVariable.foo': 'bar',
         }
 
-        obj = transform(grizzly, data)
+        obj = transform(grizzly.scenario, data)
 
         assert obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils'
         assert obj['AtomicIntegerIncrementer'].__class__.__name__ == 'Testdata'

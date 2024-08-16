@@ -94,7 +94,7 @@ class UntilRequestTask(GrizzlyTask):
             self.condition, until_arguments = split_value(self.condition)
 
             if '{{' in until_arguments and '}}' in until_arguments:
-                until_arguments = cast(str, resolve_variable(self.grizzly, until_arguments, guess_datatype=False))
+                until_arguments = cast(str, resolve_variable(self.grizzly.scenario, until_arguments, guess_datatype=False))
 
             arguments = parse_arguments(until_arguments)
 

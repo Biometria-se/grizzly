@@ -36,7 +36,7 @@ And set context variable "auth.refresh_time" to "3500"
 
 See {@pylink grizzly.auth.aad}.
 
-It is possible to change authenticated user during runtime by using {@pylink grizzly.steps.scenario.setup.step_setup_set_context_variable} step expressions inbetween other tasks.
+It is possible to change authenticated user during runtime by using {@pylink grizzly.steps.setup.step_setup_set_context_variable} step expressions inbetween other tasks.
 To change user both `auth.user.username` and `auth.user.password` has to be changed (even though maybe only one of them changes value).
 
 This will then cache the `Authorization` token for the current user, and if changed back to that user there is no need to re-authenticate again, unless `refresh_time` for the first login

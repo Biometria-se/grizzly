@@ -187,7 +187,7 @@ class TestAsyncRequestGroup:
 
         assert parent.user.host == 'http://host.docker.internal:8002'
 
-        context_scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+        context_scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('test scenario'), grizzly=grizzly_fixture.grizzly)
         parent.user._scenario = context_scenario
 
         task_factory = AsyncRequestGroupTask(name='test')

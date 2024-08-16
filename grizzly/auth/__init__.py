@@ -196,8 +196,7 @@ class refresh_token(Generic[P]):
 
 
 def render(client: GrizzlyHttpAuthClient) -> None:
-    variables = cast(dict[str, Any], client._context.get('variables', {}))
-    host = client._scenario.jinja2.from_string(client.host).render(**variables)
+    host = client._scenario.jinja2.from_string(client.host).render()
     parsed = urlparse(host)
 
     client.host = f'{parsed.scheme}://{parsed.netloc}'

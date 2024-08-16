@@ -101,7 +101,7 @@ def test_fail_directly(behave_fixture: BehaveFixture) -> None:
 
 
 def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa: PLR0915
-    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
+    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'), grizzly=behave_fixture.grizzly)
 
     with pytest.raises(ValueError, match='scenario A scenario description does not have a user type set'):
         create_user_class_type(scenario)
@@ -133,7 +133,6 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     assert user_class_type_1.__module__ == 'grizzly.users.restapi'
     assert user_class_type_1.__context__ == {
         'log_all_requests': False,
-        'variables': {},
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
@@ -165,7 +164,6 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
 
     assert user_type_1.context() == {
         'log_all_requests': False,
-        'variables': {},
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
@@ -193,7 +191,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     }
     assert user_type_1.__scenario__ is scenario
 
-    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('TestTestTest'))
+    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('TestTestTest'), grizzly=behave_fixture.grizzly)
     scenario.user.class_name = 'RestApiUser'
     scenario.user.sticky_tag = 'foobar'
     scenario.user.fixed_count = 100
@@ -230,7 +228,6 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     assert user_class_type_2.__module__ == 'grizzly.users.restapi'
     assert user_class_type_2.__context__ == {
         'log_all_requests': True,
-        'variables': {},
         'test': {
             'value': 1,
         },
@@ -268,7 +265,6 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     }
     assert user_type_2.context() == {
         'log_all_requests': True,
-        'variables': {},
         'test': {
             'value': 1,
         },
@@ -300,7 +296,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     }
     assert user_type_2.__scenario__ is scenario
 
-    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('TestTestTest2'))
+    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('TestTestTest2'), grizzly=behave_fixture.grizzly)
     scenario.user.class_name = 'RestApiUser'
     scenario.context = {'test': {'value': 'hello world', 'description': 'simple text'}}
     user_class_type_3 = create_user_class_type(scenario, {'test': {'value': 1}})
@@ -315,7 +311,6 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     assert user_class_type_3.__module__ == 'grizzly.users.restapi'
     assert user_class_type_3.__context__ == {
         'log_all_requests': False,
-        'variables': {},
         'test': {
             'value': 'hello world',
             'description': 'simple text',
@@ -358,7 +353,6 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     assert user_class_type_3.__module__ == 'grizzly.users.restapi'
     assert user_class_type_3.__context__ == {
         'log_all_requests': False,
-        'variables': {},
         'test': {
             'value': 'hello world',
             'description': 'simple text',
@@ -386,7 +380,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
         '__context_change_history__': set(),
     }
 
-    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
+    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'), grizzly=behave_fixture.grizzly)
     scenario.user.class_name = 'DoNotExistInGrizzlyUsersUser'
 
     with pytest.raises(AttributeError, match=r"module 'grizzly\.users' has no attribute 'DoNotExistInGrizzlyUsersUser'"):
@@ -394,7 +388,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
 
 
 def test_create_scenario_class_type(behave_fixture: BehaveFixture) -> None:
-    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
+    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'), grizzly=behave_fixture.grizzly)
 
     with pytest.raises(ModuleNotFoundError, match="No module named 'custom'"):
         create_scenario_class_type('custom.tasks.CustomTasks', scenario)
@@ -411,7 +405,7 @@ def test_create_scenario_class_type(behave_fixture: BehaveFixture) -> None:
     assert task_class_type_1.tasks[-1] is last_task_1
     assert last_task_1.__name__ == 'pace'
 
-    scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('TestTestTest'))
+    scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('TestTestTest'), grizzly=behave_fixture.grizzly)
     scenario.pace = '2000'
     task_class_type_2 = create_scenario_class_type('IteratorScenario', scenario)
     assert issubclass(task_class_type_2, (IteratorScenario, TaskSet))
@@ -426,7 +420,7 @@ def test_create_scenario_class_type(behave_fixture: BehaveFixture) -> None:
 
     assert task_class_type_1.tasks != task_class_type_2.tasks
 
-    scenario = GrizzlyContextScenario(3, behave=behave_fixture.create_scenario('A scenario description'))
+    scenario = GrizzlyContextScenario(3, behave=behave_fixture.create_scenario('A scenario description'), grizzly=behave_fixture.grizzly)
     scenario.name = 'A scenario description'
 
     with pytest.raises(AttributeError, match=r"module 'grizzly\.scenarios' has no attribute 'DoesNotExistInGrizzlyScenariosScenario'"):

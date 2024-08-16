@@ -63,7 +63,7 @@ class TransformerTask(GrizzlyTask):
         self.content = content
         self.content_type = content_type
 
-        assert self.variable in self.grizzly.state.variables, f'{self.__class__.__name__}: {self.variable} has not been initialized'
+        assert self.variable in self.grizzly.scenario.variables, f'{self.__class__.__name__}: {self.variable} has not been initialized'
 
         _transformer = transformer.available.get(self.content_type, None)
 
@@ -103,7 +103,7 @@ class TransformerTask(GrizzlyTask):
 
                 value = '\n'.join(values)
 
-                parent.user._context['variables'][self.variable] = value
+                parent.user.set_variable(self.variable, value)
             except Exception as exception:
                 response_time = int((perf_counter() - start) * 1000)
                 parent.user.environment.events.request.fire(

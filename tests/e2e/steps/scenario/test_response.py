@@ -38,7 +38,7 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
             handlers = getattr(request.response.handlers, handler_type)
 
             assert f'{{{{ expression_{index} }}}}' in grizzly.scenario.orphan_templates, f'{{{{ expression_{index} }}}} not in {grizzly.scenario.orphan_templates}'
-            assert grizzly.state.variables.get(f'expression_{index}', None) == f'$.{attr_name}', f'variable expression_{index} is not $.{attr_name}'
+            assert grizzly.scenario.variables.get(f'expression_{index}', None) == f'$.{attr_name}', f'variable expression_{index} is not $.{attr_name}'
             assert len(handlers) == 1, f'unexpected number of {target} handlers'
             handler = handlers[0]
             assert isinstance(handler, SaveHandlerAction), f'{handler.__class__.__name__} != SaveHandlerAction'

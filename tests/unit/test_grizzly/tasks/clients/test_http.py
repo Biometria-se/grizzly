@@ -34,7 +34,7 @@ class TestHttpClientTask:
 
         behave = grizzly_fixture.behave.context
         grizzly = cast(GrizzlyContext, behave.grizzly)
-        grizzly.state.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
+        grizzly.scenario.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
         parent.user._context.update({'test': 'was here'})
 
         HttpClientTask.__scenario__ = grizzly.scenario
@@ -87,7 +87,7 @@ class TestHttpClientTask:
                 side_effect=[response, RuntimeError, RuntimeError, RuntimeError, RuntimeError, response, response, response, response],
             )
 
-            grizzly.state.variables.update({'test': 'none'})
+            grizzly.scenario.variables.update({'test': 'none'})
 
             with pytest.raises(AssertionError, match='HttpClientTestTask: payload variable is not set, but metadata variable is set'):
                 test_cls(RequestDirection.FROM, 'http://example.org', payload_variable=None, metadata_variable='test')
@@ -97,7 +97,7 @@ class TestHttpClientTask:
 
             request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
-            grizzly.state.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
+            grizzly.scenario.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
 
             task_factory = test_cls(RequestDirection.FROM, 'http://example.org', payload_variable='test_payload', metadata_variable='test_metadata')
             assert task_factory.arguments == {}
@@ -107,7 +107,6 @@ class TestHttpClientTask:
 
             assert callable(task)
 
-            assert parent.user._context['variables'] == {}
             assert task_factory._context.get('test', None) is None
 
             task_factory.name = 'test-1'
@@ -117,7 +116,6 @@ class TestHttpClientTask:
             task(parent)
 
             assert task_factory._context.get('test', None) == 'was here'
-            assert parent.user._context['variables'] == {}
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
@@ -157,13 +155,13 @@ class TestHttpClientTask:
                 },
             }
 
-            parent.user._context['variables']['test'] = None
+            parent.user.set_variable('test', None)
             response.status_code = 200
             task_factory.name = 'test-2'
 
             task(parent)
 
-            assert parent.user._context['variables'].get('test', '') is None  # not set
+            assert parent.user._scenario.variables.get('test', '') is None  # not set
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
@@ -197,7 +195,7 @@ class TestHttpClientTask:
             with pytest.raises(RestartScenario):
                 task(parent)
 
-            assert parent.user._context['variables'].get('test', '') is None  # not set
+            assert parent.user._scenario.variables.get('test', '') is None  # not set
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
@@ -224,7 +222,7 @@ class TestHttpClientTask:
 
             task(parent)
 
-            assert parent.user._context['variables'].get('test', '') is None  # not set
+            assert parent.user._scenario.variables.get('test', '') is None  # not set
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 from grizzly.types import GrizzlyVariableType
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContext, GrizzlyContextScenarios
+    from grizzly.context import GrizzlyContextScenario
     from grizzly.types.locust import MessageHandler
 
     from .variables import AtomicVariable
@@ -19,11 +19,22 @@ __all__ = [
 
 
 class GrizzlyVariables(dict):
-    scenarios: GrizzlyContextScenarios  # @TODO: remove
+    _alias: dict[str, str]
+    _persistent: dict[str, str]
 
-    def __init__(self, *args: Any, scenarios: GrizzlyContextScenarios, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.scenarios = scenarios
+
+        self._alias = {}
+        self._persistent = {}
+
+    @property
+    def alias(self) -> dict[str, str]:
+        return self._alias
+
+    @property
+    def persistent(self) -> dict[str, str]:
+        return self._persistent
 
     @classmethod
     def load_variable(cls, module_name: str, class_name: str) -> type[AtomicVariable]:
@@ -77,11 +88,11 @@ class GrizzlyVariables(dict):
         return name
 
     @classmethod
-    def initialize_variable(cls, grizzly: GrizzlyContext, name: str) -> tuple[Any, set[str], dict[str, MessageHandler]]:
+    def initialize_variable(cls, scenario: GrizzlyContextScenario, name: str) -> tuple[Any, set[str], dict[str, MessageHandler]]:
         external_dependencies: set[str] = set()
         message_handler: dict[str, MessageHandler] = {}
 
-        default_value = grizzly.state.variables.get(name, None)
+        default_value = scenario.variables.get(name, None)
         if default_value is None:
             message = f'variable "{name}" has not been declared'
             raise ValueError(message)
@@ -97,7 +108,7 @@ class GrizzlyVariables(dict):
                 value = cast(Any, '__on_consumer__')
             else:
                 try:
-                    value = variable(variable_name, default_value)
+                    value = variable(scenario=scenario, variable=variable_name, value=default_value)
                 except ValueError as e:
                     message = f'{name}: {default_value=}, exception={e!s}'
                     raise ValueError(message) from e
@@ -108,7 +119,7 @@ class GrizzlyVariables(dict):
 
     @classmethod
     def guess_datatype(cls, value: Any) -> GrizzlyVariableType:
-        if isinstance(value, (int, bool, float)):
+        if isinstance(value, (int, bool, float)) or (isinstance(value, str) and len(value) == 0):
             return value
 
         check_value = value.replace('.', '', 1)
@@ -137,35 +148,29 @@ class GrizzlyVariables(dict):
         return casted_value
 
     def update(self, *args: Any, **kwargs: Any) -> None:
-        """Workaround until grizzly.state.variables has been deprecated."""
-        for arg in args:
-            if not isinstance(arg, dict):
-                continue
-
-            for scenario in self.scenarios:
-                scenario.jinja2.globals.update(arg)
-
-        super().update(*args, **kwargs)
+        if len(args) == 1 and isinstance(args[0], dict):
+            for key, value in args[0].items():
+                self.__setitem__(key, value)
+        else:
+            super().update(*args, **kwargs)
 
     def __setitem__(self, key: str, value: GrizzlyVariableType) -> None:
         caster: Optional[Callable] = None
 
-        module_name, variable_type, _, _ = self.get_variable_spec(key)
+        # only when initializing
+        if key not in self:
+            module_name, variable_type, _, _ = self.get_variable_spec(key)
 
-        if module_name is not None and variable_type is not None:
-            try:
-                variable = self.load_variable(module_name, variable_type)
-                caster = variable.__base_type__
-            except AttributeError:
-                pass
+            if module_name is not None and variable_type is not None:
+                try:
+                    variable = self.load_variable(module_name, variable_type)
+                    caster = variable.__base_type__
+                except AttributeError:
+                    pass
 
         if isinstance(value, str):
             value = self.guess_datatype(value) if caster is None else caster(value)
         elif caster is not None:
             value = caster(value)
-
-        # @TODO: remove when grizzly.state.variables has been deprecated
-        for scenario in self.scenarios:
-            scenario.jinja2.globals.update({key: value})
 
         super().__setitem__(key, value)

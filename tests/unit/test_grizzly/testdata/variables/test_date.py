@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from datetime import datetime
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import gevent
 import pytest
@@ -16,7 +16,7 @@ from grizzly.types import ZoneInfo
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
-    from tests.fixtures import AtomicVariableCleanupFixture
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture
 
 
 def test_atomicdate__base_type__() -> None:
@@ -48,12 +48,15 @@ def test_atomicdate__base_type__() -> None:
 
 
 class TestAtomicDate:
-    def test_now_value(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_now_value(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+
         try:
             with pytest.raises(ValueError, match='Unknown string format: asdf'):
-                AtomicDate('now', 'asdf')
+                AtomicDate(scenario=scenario1, variable='now', value='asdf')
 
-            t = AtomicDate('now', 'now')
+            t = AtomicDate(scenario=scenario1, variable='now', value='now')
 
             try:
                 datetime.strptime(t['now'] or '', '%Y-%m-%d %H:%M:%S').astimezone()
@@ -62,7 +65,7 @@ class TestAtomicDate:
 
             del t['now']
 
-            t = AtomicDate('now', 'now|format="%Y-%m-%d %H:%M:%S.%f"')
+            t = AtomicDate(scenario=scenario1, variable='now', value='now|format="%Y-%m-%d %H:%M:%S.%f"')
             first = t['now']
             gevent.sleep(0.1)
 
@@ -70,19 +73,21 @@ class TestAtomicDate:
 
             del t['now']
 
-            t = AtomicDate('now', 'now | format="%Y-%m-%d %H:%M:%S.000Z"')
+            t = AtomicDate(scenario=scenario1, variable='now', value='now | format="%Y-%m-%d %H:%M:%S.000Z"')
 
             with pytest.raises(ValueError, match='argument calendar is not allowed'):
-                AtomicDate('now', 'now | format="%Y-%m-%d %H:%M:%S.000Z", calendar="gregorian"')
+                AtomicDate(scenario=scenario1, variable='now', value='now | format="%Y-%m-%d %H:%M:%S.000Z", calendar="gregorian"')
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_format(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_format(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+
         try:
             expected = datetime.now()
 
-            t = AtomicDate('actual', 'now')
+            t = AtomicDate(scenario=scenario1, variable='actual', value='now')
 
             with pytest.raises(NotImplementedError, match='AtomicDate has not implemented "__setitem__"'):
                 t['actual'] = None
@@ -96,75 +101,81 @@ class TestAtomicDate:
                 t['actual']
 
             value = expected.strftime('%Y-%m-%d %H:%M:%S.%f')
-            t = AtomicDate('actual', f'{value}|format="%Y-%m-%d"')
+            t = AtomicDate(scenario=scenario1, variable='actual', value=f'{value}|format="%Y-%m-%d"')
 
             assert t['actual'] is not None
             assert t['actual'] != expected.strftime('%Y-%m-%d %H:%M:%S.%f')
             del t['actual']
 
-            t = AtomicDate('actual', f'{value}|format="%Y-%m-%d %H:%M:%S.%f"')
+            t = AtomicDate(scenario=scenario1, variable='actual', value=f'{value}|format="%Y-%m-%d %H:%M:%S.%f"')
             assert t['actual'] is not None
             assert t['actual'] == expected.strftime('%Y-%m-%d %H:%M:%S.%f')
             del t['actual']
 
             with pytest.raises(ValueError, match='Unknown string format: asdfasdf'):
-                AtomicDate('actual', 'asdfasdf|format="%Y-%m-%d %H:%M:%S.%f"')
+                AtomicDate(scenario=scenario1, variable='actual', value='asdfasdf|format="%Y-%m-%d %H:%M:%S.%f"')
 
-            t = AtomicDate('actual', 'now | format="%Y"')
+            t = AtomicDate(scenario=scenario1, variable='actual', value='now | format="%Y"')
             assert t['actual'] == datetime.now().strftime('%Y')
             del t['actual']
 
-            t = AtomicDate('actual', "now | format='%Y-%m-%d %H'")
+            t = AtomicDate(scenario=scenario1, variable='actual', value="now | format='%Y-%m-%d %H'")
             assert t['actual'] == datetime.now().strftime('%Y-%m-%d %H')
 
-            t = AtomicDate('test', 'now')
+            t = AtomicDate(scenario=scenario1, variable='test', value='now')
             assert len(t._settings.keys()) == 2
             assert 'test' in t._settings
             assert 'actual' in t._settings
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_timezone(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_timezone(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
         try:
             expected_utc = datetime.now(tz=ZoneInfo('UTC')).strftime('%H:%M')
             expected_local = datetime.now().astimezone().strftime('%H:%M')
 
-            t = AtomicDate('actual', 'now | format="%H:%M", timezone=UTC')
+            t = AtomicDate(scenario=scenario1, variable='actual', value='now | format="%H:%M", timezone=UTC')
             assert t['actual'] == expected_utc
             assert t['actual'] != expected_local
 
             with pytest.raises(ValueError, match='date format is not specified'):
-                AtomicDate('test', 'now | timezone=ASDF')
+                AtomicDate(scenario=scenario1, variable='test', value='now | timezone=ASDF')
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_offset(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_offset(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+
         try:
             expected = (datetime.now() + relativedelta(days=1)).strftime('%Y-%m-%d')
 
-            t = AtomicDate('actual', 'now | format="%Y-%m-%d", offset=1D')
+            t = AtomicDate(scenario=scenario1, variable='actual', value='now | format="%Y-%m-%d", offset=1D')
             assert t['actual'] == expected
             del t['actual']
 
             expected = (datetime.now() + relativedelta(years=-10, months=2, days=-2)).strftime('%Y-%m-%d')
 
-            t = AtomicDate('actual', 'now | format="%Y-%m-%d", offset=-10Y2M-2D')
+            t = AtomicDate(scenario=scenario1, variable='actual', value='now | format="%Y-%m-%d", offset=-10Y2M-2D')
             assert t['actual'] == expected
             del t['actual']
 
             expected = '2017-10-12'
-            t = AtomicDate('actual', '2017-10-26 | format="%Y-%m-%d", offset=-14D')
+            t = AtomicDate(scenario=scenario1, variable='actual', value='2017-10-26 | format="%Y-%m-%d", offset=-14D')
             assert t['actual'] == expected
 
             with pytest.raises(ValueError, match='invalid time span format'):
-                AtomicDate('error', 'now | format="%Y", offset=10L')
+                AtomicDate(scenario=scenario1, variable='error', value='now | format="%Y", offset=10L')
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_clear_and_destory(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_clear_and_destory(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
+
         try:
             with suppress(Exception):
                 AtomicDate.destroy()
@@ -177,32 +188,35 @@ class TestAtomicDate:
 
             expected = datetime.now()
 
-            instance = AtomicDate('actual', 'now')
+            instances = [
+                AtomicDate(scenario=scenario1, variable='actual', value='now'),
+                AtomicDate(scenario=scenario2, variable='actual', value='now'),
+            ]
 
-            assert instance['actual'] != expected.strftime('%Y-%m-%d %H:%M:%S.%f')
+            for instance in instances:
+                assert instance['actual'] != expected.strftime('%Y-%m-%d %H:%M:%S.%f')
 
-            assert len(instance._values.keys()) == 1
-            assert len(instance._settings.keys()) == 1
+                assert len(instance._values.keys()) == 1
+                assert len(instance._settings.keys()) == 1
 
             AtomicDate.clear()
 
-            assert len(instance._values.keys()) == 0
-            assert len(instance._settings.keys()) == 0
+            for instance in instances:
+                assert len(instance._values.keys()) == 0
+                assert len(instance._settings.keys()) == 0
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test___getitem__error(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture) -> None:
-        def mocked__get_value(_: AtomicDate, _variable: str) -> Literal[None]:
-            return None
-
+    def test___getitem__error(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture) -> None:
         mocker.patch(
             'grizzly.testdata.variables.date.AtomicDate._get_value',
-            mocked__get_value,
+            return_value=None,
         )
 
+        grizzly = grizzly_fixture.grizzly
+
         try:
-            t = AtomicDate('test', 'now | format="%Y-%m-%d"')
+            t = AtomicDate(scenario=grizzly.scenario, variable='test', value='now | format="%Y-%m-%d"')
 
             with pytest.raises(ValueError, match='was incorrectly initialized with'):
                 t['test']

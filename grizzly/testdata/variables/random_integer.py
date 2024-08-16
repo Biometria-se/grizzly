@@ -28,9 +28,12 @@ from __future__ import annotations
 
 from contextlib import suppress
 from secrets import choice
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from . import AtomicVariable
+
+if TYPE_CHECKING:
+    from grizzly.context import GrizzlyContextScenario
 
 
 def atomicrandominteger__base_type__(value: str) -> str:
@@ -62,12 +65,12 @@ class AtomicRandomInteger(AtomicVariable[int]):
     __initialized: bool = False
     _max: dict[str, int]
 
-    def __init__(self, variable: str, value: str, *, outer_lock: bool = False) -> None:
+    def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: str, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
             safe_value = self.__class__.__base_type__(value)
             minimum, maximum = (int(v) for v in safe_value.split('..', 1))
 
-            super().__init__(variable, minimum, outer_lock=True)
+            super().__init__(scenario=scenario, variable=variable, value=minimum, outer_lock=True)
 
             if self.__initialized:
                 if variable not in self._max:
@@ -82,10 +85,13 @@ class AtomicRandomInteger(AtomicVariable[int]):
     def clear(cls: type[AtomicRandomInteger]) -> None:
         super().clear()
 
-        instance = cast(AtomicRandomInteger, cls.get())
-        variables = list(instance._max.keys())
-        for variable in variables:
-            del instance._max[variable]
+        instances = cls._instances.get(cls, {})
+
+        for scenario in instances:
+            instance = cast(AtomicRandomInteger, cls.get(scenario))
+            variables = list(instance._max.keys())
+            for variable in variables:
+                del instance._max[variable]
 
     def __getitem__(self, variable: str) -> int:
         with self.semaphore():

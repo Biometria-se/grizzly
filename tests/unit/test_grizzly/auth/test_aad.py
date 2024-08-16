@@ -86,7 +86,7 @@ class TestAzureAadCredential:
 
         parent = grizzly_fixture(user_type=RestApiUser)
         grizzly = grizzly_fixture.grizzly
-        grizzly.state.variables['test_payload'] = 'none'
+        grizzly.scenario.variables['test_payload'] = 'none'
 
         http_client_task = type('TestHttpClientTask', (HttpClientTask,), {'__scenario__': grizzly.scenario})
 
@@ -116,7 +116,7 @@ class TestAzureAadCredential:
         with caplog.at_level(logging.DEBUG):
             task(parent)
 
-        payload = parent.user._context['variables'].get('test_payload', None)
+        payload = parent.user._scenario.variables.get('test_payload', None)
         assert payload is not None
 
     @pytest.mark.skip(reason='needs real secrets')
@@ -126,7 +126,7 @@ class TestAzureAadCredential:
 
         parent = grizzly_fixture(user_type=RestApiUser)
         grizzly = grizzly_fixture.grizzly
-        grizzly.state.variables['test_payload'] = 'none'
+        parent.user.set_variable('test_payload', 'none')
 
         http_client_task = type('TestHttpClientTask', (HttpClientTask,), {'__scenario__': grizzly.scenario})
 
@@ -162,7 +162,7 @@ class TestAzureAadCredential:
         with caplog.at_level(logging.DEBUG):
             task(parent)
 
-        payload = parent.user._context['variables'].get('test_payload', None)
+        payload = parent.user._scenario.variables.get('test_payload', None)
         assert payload is not None
 
     @pytest.mark.parametrize(('version', 'login_start'), product(['v2.0'], ['initialize_uri', 'redirect_uri']))

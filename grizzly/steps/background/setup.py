@@ -10,11 +10,10 @@ from urllib.parse import urlparse
 import parse
 
 from grizzly.context import GrizzlyContext
-from grizzly.testdata.utils import create_context_variable, resolve_variable
+from grizzly.testdata.utils import resolve_variable
 from grizzly.types import MessageDirection
 from grizzly.types.behave import Context, given, register_type
 from grizzly.types.locust import Environment, Message
-from grizzly.utils import merge_dicts
 from grizzly_extras.text import permutation
 
 
@@ -63,7 +62,7 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
 
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
-    url = cast(str, resolve_variable(grizzly, url))
+    url = cast(str, resolve_variable(grizzly.scenario, url))
     parsed = urlparse(url)
 
     assert parsed.scheme in ['influxdb', 'insights'], f'"{parsed.scheme}" is not a supported scheme'
@@ -108,64 +107,6 @@ def step_setup_run_time(context: Context, timespan: str) -> None:
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.setup.timespan = timespan
-
-
-@given('set global context variable "{variable}" to "{value}"')
-def step_setup_set_global_context_variable(context: Context, variable: str, value: str) -> None:
-    """Create a global variable in the context.
-
-    Depending on which type of user a scenario is configured for, different variables are available.
-    Check {@pylink grizzly.users} documentation for which context variables are available for each user.
-
-    This step can be used if the feature file has multiple scenarios and all of them have the same context variables.
-
-    Variable names can contain (one ore more) dot (`.`) or slash (`/`) to indicate that the variable is in a structure. All names will also be
-    converted to lower case.
-
-    E.g. `token.url` and `token/URL` results in:
-
-    ```json
-    {
-        'token': {
-            'url': '<value>'
-        }
-    }
-    ```
-
-    Space in variable names is also allowed and will then be translated to an underscore (`_`)
-
-    E.g. `Client ID` results in `client_id`.
-
-    Example:
-    ```gherkin
-    And set global context variable "token.url" to "http://example.com/api/auth"
-    And set global context variable "token/client_id" to "aaaa-bbbb-cccc-dddd"
-    And set global context variable "token/client secret" to "aasdfasdfasdf=="
-    And set global context variable "token.resource" to "0000-aaaaaaa-1111-1111-1111"
-    And set global context variable "log_all_requests" to "True"
-    And set global context variable "validate_certificates" to "False"
-    And set global context variable "run_id" to "13"
-    ```
-
-    Data type of values will be guessed, if not explicitly specified by the type of variable used (`Atomic*`). E.g. the last two
-    examples above will result in:
-
-    ```json
-    {
-        'validate_certificates': False,
-        'run_id': 13
-    }
-    ```
-
-    Args:
-        variable (str): variable name, as used in templates
-        value (str): variable value
-
-    """
-    grizzly = cast(GrizzlyContext, context.grizzly)
-    context_variable = create_context_variable(grizzly, variable, value)
-
-    grizzly.setup.global_context = merge_dicts(grizzly.setup.global_context, context_variable)
 
 
 @given('register callback "{callback_name}" for message type "{message_type}" from {from_node:MessageDirection} to {to_node:MessageDirection}')

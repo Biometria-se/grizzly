@@ -11,12 +11,11 @@ import pytest
 from zmq.error import Again as ZMQAgain
 from zmq.error import ZMQError
 
-from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import ResponseHandlerError, RestartScenario, StopScenario
 from grizzly.scenarios import GrizzlyScenario, IteratorScenario
 from grizzly.steps._helpers import add_save_handler
 from grizzly.tasks import RequestTask
-from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import transform
 from grizzly.types import RequestMethod, ResponseTarget, pymqi
 from grizzly.types.locust import Environment, StopUser
@@ -43,7 +42,7 @@ def mq_parent(grizzly_fixture: GrizzlyFixture) -> GrizzlyScenario:
 
     request = grizzly_fixture.request_task.request
 
-    scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
+    scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario(parent.__class__.__name__), grizzly=grizzly_fixture.grizzly)
     scenario.user.class_name = 'MessageQueueUser'
     scenario.context['host'] = 'test'
 
@@ -308,7 +307,7 @@ class TestMessageQueueUser:
             }
 
             request = RequestTask(RequestMethod.GET, name='test-get', endpoint=self.real_stuff['endpoint'])
-            scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('get tls real'))
+            scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('get tls real'), grizzly=grizzly_fixture.grizzly)
             scenario.failure_exception = StopUser
             scenario.tasks.add(request)
 
@@ -413,7 +412,7 @@ class TestMessageQueueUser:
         }
 
         remote_variables = {
-            'variables': transform(grizzly, {
+            'variables': transform(grizzly.scenario, {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,
@@ -422,7 +421,7 @@ class TestMessageQueueUser:
             }),
         }
 
-        grizzly.state.variables = cast(GrizzlyVariables, {
+        grizzly.scenario.variables.update({
             'payload_variable': '',
             'metadata_variable': '',
         })
@@ -482,7 +481,7 @@ class TestMessageQueueUser:
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test', '.*', 'payload_variable', default_value=None)
         mq_parent.user.request(request)
 
-        assert mq_parent.user.context_variables['payload_variable'] == ''
+        assert mq_parent.user._scenario.variables['payload_variable'] == ''
         request_event_spy.assert_called_once_with(
             request_type='GET',
             exception=ANY(ResponseHandlerError, message='failed to transform input as JSON:'),
@@ -522,7 +521,7 @@ class TestMessageQueueUser:
         request.response.content_type = TransformerContentType.JSON
         mq_parent.user.request(request)
 
-        assert mq_parent.user.context_variables['payload_variable'] == 'payload_variable value'
+        assert mq_parent.user._scenario.variables['payload_variable'] == 'payload_variable value'
 
         request_event_spy.assert_called_once_with(
             request_type='GET',
@@ -760,7 +759,7 @@ class TestMessageQueueUser:
         }
 
         remote_variables = {
-            'variables': transform(GrizzlyContext(), {
+            'variables': transform(mq_parent.user._scenario, {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,

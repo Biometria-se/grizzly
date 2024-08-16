@@ -1,18 +1,19 @@
 """Contains methods for handling AST operations when parsing templates."""
 from __future__ import annotations
 
-import itertools
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 from jinja2 import nodes as j2
 
+from grizzly.context import GrizzlyContextScenario
+
 from . import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import Generator
+    from collections.abc import Generator, Iterable
 
-    from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+    from grizzly.context import GrizzlyContext
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +27,13 @@ class AstVariableNameSet(set[str]):
         else:
             super().add(variable)
 
+    def update(self, *args: Iterable[str]) -> None:
+        for arg in args:
+            for a in arg:
+                self.add(a)
 
-class AstVariableSet(dict[str, set[str]]):
+
+class AstVariableSet(dict[GrizzlyContextScenario, set[str]]):
     __conditional__: AstVariableNameSet
     __map__: dict[str, str]
     __init_map__: dict[str, set[str]]
@@ -42,7 +48,7 @@ class AstVariableSet(dict[str, set[str]]):
         self.__init_map__ = {}
 
 
-    def register(self, scenario_name: str, variable: str) -> None:
+    def register(self, scenario: GrizzlyContextScenario, variable: str) -> None:
         initialization_value =  GrizzlyVariables.get_initialization_value(variable)
 
         # map variable name with the value it was initialized with
@@ -53,13 +59,13 @@ class AstVariableSet(dict[str, set[str]]):
         # initialized value to variable name -- initialization values for objects
         self.__init_map__[initialization_value].add(variable)
 
-        if scenario_name not in self:
-            self.update({scenario_name: set()})
+        if scenario not in self:
+            self.update({scenario: set()})
 
-        self[scenario_name].add(variable)
+        self[scenario].add(variable)
 
 
-def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
+def get_template_variables(grizzly: GrizzlyContext) -> dict[GrizzlyContextScenario, set[str]]:
     """Get all templates per scenario and parse them to find all variables that are used.
 
     Variables can be found in templates, but be used in context which allows then to not necessary not
@@ -131,35 +137,38 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
     # first find all variables in all templates grouped by scenario
     template_variables = _parse_templates(templates)
 
-    found_variables = AstVariableNameSet()
-    for variable in itertools.chain(*template_variables.values()):
-        found_variables.add(variable)
+    for scenario, variables in template_variables.items():
+        found_variables = AstVariableNameSet()
+        found_variables.update(variables)
 
-    declared_variables = AstVariableNameSet()
-    for variable in grizzly.state.variables:
-        declared_variables.add(variable)
+        declared_variables = AstVariableNameSet()
+        for variable in scenario.variables:
+            if variable in scenario.jinja2._globals:
+                continue
 
-    # check except between declared variables and variables found in templates
-    missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - template_variables.__conditional__
-    missing_in_templates_message = '\n'.join(sorted(missing_in_templates))
-    assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates:\n{missing_in_templates_message}'
+            declared_variables.add(variable)
 
-    # check if any variable hasn't first been declared
-    missing_declarations = {variable for variable in found_variables if variable not in declared_variables} - template_variables.__conditional__ - template_variables.__local__
-    missing_declarations_message = '\n'.join(sorted(missing_declarations))
-    assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared:\n{missing_declarations_message}'
+        # check except between declared variables and variables found in templates
+        missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - template_variables.__conditional__
+        missing_in_templates_message = '\n'.join(sorted(missing_in_templates))
+        assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates:\n{missing_in_templates_message}'
+
+        # check if any variable hasn't first been declared
+        missing_declarations = {variable for variable in found_variables if variable not in declared_variables} - template_variables.__conditional__ - template_variables.__local__
+        missing_declarations_message = '\n'.join(sorted(missing_declarations))
+        assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared:\n{missing_declarations_message}'
 
     # only include variables that has been declared, filtering out conditional ones
-    filtered_template_variables: dict[str, set[str]] = {}
+    filtered_template_variables: dict[GrizzlyContextScenario, set[str]] = {}
 
-    for scenario_type_name, scenario_variables in template_variables.items():
-        filtered_template_variables.update({scenario_type_name: set()})
+    for scenario, scenario_variables in template_variables.items():
+        filtered_template_variables.update({scenario: set()})
 
         for scenario_variable in scenario_variables:
             variable_check = template_variables.__map__.get(scenario_variable, '__None__')
 
             # variable must have been declared
-            if variable_check not in grizzly.state.variables:
+            if variable_check not in scenario.variables:
                 continue
 
             initilization_values = template_variables.__init_map__.get(scenario_variable, set())
@@ -168,7 +177,7 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
             if len(initilization_values) > 1 or (len(initilization_values) == 1 and {variable_check} != initilization_values):
                 continue
 
-            filtered_template_variables[scenario_type_name].add(scenario_variable)
+            filtered_template_variables[scenario].add(scenario_variable)
 
     return filtered_template_variables
 
@@ -338,10 +347,8 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
 
 
     for scenario, template_sources in templates.items():
-        scenario_name = scenario.class_name
-
-        if scenario_name not in variables:
-            variables[scenario_name] = set()
+        if scenario not in variables:
+            variables[scenario] = set()
 
         # can raise TemplateError which should be handled else where
         for template in template_sources:
@@ -356,6 +363,6 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
                     if variable is None:
                         continue
 
-                    variables.register(scenario_name, variable)
+                    variables.register(scenario, variable)
 
     return variables

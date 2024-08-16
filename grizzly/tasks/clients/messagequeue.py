@@ -151,7 +151,7 @@ class MessageQueueClientTask(ClientTask):
         self._zmq_context.destroy(linger=0)
 
     def create_context(self) -> None:  # noqa: PLR0915
-        endpoint = cast(str, resolve_variable(self.grizzly, self.endpoint, guess_datatype=False, env=self._scenario.jinja2))
+        endpoint = cast(str, resolve_variable(self._scenario, self.endpoint, guess_datatype=False))
         parsed = urlparse(endpoint)
 
         if (parsed.scheme or 'none') not in ['mq', 'mqs']:
@@ -179,8 +179,8 @@ class MessageQueueClientTask(ClientTask):
         assert 'QueueManager' in params, f'{self.__class__.__name__}: QueueManager must be specified in the query string'
         assert 'Channel' in params, f'{self.__class__.__name__}: Channel must be specified in the query string'
 
-        queue_manager = cast(str, resolve_variable(self.grizzly, unquote(params['QueueManager'][0])))
-        channel = cast(str, resolve_variable(self.grizzly, unquote(params['Channel'][0])))
+        queue_manager = unquote(params['QueueManager'][0])
+        channel = unquote(params['Channel'][0])
 
         self.endpoint_path = parsed.path[1:]
 
@@ -189,7 +189,7 @@ class MessageQueueClientTask(ClientTask):
         ssl_cipher: Optional[str] = None
 
         if 'KeyFile' in params:
-            key_file = cast(str, resolve_variable(self.grizzly, unquote(params['KeyFile'][0])))
+            key_file = unquote(params['KeyFile'][0])
         elif parsed.scheme == 'mqs' and username is not None:
             key_file = username
 
@@ -333,18 +333,19 @@ class MessageQueueClientTask(ClientTask):
             },
             'payload': None,
         }
-        response = self.request(parent, request)
+        response = self.request(parent, request) or {}
+
+        payload = response.get('payload', None)
+        metadata = response.get('metadata', None)
 
         if response is not None:
-            if self.payload_variable is not None and response.get('payload', None) is not None:
-                parent.user._context['variables'][self.payload_variable] = response['payload']
+            if self.payload_variable is not None and payload is not None:
+                parent.user.set_variable(self.payload_variable, payload)
 
-            if self.metadata_variable is not None and response.get('metadata', None) is not None:
-                parent.user._context['variables'][self.metadata_variable] = jsondumps(response['metadata'])
+            if self.metadata_variable is not None and metadata is not None:
+                parent.user.set_variable(self.metadata_variable, jsondumps(metadata))
 
-        response = response or {}
-
-        return response.get('metadata', None), response.get('payload', None)
+        return metadata, payload
 
     def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         source = parent.render(cast(str, self.source))

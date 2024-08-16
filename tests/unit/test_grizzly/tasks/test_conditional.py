@@ -8,7 +8,7 @@ import pytest
 from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import RestartScenario, StopUser
 from grizzly.tasks import ConditionalTask, grizzlytask
-from tests.helpers import TestTask
+from tests.helpers import ANY, TestTask
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
@@ -124,7 +124,7 @@ class TestConditionalTask:
 
         assert parent is not None
 
-        scenario_context = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+        scenario_context = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('test scenario'), grizzly=grizzly_fixture.grizzly)
         parent.user._scenario = scenario_context
         task_factory = ConditionalTask(name='test', condition='{{ value }}')
 
@@ -151,81 +151,85 @@ class TestConditionalTask:
         assert total_task___call___count == len(task_factory.tasks.get(True, [])) + len(task_factory.tasks.get(False, []))
 
         # invalid condition, no scenario.failure_exception
-        parent.user._context.update({'variables': {'value': 'foobar'}})
+        parent.user.set_variable('value', 'foobar')
 
         task(parent)
 
-        assert request_spy.call_count == 1
-        _, kwargs = request_spy.call_args_list[-1]
-
-        assert kwargs.get('request_type', None) == 'COND'
-        assert kwargs.get('name', None) == f'{scenario_context.identifier} test: Invalid (0)'
-        assert kwargs.get('response_time', None) >= 0.0
-        assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) is parent.user._context
-        exception = kwargs.get('exception', None)
-        assert isinstance(exception, RuntimeError)
-        assert str(exception) == '"{{ value }}" resolved to "foobar" which is invalid'
+        request_spy.assert_called_once_with(
+            request_type='COND',
+            name=f'{scenario_context.identifier} test: Invalid (0)',
+            response_time=ANY(int),
+            response_length=0,
+            context=parent.user._context,
+            exception=ANY(RuntimeError, message='"{{ value }}" resolved to "foobar" which is invalid'),
+        )
+        request_spy.reset_mock()
 
         # invalid condition, RestartScenario scenario.failure_exception
-        parent.user._context.update({'variables': {'value': 'foobar'}})
+        parent.user.set_variable('value', 'foobar')
         scenario_context.failure_exception = RestartScenario
 
         with pytest.raises(RestartScenario):
             task(parent)
 
-        assert request_spy.call_count == 2
-        _, kwargs = request_spy.call_args_list[-1]
-
-        assert kwargs.get('request_type', None) == 'COND'
-        assert kwargs.get('name', None) == f'{scenario_context.identifier} test: Invalid (0)'
-        assert kwargs.get('response_time', None) >= 0.0
-        assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) is parent.user._context
-        exception = kwargs.get('exception', None)
-        assert isinstance(exception, RuntimeError)
-        assert str(exception) == '"{{ value }}" resolved to "foobar" which is invalid'
+        request_spy.assert_called_once_with(
+            request_type='COND',
+            name=f'{scenario_context.identifier} test: Invalid (0)',
+            response_time=ANY(int),
+            response_length=0,
+            context=parent.user._context,
+            exception=ANY(RuntimeError, message='"{{ value }}" resolved to "foobar" which is invalid'),
+        )
+        request_spy.reset_mock()
 
         scenario_context.failure_exception = None  # reset
 
         # true condition
         task_factory.condition = '{{ value | int > 0 }}'
-        parent.user._context.update({'variables': {'value': 1}})
+        parent.user.set_variable('value', 1)
 
         task(parent)
 
-        assert request_spy.call_count == 3 + 3
-        _, kwargs = request_spy.call_args_list[-1]
+        assert request_spy.call_count == 4
+        args, kwargs = request_spy.call_args_list[-1]
 
-        assert kwargs.get('request_type', None) == 'COND'
-        assert kwargs.get('name', None) == f'{scenario_context.identifier} test: True (3)'
-        assert kwargs.get('response_time', None) >= 0.0
-        assert kwargs.get('response_length', None) == 3
-        assert kwargs.get('context', None) is parent.user._context
-        assert kwargs.get('exception', RuntimeError) is None
+        assert args == ()
+        assert kwargs == {
+            'request_type': 'COND',
+            'name': f'{scenario_context.identifier} test: True (3)',
+            'response_time': ANY(int),
+            'response_length': 3,
+            'context': parent.user._context,
+            'exception': None,
+        }
 
-        request_calls = request_spy.call_args_list[2:-1]
+        request_calls = request_spy.call_args_list[:-1]
         assert len(request_calls) == 3  # DummyTask
 
         for _, kwargs in request_calls:
             assert kwargs.get('request_type', None) == 'TSTSK'
 
+        request_spy.reset_mock()
+
         # false condition
-        parent.user._context.update({'variables': {'value': 0}})
+        parent.user.set_variable('value', '0')
 
         task(parent)
 
-        assert request_spy.call_count == 4 + 3 + 4
-        _, kwargs = request_spy.call_args_list[-1]
+        assert request_spy.call_count == 5
+        args, kwargs = request_spy.call_args_list[-1]
 
-        assert kwargs.get('request_type', None) == 'COND'
-        assert kwargs.get('name', None) == f'{scenario_context.identifier} test: False (4)'
-        assert kwargs.get('response_time', None) >= 0.0
-        assert kwargs.get('response_length', None) == 4
-        assert kwargs.get('context', None) is parent.user._context
-        assert kwargs.get('exception', RuntimeError) is None
+        assert args == ()
+        assert kwargs == {
+            'request_type': 'COND',
+            'name': f'{scenario_context.identifier} test: False (4)',
+            'response_time': ANY(int),
+            'response_length': 4,
+            'context': parent.user._context,
+            'exception': None,
+        }
 
-        request_calls = request_spy.call_args_list[-5:-1]
+        request_calls = request_spy.call_args_list[:-1]
         assert len(request_calls) == 4
         for _, kwargs in request_calls:
             assert kwargs.get('request_type', None) == 'TSTSK'
@@ -256,7 +260,7 @@ class TestConditionalTask:
     def test_on_event(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
 
-        scenario_context = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+        scenario_context = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('test scenario'), grizzly=grizzly_fixture.grizzly)
         parent.user._scenario = scenario_context
         task_factory = ConditionalTask(name='test', condition='{{ value }}')
 

@@ -116,7 +116,7 @@ def test_step_response_save(grizzly_fixture: GrizzlyFixture, response_target: Re
     ]}
 
     try:
-        grizzly.state.variables['test'] = 'none'
+        grizzly.scenario.variables['test'] = 'none'
 
         step_impl(**kwargs)
 
@@ -136,7 +136,7 @@ def test_step_response_save(grizzly_fixture: GrizzlyFixture, response_target: Re
         assert len(request.response.handlers.payload) == handlers_payload_count
     finally:
         request.response.content_type = TransformerContentType.UNDEFINED
-        del grizzly.state.variables['test']
+        del grizzly.scenario.variables['test']
 
 
 @pytest.mark.parametrize('response_target', ResponseTarget)

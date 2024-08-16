@@ -36,7 +36,7 @@ class TestLogMessageTask:
 
         assert callable(task)
 
-        parent.user._context['variables']['variable'] = 'hello world!'
+        parent.user.set_variable('variable', 'hello world!')
 
         with caplog.at_level(logging.INFO):
             task(parent)

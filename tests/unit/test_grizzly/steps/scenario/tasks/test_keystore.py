@@ -20,7 +20,7 @@ def test_step_task_keystore_get(behave_fixture: BehaveFixture) -> None:
 
     grizzly.scenario.tasks.clear()
 
-    grizzly.state.variables.update({'foobar': 'none'})
+    grizzly.scenario.variables.update({'foobar': 'none'})
 
     step_task_keystore_get(behave, 'foobar', 'foobar')
 
@@ -41,7 +41,7 @@ def test_step_task_keystore_get_default(behave_fixture: BehaveFixture) -> None:
 
     grizzly.scenario.tasks.clear()
 
-    grizzly.state.variables.update({'foobar': 'none'})
+    grizzly.scenario.variables.update({'foobar': 'none'})
 
     step_task_keystore_get_default(behave, 'barfoo', 'foobar', "{'hello': 'world'}")
 
@@ -120,7 +120,7 @@ def test_step_task_keystore_inc_default_step(behave_fixture: BehaveFixture) -> N
     with pytest.raises(RuntimeError, match='variable "foobar" has not been initialized'):
         step_task_keystore_inc_default_step(behave, 'foobar', 'foobar')
 
-    grizzly.state.variables.update({'foobar': 'none'})
+    grizzly.scenario.variables.update({'foobar': 'none'})
     step_task_keystore_inc_default_step(behave, 'foobar', 'foobar')
 
     task = grizzly.scenario.tasks()[-1]

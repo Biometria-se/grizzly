@@ -91,20 +91,20 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
         grizzly = cast(GrizzlyContext, context.grizzly)
         assert environ.get('GRIZZLY_CONTEXT_ROOT', None) == str(context_root)
         assert environ.get('GRIZZLY_FEATURE_FILE', None) == 'test.feature'
-        assert grizzly.state.persistent == {}
+        assert grizzly.scenario.variables.persistent == {}
         assert context.last_task_count == {}
 
         context.grizzly = None
 
         (context_root / 'persistent').mkdir(exist_ok=True, parents=True)
-        (context_root / 'persistent' / 'test.json').write_text(jsondumps({'foo': 'bar', 'hello': 'world'}, indent=2))
+        (context_root / 'persistent' / 'test.json').write_text(jsondumps({grizzly.scenario.class_name: {'foo': 'bar', 'hello': 'world'}}, indent=2))
 
         before_feature(context, feature)
 
         assert hasattr(context, 'started')
         assert hasattr(context, 'grizzly')
         grizzly = cast(GrizzlyContext, context.grizzly)
-        assert grizzly.state.persistent == {
+        assert grizzly.scenario.variables.persistent == {
             'foo': 'bar',
             'hello': 'world',
         }
@@ -116,7 +116,7 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
         assert hasattr(context, 'started')
         assert hasattr(context, 'grizzly')
         grizzly = cast(GrizzlyContext, context.grizzly)
-        assert grizzly.state.persistent == {
+        assert grizzly.scenario.variables.persistent == {
             'foo': 'bar',
             'hello': 'world',
         }
@@ -270,6 +270,8 @@ def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -
 
     assert len(grizzly.scenarios()) == 0
 
+    grizzly.scenarios.create(behave.scenario)
+
     before_scenario(behave, behave.scenario)
 
     assert len(grizzly.scenarios()) == 1
@@ -284,8 +286,9 @@ def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -
     assert getattr(behave.scenario.steps[2], 'location_status', None) is None
     assert getattr(behave.scenario.steps[3], 'location_status', None) is None
 
-    grizzly.state.background_section_done = True
+    grizzly.state.background_done = True
     grizzly.scenarios.clear()
+    grizzly.scenarios.create(behave.scenario)
 
     before_scenario(behave, behave.scenario)
 
@@ -320,32 +323,34 @@ def test_after_scenario(behave_fixture: BehaveFixture) -> None:
         after_scenario(behave)
 
     grizzly.scenario.tasks.tmp.conditional = None
-    grizzly.state.background_section_done = False
-    grizzly.state.variables['foobar'] = 'none'
+    grizzly.state.background_done = False
+    grizzly.scenario.variables['foobar'] = 'none'
     grizzly.scenario.tasks.tmp.loop = LoopTask(name='test-loop', values='["hello", "world"]', variable='foobar')
 
     with pytest.raises(AssertionError, match='loop task "test-loop" has not been closed'):
         after_scenario(behave)
 
     grizzly.scenario.tasks.tmp.loop = None
-    grizzly.state.background_section_done = False
+    grizzly.state.background_done = False
 
-    assert not grizzly.state.background_section_done
+    assert not grizzly.state.background_done
 
     after_scenario(behave)
 
     assert behave.exceptions == {}
 
-    assert getattr(grizzly.state, 'background_section_done', False)
+    assert getattr(grizzly.state, 'background_done', False)
 
     after_scenario(behave)
 
-    assert grizzly.state.background_section_done
+    assert grizzly.state.background_done
 
 
 def test_before_step(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    step = Step(filename=None, line=None, keyword='', step_type='step', name='')
+    background_step = behave_fixture.create_step('background step')
+    step = behave_fixture.create_step('test')
+    behave.background_steps = [background_step]
     behave.step = None
 
     before_step(behave, step)
@@ -353,6 +358,12 @@ def test_before_step(behave_fixture: BehaveFixture) -> None:
     attr_name = 'location_status'
 
     assert behave.step is step
+    assert not getattr(step, 'in_background', True)
+
+    before_step(behave, background_step)
+
+    assert behave.step is background_step
+    assert getattr(background_step, 'in_background', False)
 
     setattr(step, attr_name, 'incorrect')
 

@@ -45,7 +45,7 @@ class TestWaitBetweenTask:
 
         assert parent.wait_time() == 13.0
 
-        parent.user.context_variables.update({'wait_time': 14.0})
+        parent.user.set_variable('wait_time', 14.0)
 
         task = WaitBetweenTask('{{ wait_time }}')()
         task(parent)

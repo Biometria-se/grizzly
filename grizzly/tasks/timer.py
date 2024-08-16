@@ -50,14 +50,14 @@ class TimerTask(GrizzlyTask):
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
             name = f'{parent.user._scenario.identifier} {self.name}'
-            variable = parent.user._context['variables'].get(self.variable, None)
+            variable = parent.user._scenario.variables.get(self.variable, None)
 
             # start timer
             if variable is None:
-                parent.user._context['variables'][self.variable] = {
+                parent.user.set_variable(self.variable, {
                     'start': perf_counter(),
                     'task-index': (parent._task_index % len(parent.tasks)),
-                }
+                })
             else:  # stop timer
                 response_time = int((perf_counter() - variable['start']) * 1000)
                 start_task_index = variable.get('task-index', 0)
@@ -74,6 +74,6 @@ class TimerTask(GrizzlyTask):
                     exception=None,
                 )
 
-                del parent.user._context['variables'][self.variable]
+                del parent.user._scenario.variables[self.variable]
 
         return task
