@@ -4,11 +4,7 @@ load user and {@pylink grizzly.tasks.clients.http} client task, via the `@refres
 
 It is possible to use it in custom code as well, by implementing a custom class that inherits `grizzly.auth.GrizzlyHttpAuthClient`.
 
-For information about how to set context variables:
-
-* {@pylink grizzly.steps.background.setup.step_setup_set_global_context_variable}
-
-* {@pylink grizzly.steps.scenario.setup.step_setup_set_context_variable}
+For information about how to set context variables, see {@pylink grizzly.steps.setup.step_setup_set_context_variable}
 
 Context variable values supports {@link framework.usage.variables.templating}.
 

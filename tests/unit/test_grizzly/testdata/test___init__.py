@@ -1,20 +1,14 @@
 """Unit tests of grizzly.testdata."""
 from __future__ import annotations
 
-from contextlib import suppress
-from os import environ
 from typing import TYPE_CHECKING, Optional
 
 import pytest
 
-from grizzly.context import GrizzlyContext
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.variables import AtomicCsvReader, AtomicIntegerIncrementer
-from tests.helpers import SOME, rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
-    from _pytest.tmpdir import TempPathFactory
-
     from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture
 
 

@@ -22,7 +22,7 @@ Only supports `RequestDirection.FROM`.
 ## Authentication
 
 To enable authentication for `HttpClientTask` the `auth` context tree has to be correctly set. This is done by using
-{@pylink grizzly.steps.scenario.setup.step_setup_set_context_variable} where the branches are prefixed with `<host>/`, e.g.:
+{@pylink grizzly.steps.setup.step_setup_set_context_variable} where the branches are prefixed with `<host>/`, e.g.:
 
 ```gherkin
 And value for variable "foobar" is "none"
