@@ -209,7 +209,6 @@ class TestGrizzlyContextState:
             'spawning_complete': (False, True),
             'background_done': (False, True),
             'configuration': ({}, {'sut.host': 'http://example.com'}),
-            'alias': ({}, {'AtomicIntegerIncrementer.test': 'auth.randomseed'}),
             'verbose': (False, True),
             'persistent': ({}, {'AtomicIntegerIncrementer.persist': '1 | step=10, persist=True'}),
         }

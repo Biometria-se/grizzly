@@ -117,9 +117,9 @@ def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -
     base_variable = '.'.join(variable.split('.')[:2]) if variable.count('.') > 1 else variable
 
     assert base_variable in grizzly.scenario.variables, f'variable {base_variable} has not been declared'
-    assert variable not in grizzly.state.alias, f'alias for variable {variable} already exists: {grizzly.state.alias[variable]}'
+    assert variable not in grizzly.scenario.variables.alias, f'alias for variable {variable} already exists: {grizzly.scenario.variables.alias[variable]}'
 
-    grizzly.state.alias[variable] = alias
+    grizzly.scenario.variables.alias.update({variable: alias})
 
 
 @given('log all requests')

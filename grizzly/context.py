@@ -138,7 +138,6 @@ class GrizzlyContextState:
     spawning_complete: bool = field(default=False)
     background_done: bool = field(default=False)
     configuration: dict[str, Any] = field(init=False, default_factory=load_configuration_file)
-    alias: dict[str, str] = field(init=False, default_factory=dict)
     verbose: bool = field(default=False)
     locust: Union[MasterRunner, WorkerRunner, LocalRunner] = field(init=False, repr=False)
     persistent: dict[str, str] = field(init=False, repr=False, default_factory=dict)

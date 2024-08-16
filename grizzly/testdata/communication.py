@@ -350,8 +350,9 @@ class TestdataProducer:
 
                     data['variables'][key] = value
 
-                    if key in self.grizzly.state.alias:
-                        data_key = self.grizzly.state.alias[key]
+                    alias = scenario.variables.alias.get(key, None)
+                    if alias is not None:
+                        data_key = alias
                         data[data_key] = value
 
                 response['data'] = data

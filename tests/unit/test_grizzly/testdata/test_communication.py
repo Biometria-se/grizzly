@@ -89,7 +89,7 @@ value3,value4
                 'world': 'hello!',
                 'tests.helpers.AtomicCustomVariable.foo': 'bar',
             })
-            grizzly.state.alias.update({
+            grizzly.scenario.variables.alias.update({
                 'AtomicCsvReader.test.header1': 'auth.user.username',
                 'AtomicCsvReader.test.header2': 'auth.user.password',
             })

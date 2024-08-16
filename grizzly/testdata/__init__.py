@@ -19,6 +19,17 @@ __all__ = [
 
 
 class GrizzlyVariables(dict):
+    _alias: dict[str, str]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+        self._alias = {}
+
+    @property
+    def alias(self) -> dict[str, str]:
+        return self._alias
+
     @classmethod
     def load_variable(cls, module_name: str, class_name: str) -> type[AtomicVariable]:
         if module_name not in globals():

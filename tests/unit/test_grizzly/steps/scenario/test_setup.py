@@ -117,7 +117,7 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
     behave.scenario = grizzly.scenario.behave
     behave_fixture.create_step('test step', in_background=False, context=behave)
 
-    assert grizzly.state.alias == {}
+    assert grizzly.scenario.variables.alias == {}
     assert behave.exceptions == {}
 
     step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
@@ -127,7 +127,7 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
     step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test', '1337')
     step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
-    assert grizzly.state.alias.get('AtomicIntegerIncrementer.test', None) == 'auth.refresh_time'
+    assert grizzly.scenario.variables.alias.get('AtomicIntegerIncrementer.test', None) == 'auth.refresh_time'
 
     step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 

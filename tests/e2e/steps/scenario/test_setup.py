@@ -160,7 +160,7 @@ def test_e2e_step_set_variable_alias(e2e_fixture: End2EndFixture) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         grizzly.scenario.tasks.pop()
 
-        alias = grizzly.state.alias
+        alias = grizzly.scenario.variables.alias
 
         assert len(alias) == 2, 'unexpected number of aliases'
         alias_username = alias.get('AtomicCsvReader.users.username', None)
