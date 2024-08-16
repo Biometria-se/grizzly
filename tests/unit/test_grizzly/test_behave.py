@@ -91,20 +91,20 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
         grizzly = cast(GrizzlyContext, context.grizzly)
         assert environ.get('GRIZZLY_CONTEXT_ROOT', None) == str(context_root)
         assert environ.get('GRIZZLY_FEATURE_FILE', None) == 'test.feature'
-        assert grizzly.state.persistent == {}
+        assert grizzly.scenario.variables.persistent == {}
         assert context.last_task_count == {}
 
         context.grizzly = None
 
         (context_root / 'persistent').mkdir(exist_ok=True, parents=True)
-        (context_root / 'persistent' / 'test.json').write_text(jsondumps({'foo': 'bar', 'hello': 'world'}, indent=2))
+        (context_root / 'persistent' / 'test.json').write_text(jsondumps({grizzly.scenario.class_name: {'foo': 'bar', 'hello': 'world'}}, indent=2))
 
         before_feature(context, feature)
 
         assert hasattr(context, 'started')
         assert hasattr(context, 'grizzly')
         grizzly = cast(GrizzlyContext, context.grizzly)
-        assert grizzly.state.persistent == {
+        assert grizzly.scenario.variables.persistent == {
             'foo': 'bar',
             'hello': 'world',
         }
@@ -116,7 +116,7 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
         assert hasattr(context, 'started')
         assert hasattr(context, 'grizzly')
         grizzly = cast(GrizzlyContext, context.grizzly)
-        assert grizzly.state.persistent == {
+        assert grizzly.scenario.variables.persistent == {
             'foo': 'bar',
             'hello': 'world',
         }

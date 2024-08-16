@@ -20,15 +20,21 @@ __all__ = [
 
 class GrizzlyVariables(dict):
     _alias: dict[str, str]
+    _persistent: dict[str, str]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         self._alias = {}
+        self._persistent = {}
 
     @property
     def alias(self) -> dict[str, str]:
         return self._alias
+
+    @property
+    def persistent(self) -> dict[str, str]:
+        return self._persistent
 
     @classmethod
     def load_variable(cls, module_name: str, class_name: str) -> type[AtomicVariable]:

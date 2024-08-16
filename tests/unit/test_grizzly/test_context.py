@@ -210,7 +210,6 @@ class TestGrizzlyContextState:
             'background_done': (False, True),
             'configuration': ({}, {'sut.host': 'http://example.com'}),
             'verbose': (False, True),
-            'persistent': ({}, {'AtomicIntegerIncrementer.persist': '1 | step=10, persist=True'}),
         }
         actual_attributes = sorted(state.__dict__.keys())
         expected_attributes = sorted(expected_properties.keys())

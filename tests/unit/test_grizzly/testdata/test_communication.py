@@ -30,7 +30,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class TestTestdataProducer:
-    def test_run_with_behave(  # noqa: PLR0915
+    def test_run(  # noqa: PLR0915
         self,
         grizzly_fixture: GrizzlyFixture,
         cleanup: AtomicVariableCleanupFixture,
@@ -274,7 +274,9 @@ value3,value4
                 if success:
                     actual_initial_values = json.loads(persist_file.read_text())
                     assert actual_initial_values == {
-                        'AtomicIntegerIncrementer.value': '11 | step=5, persist=True',
+                        'IteratorScenario_001': {
+                            'AtomicIntegerIncrementer.value': '11 | step=5, persist=True',
+                        },
                     }
 
             if context is not None:
@@ -396,6 +398,8 @@ value3,value4
         mocker.patch('grizzly.testdata.communication.zmq.Context.destroy', side_effect=[RuntimeError('zmq.Context.destroy failed')] * 3)
 
         grizzly = grizzly_fixture.grizzly
+        scenario1 = grizzly.scenario
+        scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
 
         context_root = grizzly_fixture.test_context / 'requests'
         context_root.mkdir(exist_ok=True)
@@ -410,14 +414,20 @@ value3,value4
             assert 'failed to stop' in caplog.messages[-1]
             assert not persistent_file.exists()
 
-            i = AtomicIntegerIncrementer(scenario=grizzly.scenario, variable='foobar', value='1 | step=1, persist=True')
+            i = AtomicIntegerIncrementer(scenario=scenario1, variable='foobar', value='1 | step=1, persist=True')
+            j = AtomicIntegerIncrementer(scenario=scenario2, variable='foobar', value='10 | step=10, persist=True')
 
-            i['foobar']
-            i['foobar']
+            for v in [i, j]:
+                v['foobar']
+                v['foobar']
+
             actual_keystore = {'foo': ['hello', 'world'], 'bar': {'hello': 'world', 'foo': 'bar'}, 'hello': 'world'}
 
             with caplog.at_level(logging.DEBUG):
-                producer = TestdataProducer(grizzly_fixture.grizzly, {grizzly.scenario.class_name: {'AtomicIntegerIncrementer.foobar': i}})
+                producer = TestdataProducer(grizzly_fixture.grizzly, {
+                    scenario1.class_name: {'AtomicIntegerIncrementer.foobar': i},
+                    scenario2.class_name: {'AtomicIntegerIncrementer.foobar': j},
+                })
                 producer.keystore.update(actual_keystore)
                 producer.stop()
 
@@ -428,13 +438,22 @@ value3,value4
 
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
-                'AtomicIntegerIncrementer.foobar': '3 | step=1, persist=True',
+                'IteratorScenario_001': {
+                    'AtomicIntegerIncrementer.foobar': '3 | step=1, persist=True',
+                },
+                'IteratorScenario_002': {
+                    'AtomicIntegerIncrementer.foobar': '30 | step=10, persist=True',
+                },
             }
 
             i['foobar']
+            j['foobar']
 
             with caplog.at_level(logging.DEBUG):
-                producer = TestdataProducer(grizzly_fixture.grizzly, {grizzly.scenario.class_name: {'AtomicIntegerIncrementer.foobar': i}})
+                producer = TestdataProducer(grizzly_fixture.grizzly, {
+                    scenario1.class_name: {'AtomicIntegerIncrementer.foobar': i},
+                    scenario2.class_name: {'AtomicIntegerIncrementer.foobar': j},
+                })
                 producer.stop()
 
             assert caplog.messages[-1] == f'feature file data persisted in {persistent_file}'
@@ -444,7 +463,12 @@ value3,value4
 
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
-                'AtomicIntegerIncrementer.foobar': '5 | step=1, persist=True',
+                'IteratorScenario_001': {
+                    'AtomicIntegerIncrementer.foobar': '5 | step=1, persist=True',
+                },
+                'IteratorScenario_002': {
+                    'AtomicIntegerIncrementer.foobar': '50 | step=10, persist=True',
+                },
             }
         finally:
             with suppress(KeyError):

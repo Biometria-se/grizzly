@@ -120,7 +120,9 @@ def test_e2e_step_scenario_variable_value(e2e_fixture: End2EndFixture) -> None:
         persist_root.mkdir(exist_ok=True)
         persist_file = persist_root / f'{Path(feature.filename).stem}.json'
         persist_file.write_text(jsondumps({
-            'AtomicIntegerIncrementer.persistent': '10 | step=13, persist=True',
+            'IteratorScenario_001': {
+                'AtomicIntegerIncrementer.persistent': '10 | step=13, persist=True',
+            },
         }))
 
     e2e_fixture.add_before_feature(before_feature)
@@ -136,7 +138,9 @@ def test_e2e_step_scenario_variable_value(e2e_fixture: End2EndFixture) -> None:
         assert persist_file.exists(), f'{persist_file} does not exist'
         contents = persist_file.read_text()
         assert jsonloads(contents) == {
-            'AtomicIntegerIncrementer.persistent': '23 | step=13, persist=True',
+            'IteratorScenario_001': {
+                'AtomicIntegerIncrementer.persistent': '23 | step=13, persist=True',
+            },
         }, f'"{contents}" is not expected value'
 
     e2e_fixture.add_after_feature(after_feature)

@@ -155,7 +155,7 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     ]}
     behave.exceptions.clear()
 
-    grizzly.state.persistent.update({'AtomicIntegerIncrementer.persistent': '10 | step=10, persist=True'})
+    grizzly.scenario.variables.persistent.update({'AtomicIntegerIncrementer.persistent': '10 | step=10, persist=True'})
     step_setup_variable_value(behave, 'AtomicIntegerIncrementer.persistent', '1 | step=10, persist=True')
     behave.assert_variable_value('AtomicIntegerIncrementer.persistent', '10 | step=10, persist=True')
 

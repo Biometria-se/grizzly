@@ -123,12 +123,13 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
             assert partial_name not in grizzly.scenario.variables, f'variable {partial_name} has already been initialized'
 
             # data type will be guessed when setting the variable
-            if name not in grizzly.state.persistent:
+            persisted_initial_value = grizzly.scenario.variables.persistent.get(name, None)
+            if persisted_initial_value is None:
                 resolved_value = resolve_variable(grizzly.scenario, value, guess_datatype=False)
                 if isinstance(value, str) and has_template(value):
                     grizzly.scenario.orphan_templates.append(value)
             else:
-                resolved_value = grizzly.state.persistent[name]
+                resolved_value = persisted_initial_value
 
             if not context.step.in_background:
                 grizzly.scenario.variables.update({name: resolved_value})

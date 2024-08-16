@@ -52,9 +52,10 @@ def before_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: A
     grizzly.state.verbose = context.config.verbose
 
     persistent_file = Path(context.config.base_dir) / 'persistent' / f'{Path(feature.filename).stem}.json'
+    persistent: dict[str, dict[str, str]] = {}
 
     if persistent_file.exists():
-        grizzly.state.persistent = jsonloads(persistent_file.read_text())
+        persistent = jsonloads(persistent_file.read_text())
 
     context.grizzly = grizzly
     context.start = time()
@@ -65,7 +66,9 @@ def before_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: A
 
     # create context for all scenarios right of the bat
     for scenario in feature.scenarios:
-        grizzly.scenarios.create(scenario)
+        grizzly_scenario = grizzly.scenarios.create(scenario)
+        if grizzly_scenario.class_name in persistent:
+            grizzly_scenario.variables.persistent.update(persistent.get(grizzly_scenario.class_name, {}))
 
 
 def after_feature_master(return_code: int, status: Optional[Status], context: Context, feature: Feature) -> int:

@@ -140,7 +140,6 @@ class GrizzlyContextState:
     configuration: dict[str, Any] = field(init=False, default_factory=load_configuration_file)
     verbose: bool = field(default=False)
     locust: Union[MasterRunner, WorkerRunner, LocalRunner] = field(init=False, repr=False)
-    persistent: dict[str, str] = field(init=False, repr=False, default_factory=dict)
 
 
 @dataclass

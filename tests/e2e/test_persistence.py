@@ -34,7 +34,9 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
             raise AssertionError(msg)
 
         assert persistance == {
-            'AtomicIntegerIncrementer.persistent': f'{expected_value} | step=1, persist=True',
+            'IteratorScenario_001': {
+                'AtomicIntegerIncrementer.persistent': f'{expected_value} | step=1, persist=True',
+            },
         }
 
     e2e_fixture.add_after_feature(after_feature)

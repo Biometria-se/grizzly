@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 from contextlib import suppress
-from itertools import chain
 from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
@@ -217,9 +216,10 @@ class TestdataProducer:
             return
 
         try:
-            variable_state: dict[str, Union[str, dict[str, Any]]] = {}
+            variables_state: dict[str, dict[str, Union[str, dict[str, Any]]]] = {}
 
-            for testdata in self.testdata.values():
+            for scenario_name, testdata in self.testdata.items():
+                variable_state: dict[str, Union[str, dict[str, Any]]] = {}
                 for key, variable in testdata.items():
                     if '.' not in key or variable == '__on_consumer__':
                         continue
@@ -232,10 +232,13 @@ class TestdataProducer:
 
                         variable_state.update({key: variable.generate_initial_value(variable_name)})
 
+                if len(variable_state) > 0:
+                    variables_state.update({scenario_name: variable_state})
+
             # only write file if we actually have something to write
-            if len(variable_state.keys()) > 0 and len(list(chain(*variable_state.values()))) > 0:
+            if len(variables_state) > 0:
                 self._persist_file.parent.mkdir(exist_ok=True, parents=True)
-                self._persist_file.write_text(jsondumps(variable_state, indent=2))
+                self._persist_file.write_text(jsondumps(variables_state, indent=2))
                 self.logger.info('feature file data persisted in %s', self._persist_file)
                 self.has_persisted = True
         except:

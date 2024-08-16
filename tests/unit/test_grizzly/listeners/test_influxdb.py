@@ -504,9 +504,11 @@ class TestInfluxDblistener:
         listener.request('POST', '/api/v2/test', 555.37, 137, {}, CatchResponseError('request failed'))
         assert len(listener._events) == 2
 
+    @pytest.mark.usefixtures('patch_influxdblistener')
     def test_request_exception(
-        self, locust_fixture: LocustFixture, mocker: MockerFixture, caplog: LogCaptureFixture,
+        self, locust_fixture: LocustFixture, mocker: MockerFixture, caplog: LogCaptureFixture, patch_influxdblistener: Callable[[], None],
     ) -> None:
+        patch_influxdblistener()
         listener = InfluxDbListener(
             locust_fixture.environment,
             'https://influx.example.com:1245/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
