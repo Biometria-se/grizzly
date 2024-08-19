@@ -19,7 +19,6 @@ from grizzly.tasks.clients import HttpClientTask
 from grizzly.types import RequestDirection
 from grizzly.types.locust import CatchResponseError, StopUser
 from grizzly_extras.transformer import TransformerContentType
-from grizzly.tasks.clients.http import Session
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover

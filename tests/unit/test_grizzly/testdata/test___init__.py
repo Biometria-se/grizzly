@@ -93,6 +93,12 @@ class TestGrizzlyVariables:
         assert isinstance(t['test4'], int)
         assert t['test4'] == -1337
 
+        t['test5'] = 0
+        assert t['test5'] == 0
+
+        t['test6'] = '0'
+        assert t['test6'] == 0
+
     def test_static_bool(self, grizzly_fixture: GrizzlyFixture) -> None:
         grizzly = grizzly_fixture.grizzly
         grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))

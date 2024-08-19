@@ -129,7 +129,7 @@ class GrizzlyVariables(dict):
             check_value = check_value[1:]
 
         if check_value.isdecimal():
-            casted_value = (str(value) if value.startswith('0') else int(float(value))) if float(value) % 1 == 0 else float(value)
+            casted_value = (str(value) if value.startswith('0') and len(value) > 1 else int(float(value))) if float(value) % 1 == 0 else float(value)
         elif value.lower() in ['true', 'false']:
             casted_value = value.lower() == 'true'
         else:

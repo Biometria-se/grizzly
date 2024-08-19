@@ -591,7 +591,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         assert parent_task.expected_matches == 1
         task = parent_task.request
         assert isinstance(task, HttpClientTask)
-        assert task.arguments == {'verify': False}
+        assert not task.verify
         assert task.content_type == TransformerContentType.JSON
         assert task.direction == RequestDirection.FROM
         assert task.endpoint == f'http://{e2e_fixture_host}/api/until/hello?nth=2&wrong=foobar&right=world&as_array=True', f'{task.name=}, {task.endpoint=}'
