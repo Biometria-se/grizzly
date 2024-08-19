@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import logging
 from os import environ
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
+from locust.exception import LocustError
 from locust.user.sequential_taskset import SequentialTaskSet
 
 from grizzly.context import GrizzlyContext
@@ -17,6 +18,8 @@ from grizzly.types.locust import StopUser
 from grizzly.utils import has_template
 
 if TYPE_CHECKING:  # pragma: no cover
+    from locust.user.task import TaskSet
+
     from grizzly.users import GrizzlyUser
 
 
@@ -29,6 +32,8 @@ class GrizzlyScenario(SequentialTaskSet):
     abort: bool
     spawning_complete: bool
 
+    _task_index: int
+
     def __init__(self, parent: GrizzlyUser) -> None:
         super().__init__(parent=parent)
         self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
@@ -39,6 +44,7 @@ class GrizzlyScenario(SequentialTaskSet):
         self.abort = False
         self.spawning_complete = False
         self.parent.environment.events.quitting.add_listener(self.on_quitting)
+        self._task_index = 0
 
     @property
     def user(self) -> GrizzlyUser:
@@ -124,6 +130,17 @@ class GrizzlyScenario(SequentialTaskSet):
         if self.task_greenlet is not None and kwargs.get('abort', False):
             self.abort = True
             self.task_greenlet.kill(StopScenario, block=False)
+
+    def get_next_task(self) -> Union[TaskSet, Callable]:
+        """Use old way of getting task, so we can reset which task to start from."""
+        if not self.tasks:
+            message = 'No tasks defined. Use the @task decorator or set the "tasks" attribute of the SequentialTaskSet'
+            raise LocustError(message)
+
+        task = self.tasks[self._task_index % len(self.tasks)]
+        self._task_index += 1
+
+        return task
 
     def execute_next_task(self) -> None:
         """Execute task in a greenlet, so that we have the possibility to stop it on demand. Any exceptions
