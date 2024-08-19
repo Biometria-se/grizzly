@@ -243,7 +243,7 @@ class TestHttpClientTask:
             grizzly.state.configuration['test.host'] = 'https://example.org'
 
             task_factory = test_cls(RequestDirection.FROM, 'https://$conf::test.host$/api/test', 'http-env-get', payload_variable='test')
-            assert task_factory.arguments == {'verify': True}
+            assert task_factory.verify
             assert task_factory.content_type == TransformerContentType.UNDEFINED
             task = task_factory()
             response.url = 'https://example.org/api/test'
@@ -253,7 +253,6 @@ class TestHttpClientTask:
 
             requests_get_spy.assert_called_once_with(
                 'https://example.org/api/test',
-                verify=True,
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
             )
             requests_get_spy.reset_mock()
@@ -264,7 +263,7 @@ class TestHttpClientTask:
 
             task_factory = test_cls(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=False, content_type=json', 'http-env-get-1', payload_variable='test')
             task = task_factory()
-            assert task_factory.arguments == {'verify': False}
+            assert not task_factory.verify
             assert task_factory.content_type == TransformerContentType.JSON
             assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
@@ -272,7 +271,6 @@ class TestHttpClientTask:
 
             requests_get_spy.assert_called_once_with(
                 'https://example.org/api/test',
-                verify=False,
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
             )
             requests_get_spy.reset_mock()
@@ -283,7 +281,7 @@ class TestHttpClientTask:
 
             task_factory = test_cls(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get-2', payload_variable='test')
             task = task_factory()
-            assert task_factory.arguments == {'verify': True}
+            assert task_factory.verify
             assert task_factory.content_type == TransformerContentType.JSON
 
             parent.user._scenario.context['log_all_requests'] = True
@@ -297,7 +295,6 @@ class TestHttpClientTask:
 
             requests_get_spy.assert_called_once_with(
                 'https://example.org/api/test',
-                verify=True,
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}', 'x-test-header': 'foobar'},
             )
             requests_get_spy.reset_mock()

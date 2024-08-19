@@ -70,6 +70,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     metadata: dict[str, Any]
     session_started: Optional[float]
     host: str
+    verify: bool
 
     def __init__(
         self,
@@ -83,14 +84,14 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         destination: Optional[str] = None,
         text: Optional[str] = None,
     ) -> None:
-        verify = True
+        self.verify = True
 
         if has_separator('|', endpoint):
             endpoint, endpoint_arguments = split_value(endpoint)
             arguments = parse_arguments(endpoint_arguments, unquote=False)
 
             if 'verify' in arguments:
-                verify = bool_type(arguments['verify'])
+                self.verify = bool_type(arguments['verify'])
                 del arguments['verify']
 
             if len(arguments) > 0:
@@ -113,12 +114,9 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             'x-grizzly-user': f'{self.__class__.__name__}::{id(self)}',
         }
 
-        if self._scheme == 'https':
-            self.arguments = {'verify': verify}
-
         self.session_started = None
         self.__class__._context = {
-            'verify_certificates': verify,
+            'verify_certificates': self.verify,
             'metadata': None,
             'auth': None,
         }
@@ -150,7 +148,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             }})
 
 
-            with Session() as client:
+            with Session(insecure=not self.verify) as client:
                 http_populate_cookiejar(client, self.cookies, url=url)
                 response = client.get(url, headers=self.metadata, **self.arguments)
 
