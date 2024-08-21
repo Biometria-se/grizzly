@@ -184,7 +184,7 @@ class TestIterationScenario:
         assert isinstance(parent, IteratorScenario)
         assert not parent._prefetch
 
-        parent.consumer = TestdataConsumer(parent, identifier='test')
+        parent.consumer = TestdataConsumer(parent)
 
         def mock_request(data: Optional[dict[str, Any]]) -> None:
             def testdata_request(self: TestdataConsumer, scenario: str) -> Optional[dict[str, Any]]:  # noqa: ARG001

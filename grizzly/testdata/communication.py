@@ -32,14 +32,12 @@ class TestdataConsumer:
     __test__: bool = False
 
     scenario: GrizzlyScenario
-    logger: logging.Logger
     identifier: str
     stopped: bool
 
-    def __init__(self, scenario: GrizzlyScenario, identifier: str, address: str = 'tcp://127.0.0.1:5555') -> None:
+    def __init__(self, scenario: GrizzlyScenario, address: str = 'tcp://127.0.0.1:5555') -> None:
         self.scenario = scenario
-        self.identifier = identifier
-        self.logger = logging.getLogger(f'{__name__}/{self.identifier}')
+        self.identifier = scenario.__class__.__name__
 
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REQ)
@@ -48,6 +46,10 @@ class TestdataConsumer:
         self.stopped = False
 
         self.logger.debug('connected to producer at %s', address)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return self.scenario.logger
 
     def stop(self) -> None:
         if self.stopped:

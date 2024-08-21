@@ -180,7 +180,13 @@ class TestGrizzlyUser:
     def test_context(self, behave_fixture: BehaveFixture) -> None:
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
         DummyGrizzlyUser.__scenario__ = behave_fixture.grizzly.scenario
+        original_id = id(DummyGrizzlyUser.__scenario__._jinja2)
         user = DummyGrizzlyUser(behave_fixture.locust.environment)
+
+        assert user._scenario is not DummyGrizzlyUser.__scenario__
+        assert id(user._scenario._jinja2) != original_id
+        assert id(user._scenario._jinja2.globals) != id(DummyGrizzlyUser.__scenario__._jinja2.globals)
+        assert user._scenario._jinja2.globals.keys() == DummyGrizzlyUser.__scenario__._jinja2.globals.keys()
 
         context = user.context()
 

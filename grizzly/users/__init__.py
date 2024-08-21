@@ -31,6 +31,7 @@ from locust.user.users import User, UserMeta
 from grizzly.context import GrizzlyContext
 from grizzly.events import GrizzlyEventHook, RequestLogger, ResponseHandler
 from grizzly.exceptions import AsyncMessageAbort, RestartScenario
+from grizzly.testdata import GrizzlyVariables
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
 from grizzly.types.locust import Environment, StopUser
 from grizzly.utils import has_template, merge_dicts
@@ -92,16 +93,21 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
+        self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
+
         self._context_root = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '.'))
         self._context = deepcopy(self.__class__.__context__)
         self._scenario_state = None
         self._scenario = copy(self.__scenario__)
+
         # these are not copied, and we can share reference
         self._scenario._tasks = self.__scenario__._tasks
-        # each instance of a user type should have their own globals dict
-        self._scenario.jinja2._globals = self.__scenario__.jinja2._globals.copy()
 
-        self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
+        # each instance of a user type should have their own globals dict
+        self._scenario._jinja2 = self._scenario._jinja2.overlay()
+        self._scenario._jinja2.globals = GrizzlyVariables(**self._scenario.jinja2.globals)
+        self.logger.debug('variables: type=%d, instance=%d', id(self._scenario.jinja2.globals), id(self.__scenario__.jinja2.globals))
+
         self.abort = False
         self.event_hook = GrizzlyEventHook()
         self.event_hook.add_listener(ResponseHandler(self))
@@ -113,6 +119,12 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         # if it already has been called with True, do not change it back to False
         if not self.abort:
             self.abort = cast(bool, kwargs.get('abort', False))
+
+    def on_start(self) -> None:
+        super().on_start()
+
+    def on_stop(self) -> None:
+        super().on_stop()
 
     @property
     def metadata(self) -> dict[str, Any]:
@@ -269,7 +281,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
             request.__rendered__ = True
         except Exception as e:
-            message = 'failed to render request template'
+            message = f'failed to render request template:\n! source:\n{request.source}\n! variables:\n{self._scenario.jinja2.globals}'
             self.logger.exception(message)
             raise StopUser from e
         else:
@@ -290,8 +302,9 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     def set_variable(self, variable: str, value: Any) -> None:
         old_value = self._scenario.variables.get(variable, None)
         self._scenario.variables.update({variable: value})
-        message = f'context {variable=}, value={old_value} -> {value}'
+        message = f'instance {variable=}, value={old_value} -> {value} in {id(self._scenario.jinja2.globals)}'
         self.logger.debug(message)
+        assert self._scenario.variables[variable] == self._scenario.jinja2.globals[variable]
 
 
 from .blobstorage import BlobStorageUser

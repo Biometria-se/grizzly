@@ -88,7 +88,6 @@ class GrizzlyScenario(SequentialTaskSet):
             self.consumer = TestdataConsumer(
                 scenario=self,
                 address=producer_address,
-                identifier=self.__class__.__name__,
             )
             self.user.scenario_state = ScenarioState.RUNNING
         else:

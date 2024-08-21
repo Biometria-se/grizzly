@@ -679,7 +679,7 @@ class TestTestdataConsumer:
         parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
 
-        consumer = TestdataConsumer(parent, identifier='test')
+        consumer = TestdataConsumer(parent)
 
         try:
             mock_recv_json({})
@@ -759,7 +759,7 @@ class TestTestdataConsumer:
 
         parent = grizzly_fixture()
 
-        consumer = TestdataConsumer(parent, identifier='test')
+        consumer = TestdataConsumer(parent)
 
         with caplog.at_level(logging.DEBUG):
             consumer.stop()
@@ -789,7 +789,7 @@ class TestTestdataConsumer:
 
         parent = grizzly_fixture()
 
-        consumer = TestdataConsumer(parent, identifier='test')
+        consumer = TestdataConsumer(parent)
 
         with pytest.raises(ZMQAgain):
             consumer.testdata('test')
@@ -807,7 +807,7 @@ class TestTestdataConsumer:
         noop_zmq('grizzly.testdata.communication')
         parent = grizzly_fixture()
 
-        consumer = TestdataConsumer(parent, identifier='test')
+        consumer = TestdataConsumer(parent)
 
         def echo(value: dict[str, Any]) -> dict[str, Any]:
             return value
