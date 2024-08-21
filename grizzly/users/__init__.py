@@ -98,6 +98,8 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         self._scenario = copy(self.__scenario__)
         # these are not copied, and we can share reference
         self._scenario._tasks = self.__scenario__._tasks
+        # each instance of a user type should have their own globals dict
+        self._scenario.jinja2._globals = self.__scenario__.jinja2._globals.copy()
 
         self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
         self.abort = False
