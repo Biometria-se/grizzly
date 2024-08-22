@@ -81,7 +81,7 @@ class KeystoreTask(GrizzlyTask):
                         value = cast(Any, self.default_value)
 
                     if value is not None and self.action_context is not None:
-                        parent.user.set_variable(self.action_context, jsonloads(parent.render(jsondumps(value))))
+                        parent.user.set_variable(self.action_context, jsonloads(parent.user.render(jsondumps(value))))
                     else:
                         message = f'key {self.key} does not exist in keystore'
                         raise RuntimeError(message)
@@ -89,7 +89,7 @@ class KeystoreTask(GrizzlyTask):
                     value = parent.consumer.keystore_inc(self.key, step=1)
 
                     if value is not None and self.action_context is not None:
-                        parent.user.set_variable(self.action_context, jsonloads(parent.render(jsondumps(value))))
+                        parent.user.set_variable(self.action_context, jsonloads(parent.user.render(jsondumps(value))))
                     else:
                         message = f'key {self.key} does not exist in keystore'
                         raise RuntimeError(message)

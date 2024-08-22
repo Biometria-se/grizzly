@@ -288,7 +288,7 @@ class IteratorScenario(GrizzlyScenario):
         try:
             start = perf_counter()
             try:
-                value = float(self.render(self.pace_time))
+                value = float(self.user.render(self.pace_time))
             except ValueError as ve:
                 message = f'{self.pace_time} does not render to a number'
                 raise ValueError(message) from ve

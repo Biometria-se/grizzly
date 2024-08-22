@@ -166,6 +166,7 @@ class TestGrizzlyTask:
         grizzly.scenarios.deselect()
         parent.user._scenario = scenario_context
 
+        parent.user._scenario.variables.update({'endpoint_suffix': 'none'})
         parent.user.set_variable('endpoint_suffix', 'none')
 
         # conditional -> loop -> request

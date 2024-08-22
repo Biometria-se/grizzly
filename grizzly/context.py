@@ -113,24 +113,13 @@ class GrizzlyContext:
         return self._scenarios
 
 
-class GrizzlyJinja2Environment(Environment):
-    _globals: dict[str, Any]
-    globals: GrizzlyVariables
-
-
-def jinja2_environment_factory() -> GrizzlyJinja2Environment:
+def jinja2_environment_factory() -> Environment:
     """Create a Jinja2 environment, so same instance is used throughout each grizzly scenario, with custom filters."""
     environment = Environment(autoescape=False, loader=FileSystemLoader(Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'requests'))
 
-    # grizzly default globals
     environment.globals.update({'datetime': datetime})
 
-    # default defined globals/variables
-    environment.extend(_globals={**environment.globals})
-
-    environment.globals = GrizzlyVariables(**environment.globals)
-
-    return cast(GrizzlyJinja2Environment, environment)
+    return environment
 
 
 @dataclass
@@ -278,14 +267,15 @@ class GrizzlyContextScenario:
     behave: Scenario = field(init=True, repr=False, hash=False, compare=False)
 
     context: dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
+    variables: GrizzlyVariables = field(init=False, repr=False, hash=False, default_factory=GrizzlyVariables)
     _tasks: GrizzlyContextTasks = field(init=False, repr=False, hash=False, compare=False)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
     failure_exception: Optional[type[Exception]] = field(init=False, default=None)
     orphan_templates: list[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
-    _jinja2: GrizzlyJinja2Environment = field(init=False, repr=False, default_factory=jinja2_environment_factory)
+    _jinja2: Environment = field(init=False, repr=False, default_factory=jinja2_environment_factory)
 
     @property
-    def jinja2(self) -> GrizzlyJinja2Environment:
+    def jinja2(self) -> Environment:
         # something might have changed in the filters department
         self._jinja2.filters = FILTERS
 
@@ -296,10 +286,6 @@ class GrizzlyContextScenario:
         self.description = self.behave.name
 
         self._tasks = GrizzlyContextTasks()
-
-    @property
-    def variables(self) -> GrizzlyVariables:
-        return self._jinja2.globals
 
     @property
     def tasks(self) -> GrizzlyContextTasks:

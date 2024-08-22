@@ -69,15 +69,16 @@ class TestSetVariableTask:
 
             task = task_factory()
 
-            assert 'foobar' not in parent.user._scenario.variables
+            assert 'foobar' not in parent.user.variables
 
+            parent.user._scenario.variables.update({'value': 'none', 'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"', 'bar': 'none'})
             parent.user.set_variable('value', 'hello world!')
 
             task(parent)
 
-            assert parent.user._scenario.variables.get('foobar', None) == 'hello world!'
+            assert parent.user.variables.get('foobar', None) == 'hello world!'
 
-            parent.user._scenario.jinja2.globals = GrizzlyVariables(**parent.user._scenario.jinja2._globals)
+            parent.user.variables = GrizzlyVariables()
 
             # settable Atomic variable
             set_value_mock = mocker.patch('grizzly.testdata.variables.csv_writer.AtomicCsvWriter.__setitem__', return_value=None)
@@ -91,7 +92,7 @@ class TestSetVariableTask:
             task(parent)
 
             set_value_mock.assert_called_once_with('output', 'file.csv | headers="foo,bar"')
-            assert 'AtomicCsvWriter.output.foo' not in parent.user._scenario.variables
+            assert 'AtomicCsvWriter.output.foo' not in parent.user.variables
 
             # set value from file runtime, and render file contents
             test_file = grizzly_fixture.test_context / 'requests' / 'test' / 'hello.foo.txt'
@@ -104,6 +105,6 @@ class TestSetVariableTask:
 
             task(parent)
 
-            assert parent.user._scenario.variables['foobar'] == 'file.csv'
+            assert parent.user.variables['foobar'] == 'file.csv'
         finally:
             cleanup()

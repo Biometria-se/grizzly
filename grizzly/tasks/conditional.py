@@ -97,7 +97,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
 
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
-            condition_rendered = parent.render(self.condition)
+            condition_rendered = parent.user.render(self.condition)
             exception: Optional[Exception] = None
             task_count = 0
 

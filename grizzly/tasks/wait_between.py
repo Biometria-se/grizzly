@@ -53,7 +53,7 @@ class WaitBetweenTask(GrizzlyTask):
     def __call__(self) -> grizzlytask:
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
-            min_time_rendered = parent.render(self.min_time)
+            min_time_rendered = parent.user.render(self.min_time)
             try:
                 min_time = float(min_time_rendered.strip())
             except Exception as e:
@@ -64,7 +64,7 @@ class WaitBetweenTask(GrizzlyTask):
             max_time: Optional[float] = None
 
             if self.max_time is not None:
-                max_time_rendered = parent.render(self.max_time)
+                max_time_rendered = parent.user.render(self.max_time)
                 try:
                     max_time = float(max_time_rendered.strip())
                 except Exception as e:

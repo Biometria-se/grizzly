@@ -50,7 +50,7 @@ class TimerTask(GrizzlyTask):
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
             name = f'{parent.user._scenario.identifier} {self.name}'
-            variable = parent.user._scenario.variables.get(self.variable, None)
+            variable = parent.user.variables.get(self.variable, None)
 
             # start timer
             if variable is None:
@@ -74,6 +74,6 @@ class TimerTask(GrizzlyTask):
                     exception=None,
                 )
 
-                del parent.user._scenario.variables[self.variable]
+                del parent.user.variables[self.variable]
 
         return task

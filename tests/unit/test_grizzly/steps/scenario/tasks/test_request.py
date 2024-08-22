@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import pytest
-from jinja2 import Template
 from parse import compile
 
 from grizzly.context import GrizzlyContext
@@ -118,7 +117,6 @@ def test_step_task_request_text_with_name_endpoint_to(behave_fixture: BehaveFixt
 
     task = grizzly.scenario.tasks()[-1]
     assert isinstance(task, RequestTask)
-    assert isinstance(task.template, Template)
     assert task.source == '{}'
 
     step_task_request_text_with_name_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')

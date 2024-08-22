@@ -119,8 +119,8 @@ class UntilRequestTask(GrizzlyTask):
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:  # noqa: C901, PLR0912, PLR0915
             task_name = f'{parent.user._scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}, em={self.expected_matches}'
-            condition_rendered = parent.render(self.condition)
-            endpoint_rendered = parent.render(self.request.endpoint)
+            condition_rendered = parent.user.render(self.condition)
+            endpoint_rendered = parent.user.render(self.request.endpoint)
 
             if not transform.validate(condition_rendered):
                 message = f'{condition_rendered} is not a valid expression for {self.request.content_type.name}'

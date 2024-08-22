@@ -380,7 +380,7 @@ def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture
     assert isinstance(task_factory, SetVariableTask)
     assert task_factory.variable_type == VariableType.CONTEXT
 
-    AAD.initialize(parent.user)
+    AAD.initialize(parent.user, parent.user)
 
     assert isinstance(parent.user.credential, AzureAadCredential)
     credential_bob = parent.user.credential

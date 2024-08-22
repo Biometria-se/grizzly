@@ -382,7 +382,7 @@ class TestRestApiUser:
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, 'success')
 
-        expected_source = parent.user.render(request).source
+        expected_source = parent.user.render_request(request).source
         assert expected_source is not None
         expected_source_json = json.loads(expected_source)
 
@@ -477,7 +477,7 @@ class TestRestApiUser:
         assert parent.user._context['auth']['provider'] == 'http://auth.example.org'
         assert parent.user._context['auth']['refresh_time'] == 3000
 
-        AAD.initialize(parent.user)
+        AAD.initialize(parent.user, parent.user)
 
         parent.user.add_context({'auth': {'user': {'password': 'other'}}})
 

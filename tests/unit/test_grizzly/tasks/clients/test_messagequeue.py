@@ -418,6 +418,7 @@ class TestMessageQueueClientTask:
         assert isinstance(parent, IteratorScenario)
 
         parent.grizzly.scenario.variables.update({'mq-client-var': 'none', 'mq-client-metadata': 'none'})
+        parent.user.variables.update({'mq-client-var': 'none', 'mq-client-metadata': 'none'})
 
         fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
@@ -443,8 +444,8 @@ class TestMessageQueueClientTask:
 
             task(parent)
 
-            assert parent.user._scenario.variables.get('mq-client-var', None) == 'none'
-            assert parent.user._scenario.variables.get('mq-client-metadata', None) == 'none'
+            assert parent.user.variables.get('mq-client-var', None) == 'none'
+            assert parent.user.variables.get('mq-client-metadata', None) == 'none'
             assert task_factory._worker.get(id(parent.user), None) == 'dddd-eeee-ffff-9999'
             assert send_json_mock.call_count == 2
             args, kwargs = send_json_mock.call_args_list[-1]
@@ -493,8 +494,8 @@ class TestMessageQueueClientTask:
 
             task(parent)
 
-            assert parent.user._scenario.variables.get('mq-client-var', None) == 'none'
-            assert parent.user._scenario.variables.get('mq-client-metadata', None) == 'none'
+            assert parent.user.variables.get('mq-client-var', None) == 'none'
+            assert parent.user.variables.get('mq-client-metadata', None) == 'none'
             send_json_mock.assert_called_once_with({
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',
@@ -534,8 +535,8 @@ class TestMessageQueueClientTask:
 
             task(parent)
 
-            assert parent.user._scenario.variables.get('mq-client-var', None) == 'none'
-            assert parent.user._scenario.variables.get('mq-client-metadata', None) == 'none'
+            assert parent.user.variables.get('mq-client-var', None) == 'none'
+            assert parent.user.variables.get('mq-client-metadata', None) == 'none'
             assert send_json_mock.call_count == 1
             send_json_mock.reset_mock()
             assert recv_json_mock.call_count == 5
@@ -557,8 +558,8 @@ class TestMessageQueueClientTask:
 
             task(parent)
 
-            assert parent.user._scenario.variables.get('mq-client-var', None) == '{"hello": "world", "foo": "bar"}'
-            assert parent.user._scenario.variables.get('mq-client-metadata', None) == '{"x-foo-bar": "test"}'
+            assert parent.user.variables.get('mq-client-var', None) == '{"hello": "world", "foo": "bar"}'
+            assert parent.user.variables.get('mq-client-metadata', None) == '{"x-foo-bar": "test"}'
             assert send_json_mock.call_count == 1
             send_json_mock.reset_mock()
             assert recv_json_mock.call_count == 6

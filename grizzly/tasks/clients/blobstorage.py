@@ -168,9 +168,9 @@ class BlobStorageClientTask(ClientTask):
         raise NotImplementedError(message)
 
     def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        source = parent.render(cast(str, self.source))
+        source = parent.user.render(cast(str, self.source))
 
-        destination = parent.render(self.destination) if self.destination is not None else Path(source).name
+        destination = parent.user.render(self.destination) if self.destination is not None else Path(source).name
 
         content_type, _ = mimetype_guess(destination)
 
@@ -185,7 +185,7 @@ class BlobStorageClientTask(ClientTask):
             if not source_file.exists():
                 raise FileNotFoundError(source)
 
-            source = parent.render(source_file.read_text())
+            source = parent.user.render(source_file.read_text())
 
             meta.update({'request': {
                 'url': f'{destination}@{self.container}',

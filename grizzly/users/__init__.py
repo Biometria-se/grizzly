@@ -89,6 +89,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     event_hook: GrizzlyEventHook
     grizzly = GrizzlyContext()
     sticky_tag: Optional[str] = None
+    variables: GrizzlyVariables
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -103,15 +104,12 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         # these are not copied, and we can share reference
         self._scenario._tasks = self.__scenario__._tasks
 
-        # each instance of a user type should have their own globals dict
-        self._scenario._jinja2 = self._scenario._jinja2.overlay()
-        self._scenario._jinja2.globals = GrizzlyVariables(**self._scenario.jinja2.globals)
-        self.logger.debug('variables: type=%d, instance=%d', id(self._scenario.jinja2.globals), id(self.__scenario__.jinja2.globals))
-
         self.abort = False
         self.event_hook = GrizzlyEventHook()
         self.event_hook.add_listener(ResponseHandler(self))
         self.event_hook.add_listener(RequestLogger(self))
+
+        self.variables = GrizzlyVariables(**{key: None for key in self._scenario.variables})
 
         environment.events.quitting.add_listener(self.on_quitting)
 
@@ -125,6 +123,15 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
     def on_stop(self) -> None:
         super().on_stop()
+
+    def render(self, template: str, variables: Optional[dict[str, Any]] = None) -> str:
+        if not has_template(template):
+            return template
+
+        if variables is None:
+            variables = {}
+
+        return self._scenario.jinja2.from_string(template).render(**self.variables, **variables)
 
     @property
     def metadata(self) -> dict[str, Any]:
@@ -180,7 +187,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             if len(self.metadata or {}) > 0:
                 request.metadata = merge_dicts(self.metadata, request.metadata)
 
-            request = self.render(request)
+            request = self.render_request(request)
 
             request_impl = self.async_request_impl if isinstance(self, AsyncRequests) and request.async_request else self.request_impl
 
@@ -234,25 +241,21 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
         return (metadata, payload)
 
-    def render(self, request_template: RequestTask) -> RequestTask:
+    def render_request(self, request_template: RequestTask) -> RequestTask:
         """Create a copy of the specified request task, where all possible template values is rendered with the values from current context."""
         if request_template.__rendered__:
             return request_template
 
-        if request_template.source is not None and request_template.template is None:
-            request_template._template = self._scenario.jinja2.from_string(request_template.source)
-
         request = copy(request_template)
 
         try:
-            j2env = self._scenario.jinja2
-            name = j2env.from_string(request_template.name).render()
+            name = self.render(request_template.name)
             source: Optional[str] = None
             request.name = f'{self._scenario.identifier} {name}'
-            request.endpoint = j2env.from_string(request_template.endpoint).render()
+            request.endpoint = self.render(request_template.endpoint)
 
-            if request_template.template is not None:
-                source = request_template.template.render()
+            if request_template.source is not None:
+                source = self.render(request_template.source)
 
                 try:
                     file = self._context_root / 'requests' / source
@@ -262,7 +265,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
                         # nested template
                         if has_template(source):
-                            source = j2env.from_string(source).render()
+                            source = self.render(source)
                 except OSError as e:  # source was definitly not a file...
                     if e.errno != ENAMETOOLONG:
                         raise
@@ -270,14 +273,10 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
                 request.source = source
 
             if request_template.arguments is not None:
-                arguments_json = jsondumps(request_template.arguments)
-                rendered_json = j2env.from_string(arguments_json).render()
-                request.arguments = jsonloads(rendered_json)
+                request.arguments = jsonloads(self.render(jsondumps(request_template.arguments)))
 
             if request_template.metadata is not None:
-                metadata_json = jsondumps(request_template.metadata)
-                rendered_metadata = j2env.from_string(metadata_json).render()
-                request.metadata = jsonloads(rendered_metadata)
+                request.metadata = jsonloads(self.render(jsondumps(request_template.metadata)))
 
             request.__rendered__ = True
         except Exception as e:
@@ -300,11 +299,10 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         self._context = merge_dicts(self._context, context)
 
     def set_variable(self, variable: str, value: Any) -> None:
-        old_value = self._scenario.variables.get(variable, None)
-        self._scenario.variables.update({variable: value})
-        message = f'instance {variable=}, value={old_value} -> {value} in {id(self._scenario.jinja2.globals)}'
+        old_value = self.variables.get(variable, None)
+        self.variables.update({variable: value})
+        message = f'instance {variable=}, value={old_value} -> {value}'
         self.logger.debug(message)
-        assert self._scenario.variables[variable] == self._scenario.jinja2.globals[variable]
 
 
 from .blobstorage import BlobStorageUser

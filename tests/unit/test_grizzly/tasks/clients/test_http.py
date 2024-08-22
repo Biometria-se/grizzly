@@ -161,7 +161,7 @@ class TestHttpClientTask:
 
             task(parent)
 
-            assert parent.user._scenario.variables.get('test', '') is None  # not set
+            assert parent.user.variables.get('test', '') is None  # not set
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
@@ -195,7 +195,7 @@ class TestHttpClientTask:
             with pytest.raises(RestartScenario):
                 task(parent)
 
-            assert parent.user._scenario.variables.get('test', '') is None  # not set
+            assert parent.user.variables.get('test', '') is None  # not set
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
@@ -222,7 +222,7 @@ class TestHttpClientTask:
 
             task(parent)
 
-            assert parent.user._scenario.variables.get('test', '') is None  # not set
+            assert parent.user.variables.get('test', '') is None  # not set
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},

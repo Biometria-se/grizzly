@@ -178,7 +178,6 @@ value3,value4
         grizzly.scenario.orphan_templates.append('{{ AtomicCsvWriter.output.foo }}')
 
         request.source = jsondumps(source)
-        request._template = grizzly.scenario.jinja2.from_string(request.source)
 
         grizzly.scenario.tasks.add(request)
 

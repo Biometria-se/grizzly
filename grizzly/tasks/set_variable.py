@@ -77,10 +77,10 @@ class SetVariableTask(GrizzlyTask):
     def __call__(self) -> grizzlytask:
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
-            value = parent.render(self.value)
+            value = parent.user.render(self.value)
 
             if is_file(value):
-                value = parent.render(read_file(value))
+                value = parent.user.render(read_file(value))
 
             if self.variable_type == VariableType.VARIABLES:
                 # Atomic variables that has support for __setitem__

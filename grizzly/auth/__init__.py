@@ -14,9 +14,10 @@ from urllib.parse import urlparse
 
 from azure.core.credentials import AccessToken
 
-from grizzly.tasks import RequestTask
+from grizzly.scenarios import GrizzlyScenario
 from grizzly.types import GrizzlyResponse
 from grizzly.types.locust import StopUser
+from grizzly.users import GrizzlyUser
 from grizzly.utils import merge_dicts
 from grizzly_extras.azure.aad import AuthMethod, AuthType, AzureAadCredential
 
@@ -28,6 +29,8 @@ except:
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+    from grizzly.tasks import RequestTask
+    from grizzly.testdata import GrizzlyVariables
     from grizzly.types.locust import Environment
 
 P = ParamSpec('P')
@@ -65,6 +68,7 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
         '__cached_auth__': {},
         '__context_change_history__': set(),
     }
+    variables: GrizzlyVariables
     session_started: Optional[float]
     grizzly: GrizzlyContext
     _scenario: GrizzlyContextScenario
@@ -112,18 +116,21 @@ class refresh_token(Generic[P]):
 
     def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:
         @wraps(func)
-        def refresh_token(client: GrizzlyHttpAuthClient, *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:
+        def refresh_token(client: GrizzlyHttpAuthClient, arg: Union[RequestTask, GrizzlyScenario], *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:
+            request: Optional[RequestTask] = None
+
             # make sure the client has a credential instance, if it is needed
-            self.impl.initialize(client)
+            if isinstance(arg, GrizzlyScenario):
+                request = None
+                user = arg.user
+            else:
+                request = arg
+                user = cast(GrizzlyUser, client)
+
+
+            self.impl.initialize(client, user)
 
             if client.credential is not None and client.credential.auth_method is not AuthMethod.NONE:
-                request: Optional[RequestTask] = None
-                # look for RequestTask in args, we need to set metadata on it
-                for arg in args:
-                    if isinstance(arg, RequestTask):
-                        request = arg
-                        break
-
                 # refresh token if session has been alive for at least refresh_time
                 authorization_token = client.metadata.get('Authorization', None)
                 exception: Optional[Exception] = None
@@ -190,13 +197,13 @@ class refresh_token(Generic[P]):
 
             bound = func.__get__(client, client.__class__)
 
-            return cast(GrizzlyResponse, bound(*args, **kwargs))
+            return cast(GrizzlyResponse, bound(arg, *args, **kwargs))
 
         return cast(AuthenticatableFunc, refresh_token)
 
 
-def render(client: GrizzlyHttpAuthClient) -> None:
-    host = client._scenario.jinja2.from_string(client.host).render()
+def render(client: GrizzlyHttpAuthClient, user: GrizzlyUser) -> None:
+    host = user.render(client.host)
     parsed = urlparse(host)
 
     client.host = f'{parsed.scheme}://{parsed.netloc}'
@@ -212,8 +219,8 @@ class RefreshToken(metaclass=ABCMeta):
     __TOKEN_CREDENTIAL_TYPE__: ClassVar[type[AzureAadCredential]]
 
     @classmethod
-    def initialize(cls, client: GrizzlyHttpAuthClient) -> None:
-        render(client)
+    def initialize(cls, client: GrizzlyHttpAuthClient, user: GrizzlyUser) -> None:
+        render(client, user)
 
         auth_context = client._context.get('auth', None)
 

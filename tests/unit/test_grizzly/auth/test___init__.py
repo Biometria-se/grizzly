@@ -332,13 +332,15 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
     rendered_host = 'www.example.net' if has_template(host) else host
 
     grizzly = grizzly_fixture.grizzly
-    grizzly.scenario.variables.update({'foobar': 'none', 'test_host': f'http://{rendered_host}'})
+    parent.user._scenario.variables.update({'foobar': 'none', 'test_host': f'http://{rendered_host}'})
+    parent.user.variables.update({'foobar': 'none', 'test_host': f'http://{rendered_host}'})
 
     http_client_task = type('TestHttpClientTask', (HttpClientTask,), {'__scenario__': grizzly.scenario})
 
     # no auth in context
     client = http_client_task(RequestDirection.FROM, f'http://{host}/blob/file.txt', 'test', payload_variable='foobar')
-    cast(dict, client._context).update({'variables': {'test_host': f'http://{rendered_host}'}})
+    parent.user.variables.update({'test_host': f'http://{rendered_host}'})
+
     client.on_start(parent)
 
     if rendered_host == host:
@@ -349,7 +351,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
     client.get(parent)
 
     get_token_mock.assert_not_called()
-    assert client._context == {'verify_certificates': True, 'metadata': None, 'auth': None, 'host': '', 'variables': {'test_host': f'http://{rendered_host}'}}
+    assert client._context == {'verify_certificates': True, 'metadata': None, 'auth': None, 'host': ''}
     assert client.host == f'http://{rendered_host}'
 
     get_token_mock.reset_mock()
@@ -393,8 +395,5 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
             'provider': 'https://login.example.com/oauth2',
         },
         'host': '',
-        'variables': {
-            'test_host': f'http://{rendered_host}',
-        },
     }
     assert client.metadata == {'Authorization': 'Bearer dummy', 'x-grizzly-user': ANY}

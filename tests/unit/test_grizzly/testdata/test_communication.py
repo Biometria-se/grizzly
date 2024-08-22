@@ -98,7 +98,6 @@ value3,value4
             grizzly.scenario.context['host'] = 'http://test.nu'
 
             request.source = json.dumps(source)
-            request._template = grizzly.scenario.jinja2.from_string(request.source)
 
             grizzly.scenario.tasks.add(request)
             grizzly.scenario.tasks.add(LogMessageTask(message='hello {{ world }}'))
@@ -309,7 +308,6 @@ value3,value4
             source['result'].update({'File': '{{ AtomicDirectoryContents.file }}'})
 
             request.source = json.dumps(source)
-            request._template = grizzly.scenario.jinja2.from_string(request.source)
 
             grizzly.scenarios.clear()
             grizzly.scenarios.create(grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
