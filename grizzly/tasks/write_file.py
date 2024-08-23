@@ -52,7 +52,7 @@ class WriteFileTask(GrizzlyTask):
     def __call__(self) -> grizzlytask:
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
-            file_name = parent.render(self.file_name)
+            file_name = parent.user.render(self.file_name)
             file = Path(self._context_root) / 'requests' / file_name
 
 
@@ -65,7 +65,7 @@ class WriteFileTask(GrizzlyTask):
             response_length = 0
 
             try:
-                content = parent.render(self.content)
+                content = parent.user.render(self.content)
 
                 self.file.parent.mkdir(parents=True, exist_ok=True)
 

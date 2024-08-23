@@ -116,7 +116,7 @@ class TestAzureAadCredential:
         with caplog.at_level(logging.DEBUG):
             task(parent)
 
-        payload = parent.user._scenario.variables.get('test_payload', None)
+        payload = parent.user.variables.get('test_payload', None)
         assert payload is not None
 
     @pytest.mark.skip(reason='needs real secrets')
@@ -162,7 +162,7 @@ class TestAzureAadCredential:
         with caplog.at_level(logging.DEBUG):
             task(parent)
 
-        payload = parent.user._scenario.variables.get('test_payload', None)
+        payload = parent.user.variables.get('test_payload', None)
         assert payload is not None
 
     @pytest.mark.parametrize(('version', 'login_start'), product(['v2.0'], ['initialize_uri', 'redirect_uri']))

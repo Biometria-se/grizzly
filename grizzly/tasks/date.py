@@ -84,14 +84,14 @@ class DateTask(GrizzlyTask):
     def __call__(self) -> grizzlytask:
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
-            value_rendered = parent.render(self.value)
+            value_rendered = parent.user.render(self.value)
 
             arguments_rendered: dict[str, str] = {}
 
             for argument_name, argument_value in self.arguments.items():
                 if argument_value is None:
                     continue
-                arguments_rendered[argument_name] = parent.render(argument_value)
+                arguments_rendered[argument_name] = parent.user.render(argument_value)
 
             try:
                 date_value = dateparser(value_rendered)
@@ -101,14 +101,14 @@ class DateTask(GrizzlyTask):
 
             offset = self.arguments.get('offset', None)
             if offset is not None:
-                offset_rendered = parent.render(offset)
+                offset_rendered = parent.user.render(offset)
                 offset_params = cast(Any, parse_timespan(offset_rendered))
                 date_value += relativedelta(**offset_params)
 
             timezone_argument = self.arguments.get('timezone', None)
             timezone: Optional[ZoneInfo] = None  # None in asttimezone == local time zone
             if timezone_argument is not None:
-                timezone_argument = parent.render(timezone_argument)
+                timezone_argument = parent.user.render(timezone_argument)
                 try:
                     timezone = ZoneInfo(timezone_argument)
                 except ZoneInfoNotFoundError as e:

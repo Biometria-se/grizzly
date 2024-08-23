@@ -91,6 +91,7 @@ class TestLoopTask:
         grizzly.scenarios.append(scenario_context)
         parent.user._scenario = scenario_context
 
+        parent.user._scenario.variables.update({'foobar': 'none'})
         parent.user.set_variable('foobar', 'none')
 
         task_factory = LoopTask('test', '["hello", "world"]', 'foobar')
@@ -201,7 +202,7 @@ class TestLoopTask:
         }
 
         request_spy.reset_mock()
-        del parent.user._scenario.variables['json_input']
+        del parent.user.variables['json_input']
 
         # not a valid json input
         task_factory.values = '"hello'
@@ -290,6 +291,7 @@ class TestLoopTask:
         scenario_context = GrizzlyContextScenario(3, behave=grizzly_fixture.behave.create_scenario('test scenario'), grizzly=grizzly)
         scenario_context.name = scenario_context.description = 'test scenario'
 
+        parent.user._scenario.variables.update({'foobar': 'none'})
         parent.user.set_variable('foobar', 'none')
 
         task_factory = LoopTask('test', '[1, 2, 3, 4]', 'foobar')

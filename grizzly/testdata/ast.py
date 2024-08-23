@@ -142,11 +142,7 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[GrizzlyContextScenar
         found_variables.update(variables)
 
         declared_variables = AstVariableNameSet()
-        for variable in scenario.variables:
-            if variable in scenario.jinja2._globals:
-                continue
-
-            declared_variables.add(variable)
+        declared_variables.update(scenario.variables)
 
         # check except between declared variables and variables found in templates
         missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - template_variables.__conditional__

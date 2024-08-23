@@ -348,11 +348,11 @@ class MessageQueueClientTask(ClientTask):
         return metadata, payload
 
     def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        source = parent.render(cast(str, self.source))
+        source = parent.user.render(cast(str, self.source))
         source_file = Path(self._context_root) / 'requests' / source
 
         if source_file.exists():
-            source = parent.render(source_file.read_text())
+            source = parent.user.render(source_file.read_text())
 
         request: AsyncMessageRequest = {
             'action': 'PUT',

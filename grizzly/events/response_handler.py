@@ -54,10 +54,9 @@ class ResponseHandlerAction(ABC):
 
         """
         input_content_type, input_payload = input_context
-        j2env = user._scenario.jinja2
-        rendered_expression = j2env.from_string(self.expression).render()
-        rendered_match_with = j2env.from_string(self.match_with).render()
-        rendered_expected_matches = int(j2env.from_string(self.expected_matches).render())
+        rendered_expression = user.render(self.expression)
+        rendered_match_with = user.render(self.match_with)
+        rendered_expected_matches = int(user.render(self.expected_matches))
 
         transform = transformer.available.get(input_content_type, None)
         if transform is None:

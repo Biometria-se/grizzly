@@ -41,13 +41,13 @@ class TestTimerTask:
         parent.tasks += [dummy_task] * 7
 
         request_fire_spy.assert_not_called()
-        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
+        assert parent.user.variables == {}
 
         parent._task_index = 1
         task(parent)
 
         request_fire_spy.assert_not_called()
-        assert parent.user._scenario.variables.get(f'{expected_variable_prefix}::test-timer-1', None) == {
+        assert parent.user.variables.get(f'{expected_variable_prefix}::test-timer-1', None) == {
             'start': 2.0,
             'task-index': 1,
         }
@@ -55,7 +55,7 @@ class TestTimerTask:
         parent._task_index = 9
         task(parent)
 
-        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
+        assert parent.user.variables == {}
 
         request_fire_spy.assert_called_once_with(
             request_type='TIMR',
@@ -81,13 +81,13 @@ class TestTimerTask:
         parent.tasks += [task_2, task_1]
 
         request_fire_spy.assert_not_called()
-        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
+        assert parent.user.variables == {}
 
         parent._task_index = 1
         task_1(parent)
 
         request_fire_spy.assert_not_called()
-        assert parent.user._scenario.variables == SOME(dict, {
+        assert parent.user.variables == SOME(dict, {
             f'{expected_variable_prefix_1}::test-timer-1': {
                 'start': 2.0,
                 'task-index': 1,
@@ -98,7 +98,7 @@ class TestTimerTask:
         task_2(parent)
 
         request_fire_spy.assert_not_called()
-        assert parent.user._scenario.variables == SOME(dict, {
+        assert parent.user.variables == SOME(dict, {
             f'{expected_variable_prefix_1}::test-timer-1': {
                 'start': 2.0,
                 'task-index': 1,
@@ -121,7 +121,7 @@ class TestTimerTask:
             exception=None,
         )
         request_fire_spy.reset_mock()
-        assert parent.user._scenario.variables == SOME(dict, {
+        assert parent.user.variables == SOME(dict, {
             f'{expected_variable_prefix_1}::test-timer-1': {
                 'start': 2.0,
                 'task-index': 1,
@@ -139,4 +139,4 @@ class TestTimerTask:
             context=parent.user._context,
             exception=None,
         )
-        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
+        assert parent.user.variables == {}

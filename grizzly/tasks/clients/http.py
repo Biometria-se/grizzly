@@ -139,7 +139,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     @refresh_token(AAD)
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         with self.action(parent) as meta:
-            url = parent.render(self.endpoint)
+            url = parent.user.render(self.endpoint)
 
             meta.update({'request': {
                 'url': url,

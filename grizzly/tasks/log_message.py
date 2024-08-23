@@ -36,7 +36,7 @@ class LogMessageTask(GrizzlyTask):
     def __call__(self) -> grizzlytask:
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
-            message = parent.render(self.message)
+            message = parent.user.render(self.message)
             parent.logger.info(message)
 
         return task

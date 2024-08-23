@@ -396,10 +396,7 @@ def test_get_template_variables_expressions(grizzly_fixture: GrizzlyFixture, cap
     grizzly.scenario.tasks.clear()
     grizzly.scenario.orphan_templates.clear()
     grizzly.scenario.tasks().clear()
-
-    for name in grizzly.scenario.variables:
-        if name not in grizzly.scenario.jinja2._globals:
-            del grizzly.scenario.variables[name]
+    grizzly.scenario.variables.clear()
 
     bob_csv = (grizzly_fixture.test_context / 'requests' / 'bob.csv')
     bob_csv.parent.mkdir(exist_ok=True)
@@ -429,10 +426,7 @@ def test_get_template_variables___doc___example(grizzly_fixture: GrizzlyFixture,
     grizzly.scenario.tasks.clear()
     grizzly.scenario.orphan_templates.clear()
     grizzly.scenario.tasks().clear()
-
-    for name in grizzly.scenario.variables:
-        if name not in grizzly.scenario.jinja2._globals:
-            del grizzly.scenario.variables[name]
+    grizzly.scenario.variables.clear()
 
     input_csv = (grizzly_fixture.test_context / 'requests' / 'input.csv')
     input_csv.parent.mkdir(exist_ok=True)

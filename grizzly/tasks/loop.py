@@ -70,14 +70,14 @@ class LoopTask(GrizzlyTaskWrapper):
 
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
-            orig_value = parent.user._scenario.variables.get(self.variable, None)
+            orig_value = parent.user.variables.get(self.variable, None)
             start = perf_counter()
             exception: Optional[Exception] = None
             task_count = len(self.tasks)
             response_length: int = 0
 
             try:
-                values = jsonloads(parent.render(self.values))
+                values = jsonloads(parent.user.render(self.values))
 
                 if not isinstance(values, list):
                     message = f'"{self.values}" is not a list'

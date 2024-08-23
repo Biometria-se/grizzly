@@ -36,7 +36,7 @@ class ExplicitWaitTask(GrizzlyTask):
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
             try:
-                time_rendered = parent.render(self.time_expression)
+                time_rendered = parent.user.render(self.time_expression)
                 if len(time_rendered.strip()) < 1:
                     message = f'"{self.time_expression}" rendered into "{time_rendered}" which is not valid'
                     raise RuntimeError(message)

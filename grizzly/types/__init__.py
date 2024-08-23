@@ -232,7 +232,7 @@ TestdataType = dict[str, dict[str, Any]]
 
 HandlerContextType = Union[dict[str, Any], Optional[Any]]
 
-GrizzlyVariableType = Union[str, float, int, bool] # , dict, list]
+GrizzlyVariableType = Union[str, float, int, bool]
 
 MessageCallback = Callable[Concatenate[Environment, Message, P], None]
 

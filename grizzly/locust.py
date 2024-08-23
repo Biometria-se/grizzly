@@ -1134,7 +1134,13 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                     gevent.sleep(1.0)
                     count += 1
                     if count % 10 == 0:
-                        logger.debug('runner.user_count=%d, runner.user_classes_count=%r', runner.user_count, runner.user_classes_count)
+                        user_classes_count: dict[str, Any]
+                        if isinstance(runner, MasterRunner):
+                            user_classes_count = {worker.id: worker.user_classes_count for worker in runner.clients.values()}
+                        else:
+                            user_classes_count = runner.user_classes_count
+
+                        logger.debug('user_count=%d, user_classes_count=%r', runner.user_count, user_classes_count)
                         count = 0
 
                 logger.info('runner.user_count=%d, quit %s, abort_test=%r', runner.user_count, runner.__class__.__name__, abort_test)

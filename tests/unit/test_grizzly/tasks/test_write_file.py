@@ -28,6 +28,7 @@ class TestWriteFile:
         task = task_factory()
         assert callable(task)
 
+        parent.user._scenario.variables.update({'hello': 'none'})
         parent.user.set_variable('hello', 'foobar')
 
         expected_file = Path(task_factory._context_root) / 'requests' / 'test' / 'output.log'
@@ -54,7 +55,7 @@ class TestWriteFile:
 
         assert expected_file.read_text() == f'foobar{linesep}foobar{linesep}foobar{linesep}'
 
-        mocker.patch.object(parent, 'render', side_effect=['test/output.log', RuntimeError('no no')])
+        mocker.patch.object(parent.user, 'render', side_effect=['test/output.log', RuntimeError('no no')])
         request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
         task(parent)

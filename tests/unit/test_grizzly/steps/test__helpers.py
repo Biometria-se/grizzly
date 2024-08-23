@@ -266,13 +266,13 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool, de
     tasks.clear()
 
     assert len(tasks) == 0
-    assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
+    assert parent.user.variables == {}
 
     # not preceeded by a request source
     with pytest.raises(AssertionError, match='variable "test-variable" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.METADATA, '$.test.value', 'test', 'test-variable', default_value=default_value)
 
-    assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
+    assert parent.user.variables == {}
 
     # add request source
     add_request_task(behave, method=RequestMethod.GET, source='{}', name='test', endpoint='/api/v2/test')
@@ -312,35 +312,35 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool, de
     payload_handler = next(iter(task.response.handlers.payload))
 
     metadata_handler((TransformerContentType.JSON, {'test': {'value': 'metadata'}}), parent.user)
-    assert parent.user._scenario.variables.get('test-variable-metadata', None) == 'metadata'
+    assert parent.user.variables.get('test-variable-metadata', None) == 'metadata'
 
-    del parent.user._scenario.variables['test-variable-metadata']
+    del parent.user.variables['test-variable-metadata']
 
     if default_value is None:
         with pytest.raises(ResponseHandlerError, match=r'"\$\.test.value" did not match value'):
             metadata_handler((TransformerContentType.JSON, {'test': {'attribute': 'metadata'}}), parent.user)
     else:
         metadata_handler((TransformerContentType.JSON, {'test': {'attribute': 'metadata'}}), parent.user)
-        assert parent.user._scenario.variables.get('test-variable-metadata', None) == default_value
+        assert parent.user.variables.get('test-variable-metadata', None) == default_value
 
     payload_handler((TransformerContentType.JSON, {'test': {'value': 'payload'}}), parent.user)
-    assert parent.user._scenario.variables.get('test-variable-payload', None) == 'payload'
+    assert parent.user.variables.get('test-variable-payload', None) == 'payload'
 
     if default_value is None:
         with pytest.raises(ResponseHandlerError, match='did not match value'):
             metadata_handler((TransformerContentType.JSON, {'test': {'name': 'metadata'}}), parent.user)
-        assert parent.user._scenario.variables.get('test-variable-metadata', 'metadata') is None
+        assert parent.user.variables.get('test-variable-metadata', 'metadata') is None
 
         with pytest.raises(ResponseHandlerError, match='did not match value'):
             payload_handler((TransformerContentType.JSON, {'test': {'name': 'payload'}}), parent.user)
-        assert parent.user._scenario.variables.get('test-variable-payload', 'payload') is None
+        assert parent.user.variables.get('test-variable-payload', 'payload') is None
 
     else:
         metadata_handler((TransformerContentType.JSON, {'test': {'name': 'metadata'}}), parent.user)
-        assert parent.user._scenario.variables.get('test-variable-metadata', 'metadata') == default_value
+        assert parent.user.variables.get('test-variable-metadata', 'metadata') == default_value
 
         payload_handler((TransformerContentType.JSON, {'test': {'name': 'payload'}}), parent.user)
-        assert parent.user._scenario.variables.get('test-variable-payload', 'payload') == default_value
+        assert parent.user.variables.get('test-variable-payload', 'payload') == default_value
 
     # previous non RequestTask task
     tasks.append(ExplicitWaitTask(time_expression='1.0'))

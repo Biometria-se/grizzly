@@ -17,7 +17,7 @@ from grizzly.exceptions import RestartScenario, StopScenario
 from grizzly.scenarios import IteratorScenario
 from grizzly.tasks import ExplicitWaitTask, LogMessageTask, grizzlytask
 from grizzly.testdata.communication import TestdataConsumer
-from grizzly.testdata.utils import templatingfilter, transform
+from grizzly.testdata.utils import transform
 from grizzly.types import ScenarioState
 from tests.helpers import RequestCalled, TestTask, regex
 
@@ -35,25 +35,6 @@ class TestIterationScenario:
         assert isinstance(parent, IteratorScenario)
         assert issubclass(parent.__class__, SequentialTaskSet)
         assert parent.pace_time is None
-
-    def test_render(self, grizzly_fixture: GrizzlyFixture) -> None:
-        parent = grizzly_fixture(scenario_type=IteratorScenario)
-
-        assert isinstance(parent, IteratorScenario)
-
-        @templatingfilter
-        def sarcasm(value: str) -> str:
-            sarcastic_value: list[str] = []
-            for index, c in enumerate(value):
-                if index % 2 == 0:
-                    sarcastic_value.append(c.upper())
-                else:
-                    sarcastic_value.append(c.lower())
-
-            return ''.join(sarcastic_value)
-
-        parent.user.set_variable('are', 'foo')
-        assert parent.render('how {{ are }} we {{ doing | sarcasm }} today', variables={'doing': 'bar'}) == 'how foo we BaR today'
 
     def test_populate(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(scenario_type=IteratorScenario)
@@ -184,7 +165,7 @@ class TestIterationScenario:
         assert isinstance(parent, IteratorScenario)
         assert not parent._prefetch
 
-        parent.consumer = TestdataConsumer(parent, identifier='test')
+        parent.consumer = TestdataConsumer(parent)
 
         def mock_request(data: Optional[dict[str, Any]]) -> None:
             def testdata_request(self: TestdataConsumer, scenario: str) -> Optional[dict[str, Any]]:  # noqa: ARG001
@@ -206,14 +187,14 @@ class TestIterationScenario:
         with pytest.raises(StopScenario):
             parent.iterator()
 
-        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
+        assert parent.user.variables == {}
 
         mock_request({})
 
         with pytest.raises(StopScenario):
             parent.iterator()
 
-        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
+        assert parent.user.variables == {}
 
         mock_request({
             'variables': {
@@ -227,9 +208,9 @@ class TestIterationScenario:
 
         parent.iterator(prefetch=True)
 
-        assert parent.user._scenario.variables['AtomicIntegerIncrementer'].messageID == 1337
-        assert parent.user._scenario.variables['AtomicCsvReader'].test.header1 == 'value1'
-        assert parent.user._scenario.variables['AtomicCsvReader'].test.header2 == 'value2'
+        assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1337
+        assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value1'
+        assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value2'
         assert getattr(parent, '_prefetch', False)
 
         mock_request({
@@ -244,16 +225,16 @@ class TestIterationScenario:
 
         parent.iterator()
 
-        assert parent.user._scenario.variables['AtomicIntegerIncrementer'].messageID == 1337
-        assert parent.user._scenario.variables['AtomicCsvReader'].test.header1 == 'value1'
-        assert parent.user._scenario.variables['AtomicCsvReader'].test.header2 == 'value2'
+        assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1337
+        assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value1'
+        assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value2'
         assert not getattr(parent, '_prefetch', True)
 
         parent.iterator()
 
-        assert parent.user._scenario.variables['AtomicIntegerIncrementer'].messageID == 1338
-        assert parent.user._scenario.variables['AtomicCsvReader'].test.header1 == 'value3'
-        assert parent.user._scenario.variables['AtomicCsvReader'].test.header2 == 'value4'
+        assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1338
+        assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value3'
+        assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value4'
         assert not getattr(parent, '_prefetch', True)
 
     def test_pace(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
@@ -704,7 +685,7 @@ class TestIterationScenario:
             def __call__(self) -> grizzlytask:
                 @grizzlytask
                 def task(parent: GrizzlyScenario) -> Any:
-                    if parent.user._scenario.variables.get('foo', None) is None:
+                    if parent.user.variables.get('foo', None) is None:
                         raise RestartScenario
 
                     parent.user.stop()
@@ -795,7 +776,7 @@ class TestIterationScenario:
                 "scenario_state=STOPPED, user_state=stopping, exception=StopUser()",
             ]
 
-            actual_messages = [message for message in caplog.messages if 'context variable=' not in message]
+            actual_messages = [message for message in caplog.messages if 'instance variable=' not in message]
 
             assert len(actual_messages) == len(expected_messages)
 

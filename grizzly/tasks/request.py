@@ -67,8 +67,6 @@ from . import GrizzlyMetaRequestTask, grizzlytask
 from . import template as task_template
 
 if TYPE_CHECKING:  # pragma: no cover
-    from jinja2.environment import Template
-
     from grizzly.events.response_handler import ResponseHandlerAction
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.types import GrizzlyResponse, RequestMethod
@@ -115,8 +113,7 @@ class RequestTask(GrizzlyMetaRequestTask):
     method: RequestMethod
     name: str
     endpoint: str
-    _template: Optional[Template]
-    _source: Optional[str]
+    source: Optional[str]
     arguments: Optional[dict[str, str]]
     metadata: dict[str, str]
     async_request: bool
@@ -133,8 +130,7 @@ class RequestTask(GrizzlyMetaRequestTask):
         self.metadata = {}
         self.async_request = False
 
-        self._template = None
-        self._source = source
+        self.source = source
 
         self.response = RequestTaskResponse()
         self.__rendered__ = False
@@ -163,24 +159,6 @@ class RequestTask(GrizzlyMetaRequestTask):
 
         self.response.content_type = content_type
         self.content_type = content_type
-
-    @property
-    def source(self) -> Optional[str]:
-        return self._source
-
-    @source.setter
-    def source(self, value: Optional[str]) -> None:
-        """Reset template if source is changed."""
-        self._template = None
-        self._source = value
-
-    @property
-    def template(self) -> Optional[Template]:
-        """Get template, or if it doesn't exist create it."""
-        if self._source is None:
-            return None
-
-        return self._template
 
     def add_metadata(self, key: str, value: str) -> None:
         """Add new metadata key value, where default value of metadata is None, it must be initialized as a dict."""

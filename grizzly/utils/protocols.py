@@ -66,7 +66,7 @@ def async_message_request_wrapper(parent: GrizzlyScenario, client: zmq.Socket, r
 
     try:
         request_string = json.dumps(request)
-        request_rendered = parent.render(request_string, escape_values=True)
+        request_rendered = parent.user.render(request_string)
         request = json.loads(request_rendered)
     except:
         parent.user.logger.error('failed to render request:\ntemplate=%r\nrendered=%r', request, request_rendered)  # noqa: TRY400

@@ -82,7 +82,6 @@ class TestRequestTask:
         assert not hasattr(task_factory, 'scenario')
 
         assert task_factory.source is None
-        assert task_factory.template is None
 
         task = task_factory()
         assert callable(task)
@@ -98,7 +97,6 @@ class TestRequestTask:
 
         # automagically create template if not set
         task_factory.source = 'hello {{ world }}'
-        assert task_factory.template is None
 
     def test_arguments(self) -> None:
         task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/json", foo=bar')

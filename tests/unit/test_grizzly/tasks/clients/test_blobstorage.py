@@ -1,17 +1,14 @@
 """Unit tests of grizzly.tasks.clients.blobstorage."""
 from __future__ import annotations
 
-from contextlib import suppress
-from os import environ
-from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pytest
 from azure.storage.blob import BlobClient, ContentSettings
 
 from grizzly.context import GrizzlyContext
-from grizzly.tasks import GrizzlyTask
 from grizzly.tasks.clients import BlobStorageClientTask
+from grizzly.testdata import GrizzlyVariables
 from grizzly.types import RequestDirection
 from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential
 from tests.helpers import ANY, SOME
@@ -336,123 +333,121 @@ class TestBlobStorageClientTask:
         with pytest.raises(NotImplementedError, match='BlobStorageClientTask has not implemented GET'):
             task(parent)
 
-    def test_put(self, behave_fixture: BehaveFixture, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        try:
-            upload_blob_mock = mocker.patch('azure.storage.blob._blob_service_client.BlobClient.upload_blob', autospec=True)
+    def test_put(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        upload_blob_mock = mocker.patch('azure.storage.blob._blob_service_client.BlobClient.upload_blob', autospec=True)
 
-            behave = behave_fixture.context
-            grizzly = cast(GrizzlyContext, behave.grizzly)
-            grizzly.scenario.variables.update({
-                'test': 'hello world',
-                'source': 'source.json',
-                'destination': 'destination.json',
-            })
-            grizzly.state.configuration.update({
-                'storage.account': 'my-storage',
-                'storage.account_key': 'aaaa+bbb/64=',
-                'storage.container': 'my-container',
-            })
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenario.variables.update({
+            'test': 'hello world',
+            'source': 'source.json',
+            'destination': 'destination.json',
+        })
+        grizzly.state.configuration.update({
+            'storage.account': 'my-storage',
+            'storage.account_key': 'aaaa+bbb/64=',
+            'storage.container': 'my-container',
+        })
 
-            BlobStorageClientTask.__scenario__ = grizzly.scenario
+        BlobStorageClientTask.__scenario__ = grizzly.scenario
 
-            with pytest.raises(AssertionError, match='BlobStorageClientTask: source must be set for direction TO'):
-                BlobStorageClientTask(
-                    RequestDirection.TO,
-                    'bss://$conf::storage.account$/$conf::storage.container$?AccountKey=$conf::storage.account_key$',
-                    source=None,
-                    destination='destination.txt',
-                )
-
-            task_factory = BlobStorageClientTask(
+        with pytest.raises(AssertionError, match='BlobStorageClientTask: source must be set for direction TO'):
+            BlobStorageClientTask(
                 RequestDirection.TO,
                 'bss://$conf::storage.account$/$conf::storage.container$?AccountKey=$conf::storage.account_key$',
-                source='source.json',
+                source=None,
                 destination='destination.txt',
             )
-            for attr, value in [
-                ('container', 'my-container'),
-            ]:
-                assert getattr(task_factory, attr) == value
 
-            task = task_factory()
+        task_factory = BlobStorageClientTask(
+            RequestDirection.TO,
+            'bss://$conf::storage.account$/$conf::storage.container$?AccountKey=$conf::storage.account_key$',
+            source='source.json',
+            destination='destination.txt',
+        )
+        for attr, value in [
+            ('container', 'my-container'),
+        ]:
+            assert getattr(task_factory, attr) == value
 
-            parent = grizzly_fixture()
+        task = task_factory()
 
-            request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
+        parent = grizzly_fixture()
+        # since we haven't received any values
+        parent.user.variables = GrizzlyVariables(**grizzly.scenario.variables)
 
-            task(parent)
+        request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
-            upload_blob_mock.assert_not_called()
+        task(parent)
 
-            request_fire_spy.assert_called_once_with(
-                request_type='CLTSK',
-                name=f'{parent.user._scenario.identifier} BlobStorage->my-container',
-                response_time=ANY(int),
-                response_length=0,
-                context=parent.user._context,
-                exception=ANY(FileNotFoundError, message='source.json'),
-            )
-            request_fire_spy.reset_mock()
+        upload_blob_mock.assert_not_called()
 
-            test_context = Path(task_factory._context_root)
-            (test_context / 'requests').mkdir(exist_ok=True)
-            (test_context / 'requests' / 'source.json').write_text('this is my {{ test }} test!')
+        request_fire_spy.assert_called_once_with(
+            request_type='CLTSK',
+            name=f'{parent.user._scenario.identifier} BlobStorage->my-container',
+            response_time=ANY(int),
+            response_length=0,
+            context=parent.user._context,
+            exception=ANY(FileNotFoundError, message='source.json'),
+        )
+        request_fire_spy.reset_mock()
 
-            environ['GRIZZLY_CONTEXT_ROOT'] = str(test_context)
-            GrizzlyTask._context_root = str(test_context)
+        test_context = grizzly_fixture.test_context
+        source_file = test_context / 'requests' / 'source.json'
+        source_file.parent.mkdir(exist_ok=True)
+        source_file.write_text('this is my {{ test }} test!')
 
-            task_factory = BlobStorageClientTask(
-                RequestDirection.TO,
-                'bss://$conf::storage.account$/$conf::storage.container$?AccountKey=$conf::storage.account_key$',
-                'test-bss-request',
-                source='{{ source }}',
-                destination='{{ destination }}',
-            )
+        task_factory = BlobStorageClientTask(
+            RequestDirection.TO,
+            'bss://$conf::storage.account$/$conf::storage.container$?AccountKey=$conf::storage.account_key$',
+            'test-bss-request',
+            source='{{ source }}',
+            destination='{{ destination }}',
+        )
 
-            task = task_factory()
+        task = task_factory()
 
-            task(parent)
+        print('-' * 200)
+        print(f'test: {source_file.as_posix()}')
 
-            upload_blob_mock.assert_called_once_with(
-                SOME(BlobClient, container_name='my-container', blob_name='destination.json'),
-                'this is my hello world test!',
-                overwrite=False,
-                content_settings=SOME(ContentSettings, content_type='application/json'),
-            )
-            upload_blob_mock.reset_mock()
+        task(parent)
 
-            request_fire_spy.assert_called_once_with(
-                request_type='CLTSK',
-                name=f'{parent.user._scenario.identifier} test-bss-request',
-                response_time=ANY(int),
-                response_length=len(b'this is my hello world test!'),
-                context=parent.user._context,
-                exception=None,
-            )
-            request_fire_spy.reset_mock()
+        upload_blob_mock.assert_called_once_with(
+            SOME(BlobClient, container_name='my-container', blob_name='destination.json'),
+            'this is my hello world test!',
+            overwrite=False,
+            content_settings=SOME(ContentSettings, content_type='application/json'),
+        )
+        upload_blob_mock.reset_mock()
 
-            task_factory.destination = None
-            task_factory.overwrite = True
+        request_fire_spy.assert_called_once_with(
+            request_type='CLTSK',
+            name=f'{parent.user._scenario.identifier} test-bss-request',
+            response_time=ANY(int),
+            response_length=len(b'this is my hello world test!'),
+            context=parent.user._context,
+            exception=None,
+        )
+        request_fire_spy.reset_mock()
 
-            task(parent)
+        task_factory.destination = None
+        task_factory.overwrite = True
 
-            upload_blob_mock.assert_called_once_with(
-                SOME(BlobClient, container_name='my-container', blob_name='source.json'),
-                'this is my hello world test!',
-                overwrite=True,
-                content_settings=SOME(ContentSettings, content_type='application/json'),
-            )
-            upload_blob_mock.reset_mock()
+        task(parent)
 
-            request_fire_spy.assert_called_once_with(
-                request_type='CLTSK',
-                name=f'{parent.user._scenario.identifier} test-bss-request',
-                response_time=ANY(int),
-                response_length=len(b'this is my hello world test!'),
-                context=parent.user._context,
-                exception=None,
-            )
-            request_fire_spy.reset_mock()
-        finally:
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
+        upload_blob_mock.assert_called_once_with(
+            SOME(BlobClient, container_name='my-container', blob_name='source.json'),
+            'this is my hello world test!',
+            overwrite=True,
+            content_settings=SOME(ContentSettings, content_type='application/json'),
+        )
+        upload_blob_mock.reset_mock()
+
+        request_fire_spy.assert_called_once_with(
+            request_type='CLTSK',
+            name=f'{parent.user._scenario.identifier} test-bss-request',
+            response_time=ANY(int),
+            response_length=len(b'this is my hello world test!'),
+            context=parent.user._context,
+            exception=None,
+        )
+        request_fire_spy.reset_mock()

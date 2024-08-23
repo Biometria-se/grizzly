@@ -98,7 +98,6 @@ value3,value4
             grizzly.scenario.context['host'] = 'http://test.nu'
 
             request.source = json.dumps(source)
-            request._template = grizzly.scenario.jinja2.from_string(request.source)
 
             grizzly.scenario.tasks.add(request)
             grizzly.scenario.tasks.add(LogMessageTask(message='hello {{ world }}'))
@@ -309,7 +308,6 @@ value3,value4
             source['result'].update({'File': '{{ AtomicDirectoryContents.file }}'})
 
             request.source = json.dumps(source)
-            request._template = grizzly.scenario.jinja2.from_string(request.source)
 
             grizzly.scenarios.clear()
             grizzly.scenarios.create(grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
@@ -679,7 +677,7 @@ class TestTestdataConsumer:
         parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
 
-        consumer = TestdataConsumer(parent, identifier='test')
+        consumer = TestdataConsumer(parent)
 
         try:
             mock_recv_json({})
@@ -759,7 +757,7 @@ class TestTestdataConsumer:
 
         parent = grizzly_fixture()
 
-        consumer = TestdataConsumer(parent, identifier='test')
+        consumer = TestdataConsumer(parent)
 
         with caplog.at_level(logging.DEBUG):
             consumer.stop()
@@ -789,7 +787,7 @@ class TestTestdataConsumer:
 
         parent = grizzly_fixture()
 
-        consumer = TestdataConsumer(parent, identifier='test')
+        consumer = TestdataConsumer(parent)
 
         with pytest.raises(ZMQAgain):
             consumer.testdata('test')
@@ -807,7 +805,7 @@ class TestTestdataConsumer:
         noop_zmq('grizzly.testdata.communication')
         parent = grizzly_fixture()
 
-        consumer = TestdataConsumer(parent, identifier='test')
+        consumer = TestdataConsumer(parent)
 
         def echo(value: dict[str, Any]) -> dict[str, Any]:
             return value

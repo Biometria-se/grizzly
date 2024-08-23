@@ -36,10 +36,7 @@ def create_request_task(
     substitutes: Optional[dict[str, str]] = None,
     content_type: Optional[TransformerContentType] = None,
 ) -> RequestTask:
-    grizzly = cast(GrizzlyContext, context.grizzly)
     path = Path(context.config.base_dir) / 'requests'
-
-    template: Optional[j2.Template] = None
 
     if source is not None:
         original_source = source
@@ -71,14 +68,12 @@ def create_request_task(
         for key, value in (substitutes or {}).items():
             source = source.replace(f'{{{{ {key} }}}}', value)
 
-        template = grizzly.scenario.jinja2.from_string(source)
-
     if name is None:
         name = '<unknown>'
 
     request = RequestTask(method, name=name, endpoint=endpoint)
-    request._source = source
-    request._template = template
+    request.source = source
+
     if content_type is not None:
         request.response.content_type = content_type
 

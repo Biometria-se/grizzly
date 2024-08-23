@@ -345,7 +345,7 @@ class TestSaveHandlerAction:
     def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture()
 
-        assert 'test' not in parent.user._scenario.variables
+        assert 'test' not in parent.user.variables
 
         handler = SaveHandlerAction('test', expression='.*', match_with='.*')
         with pytest.raises(TypeError, match='could not find a transformer for UNDEFINED'):
@@ -357,28 +357,28 @@ class TestSaveHandlerAction:
         handler = SaveHandlerAction('test', expression='$.test.value', match_with='.*')
 
         handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), parent.user)
-        assert parent.user._scenario.variables.get('test', None) == 'test'
-        del parent.user._scenario.variables['test']
+        assert parent.user.variables.get('test', None) == 'test'
+        del parent.user.variables['test']
 
         handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), parent.user)
-        assert parent.user._scenario.variables.get('test', None) == 'nottest'
-        del parent.user._scenario.variables['test']
+        assert parent.user.variables.get('test', None) == 'nottest'
+        del parent.user.variables['test']
 
         parent.user.set_variable('value', 'test')
         handler = SaveHandlerAction('test', expression='$.test.value', match_with='.*({{ value }})$')
 
         handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), parent.user)
-        assert parent.user._scenario.variables.get('test', None) == 'test'
-        del parent.user._scenario.variables['test']
+        assert parent.user.variables.get('test', None) == 'test'
+        del parent.user.variables['test']
 
         handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), parent.user)
-        assert parent.user._scenario.variables.get('test', None) == 'test'
-        del parent.user._scenario.variables['test']
+        assert parent.user.variables.get('test', None) == 'test'
+        del parent.user.variables['test']
 
         # failed
         with pytest.raises(ResponseHandlerError, match='did not match value'):
             handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), parent.user)
-        assert parent.user._scenario.variables.get('test', 'test') is None
+        assert parent.user.variables.get('test', 'test') is None
 
 
         for failure_exception in [None, StopUser, RestartScenario]:
@@ -391,7 +391,7 @@ class TestSaveHandlerAction:
         handler = SaveHandlerAction('test', expression='$.test[*].value', match_with='.*t.*')
         with pytest.raises(ResponseHandlerError, match='did not match value'):
             handler((TransformerContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), parent.user)
-        assert parent.user._scenario.variables.get('test', None) is None
+        assert parent.user.variables.get('test', None) is None
 
         # save object dict
         handler = SaveHandlerAction(
@@ -429,7 +429,7 @@ class TestSaveHandlerAction:
             parent.user,
         )
 
-        test_object = parent.user._scenario.variables.get('test_object', None)
+        test_object = parent.user.variables.get('test_object', None)
         assert jsonloads(test_object) == {
             'prop21': False,
             'prop22': 100,
@@ -477,7 +477,7 @@ class TestSaveHandlerAction:
             parent.user,
         )
 
-        test_list = parent.user._scenario.variables.get('test_list', None)
+        test_list = parent.user.variables.get('test_list', None)
         assert jsonloads(test_list) == [
             'prop41',
             True,
@@ -510,7 +510,7 @@ class TestSaveHandlerAction:
             parent.user,
         )
 
-        test_list = parent.user._scenario.variables.get('test_list', None)
+        test_list = parent.user.variables.get('test_list', None)
         assert jsonloads(test_list) == [
             'prop41',
         ]
@@ -534,7 +534,7 @@ class TestSaveHandlerAction:
             parent.user,
         )
 
-        test_list = parent.user._scenario.variables.get('test_list', None)
+        test_list = parent.user.variables.get('test_list', None)
         assert jsonloads(test_list) == [
             'prop41',
             'prop42',

@@ -13,11 +13,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import End2EndFixture
 
 
-def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
+def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFixture) -> None:
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
-
-        from jinja2 import Template
 
         from grizzly.tasks import RequestTask
         from grizzly.types import RequestMethod
@@ -36,7 +34,6 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
         assert request.method == RequestMethod.POST, f'{request.method} != RequestMethod.POST'
         assert request.name == 'test-post', f'{request.name} != test-post'
         assert request.endpoint == '/api/echo', f'{request.endpoint} != /api/echo'
-        assert isinstance(request.template, Template), 'request.template is not a Template'
         assert request.source is not None, 'request.source is None'
         assert jsonloads(request.source) == {'test': 'post'}, f"{request.source} != {'test': 'post'}"
         assert request.response.content_type == TransformerContentType.UNDEFINED, f'{request.response.content_type} != TransformerContentType.UNDEFINED'
@@ -46,7 +43,6 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
         assert request.method == RequestMethod.PUT
         assert request.name == 'test-put'
         assert request.endpoint == '/api/echo'
-        assert isinstance(request.template, Template)
         assert request.source is not None
         assert jsonloads(request.source) == {'test': 'put'}
         assert request.response.content_type == TransformerContentType.JSON
@@ -56,7 +52,6 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
         assert request.method == RequestMethod.GET
         assert request.name == 'test-get'
         assert request.endpoint == '/api/echo'
-        assert request.template is None
         assert request.source is None
         assert request.response.content_type == TransformerContentType.UNDEFINED
 
@@ -65,7 +60,6 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
         assert request.method == RequestMethod.SEND
         assert request.name == 'test-send'
         assert request.endpoint == 'queue:receive-queue'
-        assert isinstance(request.template, Template)
         assert request.source is not None
         assert jsonloads(request.source) == {'test': 'send'}
         assert request.response.content_type == TransformerContentType.UNDEFINED
@@ -112,11 +106,9 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
     assert expected in result
 
 
-def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
+def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixture) -> None:
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
-
-        from jinja2 import Template
 
         from grizzly.tasks import RequestTask
         from grizzly.types import RequestMethod
@@ -135,7 +127,6 @@ def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixtu
         assert request.method == RequestMethod.SEND, f'{request.method} != RequestMethod.SEND'
         assert request.name == 'test-send', f'{request.name} != test-send'
         assert request.endpoint == 'queue:receive-queue', f'{request.endpoint} != queue:receive-queue'
-        assert isinstance(request.template, Template), 'request.template is not a Template'
         assert request.source is not None, 'request.source is None'
         assert jsonloads(request.source) == {'test': 'request-send'}, f"{request.source} != {'test': 'request-send'}"
         assert request.response.content_type == TransformerContentType.XML, f'{request.response.content_type} != TransformerContentType.XML'
@@ -146,7 +137,6 @@ def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixtu
         assert request.method == RequestMethod.POST
         assert request.name == 'test-post'
         assert request.endpoint == '/api/echo'
-        assert isinstance(request.template, Template)
         assert request.source is not None
         assert jsonloads(request.source) == {'test': 'request-{{ post }}'}
         assert request.response.content_type == TransformerContentType.JSON
@@ -157,7 +147,6 @@ def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixtu
         assert request.method == RequestMethod.PUT
         assert request.name == 'test-put-{{ foo }}'
         assert request.endpoint == '/api/echo?foo={{ bar }}'
-        assert isinstance(request.template, Template)
         assert request.source is not None
         assert jsonloads(request.source) == {'test': 'request-put-{{ foobar }}'}
         assert request.response.content_type == TransformerContentType.UNDEFINED
@@ -200,8 +189,6 @@ def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> No
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
 
-        from jinja2 import Template
-
         from grizzly.tasks import RequestTask
         from grizzly.types import RequestMethod
         from grizzly_extras.transformer import TransformerContentType
@@ -219,7 +206,6 @@ def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> No
             assert request.method == RequestMethod.POST
             assert request.name == f'test-post-{index}'
             assert request.endpoint == '/api/echo'
-            assert isinstance(request.template, Template)
             assert request.source is not None
             assert jsonloads(request.source) == {'test': f'request-{{{{ post_{index} }}}}-{index}'}
             assert request.response.content_type == TransformerContentType.JSON
@@ -251,8 +237,6 @@ def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> No
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
 
-        from jinja2 import Template
-
         from grizzly.tasks import RequestTask
         from grizzly.types import RequestMethod
         from grizzly_extras.transformer import TransformerContentType
@@ -270,7 +254,6 @@ def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> No
             assert request.method == RequestMethod.POST
             assert request.name == f'test-post-{index}'
             assert request.endpoint == '/api/echo'
-            assert isinstance(request.template, Template)
             assert request.source is not None
             assert jsonloads(request.source) == {'value': f'test-post-{index}'}
             assert request.response.content_type == TransformerContentType.JSON
@@ -281,7 +264,6 @@ def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> No
             assert request.method == RequestMethod.GET
             assert request.name == f'test-get-{index}'
             assert request.endpoint == '/api/echo'
-            assert request.template is None
             assert request.source is None
             assert request.response.content_type == TransformerContentType.XML
             assert len(request.get_templates()) == 0
@@ -858,8 +840,6 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
     def validate_async_group(context: Context) -> None:
         from json import loads as jsonloads
 
-        from jinja2 import Template
-
         from grizzly.tasks import AsyncRequestGroupTask, RequestTask
         from grizzly.types import RequestMethod
 
@@ -887,7 +867,6 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
         assert request.method == RequestMethod.POST
         assert request.name == 'async-group-{{ index }}:test-post-1'
         assert request.endpoint == '/api/echo'
-        assert isinstance(request.template, Template)
         assert request.source is not None
         assert jsonloads(request.source) == {'value': 'i have good news!'}
         assert request.get_templates() == ['async-group-{{ index }}:test-post-1']
@@ -897,7 +876,6 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
         assert request.method == RequestMethod.GET
         assert request.name == 'async-group-{{ index }}:test-get-1'
         assert request.endpoint == '/api/echo?foo=bar'
-        assert request.template is None
         assert request.source is None
         assert request.get_templates() == ['async-group-{{ index }}:test-get-1']
 
@@ -907,7 +885,6 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
         assert task.name == 'test-get-2'
         assert task.endpoint == '/api/echo?bar=foo'
         assert task.source is None
-        assert task.template is None
 
     e2e_fixture.add_validator(validate_async_group)
 

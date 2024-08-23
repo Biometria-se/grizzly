@@ -82,7 +82,7 @@ class TransformerTask(GrizzlyTask):
             response_length = 0
 
             try:
-                content_raw = parent.render(self.content)
+                content_raw = parent.user.render(self.content)
                 response_length = len(content_raw)
 
                 try:

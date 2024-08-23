@@ -144,7 +144,7 @@ def resolve_template(scenario: GrizzlyContextScenario, value: str) -> str:
 
         assert template_variable in scenario.variables, f'value contained variable "{template_variable}" which has not been declared'
 
-    return template.render()
+    return template.render(**scenario.variables)
 
 
 def resolve_parameters(scenario: GrizzlyContextScenario, value: str) -> str:

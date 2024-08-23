@@ -1,11 +1,10 @@
 """Unit tests of grizzly.tasks.keystore."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import pytest
 
-from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
 from grizzly.tasks import KeystoreTask
 from tests.helpers import ANY
@@ -52,8 +51,7 @@ class TestKeystoreTask:
             KeystoreTask('foobar', 'unknown', None)  # type: ignore[arg-type]
 
     def test___call___get(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        behave = grizzly_fixture.behave.context
-        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly = grizzly_fixture.grizzly
 
         parent = grizzly_fixture()
 
@@ -63,6 +61,7 @@ class TestKeystoreTask:
         parent.consumer = consumer_mock
 
         grizzly.scenario.variables.update({'foobar': 'none'})
+        parent.user.variables.update({'foobar': 'none'})
 
         # key does not exist in keystore
         setattr(parent.consumer.keystore_get, 'return_value', None)  # noqa: B010
@@ -76,7 +75,7 @@ class TestKeystoreTask:
         with pytest.raises(RestartScenario):
             task(parent)
 
-        assert parent.user._scenario.variables.get('foobar', None) == 'none'
+        assert parent.user.variables.get('foobar', None) == 'none'
 
         request_spy.assert_called_once_with(
             request_type='KEYS',
@@ -95,7 +94,7 @@ class TestKeystoreTask:
 
         request_spy.assert_not_called()
 
-        assert parent.user._scenario.variables.get('foobar', None) == ['hello', 'world']
+        assert parent.user.variables.get('foobar', None) == ['hello', 'world']
 
         # key does not exist in keystore, but has a default value
         setattr(parent.consumer.keystore_get, 'return_value', None)  # noqa: B010
@@ -108,7 +107,7 @@ class TestKeystoreTask:
 
         request_spy.assert_not_called()
         consumer_mock.keystore_set.assert_called_with('foobar', {'hello': 'world'})
-        assert parent.user._scenario.variables.get('foobar', None) == {'hello': 'world'}
+        assert parent.user.variables.get('foobar', None) == {'hello': 'world'}
 
     def test___call___set(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()

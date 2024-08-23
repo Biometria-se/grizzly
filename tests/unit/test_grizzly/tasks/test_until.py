@@ -163,6 +163,7 @@ class TestUntilRequestTask:
 
         # -->
         parent.grizzly.scenario.variables.update({'wait': 100.0, 'retries': 10})
+        parent.user.variables.update({'wait': 100.0, 'retries': 10})
         task_factory = UntilRequestTask(meta_request_task, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'")
         task = task_factory()
 

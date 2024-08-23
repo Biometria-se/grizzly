@@ -481,7 +481,7 @@ class TestMessageQueueUser:
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test', '.*', 'payload_variable', default_value=None)
         mq_parent.user.request(request)
 
-        assert mq_parent.user._scenario.variables['payload_variable'] == ''
+        assert mq_parent.user.variables['payload_variable'] == ''
         request_event_spy.assert_called_once_with(
             request_type='GET',
             exception=ANY(ResponseHandlerError, message='failed to transform input as JSON:'),
@@ -521,7 +521,7 @@ class TestMessageQueueUser:
         request.response.content_type = TransformerContentType.JSON
         mq_parent.user.request(request)
 
-        assert mq_parent.user._scenario.variables['payload_variable'] == 'payload_variable value'
+        assert mq_parent.user.variables['payload_variable'] == 'payload_variable value'
 
         request_event_spy.assert_called_once_with(
             request_type='GET',
@@ -779,7 +779,7 @@ class TestMessageQueueUser:
 
         mq_parent.user.add_context(remote_variables)
 
-        request = mq_parent.user.render(template)
+        request = mq_parent.user.render_request(template)
 
         assert request.source is not None
 

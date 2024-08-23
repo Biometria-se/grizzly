@@ -254,7 +254,7 @@ class ClientTask(GrizzlyMetaRequestTask):
                 action = action or meta.get('action', self.payload_variable)
                 name = f'{parent.user._scenario.identifier} {self._short_name}{meta.get("direction", self._direction_arrow[self.direction])}{action}'
             else:
-                rendered_name = parent.render(self.name)
+                rendered_name = parent.user.render(self.name)
                 name = f'{parent.user._scenario.identifier} {rendered_name}'
 
             response_time = int((time() - start_time) * 1000)

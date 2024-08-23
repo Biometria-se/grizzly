@@ -31,6 +31,7 @@ class TestTransformerTask:
             )
 
         grizzly.scenario.variables.update({'test_variable': 'none'})
+        parent.user.variables.update({'test_variable': 'none'})
 
         json_transformer = transformer.available[TransformerContentType.JSON]
         del transformer.available[TransformerContentType.JSON]
@@ -84,13 +85,14 @@ class TestTransformerTask:
 
         assert callable(task)
 
-        assert parent.user._scenario.variables.get('test_variable', None) == 'none'
+        assert parent.user.variables.get('test_variable', None) == 'none'
 
         task(parent)
 
-        assert parent.user._scenario.variables.get('test_variable', None) == 'hello world!'
+        assert parent.user.variables.get('test_variable', None) == 'hello world!'
 
         parent.user.set_variable('payload_url', 'none')
+        parent.user._scenario.variables.update({'payload_url': 'none'})
         content = jsondumps({
             "entityType": "contract",
             "entityConcreteType": "contract",
@@ -117,9 +119,9 @@ class TestTransformerTask:
 
         task(parent)
 
-        assert parent.user._scenario.variables.get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
+        assert parent.user.variables.get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
 
-        parent.user._scenario.variables.update({
+        parent.user.variables.update({
             'payload_url': None,
             'payload': content,
         })
@@ -137,7 +139,7 @@ class TestTransformerTask:
 
         task(parent)
 
-        assert parent.user._scenario.variables.get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
+        assert parent.user.variables.get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
 
         task_factory = TransformerTask(
             variable='test_variable',
@@ -181,11 +183,12 @@ class TestTransformerTask:
         task = task_factory()
         task(parent)
 
-        assert parent.user._scenario.variables['test_variable'] == """{"value": "hello world!"}
+        assert parent.user.variables['test_variable'] == """{"value": "hello world!"}
 {"value": "hello world!"}
 {"value": "hello world!"}"""
 
         parent.user._scenario.variables.update({'test_bool': 'none'})
+        parent.user.variables.update({'test_bool': 'none'})
         task_factory = TransformerTask(
             variable='test_bool',
             expression='$.success',
@@ -197,7 +200,7 @@ class TestTransformerTask:
         task = task_factory()
         task(parent)
 
-        assert parent.user._scenario.variables['test_bool']
+        assert parent.user.variables['test_bool']
 
         task_factory = TransformerTask(
             variable='test_variable',
@@ -223,8 +226,9 @@ class TestTransformerTask:
 
         task(parent)
 
-        assert parent.user._scenario.variables['test_variable'] == '<actor id="9">Michael Caine</actor>'
+        assert parent.user.variables['test_variable'] == '<actor id="9">Michael Caine</actor>'
 
+        parent.user._scenario.variables.update({'child_elem': 'none'})
         parent.user.set_variable('child_elem', 'none')
 
         task_factory = TransformerTask(
@@ -251,6 +255,6 @@ class TestTransformerTask:
 
         task(parent)
 
-        assert parent.user._scenario.variables['child_elem'] == """<actor id="7">Christian Bale</actor>
+        assert parent.user.variables['child_elem'] == """<actor id="7">Christian Bale</actor>
 <actor id="8">Liam Neeson</actor>
 <actor id="9">Michael Caine</actor>"""

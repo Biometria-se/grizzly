@@ -52,7 +52,8 @@ def step_shapes_user_count(context: Context, value: str, **_kwargs: Any) -> None
     user_count = max(int(round(float(resolve_variable(grizzly.scenario, value)), 0)), 1)
 
     if has_template(value):
-        grizzly.scenario.orphan_templates.append(value)
+        for scenario in grizzly.scenarios:
+            scenario.orphan_templates.append(value)
 
     assert user_count >= 0, f'{value} resolved to {user_count} users, which is not valid'
 
@@ -85,7 +86,8 @@ def step_shapes_spawn_rate(context: Context, value: str, **_kwargs: Any) -> None
     spawn_rate = max(float(resolve_variable(grizzly.scenario, value)), 0.01)
 
     if has_template(value):
-        grizzly.scenario.orphan_templates.append(value)
+        for scenario in grizzly.scenarios:
+            scenario.orphan_templates.append(value)
 
     assert spawn_rate > 0.0, f'{value} resolved to {spawn_rate} users, which is not valid'
 

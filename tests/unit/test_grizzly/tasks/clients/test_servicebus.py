@@ -381,7 +381,7 @@ class TestServiceBusClientTask:
         state.client = client_mock
         task._text = '1={{ condition }}'
 
-        parent.user._scenario.variables.update({'id': 'baz-bar-foo', 'condition': '2'})
+        parent.user.variables.update({'id': 'baz-bar-foo', 'condition': '2'})
         expected_context = state.context.copy()
         expected_context['endpoint'] = expected_context['endpoint'].replace('{{ id }}', 'baz-bar-foo')
 
@@ -702,7 +702,7 @@ class TestServiceBusClientTask:
             'payload': None,
         })
 
-        assert parent.user._scenario.variables == parent.user._scenario.jinja2._globals
+        assert parent.user.variables == {}
 
         request_mock.reset_mock()
 
@@ -718,7 +718,7 @@ class TestServiceBusClientTask:
             'payload': None,
         })
 
-        assert parent.user._scenario.variables.get('foobaz', None) == 'foobar'
+        assert parent.user.variables.get('foobaz', None) == 'foobar'
 
         # with payload and metadata variable
         task.payload_variable = 'foobaz'
@@ -734,7 +734,7 @@ class TestServiceBusClientTask:
             'payload': None,
         })
 
-        assert parent.user._scenario.variables == SOME(dict, {'foobaz': 'foobar', 'bazfoo': jsondumps({'x-foo-bar': 'hello'})})
+        assert parent.user.variables == SOME(dict, {'foobaz': 'foobar', 'bazfoo': jsondumps({'x-foo-bar': 'hello'})})
 
     def test_put(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         scenario = grizzly_fixture()
@@ -782,7 +782,7 @@ class TestServiceBusClientTask:
         })
 
         request_mock.reset_mock()
-        del scenario.user._scenario.variables['foobar']
+        del scenario.user.variables['foobar']
 
         # source file
         (grizzly_fixture.test_context / 'requests' / 'source.json').write_text('hello world')
@@ -800,7 +800,7 @@ class TestServiceBusClientTask:
         request_mock.reset_mock()
 
         # source file, with template
-        scenario.user._scenario.variables.update({'foobar': 'hello world', 'filename': 'source.j2.json'})
+        scenario.user.variables.update({'foobar': 'hello world', 'filename': 'source.j2.json'})
         (grizzly_fixture.test_context / 'requests' / 'source.j2.json').write_text('{{ foobar }}')
         task.source = '{{ filename }}'
 
