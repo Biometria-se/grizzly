@@ -1,11 +1,10 @@
 """Unit tests of grizzly.tasks.keystore."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import pytest
 
-from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
 from grizzly.tasks import KeystoreTask
 from tests.helpers import ANY

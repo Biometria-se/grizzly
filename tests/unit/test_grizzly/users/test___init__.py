@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 from contextlib import suppress
 from json import loads as jsonloads
-from os import environ
 from typing import TYPE_CHECKING
 
 import pytest
