@@ -43,16 +43,18 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
 
     value = environ.get(f'TESTDATA_VARIABLE_{name}', None)
     assert value is not None, f'variable "{name}" does not have a value'
-    assert name not in grizzly.scenario.variables, f'variable "{name}" has already been set'
 
     try:
         if not context.step.in_background:
+            assert name not in grizzly.scenario.variables, f'variable "{name}" has already been set'
             resolved_value = resolve_variable(grizzly.scenario, value, guess_datatype=True)
             grizzly.scenario.variables.update({name: resolved_value})
         else:
             for scenario in grizzly.scenarios:
+                assert name not in scenario.variables, f'variable "{name}" has already been set in scenario {scenario.name}'
                 resolved_value = resolve_variable(scenario, value, guess_datatype=True)
                 scenario.variables.update({name: resolved_value})
+                scenario.orphan_templates.append(f'{{{{ {name }}}}}')
     except ValueError as e:
         raise AssertionError(e) from e
 
@@ -125,7 +127,7 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
             # data type will be guessed when setting the variable
             persisted_initial_value = grizzly.scenario.variables.persistent.get(name, None)
             if persisted_initial_value is None:
-                resolved_value = resolve_variable(grizzly.scenario, value, guess_datatype=False)
+                resolved_value = resolve_variable(grizzly.scenario, value, guess_datatype=False, try_file=False)
                 if isinstance(value, str) and has_template(value):
                     grizzly.scenario.orphan_templates.append(value)
             else:

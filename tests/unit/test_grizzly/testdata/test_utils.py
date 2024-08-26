@@ -1,6 +1,7 @@
 """Unit tests for grizzly.testdata.utils."""
 from __future__ import annotations
 
+import json
 from contextlib import suppress
 from json import dumps as jsondumps
 from json import loads as jsonloads
@@ -9,16 +10,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
-from jinja2.filters import FILTERS
 
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import ConditionalTask, DateTask, LogMessageTask, TransformerTask, UntilRequestTask
+from grizzly.testdata.filters import templatingfilter
 from grizzly.testdata.utils import (
     _objectify,
     create_context_variable,
     initialize_testdata,
     resolve_variable,
-    templatingfilter,
     transform,
 )
 from grizzly.testdata.variables import AtomicDate, AtomicIntegerIncrementer
@@ -137,7 +137,7 @@ def test_initialize_testdata_with_tasks(
         cleanup()
 
 
-def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, noop_zmq: NoopZmqFixture) -> None:
+def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
     noop_zmq('grizzly.testdata.communication')
 
     try:
@@ -154,10 +154,16 @@ value1,value2
 value3,value4
 """)
 
+        with (context_root / 'test.json').open('w') as fd:
+            json.dump([{'header1': 'value1', 'header2': 'value2'}, {'header1': 'value3', 'header2': 'value4'}], fd)
+
         assert request.source is not None
         source = jsonloads(request.source)
         source['result']['CsvRowValue1'] = '{{ AtomicCsvReader.test.header1 }}'
         source['result']['CsvRowValue2'] = '{{ AtomicCsvReader.test.header2 }}'
+        source['result']['JsonRowValue1'] = '{{ AtomicJsonReader.test.header1 }}'
+        source['result']['JsonRowValue2'] = '{{ AtomicJsonReader.test.header2 }}'
+        source['result']['JsonRowValue'] = '{{ AtomicJsonReader.test2 }}'
         source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
 
         grizzly.scenarios.clear()
@@ -166,12 +172,14 @@ value3,value4
             'messageID': 123,
             'AtomicIntegerIncrementer.messageID': 456,
             'AtomicCsvReader.test': 'test.csv',
+            'AtomicJsonReader.test': 'test.json',
+            'AtomicJsonReader.test2': 'test.json',
             'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"',
             'AtomicDirectoryContents.test': 'adirectory',
             'AtomicDate.now': 'now',
         })
         grizzly.scenario.user.class_name = 'TestUser'
-        grizzly.scenario.context['host'] = 'http://test.nu'
+        grizzly.scenario.context['host'] = 'http://test.example.com'
         grizzly.scenario.iterations = 2
 
         # get around them not being used in any template when doing it barebone.
@@ -204,6 +212,12 @@ value3,value4
             assert data['AtomicCsvReader.test.header1']['test']['header1'] is None
         assert data['AtomicCsvReader.test.header2']['test'] is None
         assert data['AtomicCsvReader.test.header1']['test'] is None
+
+        assert data['AtomicJsonReader.test2']['test2'] == json.dumps({'header1': 'value1', 'header2': 'value2'})
+        assert data['AtomicJsonReader.test.header2']['test.header2']['header2'] == 'value2'
+        assert data['AtomicJsonReader.test.header2']['test'] is not None
+        assert data['AtomicJsonReader.test.header2']['test'] is None
+        assert data['AtomicJsonReader.test.header1']['test'] is None
 
         assert data['AtomicDirectoryContents.test']['test'] == f'adirectory{sep}file1.txt'
         assert data['AtomicDirectoryContents.test']['test'] == f'adirectory{sep}file2.txt'
@@ -578,31 +592,3 @@ def test_transform(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableClean
         caplog.clear()
     finally:
         cleanup()
-
-
-def test_templatingfilter(grizzly_fixture: GrizzlyFixture) -> None:
-    parent = grizzly_fixture()
-
-    def testuppercase(value: str) -> str:
-        return value.upper()
-
-    assert FILTERS.get('testuppercase', None) is None
-
-    templatingfilter(testuppercase)
-
-    assert FILTERS.get('testuppercase', None) is testuppercase
-
-    actual = parent.user._scenario.jinja2.from_string('{{ variable | testuppercase }}').render(variable='foobar')
-
-    assert actual == 'FOOBAR'
-
-    def _testuppercase(value: str) -> str:
-        return value.upper()
-
-    uc = _testuppercase
-    uc.__name__ = 'testuppercase'
-
-    with pytest.raises(AssertionError, match='testuppercase is already registered as a filter'):
-        templatingfilter(uc)
-
-    assert FILTERS.get('testuppercase', None) is testuppercase

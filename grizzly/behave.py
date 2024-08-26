@@ -18,6 +18,7 @@ from .context import GrizzlyContext
 from .exceptions import FeatureError, StepError
 from .locust import on_worker
 from .locust import run as locustrun
+from .testdata import filters
 from .testdata.variables import destroy_variables
 from .types import RequestType
 from .types.behave import Context, Feature, Scenario, Status, Step
@@ -25,6 +26,10 @@ from .utils import fail_direct, in_correct_section
 from .utils.protocols import mq_client_logs
 
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    'filters',
+]
 
 try:
     import pymqi
