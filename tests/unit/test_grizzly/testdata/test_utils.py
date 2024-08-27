@@ -213,7 +213,7 @@ value3,value4
         assert data['AtomicCsvReader.test.header2']['test'] is None
         assert data['AtomicCsvReader.test.header1']['test'] is None
 
-        assert data['AtomicJsonReader.test2']['test2'] == json.dumps({'header1': 'value1', 'header2': 'value2'})
+        assert data['AtomicJsonReader.test2']['test2'] == {'header1': 'value1', 'header2': 'value2'}
         assert data['AtomicJsonReader.test.header2']['test.header2']['header2'] == 'value2'
         assert data['AtomicJsonReader.test.header2']['test'] is not None
         assert data['AtomicJsonReader.test.header2']['test'] is None

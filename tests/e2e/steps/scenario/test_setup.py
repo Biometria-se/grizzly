@@ -131,7 +131,8 @@ def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
         assert grizzly.scenario.pace == pace, f'{grizzly.scenario.pace} != {pace}'
 
         if has_template(pace):
-            assert grizzly.scenario.orphan_templates == [pace], f'{pace} not in {grizzly.scenario.orphan_templates}'
+            for scenario in grizzly.scenarios:
+                assert pace in scenario.orphan_templates, f'"{pace}" not in {scenario.orphan_templates}'
 
     table: list[dict[str, str]] = [{
         'pace': pace,
