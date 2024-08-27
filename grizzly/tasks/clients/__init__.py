@@ -93,7 +93,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         self._scenario = copy(self.__scenario__)
         self._scenario._tasks = self.__scenario__._tasks
 
-        endpoint = cast(str, resolve_variable(self._scenario, endpoint, only_grizzly=True))
+        endpoint = cast(str, resolve_variable(self._scenario, endpoint, try_template=False))
 
         try:
             parsed = urlparse(endpoint)

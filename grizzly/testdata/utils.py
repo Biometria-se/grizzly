@@ -187,7 +187,7 @@ def read_file(value: str) -> str:
 
 
 def resolve_variable(
-        scenario: GrizzlyContextScenario, value: str, *, guess_datatype: bool = True, only_grizzly: bool = False, try_file: bool = True,
+        scenario: GrizzlyContextScenario, value: str, *, guess_datatype: bool = True, try_template: bool = True, try_file: bool = True,
 ) -> GrizzlyVariableType:
     """Resolve a value to its actual value, since it can be a jinja2 template or any dollar reference. Return type can be actual type of the value."""
     if len(value) < 1:
@@ -201,7 +201,7 @@ def resolve_variable(
     if try_file and is_file(value):
         value = read_file(value)
 
-    if not only_grizzly and has_template(value):
+    if try_template and has_template(value):
         value = resolve_template(scenario, value)
 
     if '$conf' in value or '$env' in value:

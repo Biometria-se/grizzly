@@ -213,3 +213,18 @@ def test_step_setup_message_type_callback(behave_fixture: BehaveFixture) -> None
             'foo_message': message_callback,
         },
     }
+
+
+def test_step_setup_configuration_value(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
+
+    step_setup_configuration_value(behave, 'default.host', 'example.com')
+
+    assert grizzly.state.configuration['default.host'] == 'example.com'
+
+    step_setup_configuration_value(behave, 'default.url', 'https://$conf::default.host$')
+
+    assert grizzly.state.configuration['default.url'] == 'https://example.com'
