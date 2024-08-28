@@ -10,7 +10,7 @@ import pytest
 from jinja2.filters import FILTERS
 
 from grizzly.tasks import RequestTask
-from grizzly.testdata.utils import templatingfilter
+from grizzly.testdata.filters import templatingfilter
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.types.locust import StopUser
 from grizzly.users import GrizzlyUser

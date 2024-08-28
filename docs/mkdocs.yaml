@@ -9,7 +9,9 @@ nav:
       - Variables:
         - framework/usage/variables/environment-configuration.md
         - Testdata:
-        - framework/usage/variables/templating.md
+        - Templating:
+          - framework/usage/variables/templating/index.md
+          - framework/usage/variables/templating/filters.md
       - Load Users:
       - Steps:
         - Background:

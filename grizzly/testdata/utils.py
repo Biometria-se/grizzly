@@ -6,9 +6,8 @@ import re
 from collections import namedtuple
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
-from jinja2.filters import FILTERS
 from jinja2.meta import find_undeclared_variables
 
 from grizzly.testdata.ast import get_template_variables
@@ -188,7 +187,7 @@ def read_file(value: str) -> str:
 
 
 def resolve_variable(
-        scenario: GrizzlyContextScenario, value: str, *, guess_datatype: bool = True, only_grizzly: bool = False,
+        scenario: GrizzlyContextScenario, value: str, *, guess_datatype: bool = True, try_template: bool = True, try_file: bool = True,
 ) -> GrizzlyVariableType:
     """Resolve a value to its actual value, since it can be a jinja2 template or any dollar reference. Return type can be actual type of the value."""
     if len(value) < 1:
@@ -199,10 +198,10 @@ def resolve_variable(
         quote_char = value[0]
         value = value[1:-1]
 
-    if is_file(value):
+    if try_file and is_file(value):
         value = read_file(value)
 
-    if has_template(value) and not only_grizzly:
+    if try_template and has_template(value):
         value = resolve_template(scenario, value)
 
     if '$conf' in value or '$env' in value:
@@ -218,18 +217,3 @@ def resolve_variable(
     return resolved_variable
 
 
-class templatingfilter:
-    name: str
-
-    def __init__(self, func: Callable) -> None:
-        name = func.__name__
-        existing_filter = FILTERS.get(name, None)
-
-        if existing_filter is None:
-            FILTERS[name] = func
-        elif existing_filter is not func:
-            message = f'{name} is already registered as a filter'
-            raise AssertionError(message)
-        else:
-            # code executed twice, so adding the same filter again
-            pass

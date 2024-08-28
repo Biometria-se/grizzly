@@ -23,7 +23,7 @@ from grizzly.steps._helpers import (
 from grizzly.tasks import ExplicitWaitTask, RequestTask
 from grizzly.tasks.async_group import AsyncRequestGroupTask
 from grizzly.tasks.clients import ClientTask, client
-from grizzly.testdata.utils import templatingfilter
+from grizzly.testdata.filters import templatingfilter
 from grizzly.types import RequestMethod, ResponseAction, ResponseTarget
 from grizzly.types.behave import Row, Table
 from grizzly_extras.transformer import TransformerContentType

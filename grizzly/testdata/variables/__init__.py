@@ -191,6 +191,7 @@ from .csv_writer import AtomicCsvWriter
 from .date import AtomicDate
 from .directory_contents import AtomicDirectoryContents
 from .integer_incrementer import AtomicIntegerIncrementer
+from .json_reader import AtomicJsonReader
 from .random_integer import AtomicRandomInteger
 from .random_string import AtomicRandomString
 
@@ -201,6 +202,7 @@ __all__ = [
     'AtomicDirectoryContents',
     'AtomicCsvReader',
     'AtomicCsvWriter',
+    'AtomicJsonReader',
     'AtomicRandomString',
     'destroy_variables',
 ]

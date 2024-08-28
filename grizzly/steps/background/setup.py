@@ -157,3 +157,29 @@ def step_setup_message_type_callback(context: Context, callback_name: str, messa
     }, f'{module_name}.{callback_name} does not have grizzly.types.MessageCallback method signature: {method_signature}'
 
     grizzly.setup.locust.messages.register(message_direction, message_type, callback)
+
+
+@given('value for configuration "{name}" is "{value}"')
+def step_setup_configuration_value(context: Context, name: str, value: str) -> None:
+    """Step to set configuration variables not present in specified environment file.
+
+    The configuration value can then be used in the following steps. If the specified `name` already exists, it will be
+    overwritten.
+
+    Example:
+    ```gherkin
+    Given value for configuration "default.host" is "example.com"
+    ...
+    Then log message "default.host=$conf::default.host$"
+    ```
+
+    Args:
+        name (str): dot separated name/path of configuration value
+        value (str): configuration value, any `$..$` variables are resolved, but `{{ .. }}` templates are kept
+
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    resolved_value = resolve_variable(grizzly.scenario, value, try_template=False)
+
+    grizzly.state.configuration.update({name: resolved_value})

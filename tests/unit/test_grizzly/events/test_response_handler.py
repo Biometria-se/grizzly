@@ -16,7 +16,7 @@ from lxml import etree as XML  # noqa: N812
 from grizzly.events.response_handler import ResponseHandler, ResponseHandlerAction, SaveHandlerAction, ValidationHandlerAction
 from grizzly.exceptions import ResponseHandlerError, RestartScenario
 from grizzly.tasks import RequestTask
-from grizzly.testdata.utils import templatingfilter
+from grizzly.testdata.filters import templatingfilter
 from grizzly.types import HandlerContextType, RequestMethod
 from grizzly.types.locust import StopUser
 from grizzly.users import RestApiUser

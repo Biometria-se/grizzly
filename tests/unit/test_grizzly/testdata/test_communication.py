@@ -42,7 +42,7 @@ class TestTestdataProducer:
 
         success = False
 
-        environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_behave.feature'
+        environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run.feature'
         context_root = grizzly_fixture.test_context / 'requests'
         context_root.mkdir(exist_ok=True)
 
@@ -61,6 +61,9 @@ value1,value2
 value3,value4
 """)
 
+            with (context_root / 'test.json').open('w') as fd:
+                json.dump([{'header1': 'value1', 'header2': 'value2'}, {'header1': 'value3', 'header2': 'value4'}], fd)
+
             assert request.source is not None
 
             source = json.loads(request.source)
@@ -68,6 +71,9 @@ value3,value4
                 'File': '{{ AtomicDirectoryContents.test }}',
                 'CsvRowValue1': '{{ AtomicCsvReader.test.header1 }}',
                 'CsvRowValue2': '{{ AtomicCsvReader.test.header2 }}',
+                'JsonRowValue1': '{{ AtomicJsonReader.test.header1 }}',
+                'JsonRowValue2': '{{ AtomicJsonReader.test.header2 }}',
+                'JsonRowValue': '{{ AtomicJsonReader.test2 }}',
                 'IntWithStep': '{{ AtomicIntegerIncrementer.value }}',
                 'UtcDate': '{{ AtomicDate.utc }}',
                 'CustomVariable': '{{ tests.helpers.AtomicCustomVariable.foo }}',
@@ -82,6 +88,8 @@ value3,value4
                 'AtomicIntegerIncrementer.messageID': 456,
                 'AtomicDirectoryContents.test': 'adirectory',
                 'AtomicCsvReader.test': 'test.csv',
+                'AtomicJsonReader.test': 'test.json',
+                'AtomicJsonReader.test2': 'test.json',
                 'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"',
                 'AtomicIntegerIncrementer.value': '1 | step=5, persist=True',
                 'AtomicDate.utc': "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC",
@@ -160,6 +168,9 @@ value3,value4
                     'AtomicDate.utc': ANY(str),
                     'AtomicCsvReader.test.header1': 'value1',
                     'AtomicCsvReader.test.header2': 'value2',
+                    'AtomicJsonReader.test.header1': 'value1',
+                    'AtomicJsonReader.test.header2': 'value2',
+                    'AtomicJsonReader.test2': {'header1': 'value1', 'header2': 'value2'},
                     'AtomicIntegerIncrementer.value': 1,
                     'tests.helpers.AtomicCustomVariable.foo': 'bar',
                     'world': 'hello!',
@@ -192,6 +203,9 @@ value3,value4
                 assert variables['AtomicDirectoryContents.test'] == f'adirectory{sep}file2.txt'
                 assert variables['AtomicCsvReader.test.header1'] == 'value3'
                 assert variables['AtomicCsvReader.test.header2'] == 'value4'
+                assert variables['AtomicJsonReader.test.header1'] == 'value3'
+                assert variables['AtomicJsonReader.test.header2'] == 'value4'
+                assert variables['AtomicJsonReader.test2'] == {'header1': 'value3', 'header2': 'value4'}
                 assert variables['AtomicIntegerIncrementer.value'] == 6
                 assert data['auth.user.username'] == 'value3'
                 assert data['auth.user.password'] == 'value4'
@@ -267,7 +281,7 @@ value3,value4
                 producer.stop()
                 assert producer.context._instance is None
 
-                persist_file = Path(context_root).parent / 'persistent' / 'test_run_with_behave.json'
+                persist_file = Path(context_root).parent / 'persistent' / 'test_run.json'
                 assert persist_file.exists()
 
                 if success:
@@ -320,7 +334,7 @@ value3,value4
             })
             grizzly.scenario.iterations = 0
             grizzly.scenario.user.class_name = 'TestUser'
-            grizzly.scenario.context['host'] = 'http://test.nu'
+            grizzly.scenario.context['host'] = 'http://test.example.com'
             grizzly.scenario.tasks.add(request)
             grizzly.scenario.tasks.add(LogMessageTask(message='are you {{ sure }}'))
 

@@ -17,7 +17,7 @@ from grizzly.behave import (
 )
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import StopUser
-from grizzly.testdata.utils import templatingfilter
+from grizzly.testdata.filters import templatingfilter
 
 
 @templatingfilter

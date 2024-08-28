@@ -1,6 +1,7 @@
 """Unit tests of grizzly.testdata."""
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, Optional
 
 import pytest
@@ -235,6 +236,36 @@ value1,value2
 
             t['AtomicCsvReader.test5'] = 'test.csv|repeat=True'
             assert t['AtomicCsvReader.test5'] == 'test.csv | repeat=True'
+        finally:
+            cleanup()
+
+    def test_atomic_json_reader(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-1'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-2'))
+        grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-3'))
+        test_context = grizzly_fixture.test_context / 'requests'
+
+        test_file = (test_context / 'test.json')
+        with test_file.open('w') as fd:
+            json.dump([{'hello': 'world'}, {'hello': 'foo'}, {'hello': 'bar'}], fd)
+
+        try:
+            t = GrizzlyVariables(scenarios=grizzly.scenarios)
+
+            with pytest.raises(ValueError, match='is not a file in'):
+                t['AtomicJsonReader.test1'] = 'doesnotexist.json'
+
+            t['AtomicJsonReader.test2'] = 'test.json'
+
+            with pytest.raises(ValueError, match='asdf is not a valid boolean'):
+                t['AtomicJsonReader.test3'] = 'test.json | repeat=asdf'
+
+            with pytest.raises(ValueError, match='argument suffix is not allowed'):
+                t['AtomicJsonReader.test4'] = 'test.json | repeat=True, suffix=True'
+
+            t['AtomicJsonReader.test5'] = 'test.json|repeat=True'
+            assert t['AtomicJsonReader.test5'] == 'test.json | repeat=True'
         finally:
             cleanup()
 
