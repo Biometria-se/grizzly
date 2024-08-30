@@ -228,3 +228,9 @@ def test_step_setup_configuration_value(behave_fixture: BehaveFixture) -> None:
     step_setup_configuration_value(behave, 'default.url', 'https://$conf::default.host$')
 
     assert grizzly.state.configuration['default.url'] == 'https://example.com'
+
+    environ.update({'TEST_VAR': 'foobar'})
+
+    step_setup_configuration_value(behave, 'env.var', '$env::TEST_VAR$')
+
+    assert grizzly.state.configuration['env.var'] == 'foobar'

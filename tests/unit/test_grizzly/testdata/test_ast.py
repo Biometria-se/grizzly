@@ -36,6 +36,13 @@ def test__parse_template(request_task: RequestTaskFixture, caplog: LogCaptureFix
         'Undefined': '{{ undeclared_variable if undeclared_variable is defined else "unknown" }}',
         'UndefinedAdvanced': '{{ AtomicIntegerIncrementer.undefined if AtomicIntegerIncrementer.undefined is defined else "hello" }}',
         'Content': '{{ some_weird_variable if some_weird_variable is defined else content }}',
+        'ModFilterStatic': '{{ "%08d" % (12312341234 | string)[:6] | int }}',
+        'ModCallDynamic': '{{ "%08d" % str(file_id1)[:6] | int }}',
+        'ModFilterDynamic': '{{ "%08d" % (file_id2 | string)[:6] | int }}',
+        'ModCallStatic': '{{ "%08d" % str(12312341234234)[:6] | int }}',
+        'ModFilterDynamicAtomic': '{{ "%08d" % (AtomicIntegerIncrementer.file_id1 | string)[:6] | int }}',
+        'ModCallDynamicAtomic': '{{ "%08d" % str(AtomicIntegerIncrementer.file_id2)[:6] | int }}',
+        'Call': '{{ AtomicRandomString.somevalue.replace("-", replacement_string) }}',
     })
 
     request.source = jsondumps(source)
@@ -47,45 +54,57 @@ def test__parse_template(request_task: RequestTaskFixture, caplog: LogCaptureFix
     with caplog.at_level(logging.WARNING):
         actual_variables = _parse_templates(templates)
 
-        expected_variables = {
-            scenario: {
-                'AtomicIntegerIncrementer.messageID',
-                'AtomicIntegerIncrementer.file_number',
-                'AtomicDirectoryContents.test',
-                'messageID',
-                'content',
-                'AtomicDate.now',
-                'AtomicCsvReader.test.header1',
-                'AtomicCsvReader.test.header2',
-                'a_sub_string',
-                'a_string',
-                'expression',
-                'some_weird_variable',
-                'AtomicIntegerIncrementer.undefined',
-                'undeclared_variable',
-            },
-        }
+    expected_variables = {
+        scenario: {
+            'AtomicIntegerIncrementer.messageID',
+            'AtomicIntegerIncrementer.file_number',
+            'AtomicDirectoryContents.test',
+            'messageID',
+            'content',
+            'AtomicDate.now',
+            'AtomicCsvReader.test.header1',
+            'AtomicCsvReader.test.header2',
+            'a_sub_string',
+            'a_string',
+            'expression',
+            'some_weird_variable',
+            'AtomicIntegerIncrementer.undefined',
+            'undeclared_variable',
+            'file_id1',
+            'file_id2',
+            'AtomicIntegerIncrementer.file_id1',
+            'AtomicIntegerIncrementer.file_id2',
+            'AtomicRandomString.somevalue',
+            'replacement_string',
+        },
+    }
 
-        assert actual_variables == expected_variables
+    assert actual_variables == expected_variables
 
-        assert actual_variables.__conditional__ == {'some_weird_variable', 'AtomicIntegerIncrementer.undefined', 'undeclared_variable', 'a_string', 'content', 'expression'}
-        assert actual_variables.__local__ == set()
-        assert actual_variables.__map__ == {
-            'AtomicIntegerIncrementer.messageID': 'AtomicIntegerIncrementer.messageID',
-            'AtomicIntegerIncrementer.file_number': 'AtomicIntegerIncrementer.file_number',
-            'AtomicDirectoryContents.test': 'AtomicDirectoryContents.test',
-            'messageID': 'messageID',
-            'content': 'content',
-            'AtomicDate.now': 'AtomicDate.now',
-            'AtomicCsvReader.test.header1': 'AtomicCsvReader.test',
-            'AtomicCsvReader.test.header2': 'AtomicCsvReader.test',
-            'a_sub_string': 'a_sub_string',
-            'a_string': 'a_string',
-            'expression': 'expression',
-            'some_weird_variable': 'some_weird_variable',
-            'AtomicIntegerIncrementer.undefined': 'AtomicIntegerIncrementer.undefined',
-            'undeclared_variable': 'undeclared_variable',
-        }
+    assert actual_variables.__conditional__ == {'some_weird_variable', 'AtomicIntegerIncrementer.undefined', 'undeclared_variable', 'a_string', 'content', 'expression'}
+    assert actual_variables.__local__ == set()
+    assert actual_variables.__map__ == {
+        'AtomicIntegerIncrementer.messageID': 'AtomicIntegerIncrementer.messageID',
+        'AtomicIntegerIncrementer.file_number': 'AtomicIntegerIncrementer.file_number',
+        'AtomicDirectoryContents.test': 'AtomicDirectoryContents.test',
+        'messageID': 'messageID',
+        'content': 'content',
+        'AtomicDate.now': 'AtomicDate.now',
+        'AtomicCsvReader.test.header1': 'AtomicCsvReader.test',
+        'AtomicCsvReader.test.header2': 'AtomicCsvReader.test',
+        'a_sub_string': 'a_sub_string',
+        'a_string': 'a_string',
+        'expression': 'expression',
+        'some_weird_variable': 'some_weird_variable',
+        'AtomicIntegerIncrementer.undefined': 'AtomicIntegerIncrementer.undefined',
+        'undeclared_variable': 'undeclared_variable',
+        'file_id1': 'file_id1',
+        'file_id2': 'file_id2',
+        'AtomicIntegerIncrementer.file_id1': 'AtomicIntegerIncrementer.file_id1',
+        'AtomicIntegerIncrementer.file_id2': 'AtomicIntegerIncrementer.file_id2',
+        'AtomicRandomString.somevalue': 'AtomicRandomString.somevalue',
+        'replacement_string': 'replacement_string',
+    }
     assert actual_variables.__init_map__ == {
         'AtomicIntegerIncrementer.messageID': {'AtomicIntegerIncrementer.messageID'},
         'AtomicIntegerIncrementer.file_number': {'AtomicIntegerIncrementer.file_number'},
@@ -103,6 +122,12 @@ def test__parse_template(request_task: RequestTaskFixture, caplog: LogCaptureFix
         'some_weird_variable': {'some_weird_variable'},
         'AtomicIntegerIncrementer.undefined': {'AtomicIntegerIncrementer.undefined'},
         'undeclared_variable': {'undeclared_variable'},
+        'file_id1': {'file_id1'},
+        'file_id2': {'file_id2'},
+        'AtomicIntegerIncrementer.file_id1': {'AtomicIntegerIncrementer.file_id1'},
+        'AtomicIntegerIncrementer.file_id2': {'AtomicIntegerIncrementer.file_id2'},
+        'AtomicRandomString.somevalue': {'AtomicRandomString.somevalue'},
+        'replacement_string': {'replacement_string'},
     }
 
     assert caplog.messages == []
@@ -330,7 +355,7 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
         RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post'),
     )
     task = cast(RequestTask, grizzly.scenario.tasks()[-1])
-    task.source = '{{ AtomicRandomString.test[:2] }}'
+    task.source = '{{ AtomicRandomString.test[:2] }}{{ integer | string}}'
 
     grizzly.scenario.tasks.add(
         RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get'),
@@ -361,6 +386,7 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
         'env': 'none',
         'foobar': 'barfoo',
         'world': 'hello',
+        'integer': '0',
     })
 
     with caplog.at_level(logging.WARNING):
@@ -375,6 +401,7 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
                 'env',
                 'foobar',
                 'world',
+                'integer',
             },
         }
 

@@ -220,7 +220,8 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
         elif isinstance(node, j2.Getitem):
             child_node = getattr(node, 'node', None)
             child_node_name = getattr(child_node, 'name', None)
-            if child_node_name is None and child_node is not None:
+
+            if child_node is not None:
                 yield from _getattr(child_node)
             elif child_node_name is not None:
                 attributes = [child_node_name]
@@ -235,6 +236,14 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
 
             child_node = getattr(node, 'node', None)
             if child_node is not None:
+                yield from _getattr(child_node)
+        elif isinstance(node, j2.Call):
+            args = getattr(node, 'args', [])
+            for arg in args:
+                yield from _getattr(arg)
+
+            child_node = getattr(node, 'node', None)
+            if child_node is not None and not isinstance(child_node, j2.Name):
                 yield from _getattr(child_node)
         elif isinstance(node, j2.Name):
             name = getattr(node, 'name', None)
