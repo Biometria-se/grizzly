@@ -165,6 +165,7 @@ value3,value4
         source['result']['JsonRowValue2'] = '{{ AtomicJsonReader.test.header2 }}'
         source['result']['JsonRowValue'] = '{{ AtomicJsonReader.test2 }}'
         source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
+        source['result']['Mod'] = "{{ '%08d' % (messageID | string)[:2] | int }}"
 
         grizzly.scenarios.clear()
         grizzly.scenarios.create(grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
