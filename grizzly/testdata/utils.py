@@ -193,6 +193,17 @@ def resolve_variable(
     if len(value) < 1:
         return value
 
+    # if variable value starts with `file://`, the file should be read
+    if len(value) > 7 and value[:7] == 'file://' and not try_file:
+        try_file = True
+        value = value[7:]
+
+        if value[0] == '/':
+            value = value[1:]
+
+        if value[:2] == './':
+            value = value[2:]
+
     quote_char: Optional[str] = None
     if value[0] in ['"', "'"] and value[0] == value[-1]:
         quote_char = value[0]

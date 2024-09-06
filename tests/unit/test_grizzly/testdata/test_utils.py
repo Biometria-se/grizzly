@@ -432,6 +432,23 @@ hello world
 write this "hello "{{ test }}"!"
 """.rstrip()
 
+        assert resolve_variable(grizzly.scenario, 'test/foobar.txt', try_file=False) == 'test/foobar.txt'
+
+        assert resolve_variable(grizzly.scenario, 'file://./test/foobar.txt', try_file=False) == """
+hello world
+write this "hello "{{ test }}"!"
+""".rstrip()
+
+        assert resolve_variable(grizzly.scenario, 'file://test/foobar.txt', try_file=False) == """
+hello world
+write this "hello "{{ test }}"!"
+""".rstrip()
+
+        assert resolve_variable(grizzly.scenario, 'file:///test/foobar.txt', try_file=False) == """
+hello world
+write this "hello "{{ test }}"!"
+""".rstrip()
+
     finally:
         with suppress(KeyError):
             del environ['HELLO_WORLD']
