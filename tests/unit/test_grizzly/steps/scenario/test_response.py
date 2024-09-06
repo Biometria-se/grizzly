@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from itertools import product
-from typing import TYPE_CHECKING, Callable, cast
+from typing import TYPE_CHECKING, Callable, Union, cast
 
 import pytest
 from parse import compile
@@ -10,6 +10,7 @@ from parse import compile
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 from grizzly.tasks import ExplicitWaitTask, RequestTask
+from grizzly.tasks.clients import HttpClientTask
 from grizzly.types import RequestMethod, ResponseTarget
 from grizzly.types.behave import Row, Table
 from grizzly_extras.transformer import TransformerContentType
@@ -171,11 +172,21 @@ def test_step_response_validate(grizzly_fixture: GrizzlyFixture, response_target
     assert len(request.response.handlers.payload) == handlers_payload_count
 
 
-def test_step_response_allow_status_codes(grizzly_fixture: GrizzlyFixture) -> None:
+@pytest.mark.parametrize('request_type', [
+    RequestTask, HttpClientTask,
+])
+def test_step_response_allow_status_codes(grizzly_fixture: GrizzlyFixture, request_type: type[Union[RequestTask, HttpClientTask]]) -> None:
+
     behave = grizzly_fixture.behave.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     behave.scenario = grizzly.scenario.behave
     grizzly.scenario.tasks.clear()
+
+    if request_type is RequestTask:
+        request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
+    else:
+        task_cls = type('HttpClientTaskTest', (HttpClientTask,), {'__scenario__': grizzly.scenario})
+        request = task_cls(RequestDirection.TO, 'http://example.org', 'test', source='foobar')
 
     assert behave.exceptions == {}
 
@@ -183,7 +194,6 @@ def test_step_response_allow_status_codes(grizzly_fixture: GrizzlyFixture) -> No
 
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='there are no requests in the scenario')]}
 
-    request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
     grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test'))
     grizzly.scenario.tasks.add(request)
 

@@ -148,3 +148,40 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
         source=source,
         destination=None,
     ))
+
+
+@then('put to "{endpoint}" with name "{name}"')
+def step_task_client_put_endpoint_text(context: Context, endpoint: str, name: str) -> None:
+    """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
+    based on the URL scheme specified in `endpoint`.
+
+    Put information, source step text, to another host or endpoint than the scenario
+    is load testing and saves the response in a variable
+
+    See {@pylink grizzly.tasks.clients} task documentation for more information about client tasks.
+
+    Example:
+    ```gherkin
+    Then put to "https://api.example.com/v2/echo" with name "put-request"
+      \"\"\"
+      hello world
+      \"\"\"
+    ```
+
+    Args:
+        endpoint (str): information about where to get information, see the specific getter task implementations for more information
+        name (str): name of the request, used in request statistics
+
+    """
+    assert context.text is not None, 'step text is mandatory for this step expression'
+    assert len(context.text) > 0, 'step text cannot be an empty string'
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
+        RequestDirection.TO,
+        endpoint,
+        name,
+        source=context.text,
+        destination=None,
+    ))

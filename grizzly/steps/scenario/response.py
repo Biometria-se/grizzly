@@ -19,8 +19,9 @@ from typing import cast
 import parse
 
 from grizzly.context import GrizzlyContext
-from grizzly.steps._helpers import add_request_task_response_status_codes, add_save_handler, add_validation_handler
+from grizzly.steps._helpers import add_request_response_status_codes, add_save_handler, add_validation_handler
 from grizzly.tasks import RequestTask
+from grizzly.tasks.clients import HttpClientTask
 from grizzly.types import ResponseTarget
 from grizzly.types.behave import Context, register_type, then, when
 from grizzly_extras.text import permutation
@@ -235,9 +236,9 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
 
     request = grizzly.scenario.tasks()[-1]
 
-    assert isinstance(request, RequestTask), 'previous task is not a request'
+    assert isinstance(request, (RequestTask, HttpClientTask)), 'previous task is not a request'
 
-    add_request_task_response_status_codes(request, status_list)
+    add_request_response_status_codes(request, status_list)
 
 
 @then('allow response status codes')
@@ -273,7 +274,7 @@ def step_response_allow_status_codes_table(context: Context) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     tasks = grizzly.scenario.tasks()
-    number_of_requests = len(grizzly.scenario.tasks(RequestTask))
+    number_of_requests = len(grizzly.scenario.tasks(RequestTask, HttpClientTask))
 
     assert number_of_requests > 0, 'there are no request tasks in the scenario'
     assert len(list(context.table)) <= number_of_requests, 'step table has more rows than there are request tasks'
@@ -285,9 +286,9 @@ def step_response_allow_status_codes_table(context: Context) -> None:
     try:
         for row in rows:
             task = tasks[index]
-            assert isinstance(task, RequestTask), f'task at index {index} is not a request'
+            assert isinstance(task, (RequestTask, HttpClientTask)), f'task at index {index} is not a request'
             index -= 1
-            add_request_task_response_status_codes(task, row['status'])
+            add_request_response_status_codes(task, row['status'])
     except KeyError as e:
         message = 'step table does not have column "status"'
         raise AssertionError(message) from e

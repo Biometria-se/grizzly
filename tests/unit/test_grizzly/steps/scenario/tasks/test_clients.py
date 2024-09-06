@@ -11,13 +11,14 @@ from grizzly.steps import (
     step_task_client_get_endpoint_payload_metadata,
     step_task_client_put_endpoint_file,
     step_task_client_put_endpoint_file_destination,
+    step_task_client_put_endpoint_text,
 )
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.types import pymqi
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
-    from tests.fixtures import BehaveFixture
+    from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
 def test_step_task_client_get_endpoint_payload_metadata(behave_fixture: BehaveFixture) -> None:
@@ -119,11 +120,10 @@ def test_step_task_client_get_endpoint_payload(behave_fixture: BehaveFixture) ->
     delattr(behave, 'exceptions')
 
 
-def test_step_task_client_put_endpoint_file(behave_fixture: BehaveFixture) -> None:
-    behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-    behave.scenario = grizzly.scenario.behave
+def test_step_task_client_put_endpoint_file(grizzly_fixture: GrizzlyFixture) -> None:
+    behave = grizzly_fixture.behave.context
+    grizzly = grizzly_fixture.grizzly
+    grizzly.scenario.tasks.clear()
 
     behave.text = 'hello'
 
@@ -154,17 +154,39 @@ def test_step_task_client_put_endpoint_file(behave_fixture: BehaveFixture) -> No
     assert task.endpoint == '{{ url }}'
 
     templates = task.get_templates()
-    assert len(templates) == 1
     assert sorted(templates) == sorted([
         '{{ url }}',
     ])
 
+    test_file = grizzly_fixture.test_context / 'requests' / 'file-test.json'
+    test_file.parent.mkdir(exist_ok=True)
+    test_file.write_text('foobar {{ foo }}!')
 
-def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFixture) -> None:
-    behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-    behave.scenario = grizzly.scenario.behave
+    try:
+        step_task_client_put_endpoint_file(behave, 'file-test.json', 'http://{{ url }}', 'step-name-2')
+
+        assert len(grizzly.scenario.tasks()) == 2
+        task = grizzly.scenario.tasks()[-1]
+
+        assert isinstance(task, HttpClientTask)
+        assert task.source == 'foobar {{ foo }}!'
+        assert task.destination is None
+        assert task.endpoint == '{{ url }}'
+
+        templates = task.get_templates()
+        assert sorted(templates) == sorted([
+            '{{ url }}',
+            'foobar {{ foo }}!',
+        ])
+    finally:
+        test_file.unlink()
+
+
+def test_step_task_client_put_endpoint_file_destination(grizzly_fixture: GrizzlyFixture) -> None:
+    behave = grizzly_fixture.behave.context
+    grizzly = grizzly_fixture.grizzly
+
+    grizzly.scenario.tasks.clear()
 
     behave.text = 'hello'
 
@@ -192,8 +214,66 @@ def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFi
     assert task.endpoint == '{{ url }}'
 
     templates = task.get_templates()
-    assert len(templates) == 2
     assert sorted(templates) == sorted([
         '{{ url }}',
         'uploaded-file-{{ suffix }}.json',
+    ])
+
+    test_file = grizzly_fixture.test_context / 'requests' / 'file-test.json'
+    test_file.parent.mkdir(exist_ok=True)
+    test_file.write_text('foobar {{ foo }}!')
+
+    try:
+        step_task_client_put_endpoint_file_destination(behave, 'file-test.json', 'http://{{ url }}', 'step-name', 'uploaded-file-{{ suffix }}.json')
+
+        assert len(grizzly.scenario.tasks()) == 2
+        task = grizzly.scenario.tasks()[-1]
+
+        assert isinstance(task, HttpClientTask)
+        assert task.source == 'foobar {{ foo }}!'
+        assert task.destination == 'uploaded-file-{{ suffix }}.json'
+        assert task.endpoint == '{{ url }}'
+
+        templates = task.get_templates()
+        assert sorted(templates) == sorted([
+            '{{ url }}',
+            'uploaded-file-{{ suffix }}.json',
+            'foobar {{ foo }}!',
+        ])
+    finally:
+        test_file.unlink()
+
+def test_step_task_client_put_endpoint_text(grizzly_fixture: GrizzlyFixture) -> None:
+    behave = grizzly_fixture.behave.context
+    grizzly = grizzly_fixture.grizzly
+    grizzly.scenario.tasks.clear()
+
+    assert len(grizzly.scenario.orphan_templates) == 0
+    assert len(grizzly.scenario.tasks()) == 0
+
+    behave.text = None
+    step_task_client_put_endpoint_text(behave, 'http://example.org/put', 'step-name')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='step text is mandatory for this step expression')]}
+    delattr(behave, 'exceptions')
+
+    behave.text = ''
+    step_task_client_put_endpoint_text(behave, 'http://example.org/put', 'step-name')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='step text cannot be an empty string')]}
+    delattr(behave, 'exceptions')
+
+    behave.text = 'foobar {{ foo }}!'
+
+    step_task_client_put_endpoint_text(behave, 'http://{{ url }}', 'step-name')
+    assert len(grizzly.scenario.tasks()) == 1
+    task = grizzly.scenario.tasks()[-1]
+
+    assert isinstance(task, HttpClientTask)
+    assert task.source == 'foobar {{ foo }}!'
+    assert task.destination is None
+    assert task.endpoint == '{{ url }}'
+
+    templates = task.get_templates()
+    assert sorted(templates) == sorted([
+        '{{ url }}',
+        'foobar {{ foo }}!',
     ])
