@@ -55,13 +55,24 @@ class TestWriteFile:
 
         assert expected_file.read_text() == f'foobar{linesep}foobar{linesep}foobar{linesep}'
 
+        # variable value is a template
+        task_factory = WriteFileTask(file_name='test/{{ file_name }}.log', content='{{ contents }}')
+        parent.user.set_variable('contents', '{{ hello }}')
+        task = task_factory()
+
+        task(parent)
+
+        assert expected_file.read_text() == f'foobar{linesep}foobar{linesep}foobar{linesep}foobar{linesep}'
+
         mocker.patch.object(parent.user, 'render', side_effect=['test/output.log', RuntimeError('no no')])
         request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
+
+        task_factory = WriteFileTask(file_name='test/{{ file_name }}.log', content='{{ hello }}')
 
         task(parent)
         task.on_stop(parent)
 
-        assert expected_file.read_text() == f'foobar{linesep}foobar{linesep}foobar{linesep}'
+        assert expected_file.read_text() == f'foobar{linesep}foobar{linesep}foobar{linesep}foobar{linesep}'
         request_fire_spy.assert_called_once_with(
             request_type='FWRT',
             name=f'{parent.user._scenario.identifier} FileWriteTask=>test/output.log',
