@@ -3,11 +3,11 @@ This task performs Azure SerciceBus operations to a specified endpoint.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_get_endpoint_payload}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload}
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_get_endpoint_payload_metadata}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload_metadata}
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_put_endpoint_file}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file}
 
 ## Arguments
 
@@ -104,7 +104,7 @@ from urllib.parse import parse_qs, quote_plus, unquote_plus, urlparse
 import zmq.green as zmq
 
 from grizzly.tasks import template
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
 from grizzly.utils.protocols import async_message_request_wrapper, zmq_disconnect
 from grizzly_extras.arguments import parse_arguments
 from grizzly_extras.transformer import TransformerContentType
@@ -163,6 +163,7 @@ class ServiceBusClientTask(ClientTask):
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
+        method: Optional[RequestMethod] = None,
     ) -> None:
         super().__init__(
             direction,
@@ -173,6 +174,7 @@ class ServiceBusClientTask(ClientTask):
             destination=destination,
             source=source,
             text=text,
+            method=method,
         )
 
         # expression can contain characters which are not URL safe, e.g. ?
@@ -415,7 +417,7 @@ class ServiceBusClientTask(ClientTask):
 
         return response or {}
 
-    def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+    def request_from(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         state = self.get_state(parent)
 
         request: AsyncMessageRequest = {
@@ -438,7 +440,7 @@ class ServiceBusClientTask(ClientTask):
 
         return metadata, payload
 
-    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+    def request_to(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         state = self.get_state(parent)
 
         source = parent.user.render(cast(str, self.source))

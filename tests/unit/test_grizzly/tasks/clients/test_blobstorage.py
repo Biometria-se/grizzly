@@ -314,7 +314,7 @@ class TestBlobStorageClientTask:
                 text='foobar',
             )
 
-    def test_get(self, behave_fixture: BehaveFixture, grizzly_fixture: GrizzlyFixture) -> None:
+    def test_request_from(self, behave_fixture: BehaveFixture, grizzly_fixture: GrizzlyFixture) -> None:
         behave = behave_fixture.context
         grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly.scenario.variables['test'] = 'none'
@@ -333,7 +333,7 @@ class TestBlobStorageClientTask:
         with pytest.raises(NotImplementedError, match='BlobStorageClientTask has not implemented GET'):
             task(parent)
 
-    def test_put(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test_request_to(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         upload_blob_mock = mocker.patch('azure.storage.blob._blob_service_client.BlobClient.upload_blob', autospec=True)
 
         grizzly = grizzly_fixture.grizzly
@@ -405,9 +405,6 @@ class TestBlobStorageClientTask:
         )
 
         task = task_factory()
-
-        print('-' * 200)
-        print(f'test: {source_file.as_posix()}')
 
         task(parent)
 

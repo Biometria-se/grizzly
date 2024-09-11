@@ -325,7 +325,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
         return None, None
 
     mocker.patch(
-        'grizzly.tasks.clients.http.HttpClientTask.get',
+        'grizzly.tasks.clients.http.HttpClientTask.request_from',
         decorator(get),
     )
 
@@ -348,7 +348,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
     else:  # assumed that variables contains scheme
         assert client.host == f'{host}/blob/file.txt'
 
-    client.get(parent)
+    client.request_from(parent)
 
     get_token_mock.assert_not_called()
     assert client._context == {'verify_certificates': True, 'metadata': None, 'auth': None, 'host': ''}
@@ -373,7 +373,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
         },
     })
 
-    client.get(parent)
+    client.request_from(parent)
 
     get_token_mock.assert_called_once_with(client.credential)
 

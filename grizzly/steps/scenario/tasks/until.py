@@ -54,7 +54,7 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
         ))
 
 
-@then('get "{endpoint}" with name "{name}" until "{condition}"')
+@then('get from "{endpoint}" with name "{name}" until "{condition}"')
 def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: str, condition: str) -> None:
     """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`.
@@ -66,8 +66,8 @@ def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: s
 
     Example:
     ```gherkin
-    Then get "https://www.example.org/example.json" with name "example-1" until "$.response[status='Success']
-    Then get "http://{{ endpoint }}" with name "example-2" until "//*[@status='Success']"
+    Then get from "https://www.example.org/example.json" with name "example-1" until "$.response[status='Success']
+    Then get from "http://{{ endpoint }}" with name "example-2" until "//*[@status='Success']"
     ```
 
     Args:
@@ -83,6 +83,7 @@ def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: s
         endpoint,
         name,
         text=context.text,
+        method=RequestMethod.GET,
     )
 
     grizzly.scenario.tasks.add(UntilRequestTask(

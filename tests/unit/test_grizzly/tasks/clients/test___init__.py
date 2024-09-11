@@ -27,12 +27,12 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
         class TestClientTask(ClientTask):
             __scenario__ = grizzly_fixture.grizzly.scenario
 
-            def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+            def request_from(self, parent: GrizzlyScenario) -> GrizzlyResponse:
                 with self.action(parent):
                     message = 'failed get'
                     raise RuntimeError(message)
 
-            def put(self, _: GrizzlyScenario) -> GrizzlyResponse:
+            def request_to(self, _: GrizzlyScenario) -> GrizzlyResponse:
                 return None, 'put'
 
         if log_prefix:

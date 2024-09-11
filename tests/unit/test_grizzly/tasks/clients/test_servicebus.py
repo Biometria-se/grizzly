@@ -671,7 +671,7 @@ class TestServiceBusClientTask:
             'response': {'message': 'foobar!', 'payload': '1234567890'},
         }
 
-    def test_get(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test_request_from(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
 
         client_mock = mocker.MagicMock()
@@ -693,7 +693,7 @@ class TestServiceBusClientTask:
         # no variables
         task.payload_variable = None
 
-        assert task.get(parent) == (None, 'foobar')
+        assert task.request_from(parent) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'RECEIVE',
@@ -709,7 +709,7 @@ class TestServiceBusClientTask:
         # with payload variable
         task.payload_variable = 'foobaz'
 
-        assert task.get(parent) == (None, 'foobar')
+        assert task.request_from(parent) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'RECEIVE',
@@ -725,7 +725,7 @@ class TestServiceBusClientTask:
         task.metadata_variable = 'bazfoo'
         request_mock = mocker.patch.object(task, 'request', return_value={'metadata': {'x-foo-bar': 'hello'}, 'payload': 'foobar'})
 
-        assert task.get(parent) == ({'x-foo-bar': 'hello'}, 'foobar')
+        assert task.request_from(parent) == ({'x-foo-bar': 'hello'}, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'RECEIVE',
@@ -736,7 +736,7 @@ class TestServiceBusClientTask:
 
         assert parent.user.variables == SOME(dict, {'foobaz': 'foobar', 'bazfoo': jsondumps({'x-foo-bar': 'hello'})})
 
-    def test_put(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test_request_to(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         scenario = grizzly_fixture()
 
         service_bus_client_task = type('ServiceBusClientTask_001', (ServiceBusClientTask,), {'_context': {'variables': {}}, '__scenario__': scenario.user._scenario})
@@ -757,7 +757,7 @@ class TestServiceBusClientTask:
         request_mock = mocker.patch.object(task, 'request', return_value={'metadata': None, 'payload': 'foobar'})
 
         # inline source, no file
-        assert task.put(scenario) == (None, 'foobar')
+        assert task.request_to(scenario) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'SEND',
@@ -772,7 +772,7 @@ class TestServiceBusClientTask:
         task.source = '{{ foobar }}'
         scenario.user.set_variable('foobar', 'hello world')
 
-        assert task.put(scenario) == (None, 'foobar')
+        assert task.request_to(scenario) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'SEND',
@@ -788,7 +788,7 @@ class TestServiceBusClientTask:
         (grizzly_fixture.test_context / 'requests' / 'source.json').write_text('hello world')
         task.source = 'source.json'
 
-        assert task.put(scenario) == (None, 'foobar')
+        assert task.request_to(scenario) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'SEND',
@@ -804,7 +804,7 @@ class TestServiceBusClientTask:
         (grizzly_fixture.test_context / 'requests' / 'source.j2.json').write_text('{{ foobar }}')
         task.source = '{{ filename }}'
 
-        assert task.put(scenario) == (None, 'foobar')
+        assert task.request_to(scenario) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'SEND',

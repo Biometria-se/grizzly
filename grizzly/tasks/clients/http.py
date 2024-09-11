@@ -5,13 +5,13 @@ This is useful if the scenario is using a non-HTTP user or a request to a URL ot
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_get_endpoint_payload}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload}
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_get_endpoint_payload_metadata}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload_metadata}
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_put_endpoint_text}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_text}
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_put_endpoint_file} (`source` will become contents of the specified file)
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file} (`source` will become contents of the specified file)
 
 ## Arguments
 
@@ -35,7 +35,7 @@ And set context variable "www.example.com/auth.user.redirect_uri" to "/authentic
 And set context variable "www.example.com/auth.provider" to "https://login.example.com/oauth2"
 And set context variable "www.example.com/auth.client.id" to "aaaa-bbbb-cccc-dddd"
 
-Then get "https://{{ url }}" with name "authenticated-get" and save response payload in "foobar"
+Then get from "https://{{ url }}" with name "authenticated-get" and save response payload in "foobar"
 ```
 
 This will make any requests towards `www.example.com` to get a token from `http://login.example.com/oauth2` and use it in any
@@ -56,11 +56,12 @@ from locust.exception import CatchResponseError
 from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
 from grizzly.tasks import RequestTaskResponse
 from grizzly.testdata.utils import read_file
-from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, bool_type
 from grizzly.utils import is_file, merge_dicts
 from grizzly.utils.protocols import http_populate_cookiejar
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
+from grizzly_extras.transformer import TransformerContentType
 
 from . import ClientTask, client
 
@@ -90,6 +91,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
+        method: Optional[RequestMethod] = None,
     ) -> None:
         self.verify = True
 
@@ -116,6 +118,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             source=source,
             destination=destination,
             text=text,
+            method=method,
         )
 
         self.arguments = {}
@@ -123,6 +126,11 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         self.metadata = {
             'x-grizzly-user': f'{self.__class__.__name__}::{id(self)}',
         }
+
+        if self.content_type != TransformerContentType.UNDEFINED:
+            self.metadata.update({
+                'Content-Type': self.content_type.value,
+            })
 
         self.session_started = None
         self.__class__._context = {
@@ -181,7 +189,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         return metadata, payload
 
     @refresh_token(AAD)
-    def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+    def request_from(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         with self.action(parent) as meta:
             url = parent.user.render(self.endpoint)
 
@@ -199,7 +207,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             return self._handle_response(parent, meta, url, response)
 
     @refresh_token(AAD)
-    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+    def request_to(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         source = parent.user.render(cast(str, self.source))
 
         with self.action(parent) as meta:
@@ -213,6 +221,6 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
 
             with Session(insecure=not self.verify) as client:
                 http_populate_cookiejar(client, self.cookies, url=url)
-                response = client.put(url, data=source, headers=self.metadata, **self.arguments)
+                response = client.request(self.method.name, url, data=source, headers=self.metadata, **self.arguments)
 
             return self._handle_response(parent, meta, url, response)

@@ -420,7 +420,7 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
     assert rc == 0
 
 
-def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
+def test_e2e_step_task_client_from_endpoint(e2e_fixture: End2EndFixture) -> None:
     def validate_client_task(context: Context) -> None:
         from grizzly.tasks.clients import HttpClientTask
         from grizzly.types import RequestDirection
@@ -475,8 +475,8 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
             'And value for variable "endpoint_payload" is "none"',
             'And value for variable "endpoint_metadata" is "none"',
             f'And value for variable "endpoint" is "http://{e2e_fixture.host}"',
-            f'Then get "http://{e2e_fixture.host}/api/echo?foo=bar" with name "https-get" and save response payload in "example_openapi"',
-            'Then get "http://{{ endpoint }}/api/echo?bar=foo" with name "http-get" and save response payload in "endpoint_payload" and metadata in "endpoint_metadata"',
+            f'Then get from "http://{e2e_fixture.host}/api/echo?foo=bar" with name "https-get" and save response payload in "example_openapi"',
+            'Then get from "http://{{ endpoint }}/api/echo?bar=foo" with name "http-get" and save response payload in "endpoint_payload" and metadata in "endpoint_metadata"',
             'Then log message "example_openapi={{ example_openapi }}, endpoint_payload={{ endpoint_payload }}, endpoint_metadata={{ endpoint_metadata }}"',
         ],
     )
@@ -486,7 +486,7 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
     assert rc == 0
 
 
-def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
+def test_e2e_step_task_client_from_endpoint_until(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
 
@@ -515,7 +515,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
     def validate_client_task_until(context: Context) -> None:  # noqa: PLR0915
         from grizzly.tasks import UntilRequestTask
         from grizzly.tasks.clients import HttpClientTask
-        from grizzly.types import RequestDirection
+        from grizzly.types import RequestDirection, RequestMethod
         from grizzly_extras.transformer import TransformerContentType
 
         grizzly = cast(GrizzlyContext, context.grizzly)
@@ -538,6 +538,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         assert task.arguments == {}
         assert task.content_type == TransformerContentType.JSON
         assert task.direction == RequestDirection.FROM
+        assert task.method == RequestMethod.GET
         assert task.endpoint == f'http://{e2e_fixture_host}/api/until/id?nth=2&wrong=bar&right=foo&as_array=True', f'{task.name=}, {task.endpoint=}'
         assert task.name == 'https-get'
         assert task.payload_variable is None
@@ -557,6 +558,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         assert task.arguments == {}
         assert task.content_type == TransformerContentType.JSON
         assert task.direction == RequestDirection.FROM
+        assert task.method == RequestMethod.GET
         assert task.endpoint == '{{ endpoint }}/api/until/success?nth=2&wrong=false&right=true&as_array=True', f'{task.name=}, {task.endpoint=}'
         assert task.name == 'http-get'
         assert task.payload_variable is None
@@ -576,6 +578,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         assert not task.verify
         assert task.content_type == TransformerContentType.JSON
         assert task.direction == RequestDirection.FROM
+        assert task.method == RequestMethod.GET
         assert task.endpoint == f'http://{e2e_fixture_host}/api/until/hello?nth=2&wrong=foobar&right=world&as_array=True', f'{task.name=}, {task.endpoint=}'
         assert task.name == 'https-env-get'
         assert task.payload_variable is None
@@ -595,16 +598,16 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         scenario=[
             f'And value for variable "endpoint" is "http://{e2e_fixture.host}"',
             (
-                f'Then get "http://{e2e_fixture.host}/api/until/id?nth=2&wrong=bar&right=foo&as_array=True | '
+                f'Then get from "http://{e2e_fixture.host}/api/until/id?nth=2&wrong=bar&right=foo&as_array=True | '
                 'content_type=json" with name "https-get" until "$.`this`[?id="foo"] | wait=0.11"'
             ),
             (
-                'Then get "http://{{ endpoint }}/api/until/success?nth=2&wrong=false&right=true&as_array=True | '
+                'Then get from "http://{{ endpoint }}/api/until/success?nth=2&wrong=false&right=true&as_array=True | '
                 'content_type=json" with name "http-get" until "$.`this`[?success="true"] | wait=0.12"'
             ),
             (
-                'Then get "https://$conf::test.host$/api/until/hello?nth=2&wrong=foobar&right=world&as_array=True | content_type=json, verify=False" with name "https-env-get" '
-                'until "$.`this`[?hello="world"] | retries=1, expected_matches=1, wait=0.1"'
+                'Then get from "https://$conf::test.host$/api/until/hello?nth=2&wrong=foobar&right=world&as_array=True | content_type=json, '
+                'verify=False" with name "https-env-get" until "$.`this`[?hello="world"] | retries=1, expected_matches=1, wait=0.1"'
             ),
         ],
     )
@@ -625,7 +628,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
     assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
 
 
-def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2EndFixture) -> None:
+def test_e2e_step_task_client_to_endpoint_file_destination(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
 
@@ -644,7 +647,7 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
 
     def validate_client_task(context: Context) -> None:
         from grizzly.tasks.clients import BlobStorageClientTask
-        from grizzly.types import RequestDirection
+        from grizzly.types import RequestDirection, RequestMethod
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -656,6 +659,7 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
         task = tasks[0]
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
+        assert task.method == RequestMethod.PUT
         assert task.endpoint == 'bs://my-unsecure-storage/my-container?AccountKey=aaaabbb='
         assert task.name == 'bs-put'
         assert task.payload_variable is None
@@ -670,6 +674,7 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
         task = tasks[1]
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
+        assert task.method == RequestMethod.PUT
         assert task.endpoint == 'bss://my-storage/my-container?AccountKey=aaaabbb='
         assert task.name == 'bss-put'
         assert task.payload_variable is None
@@ -698,7 +703,78 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
     assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
 
 
-def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> None:
+def test_e2e_step_task_client_to_endpoint_text(e2e_fixture: End2EndFixture) -> None:
+    def validate_client_task(context: Context) -> None:
+        from grizzly.tasks.clients import HttpClientTask
+        from grizzly.types import RequestDirection, RequestMethod
+
+        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        data = next(iter(context.table)).as_dict()
+        e2e_fixture_host = data['e2e_fixture.host']
+
+        tasks = grizzly.scenario.tasks()
+        tasks.pop()
+
+        assert len(tasks) == 2
+
+        task = tasks[0]
+        assert isinstance(task, HttpClientTask)
+        assert task.direction == RequestDirection.TO, f'1: {task.direction=}'
+        assert task.method == RequestMethod.PUT, f'1: {task.method=}'
+        assert task.endpoint == f'http://{e2e_fixture_host}/api/echo', f'1: {task.endpoint=}'
+        assert task.name == 'http-put', f'1: {task.name=}'
+        assert task.payload_variable is None, f'1: {task.payload_variable=}'
+        assert task.metadata_variable is None, f'1: {task.metadata_variable=}'
+        assert task.source == '{"foo": "bar"}', f'1: {task.source=}'
+        assert task.destination is None, f'1: {task.destination=}'
+        assert task._short_name == 'Http', f'1: {task._short_name=}'
+        assert task.get_templates() == [], f'1: {task.get_templates()=}'
+
+        task = tasks[1]
+        assert isinstance(task, HttpClientTask)
+        assert task.direction == RequestDirection.TO, f'2: {task.direction=}'
+        assert task.method == RequestMethod.POST, f'2: {task.method=}'
+        assert task.endpoint == f'http://{e2e_fixture_host}/api/echo', f'2: {task.endpoint=}'
+        assert task.name == 'http-post', f'2: {task.name=}'
+        assert task.payload_variable is None, f'2: {task.payload_variable=}'
+        assert task.metadata_variable is None, f'2: {task.metadata_variable=}'
+        assert task.source == '{"foo": "bar"}', f'2: {task.source=}'
+        assert task.destination is None, f'2: {task.destination=}'
+        assert task._short_name == 'Http', f'2: {task._short_name=}'
+        assert task.get_templates() == [], f'2: {task.get_templates()=}'
+
+    table: list[dict[str, str]] = [{
+        'e2e_fixture.host': e2e_fixture.host,
+    }]
+
+    e2e_fixture.add_validator(validate_client_task, table=table)
+
+    feature_file = e2e_fixture.test_steps(
+        scenario=[
+            f"""
+            Then put to "http://{e2e_fixture.host}/api/echo | content_type=json" with name "http-put"
+                \"\"\"
+                {{"foo": "bar"}}
+                \"\"\"
+            """
+            ,
+            f"""
+            Then post to "http://{e2e_fixture.host}/api/echo | content_type=json" with name "http-post"
+                \"\"\"
+                {{"foo": "bar"}}
+                \"\"\"
+            """
+            ,
+        ],
+    )
+
+    rc, _ = e2e_fixture.execute(feature_file)
+
+    assert rc == 0
+
+
+def test_e2e_step_task_client_to_endpoint_file(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
 
@@ -717,7 +793,7 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
 
     def validate_client_task(context: Context) -> None:
         from grizzly.tasks.clients import BlobStorageClientTask
-        from grizzly.types import RequestDirection
+        from grizzly.types import RequestDirection, RequestMethod
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -729,6 +805,7 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
         task = tasks[0]
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
+        assert task.method == RequestMethod.PUT
         assert task.endpoint == 'bs://my-unsecure-storage/my-container?AccountKey=aaaabbb='
         assert task.name == 'bs-put'
         assert task.payload_variable is None
@@ -743,6 +820,7 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
         task = tasks[1]
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
+        assert task.method == RequestMethod.PUT
         assert task.endpoint == 'bss://my-storage/my-container?AccountKey=aaaabbb='
         assert task.name == 'bss-put'
         assert task.payload_variable is None

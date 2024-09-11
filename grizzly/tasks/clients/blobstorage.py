@@ -7,7 +7,7 @@ Only supports `RequestDirection.TO`.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_put_endpoint_file_destination}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file_destination}
 
 ## Arguments
 
@@ -68,7 +68,7 @@ from urllib.parse import parse_qs, quote, urlparse
 
 from azure.storage.blob import BlobServiceClient, ContentSettings
 
-from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, bool_type
 from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential
 
 from . import ClientTask, client
@@ -100,6 +100,7 @@ class BlobStorageClientTask(ClientTask):
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
+        method: Optional[RequestMethod] = None,
     ) -> None:
         super().__init__(
             direction,
@@ -110,6 +111,7 @@ class BlobStorageClientTask(ClientTask):
             destination=destination,
             source=source,
             text=text,
+            method=method,
         )
 
         parsed = urlparse(self.endpoint)
@@ -163,11 +165,11 @@ class BlobStorageClientTask(ClientTask):
 
         self.overwrite = bool_type(fragments.get('Overwrite', ['False'])[0])
 
-    def get(self, _: GrizzlyScenario) -> GrizzlyResponse:  # pragma: no cover
+    def request_from(self, _: GrizzlyScenario) -> GrizzlyResponse:  # pragma: no cover
         message = f'{self.__class__.__name__} has not implemented GET'
         raise NotImplementedError(message)
 
-    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+    def request_to(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         source = parent.user.render(cast(str, self.source))
 
         destination = parent.user.render(self.destination) if self.destination is not None else Path(source).name

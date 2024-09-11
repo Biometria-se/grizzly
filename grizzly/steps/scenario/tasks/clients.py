@@ -7,13 +7,13 @@ from typing import cast
 
 from grizzly.context import GrizzlyContext
 from grizzly.steps._helpers import get_task_client
-from grizzly.types import RequestDirection
+from grizzly.types import RequestDirection, RequestMethod
 from grizzly.types.behave import Context, then
 from grizzly.utils import has_template
 
 
-@then('get "{endpoint}" with name "{name}" and save response payload in "{payload_variable}" and metadata in "{metadata_variable}"')
-def step_task_client_get_endpoint_payload_metadata(context: Context, endpoint: str, name: str, payload_variable: str, metadata_variable: str) -> None:
+@then('{method:Method} from "{endpoint}" with name "{name}" and save response payload in "{payload_variable}" and metadata in "{metadata_variable}"')
+def step_task_client_from_endpoint_payload_metadata(context: Context, method: RequestMethod, endpoint: str, name: str, payload_variable: str, metadata_variable: str) -> None:
     """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`.
 
@@ -23,8 +23,8 @@ def step_task_client_get_endpoint_payload_metadata(context: Context, endpoint: s
 
     Example:
     ```gherkin
-    Then get "https://www.example.org/example.json" with name "example-1" and save response payload in "example_openapi" and metadata in "example_metadata"
-    Then get "http://{{ endpoint }}" with name "example-2" and save response payload in "endpoint_result" and metadata in "result_metadata"
+    Then get from "https://www.example.org/example.json" with name "example-1" and save response payload in "example_openapi" and metadata in "example_metadata"
+    Then get from "http://{{ endpoint }}" with name "example-2" and save response payload in "endpoint_result" and metadata in "result_metadata"
     ```
 
     Args:
@@ -36,6 +36,8 @@ def step_task_client_get_endpoint_payload_metadata(context: Context, endpoint: s
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
+    assert method.direction == RequestDirection.FROM, 'chosen request method does not match direction "from"'
+
     grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
         RequestDirection.FROM,
         endpoint,
@@ -43,11 +45,12 @@ def step_task_client_get_endpoint_payload_metadata(context: Context, endpoint: s
         payload_variable=payload_variable,
         metadata_variable=metadata_variable,
         text=context.text,
+        method=method,
     ))
 
 
-@then('get "{endpoint}" with name "{name}" and save response payload in "{variable}"')
-def step_task_client_get_endpoint_payload(context: Context, endpoint: str, name: str, variable: str) -> None:
+@then('{method:Method} from "{endpoint}" with name "{name}" and save response payload in "{variable}"')
+def step_task_client_from_endpoint_payload(context: Context, method: RequestMethod, endpoint: str, name: str, variable: str) -> None:
     """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`.
 
@@ -57,8 +60,8 @@ def step_task_client_get_endpoint_payload(context: Context, endpoint: str, name:
 
     Example:
     ```gherkin
-    Then get "https://www.example.org/example.json" with name "example-1" and save response payload in "example_openapi"
-    Then get "http://{{ endpoint }}" with name "example-2" and save response payload in "endpoint_result"
+    Then get from "https://www.example.org/example.json" with name "example-1" and save response payload in "example_openapi"
+    Then get from "http://{{ endpoint }}" with name "example-2" and save response payload in "endpoint_result"
     ```
 
     Args:
@@ -69,6 +72,8 @@ def step_task_client_get_endpoint_payload(context: Context, endpoint: str, name:
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
+    assert method.direction == RequestDirection.FROM, 'chosen request method does not match direction "from"'
+
     grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
         RequestDirection.FROM,
         endpoint,
@@ -76,11 +81,12 @@ def step_task_client_get_endpoint_payload(context: Context, endpoint: str, name:
         payload_variable=variable,
         metadata_variable=None,
         text=context.text,
+        method=method,
     ))
 
 
-@then('put "{source}" to "{endpoint}" with name "{name}" as "{destination}"')
-def step_task_client_put_endpoint_file_destination(context: Context, source: str, endpoint: str, name: str, destination: str) -> None:
+@then('{method:Method} "{source}" to "{endpoint}" with name "{name}" as "{destination}"')
+def step_task_client_to_endpoint_file_destination(context: Context, method: RequestMethod, source: str, endpoint: str, name: str, destination: str) -> None:
     """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is
     determined based on the URL scheme specified in `endpoint`.
 
@@ -103,6 +109,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
     """
     assert context.text is None, 'step text is not allowed for this step expression'
     assert not has_template(source), 'source file cannot be a template'
+    assert method.direction == RequestDirection.TO, 'chosen request method does not match direction "to"'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -112,11 +119,12 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
         name,
         source=source,
         destination=destination,
+        method=method,
     ))
 
 
-@then('put "{source}" to "{endpoint}" with name "{name}"')
-def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: str, name: str) -> None:
+@then('{method:Method} "{source}" to "{endpoint}" with name "{name}"')
+def step_task_client_to_endpoint_file(context: Context, method: RequestMethod, source: str, endpoint: str, name: str) -> None:
     """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`.
 
@@ -138,6 +146,7 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
     """
     assert context.text is None, 'step text is not allowed for this step expression'
     assert not has_template(source), 'source file cannot be a template'
+    assert method.direction == RequestDirection.TO, 'chosen request method does not match direction "to"'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -147,11 +156,12 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
         name,
         source=source,
         destination=None,
+        method=method,
     ))
 
 
-@then('put to "{endpoint}" with name "{name}"')
-def step_task_client_put_endpoint_text(context: Context, endpoint: str, name: str) -> None:
+@then('{method:Method} to "{endpoint}" with name "{name}"')
+def step_task_client_to_endpoint_text(context: Context, method: RequestMethod, endpoint: str, name: str) -> None:
     """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`.
 
@@ -175,6 +185,7 @@ def step_task_client_put_endpoint_text(context: Context, endpoint: str, name: st
     """
     assert context.text is not None, 'step text is mandatory for this step expression'
     assert len(context.text) > 0, 'step text cannot be an empty string'
+    assert method.direction == RequestDirection.TO, 'chosen request method does not match direction "to"'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -184,4 +195,5 @@ def step_task_client_put_endpoint_text(context: Context, endpoint: str, name: st
         name,
         source=context.text,
         destination=None,
+        method=method,
     ))

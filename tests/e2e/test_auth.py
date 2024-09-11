@@ -94,7 +94,7 @@ def test_e2e_auth_user_token(e2e_fixture: End2EndFixture) -> None:
             And set context variable "{e2e_fixture.host}/auth.client.id" to "{e2e_fixture.webserver.auth['client']['id']}"
             And set context variable "{e2e_fixture.host}/auth.client.secret" to "{e2e_fixture.webserver.auth['client']['secret']}"
             And repeat for "3" iterations
-            Then get "http://{e2e_fixture.host}/api/echo" with name "httpclient-echo" and save response payload in "foobar"
+            Then get from "http://{e2e_fixture.host}/api/echo" with name "httpclient-echo" and save response payload in "foobar"
             {add_metadata()}
         """))
 

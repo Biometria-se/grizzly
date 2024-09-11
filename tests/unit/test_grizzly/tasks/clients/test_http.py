@@ -56,7 +56,7 @@ class TestHttpClientTask:
         assert task_factory._context.get('test', None) == 'was here'
 
     @pytest.mark.parametrize('log_prefix', [False, True])
-    def test_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, *, log_prefix: bool) -> None:  # noqa: PLR0915
+    def test_request_from(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, *, log_prefix: bool) -> None:  # noqa: PLR0915
         try:
             if log_prefix:
                 environ['GRIZZLY_LOG_DIR'] = 'foobar'
@@ -271,7 +271,7 @@ class TestHttpClientTask:
 
             requests_get_spy.assert_called_once_with(
                 'https://example.org/api/test',
-                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}', 'Content-Type': 'application/json'},
             )
             requests_get_spy.reset_mock()
             request_fire_spy.assert_called_once()
@@ -295,7 +295,7 @@ class TestHttpClientTask:
 
             requests_get_spy.assert_called_once_with(
                 'https://example.org/api/test',
-                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}', 'x-test-header': 'foobar'},
+                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}', 'x-test-header': 'foobar', 'Content-Type': 'application/json'},
             )
             requests_get_spy.reset_mock()
             request_fire_spy.assert_called_once()
@@ -315,7 +315,7 @@ class TestHttpClientTask:
                 del environ['GRIZZLY_LOG_DIR']
 
     @pytest.mark.skip(reason='needs real credentials, so only used during development')
-    def test_get_real(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+    def test_request_from_real(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
         grizzly = grizzly_fixture.grizzly
         parent = grizzly_fixture()
 
@@ -358,7 +358,7 @@ class TestHttpClientTask:
 
         assert 0  # noqa: PT015
 
-    def test_put(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test_request_to(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         grizzly = grizzly_fixture.grizzly
 
         test_cls = type('HttpClientTestTask', (HttpClientTask, ), {'__scenario__': grizzly_fixture.grizzly.scenario})
@@ -371,8 +371,8 @@ class TestHttpClientTask:
 
         request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
-        requests_put_spy = mocker.patch(
-            'grizzly.tasks.clients.http.Session.put',
+        requests_request_spy = mocker.patch(
+            'grizzly.tasks.clients.http.Session.request',
             return_value=response,
         )
 
@@ -387,12 +387,13 @@ class TestHttpClientTask:
 
         assert ({}, 'foobar') == task(parent)
 
-        requests_put_spy.assert_called_once_with(
+        requests_request_spy.assert_called_once_with(
+            'PUT',
             'http://example.org',
             data='foobar bar!',
             headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
         )
-        requests_put_spy.reset_mock()
+        requests_request_spy.reset_mock()
 
         request_fire_spy.assert_called_once_with(
             request_type='CLTSK',
@@ -407,16 +408,17 @@ class TestHttpClientTask:
         grizzly.scenario.failure_exception = None
         response.status_code = 500
         response.headers = CaseInsensitiveDict({'x-foo-bar': 'test'})
-        requests_put_spy.return_value = response
+        requests_request_spy.return_value = response
 
         assert ({'x-foo-bar': 'test'}, 'foobar') == task(parent)
 
-        requests_put_spy.assert_called_once_with(
+        requests_request_spy.assert_called_once_with(
+            'PUT',
             'http://example.org',
             data='foobar bar!',
             headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
         )
-        requests_put_spy.reset_mock()
+        requests_request_spy.reset_mock()
 
         request_fire_spy.assert_called_once_with(
             request_type='CLTSK',
@@ -432,12 +434,13 @@ class TestHttpClientTask:
 
         assert ({'x-foo-bar': 'test'}, 'foobar') == task(parent)
 
-        requests_put_spy.assert_called_once_with(
+        requests_request_spy.assert_called_once_with(
+            'PUT',
             'http://example.org',
             data='foobar bar!',
             headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
         )
-        requests_put_spy.reset_mock()
+        requests_request_spy.reset_mock()
 
         request_fire_spy.assert_called_once_with(
             request_type='CLTSK',

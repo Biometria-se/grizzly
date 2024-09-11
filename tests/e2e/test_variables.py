@@ -73,7 +73,7 @@ def test_e2e_variables_atomic_json_reader(e2e_fixture: End2EndFixture) -> None:
     feature_file = e2e_fixture.test_steps(scenario=[
         'Given repeat for "3" iterations',
         'Given value for variable "AtomicJsonReader.test" is "test.json"',
-        'Then log message "object={{ AtomicJsonReader.test | fromtestdata | fromjson }}"',
+        'Then log message "object={{ AtomicJsonReader.test | fromtestdata | stringify }}"',
         'Then log message "object.username={{ AtomicJsonReader.test.username }}"',
         'Then log message "object.password={{ AtomicJsonReader.test.password }}"',
     ])

@@ -12,11 +12,11 @@ pip3 install grizzly-loadtester[mq]
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_get_endpoint_payload}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload}
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_get_endpoint_payload_metadata}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload_metadata}
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_put_endpoint_file}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file}
 
 ## Arguments
 
@@ -83,7 +83,7 @@ import zmq.green as zmq
 from zmq.error import ZMQError
 
 from grizzly.testdata.utils import resolve_variable
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
 from grizzly.utils.protocols import zmq_disconnect
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
@@ -124,6 +124,7 @@ class MessageQueueClientTask(ClientTask):
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
+        method: Optional[RequestMethod] = None,
     ) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             pymqi.raise_for_error(self.__class__)
@@ -139,6 +140,7 @@ class MessageQueueClientTask(ClientTask):
             destination=destination,
             source=source,
             text=text,
+            method=method,
         )
 
         self.create_context()
@@ -320,7 +322,7 @@ class MessageQueueClientTask(ClientTask):
 
                 return response
 
-    def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+    def request_from(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         endpoint: list[str] = [self.endpoint_path]
         if self.max_message_size is not None:
             endpoint.append(f'max_message_size:{self.max_message_size}')
@@ -347,7 +349,7 @@ class MessageQueueClientTask(ClientTask):
 
         return metadata, payload
 
-    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+    def request_to(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         source = parent.user.render(cast(str, self.source))
         source_file = Path(self._context_root) / 'requests' / source
 
