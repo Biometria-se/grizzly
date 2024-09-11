@@ -195,7 +195,8 @@ def resolve_variable(
 
     # if variable value starts with `file://`, the file should be read
     if len(value) > 7 and value[:7] == 'file://' and not try_file:
-        try_file = True
+        try_file = True  # explicitly stated as a file, we should read its contents
+        try_template = False  # but not try to render any variables...
         value = value[7:]
 
         if value[0] == '/':
