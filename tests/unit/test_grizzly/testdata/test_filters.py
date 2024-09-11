@@ -1,14 +1,14 @@
 """Unit tests for grizzly.testdata.filters."""
 from __future__ import annotations
 
-from base64 import b64encode
+from base64 import b64encode as base64_b64encode
 from collections import namedtuple
 from typing import TYPE_CHECKING
 
 import pytest
 from jinja2.filters import FILTERS
 
-from grizzly.testdata.filters import templatingfilter
+from grizzly.testdata.filters import b64decode, b64encode, fromtestdata, stringify, templatingfilter
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import GrizzlyFixture
@@ -41,16 +41,15 @@ def test_templatingfilter(grizzly_fixture: GrizzlyFixture) -> None:
 
     assert FILTERS.get('testuppercase', None) is testuppercase
 
+    del FILTERS['testuppercase']
+
 
 def test_fromtestdata() -> None:
-    func = FILTERS.get('fromtestdata', None)
-    assert func is not None
-
     sub_value = namedtuple('Testdata', ['foz', 'baz'])(**{'foz': 'foo', 'baz': 'bar'})  # noqa: PYI024, PIE804
 
     value = namedtuple('Testdata', ['foo', 'bar'])(**{'foo': sub_value, 'bar': 'bar'})  # noqa: PYI024, PIE804
 
-    assert func(value) == {
+    assert fromtestdata(value) == {
         'foo': {
             'foz': 'foo',
             'baz': 'bar',
@@ -60,27 +59,17 @@ def test_fromtestdata() -> None:
 
 
 def test_stringify() -> None:
-    func = FILTERS.get('stringify', None)
-
-    assert func is not None
-
-    assert func('foobar') == '"foobar"'
-    assert func(1337) == '1337'
-    assert func(0.1337) == '0.1337'
-    assert func(['foo', 'bar']) == '["foo", "bar"]'
-    assert func({'foo': 'bar'}) == '{"foo": "bar"}'
-    assert func(None) == 'null'
+    assert stringify('foobar') == '"foobar"'
+    assert stringify(1337) == '1337'
+    assert stringify(0.1337) == '0.1337'
+    assert stringify(['foo', 'bar']) == '["foo", "bar"]'
+    assert stringify({'foo': 'bar'}) == '{"foo": "bar"}'
+    assert stringify(None) == 'null'
 
 
 def test_b64encode() -> None:
-    func = FILTERS.get('b64encode', None)
-
-    assert func is not None
-    assert func('foobar') == b64encode(b'foobar').decode()
+    assert b64encode('foobar') == base64_b64encode(b'foobar').decode()
 
 
 def test_b64decode() -> None:
-    func = FILTERS.get('b64decode', None)
-
-    assert func is not None
-    assert func(b64encode(b'foobar').decode()) == 'foobar'
+    assert b64decode(base64_b64encode(b'foobar').decode()) == 'foobar'

@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 from base64 import b64decode as base64_b64decode
 from base64 import b64encode as base64_b64encode
-from collections import namedtuple
 from typing import Any, Callable, NamedTuple, Optional, Union
 
 from jinja2.filters import FILTERS
