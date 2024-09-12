@@ -22,7 +22,6 @@ from behave.runner import Runner as BehaveRunner
 from behave.step_registry import registry as step_registry
 from geventhttpclient.header import Headers
 from geventhttpclient.response import HTTPSocketPoolResponse
-from jinja2.filters import FILTERS
 from locust.contrib.fasthttp import FastRequest, FastResponse
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 from pytest_mock.plugin import MockerFixture
@@ -354,15 +353,6 @@ class GrizzlyFixture:
 
         with suppress(Exception):
             GrizzlyContext.destroy()
-
-        # clean up filters, since we might've added custom ones
-        filter_keys = reversed(list(FILTERS.keys()))
-        for key in filter_keys:
-            if key == 'tojson':
-                break
-
-            with suppress(KeyError):
-                del FILTERS[key]
 
         return True
 
