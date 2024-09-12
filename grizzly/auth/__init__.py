@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from importlib import import_module
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, TypeVar, Union, cast
 from urllib.parse import urlparse
 
 from azure.core.credentials import AccessToken
@@ -42,7 +42,7 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
     logger: logging.Logger
     host: str
     environment: Environment
-    credential: Optional[AzureAadCredential] = None
+    credential: AzureAadCredential | None = None
     metadata: dict[str, Any]
     cookies: dict[str, str]
     __context__: ClassVar[dict[str, Any]] = {
@@ -69,7 +69,7 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
         '__context_change_history__': set(),
     }
     variables: GrizzlyVariables
-    session_started: Optional[float]
+    session_started: float | None
     grizzly: GrizzlyContext
     _scenario: GrizzlyContextScenario
     _context: dict[str, Any]
@@ -117,7 +117,7 @@ class refresh_token(Generic[P]):
     def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:
         @wraps(func)
         def refresh_token(client: GrizzlyHttpAuthClient, arg: Union[RequestTask, GrizzlyScenario], *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:
-            request: Optional[RequestTask] = None
+            request: RequestTask | None = None
 
             # make sure the client has a credential instance, if it is needed
             if isinstance(arg, GrizzlyScenario):
@@ -133,7 +133,7 @@ class refresh_token(Generic[P]):
             if client.credential is not None and client.credential.auth_method is not AuthMethod.NONE:
                 # refresh token if session has been alive for at least refresh_time
                 authorization_token = client.metadata.get('Authorization', None)
-                exception: Optional[Exception] = None
+                exception: Exception | None = None
                 start_time = perf_counter()
                 refreshed = False
                 action_triggered = False
@@ -225,13 +225,13 @@ class RefreshToken(metaclass=ABCMeta):
         auth_context = client._context.get('auth', None)
 
         if auth_context is not None:
-            auth_client = auth_context.get('client', {})
-            auth_user = auth_context.get('user', {})
+            auth_client: dict[str, Any] = auth_context.get('client', {})
+            auth_user: dict[str, Any] = auth_context.get('user', {})
 
-            username = auth_user.get('username', None)
-            password = auth_user.get('password', None) or auth_client.get('secret', None)
-            otp_secret = auth_user.get('otp_secret', None)
-            client_id = auth_client.get('id', None)
+            username: str | None = auth_user.get('username')
+            password: str | None = auth_user.get('password') or auth_client.get('secret')
+            otp_secret: str | None = auth_user.get('otp_secret')
+            client_id: str | None = auth_client.get('id')
 
             # nothing has changed, use existing crendential
             if client.credential is not None and (
@@ -242,12 +242,12 @@ class RefreshToken(metaclass=ABCMeta):
                 return
 
             tenant = auth_context.get('tenant', None) or auth_context.get('provider', None)
-            initialize_uri = auth_user.get('initialize_uri', None)
-            redirect_uri = auth_user.get('redirect_uri', None)
+            initialize_uri = auth_user.get('initialize_uri')
+            redirect_uri = auth_user.get('redirect_uri')
 
             use_auth_client = (
                 client_id is not None
-                and auth_client.get('secret', None) is not None
+                and auth_client.get('secret') is not None
                 and tenant is not None
             )
             use_auth_user = (
@@ -265,12 +265,18 @@ class RefreshToken(metaclass=ABCMeta):
 
             if use_auth_client:
                 auth_method = AuthMethod.CLIENT
-                password = auth_client.get('secret', None)
+                password = auth_client.get('secret')
             elif use_auth_user:
                 auth_method = AuthMethod.USER
-                initialize_uri = auth_user.get('initialize_uri', None)
+                initialize_uri = auth_user.get('initialize_uri')
             else:
                 auth_method = AuthMethod.NONE
+
+
+            parsed = urlparse(client_id)
+            scope: str | None = None
+            if auth_method != AuthMethod.NONE and client_id is not None and parsed.scheme in ['http', 'https']:
+                scope = f'{client_id}/user_impersonation'
 
             client.credential = cls.__TOKEN_CREDENTIAL_TYPE__(
                 username,
@@ -282,6 +288,7 @@ class RefreshToken(metaclass=ABCMeta):
                 redirect=redirect_uri,
                 initialize=initialize_uri,
                 otp_secret=otp_secret,
+                scope=scope,
             )
 
 
