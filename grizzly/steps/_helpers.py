@@ -5,7 +5,7 @@ import logging
 import re
 from errno import ENAMETOOLONG
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Optional, Union, cast
 from urllib.parse import urlparse
 
 import jinja2 as j2
@@ -13,7 +13,7 @@ import jinja2 as j2
 from grizzly.context import GrizzlyContext
 from grizzly.events.response_handler import ResponseHandlerAction, SaveHandlerAction, ValidationHandlerAction
 from grizzly.tasks import RequestTask
-from grizzly.tasks.clients import ClientTask, client
+from grizzly.tasks.clients import ClientTask, HttpClientTask, client
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import RequestMethod, ResponseAction, ResponseTarget
 from grizzly.utils import has_template
@@ -80,7 +80,7 @@ def create_request_task(
     return request
 
 
-def add_request_task_response_status_codes(request: RequestTask, status_list: str) -> None:
+def add_request_response_status_codes(request: Union[RequestTask, HttpClientTask], status_list: str) -> None:
     for status in status_list.split(','):
         request.response.add_status_code(int(status.strip()))
 

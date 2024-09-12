@@ -56,7 +56,7 @@ class TestHttpClientTask:
         assert task_factory._context.get('test', None) == 'was here'
 
     @pytest.mark.parametrize('log_prefix', [False, True])
-    def test_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, *, log_prefix: bool) -> None:  # noqa: PLR0915
+    def test_request_from(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, *, log_prefix: bool) -> None:  # noqa: PLR0915
         try:
             if log_prefix:
                 environ['GRIZZLY_LOG_DIR'] = 'foobar'
@@ -271,7 +271,7 @@ class TestHttpClientTask:
 
             requests_get_spy.assert_called_once_with(
                 'https://example.org/api/test',
-                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}', 'Content-Type': 'application/json'},
             )
             requests_get_spy.reset_mock()
             request_fire_spy.assert_called_once()
@@ -295,7 +295,7 @@ class TestHttpClientTask:
 
             requests_get_spy.assert_called_once_with(
                 'https://example.org/api/test',
-                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}', 'x-test-header': 'foobar'},
+                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}', 'x-test-header': 'foobar', 'Content-Type': 'application/json'},
             )
             requests_get_spy.reset_mock()
             request_fire_spy.assert_called_once()
@@ -315,7 +315,7 @@ class TestHttpClientTask:
                 del environ['GRIZZLY_LOG_DIR']
 
     @pytest.mark.skip(reason='needs real credentials, so only used during development')
-    def test_get_real(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+    def test_request_from_real(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
         grizzly = grizzly_fixture.grizzly
         parent = grizzly_fixture()
 
@@ -358,16 +358,97 @@ class TestHttpClientTask:
 
         assert 0  # noqa: PT015
 
-    def test_put(self, grizzly_fixture: GrizzlyFixture) -> None:
+    def test_request_to(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+
         test_cls = type('HttpClientTestTask', (HttpClientTask, ), {'__scenario__': grizzly_fixture.grizzly.scenario})
-        task_factory = test_cls(RequestDirection.TO, 'http://put.example.org', source='')
+        parent = grizzly_fixture()
+
+        response = Response()
+        response.url = 'http://example.org'
+        response._content = b'foobar'
+        response.status_code = 200
+
+        request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
+
+        requests_request_spy = mocker.patch(
+            'grizzly.tasks.clients.http.Session.request',
+            return_value=response,
+        )
+
+        with pytest.raises(AssertionError, match='source argument is not applicable for direction FROM'):
+            test_cls(RequestDirection.FROM, 'http://example.org', source='foobar')
+
+        task_factory = test_cls(RequestDirection.TO, 'http://example.org', 'test-put', source='foobar {{ foo }}!')
+
         task = task_factory()
 
-        parent = grizzly_fixture()
-        parent.user._context.update({'test': 'was here'})
+        parent.user.set_variable('foo', 'bar')
 
-        assert task_factory._context.get('test', None) is None
+        assert ({}, 'foobar') == task(parent)
 
-        with pytest.raises(NotImplementedError, match='HttpClientTestTask has not implemented PUT'):
-            task(parent)
-        assert task_factory._context.get('test', None) == 'was here'
+        requests_request_spy.assert_called_once_with(
+            'PUT',
+            'http://example.org',
+            data='foobar bar!',
+            headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+        )
+        requests_request_spy.reset_mock()
+
+        request_fire_spy.assert_called_once_with(
+            request_type='CLTSK',
+            name=f'{parent.user._scenario.identifier} test-put',
+            response_time=ANY(float, int),
+            response_length=len(b'foobar'),
+            context=parent.user._context,
+            exception=None,
+        )
+        request_fire_spy.reset_mock()
+
+        grizzly.scenario.failure_exception = None
+        response.status_code = 500
+        response.headers = CaseInsensitiveDict({'x-foo-bar': 'test'})
+        requests_request_spy.return_value = response
+
+        assert ({'x-foo-bar': 'test'}, 'foobar') == task(parent)
+
+        requests_request_spy.assert_called_once_with(
+            'PUT',
+            'http://example.org',
+            data='foobar bar!',
+            headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+        )
+        requests_request_spy.reset_mock()
+
+        request_fire_spy.assert_called_once_with(
+            request_type='CLTSK',
+            name=f'{parent.user._scenario.identifier} test-put',
+            response_time=ANY(float, int),
+            response_length=len(b'foobar'),
+            context=parent.user._context,
+            exception=ANY(CatchResponseError, message='500 not in [200]: foobar'),
+        )
+        request_fire_spy.reset_mock()
+
+        task_factory.response.add_status_code(500)
+
+        assert ({'x-foo-bar': 'test'}, 'foobar') == task(parent)
+
+        requests_request_spy.assert_called_once_with(
+            'PUT',
+            'http://example.org',
+            data='foobar bar!',
+            headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+        )
+        requests_request_spy.reset_mock()
+
+        request_fire_spy.assert_called_once_with(
+            request_type='CLTSK',
+            name=f'{parent.user._scenario.identifier} test-put',
+            response_time=ANY(float, int),
+            response_length=len(b'foobar'),
+            context=parent.user._context,
+            exception=None,
+        )
+        request_fire_spy.reset_mock()
+

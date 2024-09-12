@@ -67,7 +67,7 @@ def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "1" iteration
         And stop user on failure
-        Then get "http://$conf::test.host$/api/until/foofoo?nth=2&wrong=foobar&right=world&as_array=true | content_type=json" with name "http-client-task" until "$.`this`[?foofoo="world"] | retries=3, expected_matches=1"
+        Then get from "http://$conf::test.host$/api/until/foofoo?nth=2&wrong=foobar&right=world&as_array=true | content_type=json" with name "http-client-task" until "$.`this`[?foofoo="world"] | retries=3, expected_matches=1"
     """))  # noqa: E501
 
     rc, _ = e2e_fixture.execute(feature_file, env_conf=env_conf)

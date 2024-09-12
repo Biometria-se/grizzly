@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 from grizzly.testdata.utils import resolve_parameters
-from grizzly.utils import has_parameter
+from grizzly.utils import has_parameter, has_template
 
 from . import GrizzlyTask, grizzlytask, template
 
@@ -55,7 +55,6 @@ class WriteFileTask(GrizzlyTask):
             file_name = parent.user.render(self.file_name)
             file = Path(self._context_root) / 'requests' / file_name
 
-
             # file has already been created
             if self.temp_file and self.file is not None and file.exists():
                 return
@@ -66,6 +65,13 @@ class WriteFileTask(GrizzlyTask):
 
             try:
                 content = parent.user.render(self.content)
+
+                # sub render variable content
+                if has_template(content):
+                    content = parent.user.render(content)
+
+                if has_parameter(content):
+                    content = resolve_parameters(parent.user._scenario, content)
 
                 self.file.parent.mkdir(parents=True, exist_ok=True)
 

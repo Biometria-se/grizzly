@@ -32,7 +32,7 @@ from urllib.parse import unquote, urlparse
 from grizzly.exceptions import AsyncMessageAbort, StopUser
 from grizzly.tasks import GrizzlyMetaRequestTask, grizzlytask, template
 from grizzly.testdata.utils import resolve_variable
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
 from grizzly.utils import merge_dicts, normalize
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
@@ -68,10 +68,11 @@ class ClientTask(GrizzlyMetaRequestTask):
     source: Optional[str]
     destination: Optional[str]
     _text: Optional[str]
+    method: RequestMethod
 
     log_dir: Path
 
-    def __init__(  # noqa: PLR0915
+    def __init__(  # noqa: PLR0915, PLR0912
         self,
         direction: RequestDirection,
         endpoint: str,
@@ -82,6 +83,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
+        method: Optional[RequestMethod] = None,
     ) -> None:
         super().__init__()
 
@@ -170,6 +172,11 @@ class ClientTask(GrizzlyMetaRequestTask):
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.__class__._context = merge_dicts(self.__class__._context, self._context)
 
+        if method is None:
+            self.method = RequestMethod.GET if self.direction == RequestDirection.FROM else RequestMethod.PUT
+        else:
+            self.method = method
+
     def on_start(self, parent: GrizzlyScenario) -> None:
         pass
 
@@ -222,18 +229,18 @@ class ClientTask(GrizzlyMetaRequestTask):
         self.__class__._context = merge_dicts(parent.user._context, self.__class__._context)
 
         if self.direction == RequestDirection.FROM:
-            return self.get(parent)
+            return self.request_from(parent)
 
-        return self.put(parent)
+        return self.request_to(parent)
 
     @abstractmethod
-    def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:  # pragma: no cover
-        message = f'{self.__class__.__name__} has not implemented GET'
+    def request_from(self, parent: GrizzlyScenario) -> GrizzlyResponse:  # pragma: no cover
+        message = f'{self.__class__.__name__} has not implemented {self.method.name}'
         raise NotImplementedError(message)
 
     @abstractmethod
-    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:  # pragma: no cover
-        message = f'{self.__class__.__name__} has not implemented PUT'
+    def request_to(self, parent: GrizzlyScenario) -> GrizzlyResponse:  # pragma: no cover
+        message = f'{self.__class__.__name__} has not implemented {self.method.name}'
         raise NotImplementedError(message)
 
     @contextmanager

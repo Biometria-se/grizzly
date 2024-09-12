@@ -168,8 +168,8 @@ class AzureAadCredential(TokenCredential):
 
     provider_url_template: ClassVar[str] = 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0'
 
-    username: Optional[str]
-    password: str
+    username: str | None
+    password: str | None
     scope: str | None
     client_id: str
     tenant: str | None
@@ -188,8 +188,8 @@ class AzureAadCredential(TokenCredential):
 
     def __init__(  # noqa: PLR0913
         self,
-        username: Optional[str],
-        password: str,
+        username: str | None,
+        password: str | None,
         tenant: str,
         auth_method: AuthMethod,
         /,
@@ -198,7 +198,7 @@ class AzureAadCredential(TokenCredential):
         initialize: str | None = None,
         otp_secret: str | None = None,
         scope: str | None = None,
-        client_id: str = '04b07795-8ddb-461a-bbee-02f9e1bf7b46',
+        client_id: str | None = None,
     ) -> None:
         self.username = username
         self.password = password
@@ -206,7 +206,7 @@ class AzureAadCredential(TokenCredential):
         self.auth_method = auth_method
 
         self.host = host
-        self.client_id = client_id
+        self.client_id = client_id or '04b07795-8ddb-461a-bbee-02f9e1bf7b46'
         """
         If `client_id` is not specified, the client id for `Azure Command Line Tool` will be used.
         """
@@ -225,11 +225,7 @@ class AzureAadCredential(TokenCredential):
 
     @property
     def access_token(self) -> AccessToken:
-        scopes: tuple[str, ...] = ()
-        if self.scope is not None:
-            scopes += (self.scope,)
-
-        return self.get_token(*scopes)
+        return self.get_token()
 
     @property
     def refreshed(self) -> bool:
@@ -305,6 +301,9 @@ class AzureAadCredential(TokenCredential):
     ) -> AccessToken:
         now = datetime.now(tz=timezone.utc).timestamp()
 
+        if self.scope is not None and len(scopes) < 1:
+            scopes += (self.scope,)
+
         if self._access_token is None or self._access_token.expires_on <= now:
             self._refreshed = self._access_token is not None and self._access_token.expires_on <= now
 
@@ -342,6 +341,9 @@ class AzureAadCredential(TokenCredential):
         self, *scopes: str, claims: str | None = None, tenant_id: str | None = None,  # noqa: ARG002
     ) -> AccessToken:
         tenant = self.get_tenant(tenant_id)
+
+        log_file = Path('flow.md')
+        log_file.unlink(missing_ok=True)
 
         # disable logger for urllib3
         logging.getLogger('urllib3.connectionpool').setLevel(logging.CRITICAL)
@@ -488,6 +490,8 @@ class AzureAadCredential(TokenCredential):
 
                 response = session.get(initialize_uri, headers=headers, verify=verify, allow_redirects=True)
 
+                logger.debug('user auth request 0: %s (%d)', response.url, response.status_code)
+
                 is_token_v2_0 = 'v2.0' in response.url
                 if tenant is None:
                     response_parsed = urlparse(response.url)
@@ -597,6 +601,7 @@ class AzureAadCredential(TokenCredential):
                 'Cache-Control': 'max-age=0',
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Host': host,
+                'Origin': f'https://{host}',
                 'Referer': referer,
                 **headers_ua,
             }
@@ -628,6 +633,7 @@ class AzureAadCredential(TokenCredential):
                 'CookieDisclosure': '0',
                 'IsFidoSupported': '1',
                 'isSignupPost': '0',
+                'DfpArtifact': '',
                 'i19': '16369',  # time on page
             }
 

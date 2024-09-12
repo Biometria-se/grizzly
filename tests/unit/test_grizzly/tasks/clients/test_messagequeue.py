@@ -410,7 +410,7 @@ class TestMessageQueueClientTask:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_get(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
+    def test_request_from(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.tasks.clients.messagequeue')
 
         parent = grizzly_fixture(scenario_type=IteratorScenario)
@@ -599,7 +599,7 @@ class TestMessageQueueClientTask:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_put(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+    def test_request_to(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
 
         parent = grizzly_fixture()

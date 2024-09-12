@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import parse
 
+from grizzly.types import RequestDirection, RequestMethod
 from grizzly.types.behave import register_type
 from grizzly_extras.text import permutation
 
@@ -15,6 +16,8 @@ def parse_user_gramatical_number(text: str) -> str:
 
 register_type(
     UserGramaticalNumber=parse_user_gramatical_number,
+    Direction=RequestDirection.from_string,
+    Method=RequestMethod.from_string,
 )
 
 

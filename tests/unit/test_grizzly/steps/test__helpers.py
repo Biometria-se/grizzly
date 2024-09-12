@@ -5,7 +5,7 @@ import json
 import os
 from itertools import product
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Optional, Union, cast
 
 import pytest
 
@@ -13,8 +13,8 @@ from grizzly.context import GrizzlyContext
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps._helpers import (
     _add_response_handler,
+    add_request_response_status_codes,
     add_request_task,
-    add_request_task_response_status_codes,
     add_save_handler,
     add_validation_handler,
     get_task_client,
@@ -22,9 +22,9 @@ from grizzly.steps._helpers import (
 )
 from grizzly.tasks import ExplicitWaitTask, RequestTask
 from grizzly.tasks.async_group import AsyncRequestGroupTask
-from grizzly.tasks.clients import ClientTask, client
+from grizzly.tasks.clients import ClientTask, HttpClientTask, client
 from grizzly.testdata.filters import templatingfilter
-from grizzly.types import RequestMethod, ResponseAction, ResponseTarget
+from grizzly.types import RequestDirection, RequestMethod, ResponseAction, ResponseTarget
 from grizzly.types.behave import Row, Table
 from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import rm_rf
@@ -35,19 +35,28 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import GrizzlyFixture
 
 
-def test_add_request_task_response_status_codes() -> None:
-    request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
+@pytest.mark.parametrize('request_type', [
+    RequestTask, HttpClientTask,
+])
+def test_add_request_task_response_status_codes(grizzly_fixture: GrizzlyFixture, request_type: type[Union[RequestTask, HttpClientTask]]) -> None:
+    grizzly = grizzly_fixture.grizzly
+
+    if request_type is RequestTask:
+        request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
+    else:
+        task_cls = type('HttpClientTaskTest', (HttpClientTask,), {'__scenario__': grizzly.scenario})
+        request = task_cls(RequestDirection.TO, 'http://example.org', 'test', source='foobar')
 
     assert request.response.status_codes == [200]
 
-    add_request_task_response_status_codes(request, '-200')
+    add_request_response_status_codes(request, '-200')
     assert request.response.status_codes == []
 
-    add_request_task_response_status_codes(request, '200,302, 400')
+    add_request_response_status_codes(request, '200,302, 400')
     assert request.response.status_codes == [200, 302, 400]
 
 
-@pytest.mark.parametrize('request_type', ['sync', 'async'])
+@pytest.mark.parametrize('request_type,', ['sync', 'async'])
 def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory, *, request_type: str) -> None:  # noqa: PLR0915
     behave = grizzly_fixture.behave.context
     grizzly = cast(GrizzlyContext, behave.grizzly)

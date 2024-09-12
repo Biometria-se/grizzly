@@ -195,7 +195,7 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
     Then post request ...
     And metadata "x-header" is "{{ value }}"
 
-    Then get "https://{{ client_url }}" with name "client-http" and save response payload in "payload"
+    Then get from "https://{{ client_url }}" with name "client-http" and save response payload in "payload"
     And metadata "Ocp-Apim-Subscription-Key" is "deadbeefb00f"
     ```
 
