@@ -34,8 +34,9 @@ class TestdataConsumer:
     scenario: GrizzlyScenario
     identifier: str
     stopped: bool
+    poll_interval: float
 
-    def __init__(self, scenario: GrizzlyScenario, address: str = 'tcp://127.0.0.1:5555') -> None:
+    def __init__(self, scenario: GrizzlyScenario, address: str = 'tcp://127.0.0.1:5555', poll_interval: float = 1.0) -> None:
         self.scenario = scenario
         self.identifier = scenario.__class__.__name__
 
@@ -44,6 +45,7 @@ class TestdataConsumer:
         self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.connect(address)
         self.stopped = False
+        self.poll_interval = poll_interval
 
         self.logger.debug('connected to producer at %s', address)
 
@@ -135,6 +137,35 @@ class TestdataConsumer:
 
         return value
 
+    def keystore_push(self, key: str, value: Any) -> None:
+        request = {
+            'action': 'push',
+            'key': key,
+            'data': value,
+        }
+
+        self._keystore_request(request)
+
+    def _keystore_pop_poll(self, request: dict[str, Any]) -> str | None:
+        response = self._keystore_request(request)
+        value: str | None = (response or {}).get('data', None)
+
+        return value
+
+    def keystore_pop(self, key: str) -> str:
+        request = {
+            'action': 'pop',
+            'key': key,
+        }
+
+        value = self._keystore_pop_poll(request)
+
+        while value is None:
+            gsleep(self.poll_interval)
+            value = self._keystore_pop_poll(request)
+
+        return value
+
     def _keystore_request(self, request: dict[str, Any]) -> Optional[dict[str, Any]]:
         request.update({
             'message': 'keystore',
@@ -156,6 +187,11 @@ class TestdataConsumer:
                 break
             except ZMQAgain:
                 gsleep(0.1)  # let other greenlets execute
+
+        error = message.get('error', None)
+
+        if error is not None:
+            raise RuntimeError(error)
 
         return message
 
@@ -258,42 +294,69 @@ class TestdataProducer:
             gsleep(0.1)
             self.persist_data()
 
-    def _handle_request_keystore(self, request: dict[str, Any]) -> dict[str, Any]:
+    def _handle_request_keystore(self, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915
         response = request
-        if request['action'] == 'get':
-            response['data'] = self.keystore.get(request['key'], None)
-        elif request['action'] == 'set':
-            key = response.get('key', None)
-            value = response.get('data', None)
+        key: str | None  = response.get('key', None)
 
-            if key is None:
-                self.logger.error('key %s does not exist', key)
-                return response
+        if key is None:
+            message = 'key is not present in request'
+            self.logger.error(message)
+            response.update({'data': None, 'error': message})
+            return response
 
-            self.keystore.update({key: value})
-        elif request['action'] == 'inc':
-            key = response.get('key', None)
-            step = response.get('data', 1)
-            value = self.keystore.get(key, 0)
+        action: str | None = request.get('action')
+
+        if action == 'get':
+            response.update({'data': self.keystore.get(key, None)})
+        elif action == 'set':
+            set_value: str | None = response.get('data', None)
+
+            self.keystore.update({key: set_value})
+            response.update({'data': set_value})
+        elif action == 'inc':
+            step: int = response.get('data', 1)
             response.update({'data': None})
 
-            if key is None:  # pragma: no cover
-                self.logger.error('key %s does not exist', key)
-                return response
+            inc_value: Any = self.keystore.get(key, 0)
 
-            if isinstance(value, int):
-                new_value = value + step
-            elif isinstance(value, str) and value.isnumeric():
-                new_value = int(value) + step
+            if isinstance(inc_value, int):
+                new_value = inc_value + step
+            elif isinstance(inc_value, str) and inc_value.isnumeric():
+                new_value = int(inc_value) + step
             else:
-                self.logger.error('value %r for key "%s" cannot be incremented', value, key)
+                message = f'value {inc_value} for key "{key}" cannot be incremented'
+                self.logger.error(message)
+                response.update({'error': message})
                 return response
 
             self.keystore.update({key: new_value})
             response.update({'data': new_value})
+        elif action == 'push':
+            push_value: str | None = response.get('data', None)
+
+            if key not in self.keystore:
+                self.keystore.update({key: []})
+
+            self.keystore[key].append(push_value)
+            response.update({'data': push_value})
+        elif action == 'pop':
+            pop_value: str | None
+            response.update({'data': None})
+            try:
+                pop_value = self.keystore[key].pop(0)
+            except AttributeError:
+                message = f'key "{key}" is not a list, it has not been pushed to'
+                self.logger.exception(message)
+                pop_value = None
+                response.update({'error': message})
+            except (KeyError, IndexError):
+                pop_value = None
+
+            response.update({'data': pop_value})
         else:
-            self.logger.error('received unknown keystore action "%s"', request['action'])
-            response['data'] = None
+            message = f'received unknown keystore action "{action}"'
+            self.logger.error(message)
+            response.update({'data': None, 'error': message})
 
         return response
 

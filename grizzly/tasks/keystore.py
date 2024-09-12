@@ -40,7 +40,7 @@ from . import GrizzlyTask, grizzlytask, template
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
 
-Action = Literal['get', 'set', 'inc']
+Action = Literal['get', 'set', 'inc', 'push', 'pop']
 
 
 @template('action_context')
@@ -61,11 +61,14 @@ class KeystoreTask(GrizzlyTask):
         try:
             assert self.action in get_args(Action), f'{self.action} is not a valid action'
 
-            if self.action in ['get', 'inc']:
+            if self.action in ['get', 'inc', 'pop']:
                 assert isinstance(self.action_context, str), f'action context for {self.action} must be a string'
                 assert action_context in self.grizzly.scenario.variables, f'variable "{action_context}" has not been initialized'
-            else:  # == 'set'
+            elif self.action in ['set', 'push']:
                 assert self.action_context is not None, 'action context for set cannot be None'
+            else:
+                message = f'action {self.action} is undefined'
+                raise AssertionError(message)
         except AssertionError as e:
             raise RuntimeError(str(e)) from e
 
@@ -96,6 +99,12 @@ class KeystoreTask(GrizzlyTask):
                 elif self.action == 'set':
                     # do not render set values, might want it to be a template
                     parent.consumer.keystore_set(self.key, self.action_context)
+                elif self.action == 'push':
+                    parent.consumer.keystore_push(self.key, self.action_context)
+                elif self.action == 'pop':
+                    value = parent.consumer.keystore_pop(self.key)
+                    if value is not None and self.action_context is not None:
+                        parent.user.set_variable(self.action_context, jsonloads(parent.user.render(jsondumps(value))))
                 else:  # pragma: no cover
                     pass
             except Exception as e:
