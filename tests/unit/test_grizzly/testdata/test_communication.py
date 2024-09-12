@@ -29,6 +29,21 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture, NoopZmqFixture
 
 
+def echo(value: dict[str, Any]) -> dict[str, Any]:
+    return value
+
+def echo_add_data(return_value: Any | list[Any]) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    if not isinstance(return_value, list):
+        return_value = [return_value]
+
+    def wrapped(request: dict[str, Any]) -> dict[str, Any]:
+        response = request.copy()
+        response.update({'data': return_value.pop(0)})
+        return response
+
+    return wrapped
+
+
 class TestTestdataProducer:
     def test_run(  # noqa: PLR0915
         self,
@@ -241,9 +256,10 @@ value3,value4
                         'action': 'inc',
                         'key': 'counter',
                         'data': None,
+                        'error': 'value asdf for key "counter" cannot be incremented',
                     }
 
-                assert caplog.messages == ['value \'asdf\' for key "counter" cannot be incremented']
+                assert caplog.messages == ['value asdf for key "counter" cannot be incremented']
 
                 caplog.clear()
                 producer.keystore.update({'counter': 1})
@@ -518,7 +534,7 @@ value3,value4
 
             cleanup()
 
-    def test_run_keystore(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
+    def test_run_keystore(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.testdata.communication')
 
         context_root = Path(grizzly_fixture.request_task.context_root).parent
@@ -568,7 +584,133 @@ value3,value4
             })
             send_json_mock.reset_mock()
 
-            recv_json_mock.return_value = {'message': 'keystore', 'action': 'unknown'}
+            # <!-- push
+            recv_json_mock.return_value = {'message': 'keystore', 'action': 'push', 'key': 'foobar', 'data': 'foobar'}
+
+            assert 'foobar' not in producer.keystore
+            producer.run()
+
+            send_json_mock.assert_called_once_with({
+                'message': 'keystore',
+                'action': 'push',
+                'key': 'foobar',
+                'data': 'foobar',
+            })
+            send_json_mock.reset_mock()
+
+            assert producer.keystore['foobar'] == ['foobar']
+
+            recv_json_mock.return_value = {'message': 'keystore', 'action': 'push', 'key': 'foobar', 'data': 'foobaz'}
+
+            producer.run()
+
+            send_json_mock.assert_called_once_with({
+                'message': 'keystore',
+                'action': 'push',
+                'key': 'foobar',
+                'data': 'foobaz',
+            })
+            send_json_mock.reset_mock()
+
+            assert producer.keystore['foobar'] == ['foobar', 'foobaz']
+            # // push -->
+
+            # <!-- pop
+            recv_json_mock.return_value = {'message': 'keystore', 'action': 'pop', 'key': 'world', 'data': 'foobar'}
+            assert 'world' in producer.keystore
+
+            producer.run()
+
+            send_json_mock.assert_called_once_with({
+                'message': 'keystore',
+                'action': 'pop',
+                'key': 'world',
+                'data': None,
+                'error': 'key "world" is not a list, it has not been pushed to',
+            })
+            send_json_mock.reset_mock()
+
+            recv_json_mock.return_value = {'message': 'keystore', 'action': 'pop', 'key': 'foobaz', 'data': 'foobar'}
+
+            producer.run()
+
+            send_json_mock.assert_called_once_with({
+                'message': 'keystore',
+                'action': 'pop',
+                'key': 'foobaz',
+                'data': None,
+            })
+            send_json_mock.reset_mock()
+
+            recv_json_mock.return_value = {'message': 'keystore', 'action': 'pop', 'key': 'foobar'}
+
+            producer.run()
+
+            send_json_mock.assert_called_once_with({
+                'message': 'keystore',
+                'action': 'pop',
+                'key': 'foobar',
+                'data': 'foobar',
+            })
+            send_json_mock.reset_mock()
+
+            assert producer.keystore['foobar'] == ['foobaz']
+
+            producer.run()
+
+            send_json_mock.assert_called_once_with({
+                'message': 'keystore',
+                'action': 'pop',
+                'key': 'foobar',
+                'data': 'foobaz',
+            })
+            send_json_mock.reset_mock()
+
+            assert producer.keystore['foobar'] == []
+
+            producer.run()
+
+            send_json_mock.assert_called_once_with({
+                'message': 'keystore',
+                'action': 'pop',
+                'key': 'foobar',
+                'data': None,
+            })
+            send_json_mock.reset_mock()
+            # // pop -->
+
+            # <!-- del
+            assert 'foobar' in producer.keystore
+
+            recv_json_mock.return_value = {'message': 'keystore', 'action': 'del', 'key': 'foobar', 'data': 'dummy'}
+
+            producer.run()
+
+            assert 'foobar' not in producer.keystore
+
+            send_json_mock.assert_called_once_with({
+                'message': 'keystore',
+                'action': 'del',
+                'key': 'foobar',
+                'data': None,
+            })
+            send_json_mock.reset_mock()
+
+            producer.run()
+
+            send_json_mock.assert_called_once_with({
+                'message': 'keystore',
+                'action': 'del',
+                'key': 'foobar',
+                'data': None,
+                'error': 'failed to remove key "foobar"',
+            })
+            send_json_mock.reset_mock()
+            # // del -->
+
+            caplog.clear()
+
+            recv_json_mock.return_value = {'message': 'keystore', 'key': 'asdf', 'action': 'unknown'}
 
             with caplog.at_level(logging.ERROR):
                 producer.run()
@@ -578,7 +720,9 @@ value3,value4
             send_json_mock.assert_called_once_with({
                 'message': 'keystore',
                 'action': 'unknown',
+                'key': 'asdf',
                 'data': None,
+                'error': 'received unknown keystore action "unknown"',
             })
             send_json_mock.reset_mock()
 
@@ -815,22 +959,11 @@ class TestTestdataConsumer:
 
         assert caplog.messages == ['no testdata received']
 
-    def test_keystore(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+    def test_keystore_get(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
         parent = grizzly_fixture()
 
         consumer = TestdataConsumer(parent)
-
-        def echo(value: dict[str, Any]) -> dict[str, Any]:
-            return value
-
-        def echo_add_data(data: Any) -> Callable[[dict[str, Any]], dict[str, Any]]:
-            def wrapped(request: dict[str, Any]) -> dict[str, Any]:
-                response = request.copy()
-                response.update({'data': data})
-                return response
-
-            return wrapped
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
 
@@ -853,6 +986,12 @@ class TestTestdataConsumer:
             'identifier': consumer.identifier,
         })
 
+    def test_keystore_set(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        noop_zmq('grizzly.testdata.communication')
+        parent = grizzly_fixture()
+
+        consumer = TestdataConsumer(parent)
+
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
 
         consumer.keystore_set('world', {'hello': 'world'})
@@ -864,6 +1003,12 @@ class TestTestdataConsumer:
             'identifier': consumer.identifier,
             'data': {'hello': 'world'},
         })
+
+    def test_keystore_inc(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        noop_zmq('grizzly.testdata.communication')
+        parent = grizzly_fixture()
+
+        consumer = TestdataConsumer(parent)
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
 
@@ -888,3 +1033,53 @@ class TestTestdataConsumer:
             'data': 10,
         })
 
+    def test_keystore_push(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        noop_zmq('grizzly.testdata.communication')
+        parent = grizzly_fixture()
+
+        consumer = TestdataConsumer(parent)
+
+        request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
+
+        consumer.keystore_push('foobar', 'hello')
+
+        request_spy.assert_called_once_with({
+            'action': 'push',
+            'key': 'foobar',
+            'message': 'keystore',
+            'identifier': consumer.identifier,
+            'data': 'hello',
+        })
+        request_spy.reset_mock()
+
+    def test_keystore_pop(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        noop_zmq('grizzly.testdata.communication')
+        parent = grizzly_fixture()
+
+        consumer = TestdataConsumer(parent)
+
+        request_spy = mocker.patch.object(consumer, '_request', side_effect=echo_add_data([None, None, 'hello']))
+        gsleep_mock = mocker.patch('grizzly.testdata.communication.gsleep', return_value=None)
+
+        assert consumer.keystore_pop('foobar') == 'hello'
+
+        assert gsleep_mock.call_count == 2
+        assert request_spy.call_count == 3
+
+    def test_keystore_del(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        noop_zmq('grizzly.testdata.communication')
+        parent = grizzly_fixture()
+
+        consumer = TestdataConsumer(parent)
+
+        request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
+
+        consumer.keystore_del('foobar')
+
+        request_spy.assert_called_once_with({
+            'action': 'del',
+            'key': 'foobar',
+            'message': 'keystore',
+            'identifier': consumer.identifier,
+        })
+        request_spy.reset_mock()

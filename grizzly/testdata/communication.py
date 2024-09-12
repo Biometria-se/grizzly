@@ -166,6 +166,14 @@ class TestdataConsumer:
 
         return value
 
+    def keystore_del(self, key: str) -> None:
+        request = {
+            'action': 'del',
+            'key': key,
+        }
+
+        self._keystore_request(request)
+
     def _keystore_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
         request.update({
             'message': 'keystore',
@@ -294,7 +302,7 @@ class TestdataProducer:
             gsleep(0.1)
             self.persist_data()
 
-    def _handle_request_keystore(self, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915
+    def _handle_request_keystore(self, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912
         response = request
         key: str | None  = response.get('key', None)
 
@@ -343,6 +351,10 @@ class TestdataProducer:
             pop_value: str | None
             response.update({'data': None})
             try:
+                # since dict throws `KeyError` on pop, and str `AttributeError`
+                if key in self.keystore and not isinstance(self.keystore[key], list):
+                    raise AttributeError
+
                 pop_value = self.keystore[key].pop(0)
             except AttributeError:
                 message = f'key "{key}" is not a list, it has not been pushed to'
@@ -353,6 +365,14 @@ class TestdataProducer:
                 pop_value = None
 
             response.update({'data': pop_value})
+        elif action == 'del':
+            response.update({'data': None})
+            try:
+                del self.keystore[key]
+            except:
+                message = f'failed to remove key "{key}"'
+                self.logger.exception(message)
+                response.update({'error': message})
         else:
             message = f'received unknown keystore action "{action}"'
             self.logger.error(message)

@@ -114,7 +114,7 @@ def step_task_keystore_pop(context: Context, key: str, variable: str) -> None:
     ```gherkin
     Scenario: push
         And value for variable "foobar" is "none"
-        Then get "foobar_key" from keystore and save in variable "foobar"
+        Then push "foobar_key" in keystore with value "foobar"
 
     Scenario: pop
         And value for variable "foobar" is "none"
@@ -138,7 +138,7 @@ def step_task_keystore_push(context: Context, key: str, value: str) -> None:
     ```gherkin
     Scenario: push
         And value for variable "foobar" is "none"
-        Then get "foobar_key" from keystore and save in variable "foobar"
+        Then push "foobar_key" in keystore with value "foobar"
 
     Scenario: pop
         And value for variable "foobar" is "none"
@@ -155,3 +155,22 @@ def step_task_keystore_push(context: Context, key: str, value: str) -> None:
     except JSONDecodeError as e:
         message = f'"{value}" is not valid JSON'
         raise AssertionError(message) from e
+
+
+@then('remove "{key}" from keystore')
+def step_task_keystore_del(context: Context, key: str) -> None:
+    """Remove `key` using the {@pylink grizzly.tasks.keystore} task.
+
+    See {@pylink grizzly.tasks.keystore} task documentation for more information.
+
+    Example:
+    ```gherkin
+    And value for variable "foobar" is "hello"
+    Then set "foobar_key" in keystore with value "{{ foobar }}"
+    ...
+    Then remove "foobar_key" from keystore
+    ```
+
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.tasks.add(KeystoreTask(key, 'del', None))
