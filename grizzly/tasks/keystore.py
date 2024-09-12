@@ -27,13 +27,13 @@ This task only has request statistics entry, of type `KEYS`, if a key (without `
 
 * `action_context` _str | Any_: when `action` is `get` it must be a `str` (variable name), for `set` any goes (as long as it is json serializable and not `None`)
 
-* `default_value` _Any (Optional)_: used when `action` is `get` and `key` does not exist in the keystore
+* `default_value` _Any | None_: used when `action` is `get` and `key` does not exist in the keystore
 """
 from __future__ import annotations
 
 from json import dumps as jsondumps
 from json import loads as jsonloads
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast, get_args
+from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 from . import GrizzlyTask, grizzlytask, template
 
@@ -47,10 +47,10 @@ Action = Literal['get', 'set', 'inc', 'push', 'pop']
 class KeystoreTask(GrizzlyTask):
     key: str
     action: Action
-    action_context: Union[str, Optional[Any]]
-    default_value: Optional[Any]
+    action_context: str | Any | None
+    default_value: Any | None
 
-    def __init__(self, key: str, action: Action, action_context: Union[str, Any], default_value: Optional[Any] = None) -> None:
+    def __init__(self, key: str, action: Action, action_context: str | Any, default_value: Any | None = None) -> None:
         super().__init__()
 
         self.key = key

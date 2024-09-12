@@ -6,7 +6,7 @@ from contextlib import suppress
 from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import zmq.green as zmq
 from gevent import sleep as gsleep
@@ -65,7 +65,7 @@ class TestdataConsumer:
         finally:
             self.stopped = True
 
-    def testdata(self, scenario: str) -> Optional[dict[str, Any]]:
+    def testdata(self, scenario: str) -> dict[str, Any] | None:
         request = {
             'message': 'testdata',
             'identifier': self.identifier,
@@ -90,7 +90,7 @@ class TestdataConsumer:
 
         self.logger.debug('received: %r', data)
 
-        variables: Optional[dict[str, Any]] = None
+        variables: dict[str, Any] | None = None
         if 'variables' in data:
             variables = transform(self.scenario.user._scenario, data['variables'], objectify=True)
             del data['variables']
@@ -102,7 +102,7 @@ class TestdataConsumer:
 
         return cast(dict[str, Any], data)
 
-    def keystore_get(self, key: str) -> Optional[Any]:
+    def keystore_get(self, key: str) -> Any | None:
         request = {
             'action': 'get',
             'key': key,
@@ -121,7 +121,7 @@ class TestdataConsumer:
 
         self._keystore_request(request)
 
-    def keystore_inc(self, key: str, step: int = 1) -> Optional[int]:
+    def keystore_inc(self, key: str, step: int = 1) -> int | None:
         request = {
             'action': 'inc',
             'key': key,
@@ -166,7 +166,7 @@ class TestdataConsumer:
 
         return value
 
-    def _keystore_request(self, request: dict[str, Any]) -> Optional[dict[str, Any]]:
+    def _keystore_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
         request.update({
             'message': 'keystore',
             'identifier': self.identifier,
@@ -174,7 +174,7 @@ class TestdataConsumer:
 
         return self._request(request)
 
-    def _request(self, request: dict[str, str]) -> Optional[dict[str, Any]]:
+    def _request(self, request: dict[str, str]) -> dict[str, Any] | None:
         self.socket.send_json(request)
 
         self.logger.debug('waiting for response from producer')
@@ -254,10 +254,10 @@ class TestdataProducer:
             return
 
         try:
-            variables_state: dict[str, dict[str, Union[str, dict[str, Any]]]] = {}
+            variables_state: dict[str, dict[str, str | dict[str, Any]]] = {}
 
             for scenario_name, testdata in self.testdata.items():
-                variable_state: dict[str, Union[str, dict[str, Any]]] = {}
+                variable_state: dict[str, str | dict[str, Any]] = {}
                 for key, variable in testdata.items():
                     if '.' not in key or variable == '__on_consumer__':
                         continue
