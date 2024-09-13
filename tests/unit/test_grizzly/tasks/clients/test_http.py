@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from base64 import b64encode
 from contextlib import suppress
 from itertools import cycle
 from json import dumps as jsondumps
@@ -438,6 +439,51 @@ class TestHttpClientTask:
             'PUT',
             'http://example.org',
             data='foobar bar!',
+            headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+        )
+        requests_request_spy.reset_mock()
+
+        request_fire_spy.assert_called_once_with(
+            request_type='CLTSK',
+            name=f'{parent.user._scenario.identifier} test-put',
+            response_time=ANY(float, int),
+            response_length=len(b'foobar'),
+            context=parent.user._context,
+            exception=None,
+        )
+        request_fire_spy.reset_mock()
+
+        task_factory.response.add_status_code(-500)
+
+        # make sure b64encode filter is loaded
+        from grizzly.testdata import filters  # noqa: F401
+
+        task_factory = test_cls(RequestDirection.TO, 'http://example.org', 'test-put', source=jsondumps({
+            'files': [
+                {'bytes': '{{ file_content | b64encode }}', 'name': '{{ file_name }}'},
+            ],
+        }))
+
+        task = task_factory()
+
+        parent.user.set_variable('file_name', 'test.json')
+        parent.user.set_variable('world', 'foobar')
+        parent.user.set_variable('file_content', parent.user.render('<hello>{{ world }}</hello>'))
+
+        response.status_code = 200
+        requests_request_spy.return_value = response
+
+        assert ({'x-foo-bar': 'test'}, 'foobar') == task(parent)
+
+        expected_data = jsondumps({
+            'files': [
+                {'bytes': b64encode(b'<hello>foobar</hello>').decode(), 'name': 'test.json'},
+            ],
+        })
+        requests_request_spy.assert_called_once_with(
+            'PUT',
+            'http://example.org',
+            data=expected_data,
             headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
         )
         requests_request_spy.reset_mock()
