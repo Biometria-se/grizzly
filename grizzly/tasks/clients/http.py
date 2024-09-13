@@ -57,7 +57,7 @@ from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
 from grizzly.tasks import RequestTaskResponse
 from grizzly.testdata.utils import read_file
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, bool_type
-from grizzly.utils import is_file, merge_dicts
+from grizzly.utils import has_template, is_file, merge_dicts
 from grizzly.utils.protocols import http_populate_cookiejar
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
@@ -209,6 +209,9 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     @refresh_token(AAD)
     def request_to(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         source = parent.user.render(cast(str, self.source))
+
+        if has_template(source):
+            source = parent.user.render(source)
 
         with self.action(parent) as meta:
             url = parent.user.render(self.endpoint)

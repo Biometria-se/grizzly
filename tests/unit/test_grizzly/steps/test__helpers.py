@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import json
 import os
+from contextlib import suppress
 from itertools import product
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Union, cast
 
 import pytest
+from jinja2.filters import FILTERS
 
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import ResponseHandlerError
@@ -200,6 +202,9 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     finally:
         del os.environ['GRIZZLY_CONTEXT_ROOT']
         rm_rf(test_context_root)
+
+        with suppress(KeyError):
+            del FILTERS['uppercase']
 
     with pytest.raises(ValueError, match='incorrect format in arguments: "world:False"'):
         add_request_task(behave, method=RequestMethod.GET, endpoint='hello | world:False', source=None, name='hello-world')

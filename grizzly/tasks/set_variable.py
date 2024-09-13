@@ -82,6 +82,9 @@ class SetVariableTask(GrizzlyTask):
             if is_file(value):
                 value = parent.user.render(read_file(value))
 
+            if has_template(value):
+                value = parent.user.render(value)
+
             parent.logger.debug('%s: variable=%s, value=%r, type=%s', self.__class__.__name__, self.variable, value, self.variable_type.name)
 
             if self.variable_type == VariableType.VARIABLES:
