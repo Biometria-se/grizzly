@@ -48,7 +48,7 @@ from urllib.parse import parse_qs, urlparse
 from azure.iot.device import IoTHubDeviceClient
 from azure.storage.blob import BlobClient, ContentSettings
 
-from grizzly.types import GrizzlyResponse, RequestMethod
+from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 
 from . import GrizzlyUser, grizzlycontext
 
@@ -98,10 +98,15 @@ class IotHubUser(GrizzlyUser):
         super().on_start()
         self.iot_client = IoTHubDeviceClient.create_from_connection_string(self.host)
 
-        device_clients = self.consumer.keystore_inc(f'clients::{self.device_id}')
 
-        self.logger.info('%s client %d, registered C2D handler', self.device_id, device_clients)
-        self.iot_client.on_message_received = self.message_handler
+    def on_state(self, *, state: ScenarioState) -> None:
+        super().on_state(state=state)
+
+        if state == ScenarioState.RUNNING:
+            device_clients = self.consumer.keystore_inc(f'clients::{self.device_id}')
+
+            self.logger.info('%s client %d, registered C2D handler', self.device_id, device_clients)
+            self.iot_client.on_message_received = self.message_handler
 
     def on_stop(self) -> None:
         self.iot_client.disconnect()

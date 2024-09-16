@@ -25,6 +25,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, TypeVar, cast, final
 
+from locust.event import EventHook
 from locust.user.task import LOCUST_STATE_RUNNING
 from locust.user.users import User, UserMeta
 
@@ -67,6 +68,15 @@ class grizzlycontext:
         return cls
 
 
+class GrizzlyUserEvents:
+    request: GrizzlyEventHook
+    state: EventHook
+
+    def __init__(self) -> None:
+        self.request = GrizzlyEventHook()
+        self.state = EventHook()
+
+
 @grizzlycontext(context={
     'log_all_requests': False,
     'metadata': None,
@@ -87,11 +97,12 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     host: str
     abort: bool
     environment: Environment
-    event_hook: GrizzlyEventHook
     grizzly = GrizzlyContext()
     sticky_tag: Optional[str] = None
     variables: GrizzlyVariables
     consumer: TestdataConsumer
+
+    events: GrizzlyUserEvents
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -107,9 +118,10 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         self._scenario._tasks = self.__scenario__._tasks
 
         self.abort = False
-        self.event_hook = GrizzlyEventHook()
-        self.event_hook.add_listener(ResponseHandler(self))
-        self.event_hook.add_listener(RequestLogger(self))
+        self.events = GrizzlyUserEvents()
+        self.events.request.add_listener(ResponseHandler(self))
+        self.events.request.add_listener(RequestLogger(self))
+        self.events.state.add_listener(self.on_state)
 
         self.variables = GrizzlyVariables(**{key: None for key in self._scenario.variables})
 
@@ -125,6 +137,9 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
     def on_stop(self) -> None:
         super().on_stop()
+
+    def on_state(self, *, state: ScenarioState) -> None:
+        pass
 
     def render(self, template: str, variables: Optional[dict[str, Any]] = None) -> str:
         if not has_template(template):
@@ -157,6 +172,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             self._scenario_state = value
             message = f'scenario state={old_state} -> {value}'
             self.logger.debug(message)
+            self.events.state.fire(state=value)
 
     def stop(self, force: bool = False) -> bool:  # noqa: FBT001, FBT002
         """Stop user.
@@ -206,7 +222,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             # execute response listeners, but not on these exceptions
             if not isinstance(exception, (RestartScenario, StopUser, AsyncMessageError)):
                 try:
-                    self.event_hook.fire(
+                    self.events.request.fire(
                         name=request.name,
                         request=request,
                         context=(

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from locust.exception import ResponseError
 
 from grizzly.context import GrizzlyContext
-from grizzly.events import GrizzlyEventHandler
+from grizzly.events import GrizzlyEventHandlerClass
 from grizzly.exceptions import ResponseHandlerError
 from grizzly_extras.transformer import PlainTransformer, TransformerContentType, TransformerError, transformer
 
@@ -168,7 +168,7 @@ class SaveHandlerAction(ResponseHandlerAction):
             raise ResponseHandlerError(message)
 
 
-class ResponseHandler(GrizzlyEventHandler):
+class ResponseHandler(GrizzlyEventHandlerClass):
     def __call__(
         self,
         name: str,

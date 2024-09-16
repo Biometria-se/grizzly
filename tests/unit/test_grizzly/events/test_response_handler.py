@@ -13,20 +13,20 @@ import pytest
 from jinja2.filters import FILTERS
 from lxml import etree as XML  # noqa: N812
 
+from grizzly.events import GrizzlyEventHandlerClass
 from grizzly.events.response_handler import ResponseHandler, ResponseHandlerAction, SaveHandlerAction, ValidationHandlerAction
 from grizzly.exceptions import ResponseHandlerError, RestartScenario
 from grizzly.tasks import RequestTask
 from grizzly.testdata.filters import templatingfilter
 from grizzly.types import HandlerContextType, RequestMethod
 from grizzly.types.locust import StopUser
-from grizzly.users import RestApiUser
+from grizzly.users import GrizzlyUser, RestApiUser
 from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY, JSON_EXAMPLE, TestUser
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
-    from grizzly.users import GrizzlyUser
     from tests.fixtures import GrizzlyFixture
 
 
@@ -544,8 +544,14 @@ class TestSaveHandlerAction:
 class TestResponseHandler:
     def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture(host='http://example.com')
-        assert len(parent.user.event_hook._handlers) == 2
-        assert any(h.__class__ is ResponseHandler and h.user is parent.user for h in parent.user.event_hook._handlers)
+        assert len(parent.user.events.request._handlers) == 2
+        assert any(
+            h.__class__ is ResponseHandler
+            and isinstance(h, GrizzlyEventHandlerClass)
+            and isinstance(h.user, GrizzlyUser)
+            and h.user is parent.user
+            for h in parent.user.events.request._handlers
+        )
 
     def test___call__(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
         parent = grizzly_fixture()

@@ -15,7 +15,7 @@ from grizzly.exceptions import RestartScenario
 from grizzly.tasks import RequestTask
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
-from grizzly.types import RequestMethod
+from grizzly.types import RequestMethod, ScenarioState
 from grizzly.users.iothub import IotHubUser
 from tests.helpers import SOME
 
@@ -91,7 +91,7 @@ class TestIotHubUser:
         parent_fixture.user.on_start()
 
         assert hasattr(parent_fixture.user, 'iot_client')
-        parent_fixture.consumer_mock.keystore_inc.assert_called_once_with(f'clients::{parent_fixture.user.device_id}')
+        parent_fixture.consumer_mock.keystore_inc.assert_not_called()
 
     def test_on_stop(self, mocker: MockerFixture, parent_fixture: ParentFixture) -> None:
         user = parent_fixture.user
@@ -103,6 +103,19 @@ class TestIotHubUser:
         user.on_stop()
 
         on_stop_spy.assert_called_once_with()
+
+    def test_on_state(self, parent_fixture: ParentFixture) -> None:
+        user = parent_fixture.user
+
+        user.on_start()
+
+        user.on_state(state=ScenarioState.STOPPING)
+
+        parent_fixture.consumer_mock.keystore_inc.assert_not_called()
+
+        user.on_state(state=ScenarioState.RUNNING)
+
+        parent_fixture.consumer_mock.keystore_inc.assert_called_once_with(f'clients::{user.device_id}')
 
     def test__init__(self, grizzly_fixture: GrizzlyFixture) -> None:
         test_cls = type('IotHubTestUser', (IotHubUser, ), {'__scenario__': grizzly_fixture.grizzly.scenario})
