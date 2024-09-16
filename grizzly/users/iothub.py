@@ -42,10 +42,11 @@ Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 from __future__ import annotations
 
 import gzip
+import json
 from typing import TYPE_CHECKING, Any, Optional, cast
 from urllib.parse import parse_qs, urlparse
 
-from azure.iot.device import IoTHubDeviceClient
+from azure.iot.device import IoTHubDeviceClient, Message
 from azure.storage.blob import BlobClient, ContentSettings
 
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
@@ -55,6 +56,30 @@ from . import GrizzlyUser, grizzlycontext
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
     from grizzly.types.locust import Environment
+
+
+def serialize_message(message: Message) -> str:
+    payload = str(message)
+    metadata = {
+        'custom_properties': message.custom_properties,
+        'message_id': message.message_id,
+        'expiry_time_utc': message.expiry_time_utc,
+        'correlation_id': message.correlation_id,
+        'user_id': message.user_id,
+        'content_type': message.content_encoding,
+        'output_name': message.output_name,
+        'input_name': message.input_name,
+        'ack': message.ack,
+        'iothub_interface_id': message.iothub_interface_id,
+        'size': message.get_size(),
+    }
+
+    return json.dumps({'metadata': metadata, 'payload': payload})
+
+
+def unserialize_message(blob: str) -> GrizzlyResponse:
+    message = json.loads(blob)
+    return message.get('metadata'), message.get('payload')
 
 
 @grizzlycontext(context={})
@@ -91,13 +116,13 @@ class IotHubUser(GrizzlyUser):
             message = f'{self.__class__.__name__} needs SharedAccessKey in the query string'
             raise ValueError(message)
 
-    def message_handler(self, message: Any) -> None:
-        self.consumer.keystore_push(f'queue::{self.device_id}', message)
+    def message_handler(self, message: Message) -> None:
+        self.logger.info('received: %r', message)
+        self.consumer.keystore_push(f'queue::{self.device_id}', serialize_message(message))
 
     def on_start(self) -> None:
         super().on_start()
-        self.iot_client = IoTHubDeviceClient.create_from_connection_string(self.host)
-
+        self.iot_client = IoTHubDeviceClient.create_from_connection_string(self.host, websockets=True)
 
     def on_state(self, *, state: ScenarioState) -> None:
         super().on_state(state=state)
@@ -105,8 +130,8 @@ class IotHubUser(GrizzlyUser):
         if state == ScenarioState.RUNNING:
             device_clients = self.consumer.keystore_inc(f'clients::{self.device_id}')
 
-            self.logger.info('%s client %d, registered C2D handler', self.device_id, device_clients)
             self.iot_client.on_message_received = self.message_handler
+            self.logger.info('%s client %d, registered C2D handler', self.device_id, device_clients)
 
     def on_stop(self) -> None:
         self.iot_client.disconnect()
@@ -166,9 +191,8 @@ class IotHubUser(GrizzlyUser):
                 metadata = {}
                 payload = request.source
             else:  # RECEIVE, GET
-                payload = self.consumer.keystore_pop(f'queue::{self.device_id}')
-                self.logger.error(payload)
-                metadata = {}
+                metadata, payload = unserialize_message(self.consumer.keystore_pop(f'queue::{self.device_id}'))
+                self.logger.info('metadata=%r, payload=%r', metadata, payload)
         except Exception:
             if storage_info:
                 self.iot_client.notify_blob_upload_status(
@@ -177,7 +201,7 @@ class IotHubUser(GrizzlyUser):
                     status_code=500,
                     status_description=f'Failed: {filename}',
                 )
-            self.logger.exception('failed to upload file "%s" to IoT hub', filename)
+                self.logger.exception('failed to upload file "%s" to IoT hub', filename)
 
             raise
         else:
