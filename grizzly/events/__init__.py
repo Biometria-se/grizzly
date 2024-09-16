@@ -37,6 +37,7 @@ class GrizzlyEventHandlerClass(metaclass=ABCMeta):
 
 GrizzlyEventHandler = GrizzlyEventHandlerFunc | GrizzlyEventHandlerClass
 
+
 class GrizzlyEventHook(EventHook):
     """Override locust.events.EventHook to get types, and not to catch any exceptions."""
 

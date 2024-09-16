@@ -36,6 +36,8 @@ class TestdataConsumer:
     stopped: bool
     poll_interval: float
 
+    semaphore = Semaphore()
+
     def __init__(self, scenario: GrizzlyScenario, address: str = 'tcp://127.0.0.1:5555', poll_interval: float = 1.0) -> None:
         self.scenario = scenario
         self.identifier = scenario.__class__.__name__
@@ -183,25 +185,26 @@ class TestdataConsumer:
         return self._request(request)
 
     def _request(self, request: dict[str, str]) -> dict[str, Any] | None:
-        self.socket.send_json(request)
+        with self.semaphore:  # one at a time
+            self.socket.send_json(request)
 
-        self.logger.debug('waiting for response from producer')
-        message: dict[str, Any]
+            self.logger.debug('waiting for response from producer')
+            message: dict[str, Any]
 
-        # loop and NOBLOCK needed when running in local mode, to let other gevent threads get time
-        while True:
-            try:
-                message = cast(dict[str, Any], self.socket.recv_json(flags=zmq.NOBLOCK))
-                break
-            except ZMQAgain:
-                gsleep(0.1)  # let other greenlets execute
+            # loop and NOBLOCK needed when running in local mode, to let other gevent threads get time
+            while True:
+                try:
+                    message = cast(dict[str, Any], self.socket.recv_json(flags=zmq.NOBLOCK))
+                    break
+                except ZMQAgain:
+                    gsleep(0.1)  # let other greenlets execute
 
-        error = message.get('error', None)
+            error = message.get('error', None)
 
-        if error is not None:
-            raise RuntimeError(error)
+            if error is not None:
+                raise RuntimeError(error)
 
-        return message
+            return message
 
 
 class TestdataProducer:

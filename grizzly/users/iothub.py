@@ -15,7 +15,8 @@ Format of `host` is the following:
 HostName=<hostname>;DeviceId=<device key>;SharedAccessKey=<access key>
 ```
 
-`endpoint` in the request is the desired filename for the uploaded file.
+`endpoint` in the request is the desired filename for the uploaded file, in the case of `SEND` and `PUT`.
+In the case of `GET` and `RECEIVE` it specifieds the internal keystore key prefix used for messages.
 
 The metadata values `content_type` and `content_encoding` can be set to
 gzip compress the payload before upload (see example below).
@@ -58,30 +59,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.types.locust import Environment
 
 
-def serialize_message(message: Message) -> str:
-    payload = str(message)
-    metadata = {
-        'custom_properties': message.custom_properties,
-        'message_id': message.message_id,
-        'expiry_time_utc': message.expiry_time_utc,
-        'correlation_id': message.correlation_id,
-        'user_id': message.user_id,
-        'content_type': message.content_encoding,
-        'output_name': message.output_name,
-        'input_name': message.input_name,
-        'ack': message.ack,
-        'iothub_interface_id': message.iothub_interface_id,
-        'size': message.get_size(),
-    }
-
-    return json.dumps({'metadata': metadata, 'payload': payload})
-
-
-def unserialize_message(blob: str) -> GrizzlyResponse:
-    message = json.loads(blob)
-    return message.get('metadata'), message.get('payload')
-
-
 @grizzlycontext(context={})
 class IotHubUser(GrizzlyUser):
     iot_client: IoTHubDeviceClient
@@ -116,9 +93,39 @@ class IotHubUser(GrizzlyUser):
             message = f'{self.__class__.__name__} needs SharedAccessKey in the query string'
             raise ValueError(message)
 
+    def serialize_message(self, message: Message) -> str:
+        if isinstance(message.data, (bytes, bytearray)):
+            payload = message.data.decode()
+        elif isinstance(message.data, str):
+            payload = str(message.data)
+        else:
+            payload = str(message.data)
+            self.logger.warning('message data had unknown type %s', type(message.data))
+
+        metadata = {
+            'custom_properties': message.custom_properties,
+            'message_id': message.message_id,
+            'expiry_time_utc': message.expiry_time_utc,
+            'correlation_id': message.correlation_id,
+            'user_id': message.user_id,
+            'content_type': message.content_encoding,
+            'output_name': message.output_name,
+            'input_name': message.input_name,
+            'ack': message.ack,
+            'iothub_interface_id': message.iothub_interface_id,
+            'size': message.get_size(),
+        }
+
+        return json.dumps({'metadata': metadata, 'payload': payload})
+
+    def unserialize_message(self, serialized_message: str) -> GrizzlyResponse:
+        message = json.loads(serialized_message)
+        return message.get('metadata'), message.get('payload')
+
     def message_handler(self, message: Message) -> None:
-        self.logger.info('received: %r', message)
-        self.consumer.keystore_push(f'queue::{self.device_id}', serialize_message(message))
+        serialized_message = self.serialize_message(message)
+        self.logger.info('received: %s', serialized_message)
+        self.consumer.keystore_push(f'queue::{self.device_id}', serialized_message)
 
     def on_start(self) -> None:
         super().on_start()
@@ -188,10 +195,12 @@ class IotHubUser(GrizzlyUser):
                     status_code=200,
                     status_description=f'OK: {filename}',
                 )
+
                 metadata = {}
                 payload = request.source
             else:  # RECEIVE, GET
-                metadata, payload = unserialize_message(self.consumer.keystore_pop(f'queue::{self.device_id}'))
+                # this will "block" until a message is available on the internal keystore queue
+                metadata, payload = self.unserialize_message(self.consumer.keystore_pop(f'{request.endpoint}::{self.device_id}'))
                 self.logger.info('metadata=%r, payload=%r', metadata, payload)
         except Exception:
             if storage_info:
