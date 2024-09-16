@@ -42,6 +42,7 @@ T = TypeVar('T', bound=UserMeta)
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
     from grizzly.tasks import RequestTask
+    from grizzly.testdata.communication import TestdataConsumer
 
 class AsyncRequests(metaclass=ABCMeta):
     @abstractmethod
@@ -90,6 +91,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     grizzly = GrizzlyContext()
     sticky_tag: Optional[str] = None
     variables: GrizzlyVariables
+    consumer: TestdataConsumer
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)

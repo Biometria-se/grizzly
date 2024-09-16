@@ -60,6 +60,7 @@ if TYPE_CHECKING:  # pragma: no cover
 @grizzlycontext(context={})
 class IotHubUser(GrizzlyUser):
     iot_client: IoTHubDeviceClient
+    device_id: str
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -84,65 +85,85 @@ class IotHubUser(GrizzlyUser):
             message = f'{self.__class__.__name__} needs DeviceId in the query string'
             raise ValueError(message)
 
+        self.device_id = params['DeviceId'][0]
+
         if 'SharedAccessKey' not in params:
             message = f'{self.__class__.__name__} needs SharedAccessKey in the query string'
             raise ValueError(message)
 
+    def message_handler(self, message: Any) -> None:
+        self.consumer.keystore_push(f'queue::{self.device_id}', message)
+
     def on_start(self) -> None:
         super().on_start()
         self.iot_client = IoTHubDeviceClient.create_from_connection_string(self.host)
+
+        device_clients = self.consumer.keystore_inc(f'clients::{self.device_id}')
+
+        self.logger.info('%s client %d, registered C2D handler', self.device_id, device_clients)
+        self.iot_client.on_message_received = self.message_handler
 
     def on_stop(self) -> None:
         self.iot_client.disconnect()
         super().on_stop()
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        if request.method not in [RequestMethod.SEND, RequestMethod.PUT]:
+        if request.method not in [RequestMethod.SEND, RequestMethod.PUT, RequestMethod.GET, RequestMethod.RECEIVE]:
             message = f'{self.__class__.__name__} has not implemented {request.method.name}'
             raise NotImplementedError(message)
 
         storage_info: Optional[dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None
+        payload: str | None = None
+
         try:
-            if not request.source:
-                message = f'Cannot upload empty payload to endpoint {request.endpoint} in IotHubUser'
-                raise RuntimeError(message)
-
-            filename = request.endpoint
-
-            storage_info = cast(dict[str, Any], self.iot_client.get_storage_info_for_blob(filename))
-
-            sas_url = 'https://{}/{}/{}{}'.format(
-                storage_info['hostName'],
-                storage_info['containerName'],
-                storage_info['blobName'],
-                storage_info['sasToken'],
-            )
-
-            with BlobClient.from_blob_url(sas_url) as blob_client:
-                content_type: Optional[str] = None
-                content_encoding: Optional[str] = None
-                if request.metadata:
-                    content_type = request.metadata.get('content_type', None)
-                    content_encoding = request.metadata.get('content_encoding', None)
-
-                if content_encoding == 'gzip':
-                    payload: bytes = gzip.compress(request.source.encode())
-                    content_settings = ContentSettings(content_type=content_type, content_encoding=content_encoding)
-                    blob_client.upload_blob(payload, content_settings=content_settings)
-                elif content_encoding:
-                    message = f'Unhandled request content_encoding in IotHubUser: {content_encoding}'
+            if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
+                if not request.source:
+                    message = f'Cannot upload empty payload to endpoint {request.endpoint} in IotHubUser'
                     raise RuntimeError(message)
-                else:
-                    blob_client.upload_blob(request.source)
 
-                self.logger.debug('uploaded blob to IoT hub, filename: %s, correlationId: %s', filename, storage_info['correlationId'])
+                filename = request.endpoint
 
-            self.iot_client.notify_blob_upload_status(
-                correlation_id=storage_info['correlationId'],
-                is_success=True,
-                status_code=200,
-                status_description=f'OK: {filename}',
-            )
+                storage_info = cast(dict[str, Any], self.iot_client.get_storage_info_for_blob(filename))
+
+                sas_url = 'https://{}/{}/{}{}'.format(
+                    storage_info['hostName'],
+                    storage_info['containerName'],
+                    storage_info['blobName'],
+                    storage_info['sasToken'],
+                )
+
+                with BlobClient.from_blob_url(sas_url) as blob_client:
+                    content_type: Optional[str] = None
+                    content_encoding: Optional[str] = None
+                    if request.metadata:
+                        content_type = request.metadata.get('content_type', None)
+                        content_encoding = request.metadata.get('content_encoding', None)
+
+                    if content_encoding == 'gzip':
+                        compressed_payload: bytes = gzip.compress(request.source.encode())
+                        content_settings = ContentSettings(content_type=content_type, content_encoding=content_encoding)
+                        blob_client.upload_blob(compressed_payload, content_settings=content_settings)
+                    elif content_encoding:
+                        message = f'Unhandled request content_encoding in IotHubUser: {content_encoding}'
+                        raise RuntimeError(message)
+                    else:
+                        blob_client.upload_blob(request.source)
+
+                    self.logger.debug('uploaded blob to IoT hub, filename: %s, correlationId: %s', filename, storage_info['correlationId'])
+
+                self.iot_client.notify_blob_upload_status(
+                    correlation_id=storage_info['correlationId'],
+                    is_success=True,
+                    status_code=200,
+                    status_description=f'OK: {filename}',
+                )
+                metadata = {}
+                payload = request.source
+            else:  # RECEIVE, GET
+                payload = self.consumer.keystore_pop(f'queue::{self.device_id}')
+                self.logger.error(payload)
+                metadata = {}
         except Exception:
             if storage_info:
                 self.iot_client.notify_blob_upload_status(
@@ -155,4 +176,4 @@ class IotHubUser(GrizzlyUser):
 
             raise
         else:
-            return {}, request.source
+            return metadata, payload
