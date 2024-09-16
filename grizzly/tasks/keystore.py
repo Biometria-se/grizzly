@@ -27,30 +27,30 @@ This task only has request statistics entry, of type `KEYS`, if a key (without `
 
 * `action_context` _str | Any_: when `action` is `get` it must be a `str` (variable name), for `set` any goes (as long as it is json serializable and not `None`)
 
-* `default_value` _Any (Optional)_: used when `action` is `get` and `key` does not exist in the keystore
+* `default_value` _Any | None_: used when `action` is `get` and `key` does not exist in the keystore
 """
 from __future__ import annotations
 
 from json import dumps as jsondumps
 from json import loads as jsonloads
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast, get_args
+from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 from . import GrizzlyTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
 
-Action = Literal['get', 'set', 'inc']
+Action = Literal['get', 'set', 'inc', 'push', 'pop', 'del']
 
 
-@template('action_context')
+@template('action_context', 'key')
 class KeystoreTask(GrizzlyTask):
     key: str
     action: Action
-    action_context: Union[str, Optional[Any]]
-    default_value: Optional[Any]
+    action_context: str | Any | None
+    default_value: Any | None
 
-    def __init__(self, key: str, action: Action, action_context: Union[str, Any], default_value: Optional[Any] = None) -> None:
+    def __init__(self, key: str, action: Action, action_context: str | Any, default_value: Any | None = None) -> None:
         super().__init__()
 
         self.key = key
@@ -58,51 +58,62 @@ class KeystoreTask(GrizzlyTask):
         self.action_context = action_context
         self.default_value = default_value
 
-        try:
-            assert self.action in get_args(Action), f'{self.action} is not a valid action'
+        assert self.action in get_args(Action), f'"{self.action}" is not a valid action'
 
-            if self.action in ['get', 'inc']:
-                assert isinstance(self.action_context, str), f'action context for {self.action} must be a string'
-                assert action_context in self.grizzly.scenario.variables, f'variable "{action_context}" has not been initialized'
-            else:  # == 'set'
-                assert self.action_context is not None, 'action context for set cannot be None'
-        except AssertionError as e:
-            raise RuntimeError(str(e)) from e
+        if self.action in ['get', 'inc', 'pop']:
+            assert isinstance(self.action_context, str), f'action context for "{self.action}" must be a string'
+            assert action_context in self.grizzly.scenario.variables, f'variable "{action_context}" has not been initialized'
+        elif self.action in ['set', 'push']:
+            assert self.action_context is not None, f'action context for "{self.action}" must be declared'
+        elif self.action in ['del']:
+            assert self.action_context is None, f'action context for "{self.action}" cannot be declared'
+        else:  # pragma: no cover
+            pass
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
-        def task(parent: GrizzlyScenario) -> Any:
+        def task(parent: GrizzlyScenario) -> Any:  # noqa: PLR0912
+            key = parent.user.render(self.key)
+
             try:
                 if self.action == 'get':
-                    value = parent.consumer.keystore_get(self.key)
+                    value = parent.consumer.keystore_get(key)
 
                     if value is None and self.default_value is not None:
-                        parent.consumer.keystore_set(self.key, self.default_value)
+                        parent.consumer.keystore_set(key, self.default_value)
                         value = cast(Any, self.default_value)
 
                     if value is not None and self.action_context is not None:
                         parent.user.set_variable(self.action_context, jsonloads(parent.user.render(jsondumps(value))))
                     else:
-                        message = f'key {self.key} does not exist in keystore'
+                        message = f'key {key} does not exist in keystore'
                         raise RuntimeError(message)
                 elif self.action == 'inc':
-                    value = parent.consumer.keystore_inc(self.key, step=1)
+                    value = parent.consumer.keystore_inc(key, step=1)
 
                     if value is not None and self.action_context is not None:
                         parent.user.set_variable(self.action_context, jsonloads(parent.user.render(jsondumps(value))))
                     else:
-                        message = f'key {self.key} does not exist in keystore'
+                        message = f'key {key} does not exist in keystore'
                         raise RuntimeError(message)
                 elif self.action == 'set':
                     # do not render set values, might want it to be a template
-                    parent.consumer.keystore_set(self.key, self.action_context)
+                    parent.consumer.keystore_set(key, self.action_context)
+                elif self.action == 'push':
+                    parent.consumer.keystore_push(key, self.action_context)
+                elif self.action == 'pop':
+                    value = parent.consumer.keystore_pop(key)
+                    if value is not None and self.action_context is not None:
+                        parent.user.set_variable(self.action_context, jsonloads(parent.user.render(jsondumps(value))))
+                elif self.action == 'del':
+                    parent.consumer.keystore_del(key)
                 else:  # pragma: no cover
                     pass
             except Exception as e:
                 parent.user.logger.exception('keystore action %s failed', self.action)
                 parent.user.environment.events.request.fire(
                     request_type='KEYS',
-                    name=f'{parent.user._scenario.identifier} {self.key}',
+                    name=f'{parent.user._scenario.identifier} {key}',
                     response_time=0,
                     response_length=1,
                     context=parent.user._context,
