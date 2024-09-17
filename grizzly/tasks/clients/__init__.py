@@ -306,7 +306,6 @@ class ClientTask(GrizzlyMetaRequestTask):
                 raise StopUser
 
             if exception is not None and parent.user._scenario.failure_exception is not None:
-                parent.logger.error('%s raising %s', self.__class__.__name__, parent.user._scenario.failure_exception)
                 raise parent.user._scenario.failure_exception
             elif exception is not None:
                 parent.logger.warning('%s ignoring %s', self.__class__.__name__, exception)
