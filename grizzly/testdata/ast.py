@@ -369,7 +369,14 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
             for body in getattr(parsed, 'body', []):
                 for attributes in _getattr(body):
                     variable = _build_variable(attributes)
-                    if variable is None or (len(variable) > 4 and variable[:2] == '__' and variable[-2:] == '__'):
+                    if (
+                        variable is None
+                        or (  # check if variable is has a dunder name, and ignore it (internal variable)
+                            len(variable) > 4
+                            and variable.startswith('__')
+                            and variable.index('__') != variable.rindex('__')
+                        )
+                    ):
                         continue
 
                     variables.register(scenario, variable)
