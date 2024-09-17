@@ -176,10 +176,6 @@ class IotHubUser(GrizzlyUser):
                     error_message = f'could not find a transformer for {request.response.content_type.name}'
                     raise TypeError(error_message)
 
-                if not transform.validate(payload_expression):
-                    error_message = f'"{payload_expression}" is not a valid expression for {request.response.content_type.name}'
-                    raise TypeError(error_message)
-
                 get_values = transform.parser(payload_expression)
                 values = get_values(transform.transform(payload))
 
@@ -196,10 +192,6 @@ class IotHubUser(GrizzlyUser):
 
                 if transform is None:
                     error_message = 'could not find a transformer for JSON'
-                    raise TypeError(error_message)
-
-                if not transform.validate(metadata_expression):
-                    error_message = f'"{metadata_expression}" is not a valid expression for JSON'
                     raise TypeError(error_message)
 
                 get_values = transform.parser(metadata_expression)

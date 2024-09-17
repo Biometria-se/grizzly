@@ -150,7 +150,7 @@ class JsonTransformer(Transformer):
                     expected = expected_value
 
             if not cls.validate(expression):
-                message = 'not a valid expression'
+                message = f'"{expression}" is not a valid expression'
                 raise RuntimeError(message)
 
             jsonpath = jsonpath_parse(expression)
