@@ -157,12 +157,15 @@ class IotHubUser(GrizzlyUser):
         self.iot_client.disconnect()
         super().on_stop()
 
-    def _request_receive(self, request: RequestTask, endpoint: str, *, metadata_expression: str | None, payload_expression: str | None) -> GrizzlyResponse:
+    def _request_receive(self, request: RequestTask) -> GrizzlyResponse:
         payload: str | None = None
 
         while payload is None:
-            metadata, payload = self.unserialize_message(self.consumer.keystore_pop(f'{endpoint}::{self.device_id}'))
+            metadata, payload = self.unserialize_message(self.consumer.keystore_pop(f'{request.endpoint}::{self.device_id}'))
             log_message = f'{metadata=}, {payload=}'
+
+            payload_expression = (request.arguments or {}).get('payload_expression', None)
+            metadata_expression = (request.arguments or {}).get('metadata_expression', None)
 
             # <!-- filter cloud-to-device messages
             if payload_expression is not None and payload is not None:
@@ -234,8 +237,8 @@ class IotHubUser(GrizzlyUser):
 
         return self.unserialize_message(self.serialize_message(message))
 
-    def _request_file_upload(self, request: RequestTask, endpoint: str) -> GrizzlyResponse:
-        filename = endpoint
+    def _request_file_upload(self, request: RequestTask) -> GrizzlyResponse:
+        filename = request.endpoint
         storage_info: dict[str, Any] | None = None
 
         try:
@@ -303,27 +306,16 @@ class IotHubUser(GrizzlyUser):
         metadata: dict[str, Any] | None = None
         payload: str | None = None
 
-        metadata_expression: str | None = None
-        payload_expression: str | None = None
-
-        if has_separator(request.endpoint, '|'):
-            endpoint, endpoint_arguments = split_value(request.endpoint)
-            arguments = parse_arguments(endpoint_arguments, ':')
-            metadata_expression = arguments.get('metadata_expression', None)
-            payload_expression = arguments.get('payload_expression', None)
-        else:
-            endpoint = request.endpoint
-
         if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
             if not request.source:
-                error_message = f'Cannot upload empty payload to endpoint {endpoint} in IotHubUser'
+                error_message = f'Cannot upload empty payload to endpoint {request.endpoint} in IotHubUser'
                 raise RuntimeError(error_message)
 
-            if endpoint == 'device-to-cloud':
+            if request.endpoint == 'device-to-cloud':
                 metadata, payload = self._request_send(request)
             else:
-                metadata, payload = self._request_file_upload(request, endpoint)
+                metadata, payload = self._request_file_upload(request)
         else:  # RECEIVE, GET
-            metadata, payload = self._request_receive(request, endpoint, metadata_expression=metadata_expression, payload_expression=payload_expression)
+            metadata, payload = self._request_receive(request)
 
         return metadata, payload
