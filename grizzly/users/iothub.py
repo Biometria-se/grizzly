@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import gzip
 import json
+from time import perf_counter
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import UUID, uuid4
@@ -175,6 +176,9 @@ class IotHubUser(GrizzlyUser):
     def _request_receive(self, request: RequestTask) -> GrizzlyResponse:
         payload: str | None = None
 
+        started = int(perf_counter())
+        message_wait = int((request.arguments or {}).get('wait', '-1'))
+
         while payload is None:
             metadata, payload = self.unserialize_message(self.consumer.keystore_pop(f'{request.endpoint}::{self.device_id}'))
             log_message = f'{metadata=}, {payload=}'
@@ -221,6 +225,14 @@ class IotHubUser(GrizzlyUser):
             # // -->
 
             self.logger.info(log_message)  # @TODO: debug
+
+            # do not wait forever, if `wait` has been specified in the request arguments
+            if message_wait > -1:
+                delta = int(perf_counter()) - started
+
+                if delta >= message_wait:
+                    error_message = f'no C2D message received for {self.device_id} in {message_wait} seconds'
+                    raise RuntimeError(error_message)
 
         return metadata, payload
 
