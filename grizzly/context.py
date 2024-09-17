@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 import yaml
 from jinja2 import DebugUndefined, Environment, FileSystemLoader
 from jinja2.filters import FILTERS
+from typing_extensions import Self
 
 from grizzly.testdata import GrizzlyVariables
 from grizzly.types import MessageCallback, MessageDirection
@@ -113,9 +114,22 @@ class GrizzlyContext:
         return self._scenarios
 
 
+class DebugChainableUndefined(DebugUndefined):
+    _undefined_name: str | None
+
+    def __getattr__(self, attr: str) -> Self:
+        self._undefined_name = f'{self._undefined_name}.{attr}'
+        return self
+
+    def __getitem__(self, key: str) -> Self:
+        self._undefined_name = f"{self._undefined_name}['{key}']"
+        return self
+
+
+
 def jinja2_environment_factory() -> Environment:
     """Create a Jinja2 environment, so same instance is used throughout each grizzly scenario, with custom filters."""
-    environment = Environment(autoescape=False, loader=FileSystemLoader(Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'requests'), undefined=DebugUndefined)
+    environment = Environment(autoescape=False, loader=FileSystemLoader(Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'requests'), undefined=DebugChainableUndefined)
 
     environment.globals.update({'datetime': datetime})
 
