@@ -6,6 +6,8 @@ Supports the following request methods:
 
 * send
 * put
+* get
+* receive
 
 ## Format
 
@@ -15,11 +17,12 @@ Format of `host` is the following:
 HostName=<hostname>;DeviceId=<device key>;SharedAccessKey=<access key>
 ```
 
-`endpoint` in the request is the desired filename for the uploaded file, in the case of `SEND` and `PUT`.
-In the case of `GET` and `RECEIVE` it specifieds the internal keystore key prefix used for messages.
+For `SEND` and `PUT` requests "endpoint" must be `device-to-cloud` to tell the user to send a message to the IoT hub. If "endpoint"
+is not set to this, it will be interprented as the desired filename of an uploaded file.
 
-The metadata values `content_type` and `content_encoding` can be set to
-gzip compress the payload before upload (see example below).
+For `GET` and `RECEIVE` requests "endpoint" must be `cloud-to-device` to tell the user to receive a message from the IoT hub.
+
+The metadata values `content_type` and `content_encoding` can be set to gzip compress the payload before upload (see example below).
 
 ## Examples
 
@@ -34,9 +37,8 @@ The same example with gzip compression enabled:
 
 ```gherkin
 Given a user of type "IotHub" load testing "HostName=my_iot_host_name;DeviceId=my_device;SharedAccessKey=xxxyyyyzzz=="
-And metadata "content_type" is "application/octet-stream; charset=utf-8"
 And metadata "content_encoding" is "gzip"
-Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
+Then send request "test/blob.file" to endpoint "uploaded_blob_filename | content_type=octet_stream_utf8"
 ```
 
 """
@@ -44,13 +46,18 @@ from __future__ import annotations
 
 import gzip
 import json
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import parse_qs, urlparse
+from uuid import uuid4
 
 from azure.iot.device import IoTHubDeviceClient, Message
 from azure.storage.blob import BlobClient, ContentSettings
+from gevent import sleep as gsleep
 
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
+from grizzly_extras.arguments import parse_arguments, split_value
+from grizzly_extras.text import has_separator
+from grizzly_extras.transformer import TransformerContentType, transformer
 
 from . import GrizzlyUser, grizzlycontext
 
@@ -125,7 +132,7 @@ class IotHubUser(GrizzlyUser):
     def message_handler(self, message: Message) -> None:
         serialized_message = self.serialize_message(message)
         self.logger.info('received: %s', serialized_message)
-        self.consumer.keystore_push(f'queue::{self.device_id}', serialized_message)
+        self.consumer.keystore_push(f'cloud-to-device::{self.device_id}', serialized_message)
 
     def on_start(self) -> None:
         super().on_start()
@@ -144,66 +151,112 @@ class IotHubUser(GrizzlyUser):
         self.iot_client.disconnect()
         super().on_stop()
 
-    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        if request.method not in [RequestMethod.SEND, RequestMethod.PUT, RequestMethod.GET, RequestMethod.RECEIVE]:
-            message = f'{self.__class__.__name__} has not implemented {request.method.name}'
-            raise NotImplementedError(message)
-
-        storage_info: Optional[dict[str, Any]] = None
-        metadata: dict[str, Any] | None = None
+    def _request_receive(self, request: RequestTask, endpoint: str, *, metadata_expression: str | None, payload_expression: str | None) -> GrizzlyResponse:
         payload: str | None = None
 
+        while payload is None:
+            metadata, payload = self.unserialize_message(self.consumer.keystore_pop(f'{endpoint}::{self.device_id}'))
+            self.logger.info('metadata=%r, payload=%r', metadata, payload)
+
+            # <!-- filter cloud-to-device messages
+            if payload_expression is not None and payload is not None:
+                transform = transformer.available.get(request.response.content_type, None)
+
+                if transform is None:
+                    error_message = f'could not find a transformer for {request.response.content_type.name}'
+                    raise TypeError(error_message)
+
+                if not transform.validate(payload_expression):
+                    error_message = f'"{payload_expression}" is not a valid expression for {request.response.content_type.name}'
+                    raise TypeError(error_message)
+
+                get_values = transform.parser(payload_expression)
+                values = get_values(transform.transform(payload))
+
+                # expression had no matches in payload
+                if len(values) < 1:
+                    payload = None
+                    gsleep(0.1)
+
+            if metadata_expression is not None and metadata:
+                transform = transformer.available.get(TransformerContentType.JSON, None)
+
+                if transform is None:
+                    error_message = 'could not find a transformer for JSON'
+                    raise TypeError(error_message)
+
+                if not transform.validate(metadata_expression):
+                    error_message = f'"{metadata_expression}" is not a valid expression for JSON'
+                    raise TypeError(error_message)
+
+                get_values = transform.parser(metadata_expression)
+                values = get_values(metadata)
+
+                # expression had no matches in metadata, hence we're not interested in payload
+                if len(values) < 1:
+                    payload = None
+                    gsleep(0.1)
+            # // -->
+
+        return metadata, payload
+
+    def _request_send(self, request: RequestTask) -> GrizzlyResponse:
+        message = Message(request.source)
+        message.message_id = uuid4()
+
+        if request.response.content_type != TransformerContentType.UNDEFINED:
+            message.content_type = request.response.content_type.value
+
+        message.content_encoding = request.metadata.get('content_encoding', None) or 'utf-8'
+
+        self.iot_client.send_message(message)
+
+        return self.unserialize_message(self.serialize_message(message))
+
+    def _request_file_upload(self, request: RequestTask, endpoint: str) -> GrizzlyResponse:
+        filename = endpoint
+        storage_info: dict[str, Any] | None = None
+
         try:
-            if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
-                if not request.source:
-                    message = f'Cannot upload empty payload to endpoint {request.endpoint} in IotHubUser'
-                    raise RuntimeError(message)
+            storage_info = cast(dict[str, Any], self.iot_client.get_storage_info_for_blob(filename))
 
-                filename = request.endpoint
+            sas_url = 'https://{}/{}/{}{}'.format(
+                storage_info['hostName'],
+                storage_info['containerName'],
+                storage_info['blobName'],
+                storage_info['sasToken'],
+            )
 
-                storage_info = cast(dict[str, Any], self.iot_client.get_storage_info_for_blob(filename))
+            with BlobClient.from_blob_url(sas_url) as blob_client:
+                content_type: str | None = None
+                content_encoding: str | None = None
 
-                sas_url = 'https://{}/{}/{}{}'.format(
-                    storage_info['hostName'],
-                    storage_info['containerName'],
-                    storage_info['blobName'],
-                    storage_info['sasToken'],
-                )
+                if request.response.content_type != TransformerContentType.UNDEFINED:
+                    content_type = request.response.content_type.value
 
-                with BlobClient.from_blob_url(sas_url) as blob_client:
-                    content_type: Optional[str] = None
-                    content_encoding: Optional[str] = None
-                    if request.metadata:
-                        content_type = request.metadata.get('content_type', None)
-                        content_encoding = request.metadata.get('content_encoding', None)
+                if request.metadata:
+                    content_encoding = request.metadata.get('content_encoding', None)
 
-                    if content_encoding == 'gzip':
-                        compressed_payload: bytes = gzip.compress(request.source.encode())
-                        content_settings = ContentSettings(content_type=content_type, content_encoding=content_encoding)
-                        blob_client.upload_blob(compressed_payload, content_settings=content_settings)
-                    elif content_encoding:
-                        message = f'Unhandled request content_encoding in IotHubUser: {content_encoding}'
-                        raise RuntimeError(message)
-                    else:
-                        blob_client.upload_blob(request.source)
+                if content_encoding == 'gzip':
+                    compressed_payload: bytes = gzip.compress(cast(str, request.source).encode())
+                    content_settings = ContentSettings(content_type=content_type, content_encoding=content_encoding)
+                    metadata = blob_client.upload_blob(compressed_payload, content_settings=content_settings)
+                elif content_encoding:
+                    error_message = f'Unhandled request content_encoding in IotHubUser: {content_encoding}'
+                    raise RuntimeError(error_message)
+                else:
+                    metadata = blob_client.upload_blob(request.source)
 
-                    self.logger.debug('uploaded blob to IoT hub, filename: %s, correlationId: %s', filename, storage_info['correlationId'])
+                self.logger.debug('uploaded blob to IoT hub, filename: %s, correlationId: %s', filename, storage_info['correlationId'])
 
-                self.iot_client.notify_blob_upload_status(
-                    correlation_id=storage_info['correlationId'],
-                    is_success=True,
-                    status_code=200,
-                    status_description=f'OK: {filename}',
-                )
-
-                metadata = {}
-                payload = request.source
-            else:  # RECEIVE, GET
-                # this will "block" until a message is available on the internal keystore queue
-                metadata, payload = self.unserialize_message(self.consumer.keystore_pop(f'{request.endpoint}::{self.device_id}'))
-                self.logger.info('metadata=%r, payload=%r', metadata, payload)
-        except Exception:
-            if storage_info:
+            self.iot_client.notify_blob_upload_status(
+                correlation_id=storage_info['correlationId'],
+                is_success=True,
+                status_code=200,
+                status_description=f'OK: {filename}',
+            )
+        except:
+            if storage_info is not None:
                 self.iot_client.notify_blob_upload_status(
                     correlation_id=storage_info['correlationId'],
                     is_success=False,
@@ -214,4 +267,42 @@ class IotHubUser(GrizzlyUser):
 
             raise
         else:
-            return metadata, payload
+            if metadata is not None:
+                metadata.update({
+                    'sasUrl': sas_url,
+                })
+
+            return metadata, request.source
+
+    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
+        if request.method not in [RequestMethod.SEND, RequestMethod.PUT, RequestMethod.GET, RequestMethod.RECEIVE]:
+            error_message = f'{self.__class__.__name__} has not implemented {request.method.name}'
+            raise NotImplementedError(error_message)
+
+        metadata: dict[str, Any] | None = None
+        payload: str | None = None
+
+        metadata_expression: str | None = None
+        payload_expression: str | None = None
+
+        if has_separator(request.endpoint, '|'):
+            endpoint, endpoint_arguments = split_value(request.endpoint)
+            arguments = parse_arguments(endpoint_arguments, ':')
+            metadata_expression = arguments.get('metadata_expression', None)
+            payload_expression = arguments.get('payload_expression', None)
+        else:
+            endpoint = request.endpoint
+
+        if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
+            if not request.source:
+                error_message = f'Cannot upload empty payload to endpoint {endpoint} in IotHubUser'
+                raise RuntimeError(error_message)
+
+            if endpoint == 'device-to-cloud':
+                metadata, payload = self._request_send(request)
+            else:
+                metadata, payload = self._request_file_upload(request, endpoint)
+        else:  # RECEIVE, GET
+            metadata, payload = self._request_receive(request, endpoint, metadata_expression=metadata_expression, payload_expression=payload_expression)
+
+        return metadata, payload

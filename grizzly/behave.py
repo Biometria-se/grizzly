@@ -64,7 +64,7 @@ def before_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: A
 
     context.grizzly = grizzly
     context.start = time()
-    context.started = datetime.now(tz=None)
+    context.started = datetime.now().astimezone()
     context.last_task_count = {}
     context.exceptions = {}
     context.background_steps = getattr(feature.background, 'steps', None) or []

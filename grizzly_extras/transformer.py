@@ -33,6 +33,7 @@ class TransformerContentType(PermutationEnum):
     XML = 'application/xml'
     PLAIN = 'text/plain'
     MULTIPART_FORM_DATA = 'multipart/form-data'
+    OCTET_STREAM_UTF8 = 'application/octet-stream; charset=utf-8'
 
     @classmethod
     def from_string(cls, value: str) -> TransformerContentType:
