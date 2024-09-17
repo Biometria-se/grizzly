@@ -136,7 +136,7 @@ class IotHubUser(GrizzlyUser):
 
     def message_handler(self, message: Message) -> None:
         serialized_message = self.serialize_message(message)
-        self.logger.info('received: %s', serialized_message)
+        self.logger.info('C2D message received: %s', serialized_message)  # @TODO: debug
         self.consumer.keystore_push(f'cloud-to-device::{self.device_id}', serialized_message)
 
     def on_start(self) -> None:
@@ -161,10 +161,11 @@ class IotHubUser(GrizzlyUser):
 
         while payload is None:
             metadata, payload = self.unserialize_message(self.consumer.keystore_pop(f'{endpoint}::{self.device_id}'))
-            self.logger.info('metadata=%r, payload=%r', metadata, payload)
+            log_message = f'{metadata=}, {payload=}'
 
             # <!-- filter cloud-to-device messages
             if payload_expression is not None and payload is not None:
+                log_message = f'{log_message}, {payload_expression=}'
                 transform = transformer.available.get(request.response.content_type, None)
 
                 if transform is None:
@@ -178,12 +179,15 @@ class IotHubUser(GrizzlyUser):
                 get_values = transform.parser(payload_expression)
                 values = get_values(transform.transform(payload))
 
+                log_message = f'{log_message}, {values=}'
+
                 # expression had no matches in payload
                 if len(values) < 1:
                     payload = None
                     gsleep(0.1)
 
             if metadata_expression is not None and metadata:
+                log_message = f'{log_message}, {metadata_expression=}'
                 transform = transformer.available.get(TransformerContentType.JSON, None)
 
                 if transform is None:
@@ -197,11 +201,15 @@ class IotHubUser(GrizzlyUser):
                 get_values = transform.parser(metadata_expression)
                 values = get_values(metadata)
 
+                log_message = f'{log_message}, {values=}'
+
                 # expression had no matches in metadata, hence we're not interested in payload
                 if len(values) < 1:
                     payload = None
                     gsleep(0.1)
             # // -->
+
+            self.logger.info(log_message)  # @TODO: debug
 
         return metadata, payload
 
@@ -215,6 +223,8 @@ class IotHubUser(GrizzlyUser):
         message.content_encoding = request.metadata.get('content_encoding', None) or 'utf-8'
 
         self.iot_client.send_message(message)
+
+        self.logger.info('sent D2C message %s', str(message.message_id))  # @TODO: debug
 
         return self.unserialize_message(self.serialize_message(message))
 
