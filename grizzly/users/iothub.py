@@ -55,6 +55,7 @@ from azure.storage.blob import BlobClient, ContentSettings
 from gevent import sleep as gsleep
 
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
+from grizzly.utils import has_template
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 from grizzly_extras.transformer import TransformerContentType, transformer
@@ -150,7 +151,7 @@ class IotHubUser(GrizzlyUser):
             device_clients = self.consumer.keystore_inc(f'clients::{self.device_id}')
 
             self.iot_client.on_message_received = self.message_handler
-            self.logger.info('%s client %d, registered C2D handler', self.device_id, device_clients)
+            self.logger.info('registered device %s as C2D handler #%d', self.device_id, device_clients)
 
     def on_stop(self) -> None:
         self.iot_client.disconnect()
@@ -214,8 +215,13 @@ class IotHubUser(GrizzlyUser):
         return metadata, payload
 
     def _request_send(self, request: RequestTask) -> GrizzlyResponse:
-        message = Message(request.source)
-        message.message_id = uuid4()
+        source = cast(str, request.source)  # it hasn't come here if it was None
+        message = Message(data=None, message_id=uuid4())
+
+        if has_template(source):
+            source = self.render(source, variables={'__message__': message})
+
+        message.data = source
 
         if request.response.content_type != TransformerContentType.UNDEFINED:
             message.content_type = request.response.content_type.value

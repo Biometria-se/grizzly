@@ -95,7 +95,7 @@ class TestIterationScenario:
 
         assert logger_spy.call_count == 1
         args, _ = logger_spy.call_args_list[0]
-        assert args[0] == 'hello '
+        assert args[0] == 'hello {{ world }}'
 
         parent.user.set_variable('world', 'world!')
 

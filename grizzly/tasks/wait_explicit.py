@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 from gevent import sleep as gsleep
 
 from grizzly.exceptions import StopUser
+from grizzly.utils import has_template
 
 from . import GrizzlyTask, grizzlytask, template
 
@@ -37,7 +38,7 @@ class ExplicitWaitTask(GrizzlyTask):
         def task(parent: GrizzlyScenario) -> Any:
             try:
                 time_rendered = parent.user.render(self.time_expression)
-                if len(time_rendered.strip()) < 1:
+                if len(time_rendered.strip()) < 1 or has_template(time_rendered):
                     message = f'"{self.time_expression}" rendered into "{time_rendered}" which is not valid'
                     raise RuntimeError(message)
 

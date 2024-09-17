@@ -236,7 +236,7 @@ def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: 
 
     async_message_request_wrapper(parent, client_mock, request)
 
-    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello !'}, 'client': id(parent.user)})
+    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello {{ world }}!'}, 'client': id(parent.user)})
     async_message_request_mock.reset_mock()
 
     # template to render, variable set

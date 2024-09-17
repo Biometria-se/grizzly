@@ -96,5 +96,5 @@ class TestExplicitWaitTask:
             response_time=0,
             response_length=0,
             context=parent.user._context,
-            exception=ANY(RuntimeError, message='"{{ undefined_variable }}" rendered into "" which is not valid'),
+            exception=ANY(RuntimeError, message='"{{ undefined_variable }}" rendered into "{{ undefined_variable }}" which is not valid'),
         )

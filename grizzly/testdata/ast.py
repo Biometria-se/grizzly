@@ -119,6 +119,10 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[GrizzlyContextScenar
 
     We must then align the declared and found variables, so that `TestdataProducer` only gets variables that actually has been declared.
 
+    Also there are support for "internal" variables, which can be implementation specific that we should ignore here. These variables have dunder names, e.g.
+    a prefix and suffix being double underscore (`__`), and example is `__message__.id`, these templates will be left as-is, and needs to be rendered just in
+    time before they are used.
+
     """
     templates: dict[GrizzlyContextScenario, set[str]] = {}
 
@@ -365,7 +369,7 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
             for body in getattr(parsed, 'body', []):
                 for attributes in _getattr(body):
                     variable = _build_variable(attributes)
-                    if variable is None:
+                    if variable is None or (len(variable) > 4 and variable[:2] == '__' and variable[-2:] == '__'):
                         continue
 
                     variables.register(scenario, variable)

@@ -17,6 +17,7 @@ from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
 from grizzly.types import RequestMethod, ScenarioState
 from grizzly.users.iothub import IotHubUser
+from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import SOME
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -73,6 +74,7 @@ def parent_fixture(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> Pa
 
     blob_client_mock = mocker.MagicMock(spec=BlobClient)
     blob_client_factory_mock = mocker.patch('azure.storage.blob._blob_client.BlobClient.from_blob_url', return_value=blob_client_mock)
+    blob_client_mock.__enter__.return_value.upload_blob.return_value = {}
 
     return ParentFixture(
         parent=parent,
@@ -181,7 +183,7 @@ class TestIotHubUser:
         parent_fixture.blob_client_mock.reset_mock()
         parent_fixture.blob_client_factory_mock.reset_mock()
 
-        assert metadata == {}
+        assert metadata == {'sasUrl': 'https://some_host/some_container/some_blobsome_sas_token'}
 
         json_payload = json.loads(payload)
         assert json_payload['result']['id'] == 'ID-31337'
@@ -231,13 +233,14 @@ class TestIotHubUser:
         user.add_context(remote_variables)
         request = cast(RequestTask, user._scenario.tasks()[-1])
         request.endpoint = 'not_relevant'
+        request.response.content_type = TransformerContentType.OCTET_STREAM_UTF8
 
         request = cast(RequestTask, user._scenario.tasks()[-1])
 
         gzip_compress = mocker.patch('gzip.compress', autospec=True, return_value='this_is_compressed')
         request.metadata = {}
-        request.metadata['content_type'] = 'application/octet-stream; charset=utf-8'
         request.metadata['content_encoding'] = 'gzip'
+
         user.request(request)
 
         gzip_compress.assert_called_once()

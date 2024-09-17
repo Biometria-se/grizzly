@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
 import yaml
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import DebugUndefined, Environment, FileSystemLoader
 from jinja2.filters import FILTERS
 
 from grizzly.testdata import GrizzlyVariables
@@ -115,7 +115,7 @@ class GrizzlyContext:
 
 def jinja2_environment_factory() -> Environment:
     """Create a Jinja2 environment, so same instance is used throughout each grizzly scenario, with custom filters."""
-    environment = Environment(autoescape=False, loader=FileSystemLoader(Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'requests'))
+    environment = Environment(autoescape=False, loader=FileSystemLoader(Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'requests'), undefined=DebugUndefined)
 
     environment.globals.update({'datetime': datetime})
 
