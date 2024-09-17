@@ -56,8 +56,6 @@ from gevent import sleep as gsleep
 
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.utils import has_template
-from grizzly_extras.arguments import parse_arguments, split_value
-from grizzly_extras.text import has_separator
 from grizzly_extras.transformer import TransformerContentType, transformer
 
 from . import GrizzlyUser, grizzlycontext
@@ -84,6 +82,9 @@ class MessageJsonSerializer(json.JSONEncoder):
 class IotHubUser(GrizzlyUser):
     iot_client: IoTHubDeviceClient
     device_id: str
+
+    _startup_ignore: bool
+    _startup_ignore_count: int
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -114,6 +115,9 @@ class IotHubUser(GrizzlyUser):
             message = f'{self.__class__.__name__} needs SharedAccessKey in the query string'
             raise ValueError(message)
 
+        self._startup_ignore = True
+        self._startup_ignore_count = 0
+
     def serialize_message(self, message: Message) -> str:
         metadata = {
             'custom_properties': message.custom_properties,
@@ -136,6 +140,10 @@ class IotHubUser(GrizzlyUser):
         return message.get('metadata'), message.get('payload')
 
     def message_handler(self, message: Message) -> None:
+        if self._startup_ignore:
+            self._startup_ignore_count += 1
+            return
+
         serialized_message = self.serialize_message(message)
         self.logger.info('C2D message received: %s', serialized_message)  # @TODO: debug
         self.consumer.keystore_push(f'cloud-to-device::{self.device_id}', serialized_message)
@@ -152,6 +160,13 @@ class IotHubUser(GrizzlyUser):
 
             self.iot_client.on_message_received = self.message_handler
             self.logger.info('registered device %s as C2D handler #%d', self.device_id, device_clients)
+
+            gsleep(1.5)
+
+            self._startup_ignore = False
+
+            if self._startup_ignore_count > 0:
+                self.logger.info('consumed %d message that was left on the C2D queue for device %s', self._startup_ignore_count, self.device_id)
 
     def on_stop(self) -> None:
         self.iot_client.disconnect()
