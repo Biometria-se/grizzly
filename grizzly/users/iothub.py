@@ -48,7 +48,7 @@ import gzip
 import json
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import parse_qs, urlparse
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from azure.iot.device import IoTHubDeviceClient, Message
 from azure.storage.blob import BlobClient, ContentSettings
@@ -64,6 +64,19 @@ from . import GrizzlyUser, grizzlycontext
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
     from grizzly.types.locust import Environment
+
+
+class MessageJsonSerializer(json.JSONEncoder):
+    def default(self, value: Any) -> Any:
+        serialized_value: Any
+        if isinstance(value, UUID):
+            serialized_value = str(value)
+        elif isinstance(value, (bytes, bytearray)):
+            serialized_value = value.decode()
+        else:
+            serialized_value = super().default(value)
+
+        return serialized_value
 
 
 @grizzlycontext(context={})
@@ -101,14 +114,6 @@ class IotHubUser(GrizzlyUser):
             raise ValueError(message)
 
     def serialize_message(self, message: Message) -> str:
-        if isinstance(message.data, (bytes, bytearray)):
-            payload = message.data.decode()
-        elif isinstance(message.data, str):
-            payload = str(message.data)
-        else:
-            payload = str(message.data)
-            self.logger.warning('message data had unknown type %s', type(message.data))
-
         metadata = {
             'custom_properties': message.custom_properties,
             'message_id': message.message_id,
@@ -123,7 +128,7 @@ class IotHubUser(GrizzlyUser):
             'size': message.get_size(),
         }
 
-        return json.dumps({'metadata': metadata, 'payload': payload})
+        return json.dumps({'metadata': metadata, 'payload': message.data}, cls=MessageJsonSerializer)
 
     def unserialize_message(self, serialized_message: str) -> GrizzlyResponse:
         message = json.loads(serialized_message)
