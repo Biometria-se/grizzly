@@ -48,7 +48,7 @@ import gzip
 import json
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, cast
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote_plus, unquote_plus, urlparse
 from uuid import UUID, uuid4
 
 from azure.iot.device import IoTHubDeviceClient, Message
@@ -57,6 +57,7 @@ from gevent import sleep as gsleep
 
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.utils import has_template
+from grizzly_extras.queue import VolatileDeque
 from grizzly_extras.transformer import TransformerContentType, transformer
 
 from . import GrizzlyUser, grizzlycontext
@@ -87,8 +88,21 @@ class IotHubUser(GrizzlyUser):
     _startup_ignore: bool
     _startup_ignore_count: int
 
+    _unique: VolatileDeque[str]
+    _unique_expression: str | None
+
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
+
+        self._unique_expression = None
+
+        if '#' in self.host:
+            self.host, fragment = self.host.split('#', 1)
+
+            fragments = parse_qs(quote_plus(fragment, safe='='))
+
+            if 'UniqueExpression' in fragments:
+                self._unique_expression = unquote_plus(fragments['UniqueExpression'][0])
 
         conn_str = self.host
 
@@ -118,8 +132,9 @@ class IotHubUser(GrizzlyUser):
 
         self._startup_ignore = True
         self._startup_ignore_count = 0
+        self._unique = VolatileDeque(timeout=5.0)
 
-    def serialize_message(self, message: Message) -> str:
+    def _serialize_message(self, message: Message) -> str:
         metadata = {
             'custom_properties': message.custom_properties,
             'message_id': message.message_id,
@@ -136,16 +151,44 @@ class IotHubUser(GrizzlyUser):
 
         return json.dumps({'metadata': metadata, 'payload': message.data}, cls=MessageJsonSerializer)
 
-    def unserialize_message(self, serialized_message: str) -> GrizzlyResponse:
+    def _unserialize_message(self, serialized_message: str) -> GrizzlyResponse:
         message = json.loads(serialized_message)
         return message.get('metadata'), message.get('payload')
+
+    def _extract(self, data: Any, expression: str, content_type: TransformerContentType) -> list[str]:
+        transform = transformer.available.get(content_type, None)
+
+        if transform is None:
+            error_message = f'could not find a transformer for {content_type.name}'
+            raise TypeError(error_message)
+
+        parser = transform.parser(expression)
+
+        if isinstance(data, str):
+            data = transform.transform(data)
+
+        return parser(data)
 
     def message_handler(self, message: Message) -> None:
         if self._startup_ignore:
             self._startup_ignore_count += 1
             return
 
-        serialized_message = self.serialize_message(message)
+        serialized_message = self._serialize_message(message)
+
+        if self._unique_expression is not None:
+            _, payload = self._unserialize_message(serialized_message)
+
+            values = self._extract(payload, self._unique_expression, TransformerContentType.JSON)
+
+            if len(values) > 0:
+                value = next(iter(values))
+                if value in self._unique:
+                    self.logger.info('message id %s contained "%s", which has already been received within %d seconds', message.message_id, value, self._unique.timeout)
+                    return
+
+                self._unique.append(value)
+
         self.logger.info('C2D message received: %s', serialized_message)  # @TODO: debug
         self.consumer.keystore_push(f'cloud-to-device::{self.device_id}', serialized_message)
 
@@ -159,15 +202,19 @@ class IotHubUser(GrizzlyUser):
         if state == ScenarioState.RUNNING:
             device_clients = self.consumer.keystore_inc(f'clients::{self.device_id}')
 
-            self.iot_client.on_message_received = self.message_handler
-            self.logger.info('registered device %s as C2D handler #%d', self.device_id, device_clients)
+            # only have one C2D handler per device, independent on how many users of this type is spawned
+            if device_clients == 1:
+                self.iot_client.on_message_received = self.message_handler
+                self.logger.info('registered device %s as C2D handler', self.device_id)
 
-            gsleep(1.5)
+                gsleep(1.5)
 
-            self._startup_ignore = False
+                self._startup_ignore = False
 
-            if self._startup_ignore_count > 0:
-                self.logger.info('consumed %d message that was left on the C2D queue for device %s', self._startup_ignore_count, self.device_id)
+                if self._startup_ignore_count > 0:
+                    self.logger.info('consumed %d message that was left on the C2D queue for device %s', self._startup_ignore_count, self.device_id)
+            else:
+                self.logger.info('no C2D handler for %s', self.device_id)
 
     def on_stop(self) -> None:
         self.iot_client.disconnect()
@@ -180,7 +227,7 @@ class IotHubUser(GrizzlyUser):
         message_wait = int((request.arguments or {}).get('wait', '-1'))
 
         while payload is None:
-            metadata, payload = self.unserialize_message(self.consumer.keystore_pop(f'{request.endpoint}::{self.device_id}'))
+            metadata, payload = self._unserialize_message(self.consumer.keystore_pop(f'{request.endpoint}::{self.device_id}'))
             log_message = f'{metadata=}, {payload=}'
 
             payload_expression = (request.arguments or {}).get('payload_expression', None)
@@ -189,14 +236,8 @@ class IotHubUser(GrizzlyUser):
             # <!-- filter cloud-to-device messages
             if payload_expression is not None and payload is not None:
                 log_message = f'{log_message}, {payload_expression=}'
-                transform = transformer.available.get(request.response.content_type, None)
 
-                if transform is None:
-                    error_message = f'could not find a transformer for {request.response.content_type.name}'
-                    raise TypeError(error_message)
-
-                get_values = transform.parser(payload_expression)
-                values = get_values(transform.transform(payload))
+                values = self._extract(payload, payload_expression, request.response.content_type)
 
                 log_message = f'{log_message}, {values=}'
 
@@ -207,14 +248,8 @@ class IotHubUser(GrizzlyUser):
 
             if metadata_expression is not None and metadata:
                 log_message = f'{log_message}, {metadata_expression=}'
-                transform = transformer.available.get(TransformerContentType.JSON, None)
 
-                if transform is None:
-                    error_message = 'could not find a transformer for JSON'
-                    raise TypeError(error_message)
-
-                get_values = transform.parser(metadata_expression)
-                values = get_values(metadata)
+                values = self._extract(metadata, metadata_expression, TransformerContentType.JSON)
 
                 log_message = f'{log_message}, {values=}'
 
@@ -254,7 +289,7 @@ class IotHubUser(GrizzlyUser):
 
         self.logger.info('sent D2C message %s', str(message.message_id))  # @TODO: debug
 
-        return self.unserialize_message(self.serialize_message(message))
+        return self._unserialize_message(self._serialize_message(message))
 
     def _request_file_upload(self, request: RequestTask) -> GrizzlyResponse:
         filename = request.endpoint
