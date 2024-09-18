@@ -6,6 +6,7 @@ from contextlib import suppress
 from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
+from time import perf_counter
 from typing import TYPE_CHECKING, Any, cast
 
 import zmq.green as zmq
@@ -154,7 +155,7 @@ class TestdataConsumer:
 
         return value
 
-    def keystore_pop(self, key: str) -> str:
+    def keystore_pop(self, key: str, wait: int = -1) -> str:
         request = {
             'action': 'pop',
             'key': key,
@@ -162,9 +163,14 @@ class TestdataConsumer:
 
         value = self._keystore_pop_poll(request)
 
+        start = perf_counter()
         while value is None:
             gsleep(self.poll_interval)
             value = self._keystore_pop_poll(request)
+
+            if value is None and wait > -1 and (int(perf_counter() - start) > wait):
+                error_message = f'no message received within {wait} seconds'
+                raise RuntimeError(error_message)
 
         return value
 
