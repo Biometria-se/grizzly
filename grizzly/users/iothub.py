@@ -171,7 +171,7 @@ class IotHubUser(GrizzlyUser):
 
         if self._startup_ignore:
             self._startup_ignore_count += 1
-            self.logger.info('ignoring message: %s', serialized_message)  # @TODO: debug
+            self.logger.debug('ignoring message: %s', serialized_message)
             return
 
         if any(expression is not None for expression in [self._expression_unique, self._expression_metadata, self._expression_payload]):
@@ -181,32 +181,32 @@ class IotHubUser(GrizzlyUser):
                 values = self._extract(metadata, self._expression_metadata)
 
                 if len(values) < 1:
-                    self.logger.info('message id %s metadata did not match "%s"', message.message_id, self._expression_metadata)  # @TODO: debug
+                    self.logger.debug('message id %s metadata did not match "%s"', message.message_id, self._expression_metadata)
                     return
 
             if self._expression_payload is not None:
                 values = self._extract(payload, self._expression_payload)
 
                 if len(values) < 1:
-                    self.logger.info('message id %s payload did not match "%s"', message.message_id, self._expression_payload)  # @TODO: debug
+                    self.logger.debug('message id %s payload did not match "%s"', message.message_id, self._expression_payload)
                     return
 
             if self._expression_unique is not None:
                 values = self._extract(payload, self._expression_unique)
 
                 if len(values) < 1:
-                    self.logger.info('message id %s was an unknown message, no matches for "%s"', message.message_id, self._expression_unique)  # @TODO: debug
+                    self.logger.debug('message id %s was an unknown message, no matches for "%s"', message.message_id, self._expression_unique)
                     return
 
                 value = next(iter(values))
 
                 if value in self._unique:
-                    self.logger.info('message id %s contained "%s", which has already been received within %d seconds', message.message_id, value, self._unique.timeout)
+                    self.logger.warning('message id %s contained "%s", which has already been received within %d seconds', message.message_id, value, self._unique.timeout)
                     return
 
                 self._unique.append(value)
 
-        self.logger.info('C2D message received: %s', serialized_message)  # @TODO: debug
+        self.logger.debug('C2D message received: %s', serialized_message)
         self.consumer.keystore_push(f'cloud-to-device::{self.device_id}', serialized_message)
 
     def on_start(self) -> None:
@@ -258,7 +258,7 @@ class IotHubUser(GrizzlyUser):
 
         self.iot_client.send_message(message)
 
-        self.logger.info('sent D2C message %s', str(message.message_id))  # @TODO: debug
+        self.logger.debug('sent D2C message %s', str(message.message_id))
 
         return self._unserialize_message(self._serialize_message(message))
 
