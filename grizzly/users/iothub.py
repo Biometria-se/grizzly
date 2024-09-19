@@ -46,7 +46,7 @@ from __future__ import annotations
 
 import gzip
 import json
-from typing import TYPE_CHECKING, Any, ClassVar, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import UUID, uuid4
 

@@ -15,6 +15,7 @@ from gevent.lock import Semaphore
 from zmq.error import Again as ZMQAgain
 from zmq.error import ZMQError
 
+from grizzly.events import event, events
 from grizzly.types.locust import Environment, StopUser
 from grizzly.utils.protocols import zmq_disconnect
 
@@ -68,14 +69,16 @@ class TestdataConsumer:
         finally:
             self.stopped = True
 
-    def testdata(self, scenario: str) -> dict[str, Any] | None:
+    @event(events.testdata_request, tags={'type': 'consumer'})
+    def _testdata_request(self, *, request: dict[str, Any]) -> dict[str, Any] | None:
+        return self._request({'message': 'testdata', **request})
+
+    def testdata(self) -> dict[str, Any] | None:
         request = {
-            'message': 'testdata',
             'identifier': self.identifier,
-            'scenario': scenario,
         }
 
-        response = self._request(request)
+        response = self._testdata_request(request=request)
 
         if response is None:
             self.logger.error('no testdata received')
@@ -111,7 +114,7 @@ class TestdataConsumer:
             'key': key,
         }
 
-        response = self._keystore_request(request)
+        response = self._keystore_request(request=request)
 
         return (response or {}).get('data', None)
 
@@ -122,7 +125,7 @@ class TestdataConsumer:
             'data': value,
         }
 
-        self._keystore_request(request)
+        self._keystore_request(request=request)
 
     def keystore_inc(self, key: str, step: int = 1) -> int | None:
         request = {
@@ -131,7 +134,7 @@ class TestdataConsumer:
             'data': step,
         }
 
-        response = self._keystore_request(request)
+        response = self._keystore_request(request=request)
 
         value = (response or {}).get('data', None)
 
@@ -147,10 +150,10 @@ class TestdataConsumer:
             'data': value,
         }
 
-        self._keystore_request(request)
+        self._keystore_request(request=request)
 
     def _keystore_pop_poll(self, request: dict[str, Any]) -> str | None:
-        response = self._keystore_request(request)
+        response = self._keystore_request(request=request)
         value: str | None = (response or {}).get('data', None)
 
         return value
@@ -180,15 +183,13 @@ class TestdataConsumer:
             'key': key,
         }
 
-        self._keystore_request(request)
+        self._keystore_request(request=request)
 
-    def _keystore_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
-        request.update({
-            'message': 'keystore',
-            'identifier': self.identifier,
-        })
+    @event(events.keystore_request, tags={'type': 'consumer'})
+    def _keystore_request(self, *, request: dict[str, Any]) -> dict[str, Any] | None:
+        request.update({'identifier': self.identifier})
 
-        return self._request(request)
+        return self._request({'message': 'keystore', **request})
 
     def _request(self, request: dict[str, str]) -> dict[str, Any] | None:
         with self.semaphore:  # one at a time
@@ -311,7 +312,8 @@ class TestdataProducer:
             gsleep(0.1)
             self.persist_data()
 
-    def _handle_request_keystore(self, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912
+    @event(events.keystore_request, tags={'type': 'producer'})
+    def _handle_request_keystore(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912
         response = request
         key: str | None  = response.get('key', None)
 
@@ -389,14 +391,14 @@ class TestdataProducer:
 
         return response
 
-    def _handle_request_testdata(self, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0912
-        consumer_identifier = request.get('identifier', '')
+    @event(events.testdata_request, tags={'type': 'producer'})
+    def _handle_request_testdata(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0912
+        scenario_name = request.get('identifier', '')
         response: dict[str, Any] = {
             'action': 'stop',
         }
 
         try:
-            scenario_name = request['scenario']
             scenario = self.grizzly.scenarios.find_by_class_name(scenario_name)
 
             if scenario is not None:
@@ -456,12 +458,12 @@ class TestdataProducer:
 
                 if scenario_name in self.scenarios_iteration:
                     self.scenarios_iteration[scenario_name] += 1
-                    self.logger.debug('%s/%s: iteration=%d', consumer_identifier, scenario_name, self.scenarios_iteration[scenario_name])
+                    self.logger.debug('%s: iteration=%d', scenario_name, self.scenarios_iteration[scenario_name])
         except TypeError:
             response = {
                 'action': 'stop',
             }
-            self.logger.exception('test data error, stop consumer %s', consumer_identifier)
+            self.logger.exception('test data error, stop consumer %s', scenario_name)
 
         return response
 
@@ -477,9 +479,9 @@ class TestdataProducer:
 
                     with self.semaphore:
                         if recv['message'] == 'keystore':
-                            response = self._handle_request_keystore(recv)
+                            response = self._handle_request_keystore(request=recv)
                         elif recv['message'] == 'testdata':
-                            response = self._handle_request_testdata(recv)
+                            response = self._handle_request_testdata(request=recv)
                         else:
                             self.logger.error('received unknown message "%s"', recv['message'])
                             response = {}

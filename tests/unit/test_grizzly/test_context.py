@@ -285,6 +285,7 @@ class TestGrizzlyContext:
             'state',
             'scenario',
             'scenarios',
+            'events',
         ]
         expected_attributes.sort()
 

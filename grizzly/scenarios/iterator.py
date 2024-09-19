@@ -249,7 +249,7 @@ class IteratorScenario(GrizzlyScenario):
         # scenario timer
         self.start = perf_counter()
 
-        remote_context = self.consumer.testdata(self.user._scenario.class_name)
+        remote_context = self.consumer.testdata()
 
         if remote_context is None:
             self.logger.debug('no iteration data available, stop scenario')

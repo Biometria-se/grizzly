@@ -168,7 +168,7 @@ class TestIterationScenario:
         parent.consumer = TestdataConsumer(parent)
 
         def mock_request(data: Optional[dict[str, Any]]) -> None:
-            def testdata_request(self: TestdataConsumer, scenario: str) -> Optional[dict[str, Any]]:  # noqa: ARG001
+            def testdata_request(self: TestdataConsumer) -> Optional[dict[str, Any]]:  # noqa: ARG001
                 if data is None or data == {}:
                     return None
 

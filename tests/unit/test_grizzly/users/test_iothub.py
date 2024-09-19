@@ -146,14 +146,6 @@ class TestIotHubUser:
 
         assert test.host == CONNECTION_STRING
         assert test.device_id == 'my_device'
-        assert test._unique_expression is None
-
-        test_cls.host = f'{CONNECTION_STRING}#UniqueExpression=$.body.test'
-        test = test_cls(environment)
-
-        assert test.host == CONNECTION_STRING
-        assert test.device_id == 'my_device'
-        assert test._unique_expression == '$.body.test'
 
     def test_send(self, parent_fixture: ParentFixture) -> None:
         user = parent_fixture.user

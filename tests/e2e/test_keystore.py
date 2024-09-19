@@ -68,14 +68,14 @@ def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
     assert "key_holder_2=hello, key_holder_3={'hello': 'world'}" in result
     assert "foobar_push: 10, 20, 30" in result
     assert (
-        result.index("producing {'action': 'push', 'key': 'foobar::push', 'data': 10, 'message': 'keystore', 'identifier': 'IteratorScenario_001'}")
-        < result.index("producing {'action': 'push', 'key': 'foobar::push', 'data': 20, 'message': 'keystore', 'identifier': 'IteratorScenario_001'}")
+        result.index("producing {'message': 'keystore', 'action': 'push', 'key': 'foobar::push', 'data': 10, 'identifier': 'IteratorScenario_001'}")
+        < result.index("producing {'message': 'keystore', 'action': 'push', 'key': 'foobar::push', 'data': 20, 'identifier': 'IteratorScenario_001'}")
     )
     assert (
-        result.index("producing {'action': 'push', 'key': 'foobar::push', 'data': 20, 'message': 'keystore', 'identifier': 'IteratorScenario_001'}")
-        < result.index("producing {'action': 'push', 'key': 'foobar::push', 'data': 30, 'message': 'keystore', 'identifier': 'IteratorScenario_001'}")
+        result.index("producing {'message': 'keystore', 'action': 'push', 'key': 'foobar::push', 'data': 20, 'identifier': 'IteratorScenario_001'}")
+        < result.index("producing {'message': 'keystore', 'action': 'push', 'key': 'foobar::push', 'data': 30, 'identifier': 'IteratorScenario_001'}")
     )
     assert (
-        result.index("producing {'action': 'push', 'key': 'foobar::push', 'data': 30, 'message': 'keystore', 'identifier': 'IteratorScenario_001'}")
-        < result.index("producing {'action': 'pop', 'key': 'foobar::push', 'message': 'keystore', 'identifier': 'IteratorScenario_002', 'data': 10}")
+        result.index("producing {'message': 'keystore', 'action': 'push', 'key': 'foobar::push', 'data': 30, 'identifier': 'IteratorScenario_001'}")
+        < result.index("producing {'message': 'keystore', 'action': 'pop', 'key': 'foobar::push', 'identifier': 'IteratorScenario_002', 'data': 10}")
     )

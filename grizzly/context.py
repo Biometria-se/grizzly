@@ -20,6 +20,7 @@ from grizzly.utils import MergeYamlTag, flatten, merge_dicts
 if TYPE_CHECKING:  # pragma: no cover
     from locust.dispatch import UsersDispatcher
 
+    from grizzly.events import GrizzlyEvents
     from grizzly.types.behave import Scenario
     from grizzly.types.locust import LocalRunner, MasterRunner, WorkerRunner
 
@@ -68,6 +69,8 @@ class GrizzlyContext:
     _state: GrizzlyContextState
     _setup: GrizzlyContextSetup
     _scenarios: GrizzlyContextScenarios
+    _events: GrizzlyEvents
+
 
     def __new__(cls, *_args: Any, **_kwargs: Any) -> GrizzlyContext:  # noqa: PYI034
         """Class is a singleton, there should only be once instance of it."""
@@ -87,9 +90,11 @@ class GrizzlyContext:
 
     def __init__(self) -> None:
         if not self._initialized:
+            from grizzly.events import events
             self._setup = GrizzlyContextSetup()
             self._scenarios = GrizzlyContextScenarios(self)
             self._state = GrizzlyContextState()
+            self._events = events
             self._initialized = True
 
     @property
@@ -112,6 +117,10 @@ class GrizzlyContext:
     @property
     def scenarios(self) -> GrizzlyContextScenarios:
         return self._scenarios
+
+    @property
+    def events(self) -> GrizzlyEvents:
+        return self._events
 
 
 class DebugChainableUndefined(DebugUndefined):
