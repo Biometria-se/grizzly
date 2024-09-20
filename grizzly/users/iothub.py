@@ -54,6 +54,7 @@ from azure.iot.device import IoTHubDeviceClient, Message
 from azure.storage.blob import BlobClient, ContentSettings
 from gevent import sleep as gsleep
 
+from grizzly.events import GrizzlyEventDecoder, event, events
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.utils import has_template
 from grizzly_extras.queue import VolatileDeque
@@ -79,22 +80,45 @@ class MessageJsonSerializer(json.JSONEncoder):
         return serialized_value
 
 
+class IotMessageDecoder(GrizzlyEventDecoder):
+    def __call__(
+        self,
+        *args: Any,
+        tags: dict[str, str | None] | None,
+        return_value: Any,  # noqa: ARG002
+        exception: Exception | None,
+        **kwargs: Any,
+    ) -> tuple[dict[str, Any], dict[str, str | None]]:
+        if tags is None:
+            tags = {}
+
+        message = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
+
+        metadata, _ = IotHubUser._unserialize_message(IotHubUser._serialize_message(message))
+
+        metrics: dict[str, Any] = {
+            'custom_properties': (metadata or {}).get('custom_properties'),
+            'size': (metadata or {}).get('size'),
+            'message_id': (metadata or {}).get('message_id'),
+            'error': None,
+        }
+
+        if exception is not None:
+            metrics.update({'error': str(exception)})
+
+        return metrics, tags
+
+
 @grizzlycontext(context={
     'expression': {
         'unique': None,
         'metadata': None,
         'payload': None,
     },
-    'ignore': {
-        'time': None,
-    },
 })
 class IotHubUser(GrizzlyUser):
     iot_client: IoTHubDeviceClient
     device_id: str
-
-    _startup_ignore: bool
-    _startup_ignore_count: int
 
     _unique: VolatileDeque[str]
     _expression_unique: str | None
@@ -136,7 +160,8 @@ class IotHubUser(GrizzlyUser):
         self._expression_payload = self._context.get('expression', {}).get('payload', None)
         self._expression_metadata = self._context.get('expression', {}).get('metadata', None)
 
-    def _serialize_message(self, message: Message) -> str:
+    @classmethod
+    def _serialize_message(cls, message: Message) -> str:
         metadata = {
             'custom_properties': message.custom_properties,
             'message_id': message.message_id,
@@ -153,7 +178,8 @@ class IotHubUser(GrizzlyUser):
 
         return json.dumps({'metadata': metadata, 'payload': message.data}, cls=MessageJsonSerializer)
 
-    def _unserialize_message(self, serialized_message: str) -> GrizzlyResponse:
+    @classmethod
+    def _unserialize_message(cls, serialized_message: str) -> GrizzlyResponse:
         message = json.loads(serialized_message)
         return message.get('metadata'), message.get('payload')
 
@@ -166,13 +192,9 @@ class IotHubUser(GrizzlyUser):
 
         return parser(data)
 
+    @event(events.user_event, tags={'type': 'iot::cloud-to-device'}, decoder=IotMessageDecoder(arg=0))
     def message_handler(self, message: Message) -> None:
         serialized_message = self._serialize_message(message)
-
-        if self._startup_ignore:
-            self._startup_ignore_count += 1
-            self.logger.debug('ignoring message: %s', serialized_message)
-            return
 
         if any(expression is not None for expression in [self._expression_unique, self._expression_metadata, self._expression_payload]):
             metadata, payload = self._unserialize_message(serialized_message)

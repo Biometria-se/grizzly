@@ -4,8 +4,14 @@ Utilities related to handling text.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from enum import Enum, EnumMeta
+from json import JSONDecodeError
+from json import loads as jsonloads
 from typing import Any, Callable, Optional
+
+from dateutil.parser import ParserError
+from dateutil.parser import parse as date_parse
 
 
 class permutation:
@@ -164,3 +170,14 @@ def has_separator(separator: str, value: str) -> bool:
         return value[left_index + 1] not in operators
     except IndexError:
         return separator in value
+
+
+def caster(value: Any) -> Any:
+    with suppress(JSONDecodeError):
+        value = jsonloads(value)
+
+    if isinstance(value, str):
+        with suppress(ParserError):
+            value = date_parse(value)
+
+    return value

@@ -15,7 +15,7 @@ from typing import Any, Callable, ClassVar, Optional, Union, cast
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML  # noqa: N812
 
-from .text import PermutationEnum, has_sequence
+from .text import PermutationEnum, caster, has_sequence
 
 
 class TransformerError(Exception):
@@ -125,29 +125,61 @@ class JsonTransformer(Transformer):
         return valid
 
     @classmethod
+    def _op_eq(cls, actual: str, expected: str) -> bool:
+        _actual = caster(actual)
+        _expected = caster(expected)
+
+        return cast(bool, _actual == _expected)
+
+    @classmethod
+    def _op_in(cls, actual: str, expected: list[str]) -> bool:
+        return actual in expected
+
+    @classmethod
+    def _op_ge(cls, actual: str, expected: str) -> bool:
+        _actual = caster(actual)
+        _expected = caster(expected)
+
+        return cast(bool, _actual >= _expected)
+
+    @classmethod
+    def _op_le(cls, actual: str, expected: str) -> bool:
+        _actual = caster(actual)
+        _expected = caster(expected)
+
+        return cast(bool, _actual >= _expected)
+
+    @classmethod
     def parser(cls, expression: str) -> Callable[[Any], list[str]]:
         try:
-            expected: Optional[Union[str, list[str]]] = None
-            sequence: Optional[str] = None
+            expected: str | list[str] | None = None
+            assertion: Callable[[Any, Any], bool] | None = None
 
-            # we only have one instance of equals
-            has_equals = has_sequence('==', expression)
-            has_or = has_sequence('|=', expression)
+            operators: list[tuple[str, Callable[[Any, Any], bool]]] = [
+                ('==', cls._op_eq),
+                ('|=', cls._op_in),
+                ('>=', cls._op_ge),
+                ('<=', cls._op_le),
+            ]
 
-            if (has_equals or has_or) and not ('?' in expression and '@' in expression):
-                sequence = '==' if has_equals else '|='
-                expression, expected_value = expression.split(sequence, 1)
-                expected_value = expected_value.strip('"\'')
+            if not any(char in expression for char in ['?', '@']) and any(char in expression for char, _ in operators):
+                for op, func in operators:
+                    if has_sequence(op, expression):
+                        expression, expected_value = expression.split(op, 1)
+                        expected_value = expected_value.strip('"\'')
 
-                if has_or:
-                    # make string that is json compatible
-                    if expected_value[0] in ['"', "'"] and expected_value[0] == expected_value[-1]:
-                        expected_value = expected_value[1:-1]
+                        if op == '|=':
+                            # make string that is json compatible
+                            if expected_value[0] in ['"', "'"] and expected_value[0] == expected_value[-1]:
+                                expected_value = expected_value[1:-1]
 
-                    expected_value = expected_value.replace("'", '"')
-                    expected = [str(ev) for ev in cast(list[str], jsonloads(expected_value))]
-                else:
-                    expected = expected_value
+                            expected_value = expected_value.replace("'", '"')
+                            expected = [str(ev) for ev in cast(list[str], jsonloads(expected_value))]
+                        else:
+                            expected = expected_value
+
+                        assertion = func
+                        break
 
             if not cls.validate(expression):
                 message = 'not a valid expression'
@@ -169,7 +201,7 @@ class JsonTransformer(Transformer):
 
                     value = jsondumps(m.value) if isinstance(m.value, (dict, list)) else str(m.value)
 
-                    if expected is None or ((has_equals and expected == value) or (has_or and value in expected)):
+                    if expected is None or (assertion is not None and assertion(value, expected)):
                         values.append(value)
 
                 return values

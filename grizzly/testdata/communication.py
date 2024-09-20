@@ -15,7 +15,7 @@ from gevent.lock import Semaphore
 from zmq.error import Again as ZMQAgain
 from zmq.error import ZMQError
 
-from grizzly.events import event, events
+from grizzly.events import GrizzlyEventDecoder, event, events
 from grizzly.types.locust import Environment, StopUser
 from grizzly.utils.protocols import zmq_disconnect
 
@@ -27,6 +27,57 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.types import TestdataType
+
+
+class KeystoreDecoder(GrizzlyEventDecoder):
+    def __call__(
+        self,
+        *args: Any,
+        tags: dict[str, str | None] | None,
+        return_value: Any,  # noqa: ARG002
+        exception: Exception | None,
+        **kwargs: Any,
+    ) -> tuple[dict[str, Any], dict[str, str | None]]:
+        request = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
+
+        tags = {
+            'key': request.get('key'),
+            'action': request.get('action'),
+            'identifier': request.get('identifier'),
+            **(tags or {}),
+        }
+
+        metrics: dict[str, Any] = {'error': None}
+
+        if exception is not None:
+            metrics.update({'error': str(exception)})
+
+        return metrics, tags
+
+
+class TestdataDecoder(GrizzlyEventDecoder):
+    def __call__(
+        self,
+        *args: Any,
+        tags: dict[str, str | None] | None,
+        return_value: Any,
+        exception: Exception | None,
+        **kwargs: Any,
+    ) -> tuple[dict[str, Any], dict[str, str | None]]:
+        request = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
+
+        tags = {
+            'action': (return_value or {}).get('action'),
+            'identifier': request.get('identifier'),
+            **(tags or {}),
+        }
+
+        metrics: dict[str, Any] = {'error': None}
+
+        if exception is not None:
+            metrics.update({'error': str(exception)})
+
+        return metrics, tags
 
 
 class TestdataConsumer:
@@ -69,7 +120,7 @@ class TestdataConsumer:
         finally:
             self.stopped = True
 
-    @event(events.testdata_request, tags={'type': 'consumer'})
+    @event(events.testdata_request, tags={'type': 'consumer'}, decoder=TestdataDecoder(arg='request'))
     def _testdata_request(self, *, request: dict[str, Any]) -> dict[str, Any] | None:
         return self._request({'message': 'testdata', **request})
 
@@ -185,7 +236,7 @@ class TestdataConsumer:
 
         self._keystore_request(request=request)
 
-    @event(events.keystore_request, tags={'type': 'consumer'})
+    @event(events.keystore_request, tags={'type': 'consumer'}, decoder=KeystoreDecoder(arg='request'))
     def _keystore_request(self, *, request: dict[str, Any]) -> dict[str, Any] | None:
         request.update({'identifier': self.identifier})
 
@@ -312,7 +363,7 @@ class TestdataProducer:
             gsleep(0.1)
             self.persist_data()
 
-    @event(events.keystore_request, tags={'type': 'producer'})
+    @event(events.keystore_request, tags={'type': 'producer'}, decoder=KeystoreDecoder(arg='request'))
     def _handle_request_keystore(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912
         response = request
         key: str | None  = response.get('key', None)
@@ -391,7 +442,7 @@ class TestdataProducer:
 
         return response
 
-    @event(events.testdata_request, tags={'type': 'producer'})
+    @event(events.testdata_request, tags={'type': 'producer'}, decoder=TestdataDecoder(arg='request'))
     def _handle_request_testdata(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0912
         scenario_name = request.get('identifier', '')
         response: dict[str, Any] = {

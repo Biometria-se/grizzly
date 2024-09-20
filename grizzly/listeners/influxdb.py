@@ -160,8 +160,9 @@ class InfluxDbListener:
         self.environment.events.usage_monitor.add_listener(self.usage_monitor)
         self.environment.events.quit.add_listener(self.on_quit)
 
-        self.grizzly.events.keystore_request.add_listener(self.on_keystore_request)
-        self.grizzly.events.testdata_request.add_listener(self.on_testdata_request)
+        self.grizzly.events.keystore_request.add_listener(self.on_grizzly_event)
+        self.grizzly.events.testdata_request.add_listener(self.on_grizzly_event)
+        self.grizzly.events.user_event.add_listener(self.on_grizzly_event)
 
     def on_quit(self, *_args: Any, **_kwargs: Any) -> None:
         self._finished = True
@@ -276,70 +277,13 @@ class InfluxDbListener:
 
         self._events.append(event)
 
-    def on_keystore_request(
-            self, *,
-            timestamp: str,
-            response_time: float,
-            kwargs: dict[str, Any],
-            tags: dict[str, str | None],
-            measurement: str | None,
-            return_value: dict[str, Any] | None,
+    def on_grizzly_event(
+        self, *,
+        timestamp: str,
+        metrics: dict[str, Any],
+        tags: dict[str, str | None],
+        measurement: str,
     ) -> None:
-        if return_value is None:
-            return_value = {}
-
-        if measurement is None:
-            measurement = 'request_keystore'
-
-        request = kwargs.get('request')
-        if request is None:
-            return
-
-        tags = {
-            'key': request.get('key'),
-            'action': request.get('action'),
-            'identifier': request.get('identifier'),
-            **tags,
-        }
-
-        metrics: dict[str, Any] = {
-            'response_time': response_time,
-            'error': return_value.get('error'),
-        }
-
-        self._create_event(timestamp, measurement, tags, metrics)
-
-    def on_testdata_request(
-            self, *,
-            timestamp: str,
-            response_time: float,
-            kwargs: dict[str, Any],
-            tags: dict[str, str | None],
-            measurement: str | None,
-            return_value: dict[str, Any] | None,
-    ) -> None:
-        if return_value is None:
-            return_value = {}
-
-        request = kwargs.get('request')
-
-        if request is None:
-            return
-
-        if measurement is None:
-            measurement = 'request_testdata'
-
-        tags = {
-            'action': return_value.get('action'),
-            'identifier': request.get('identifier'),
-            **tags,
-        }
-
-        metrics: dict[str, Any] = {
-            'response_time': response_time,
-            'error': return_value.get('error'),
-        }
-
         self._create_event(timestamp, measurement, tags, metrics)
 
     def _log_request(

@@ -178,18 +178,15 @@ value3,value4
                 testdata_request_spy.assert_called_once_with(
                     reverse=False,
                     timestamp=ANY(str),
-                    response_time=ANY(float),
-                    return_value={
+                    tags={
                         'action': 'consume',
-                        'data': ANY(dict),
+                        'type': 'producer',
+                        'identifier': grizzly.scenario.class_name,
                     },
-                    tags={'type': 'producer'},
                     measurement=None,
-                    kwargs={
-                        'request': {
-                            'message': 'testdata',
-                            'identifier': grizzly.scenario.class_name,
-                        },
+                    metrics={
+                        'response_time': ANY(float),
+                        'error': None,
                     },
                 )
                 testdata_request_spy.reset_mock()
@@ -225,24 +222,16 @@ value3,value4
                 keystore_request_spy.assert_called_once_with(
                     reverse=False,
                     timestamp=ANY(str),
-                    response_time=ANY(float),
-                    return_value={
-                        'message': 'keystore',
+                    tags={
                         'identifier': grizzly.scenario.class_name,
                         'action': 'set',
                         'key': 'foobar',
-                        'data': {'hello': 'world'},
+                        'type': 'producer',
                     },
-                    tags={'type': 'producer'},
                     measurement=None,
-                    kwargs={
-                        'request': {
-                            'message': 'keystore',
-                            'identifier': grizzly.scenario.class_name,
-                            'action': 'set',
-                            'key': 'foobar',
-                            'data': {'hello': 'world'},
-                        },
+                    metrics={
+                        'response_time': ANY(float),
+                        'error': None,
                     },
                 )
                 assert message == {
@@ -920,17 +909,15 @@ class TestTestdataConsumer:
             testdata_request_spy.assert_called_once_with(
                 reverse=False,
                 timestamp=ANY(str),
-                response_time=ANY(float),
-                return_value={
+                tags={
+                    'type': 'consumer',
                     'action': 'consume',
-                    'data': ANY(dict),
+                    'identifier': consumer.identifier,
                 },
-                tags={'type': 'consumer'},
                 measurement=None,
-                kwargs={
-                    'request': {
-                        'identifier': consumer.identifier,
-                    },
+                metrics={
+                    'error': None,
+                    'response_time': ANY(float),
                 },
             )
             testdata_request_spy.reset_mock()
@@ -1047,22 +1034,16 @@ class TestTestdataConsumer:
         keystore_request_spy.assert_called_once_with(
             reverse=False,
             timestamp=ANY(str),
-            response_time=ANY(float),
-            return_value={
+            tags={
                 'action': 'get',
                 'key': 'hello',
-                'message': 'keystore',
                 'identifier': consumer.identifier,
-                'data': None,
+                'type': 'consumer',
             },
-            tags={'type': 'consumer'},
             measurement=None,
-            kwargs={
-                'request': {
-                    'action': 'get',
-                    'key': 'hello',
-                    'identifier': consumer.identifier,
-                },
+            metrics={
+                'response_time': ANY(float),
+                'error': None,
             },
         )
         keystore_request_spy.reset_mock()
@@ -1106,23 +1087,16 @@ class TestTestdataConsumer:
         keystore_request_spy.assert_called_once_with(
             reverse=False,
             timestamp=ANY(str),
-            response_time=ANY(float),
-            return_value={
+            tags={
                 'action': 'set',
                 'key': 'world',
-                'message': 'keystore',
                 'identifier': consumer.identifier,
-                'data': {'hello': 'world'},
+                'type': 'consumer',
             },
-            tags={'type': 'consumer'},
             measurement=None,
-            kwargs={
-                'request': {
-                    'action': 'set',
-                    'key': 'world',
-                    'identifier': consumer.identifier,
-                    'data': {'hello': 'world'},
-                },
+            metrics={
+                'response_time': ANY(float),
+                'error': None,
             },
         )
         keystore_request_spy.reset_mock()
@@ -1161,23 +1135,16 @@ class TestTestdataConsumer:
         keystore_request_spy.assert_called_once_with(
             reverse=False,
             timestamp=ANY(str),
-            response_time=ANY(float),
-            return_value={
+            tags={
                 'action': 'inc',
                 'key': 'counter',
-                'message': 'keystore',
                 'identifier': consumer.identifier,
-                'data': 10,
+                'type': 'consumer',
             },
-            tags={'type': 'consumer'},
             measurement=None,
-            kwargs={
-                'request': {
-                    'action': 'inc',
-                    'key': 'counter',
-                    'identifier': consumer.identifier,
-                    'data': 10,
-                },
+            metrics={
+                'response_time': ANY(float),
+                'error': None,
             },
         )
         keystore_request_spy.reset_mock()
@@ -1205,23 +1172,16 @@ class TestTestdataConsumer:
         keystore_request_spy.assert_called_once_with(
             reverse=False,
             timestamp=ANY(str),
-            response_time=ANY(float),
-            return_value={
+            tags={
                 'action': 'push',
                 'key': 'foobar',
-                'message': 'keystore',
                 'identifier': consumer.identifier,
-                'data': 'hello',
+                'type': 'consumer',
             },
-            tags={'type': 'consumer'},
             measurement=None,
-            kwargs={
-                'request': {
-                    'action': 'push',
-                    'key': 'foobar',
-                    'identifier': consumer.identifier,
-                    'data': 'hello',
-                },
+            metrics={
+                'response_time': ANY(float),
+                'error': None,
             },
         )
 
@@ -1264,21 +1224,15 @@ class TestTestdataConsumer:
         keystore_request_spy.assert_called_once_with(
             reverse=False,
             timestamp=ANY(str),
-            response_time=ANY(float),
-            return_value={
+            tags={
                 'action': 'del',
                 'key': 'foobar',
-                'message': 'keystore',
                 'identifier': consumer.identifier,
-                'data': None,
+                'type': 'consumer',
             },
-            tags={'type': 'consumer'},
             measurement=None,
-            kwargs={
-                'request': {
-                    'action': 'del',
-                    'key': 'foobar',
-                    'identifier': consumer.identifier,
-                },
+            metrics={
+                'response_time': ANY(float),
+                'error': None,
             },
         )

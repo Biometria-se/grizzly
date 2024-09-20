@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
@@ -140,7 +140,10 @@ def jinja2_environment_factory() -> Environment:
     """Create a Jinja2 environment, so same instance is used throughout each grizzly scenario, with custom filters."""
     environment = Environment(autoescape=False, loader=FileSystemLoader(Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'requests'), undefined=DebugChainableUndefined)
 
-    environment.globals.update({'datetime': datetime})
+    environment.globals.update({
+        'datetime': datetime,
+        'timezone': timezone,
+    })
 
     return environment
 
