@@ -92,12 +92,18 @@ class IotMessageDecoder(GrizzlyEventDecoder):
         if tags is None:
             tags = {}
 
+        instance = args[0]
         message = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
 
         metadata, _ = IotHubUser._unserialize_message(IotHubUser._serialize_message(message))
 
+        tags = {
+            'identifier': instance.device_id,
+            **tags,
+            **(metadata or {}).get('custom_properties', {}),
+        }
+
         metrics: dict[str, Any] = {
-            'custom_properties': (metadata or {}).get('custom_properties'),
             'size': (metadata or {}).get('size'),
             'message_id': (metadata or {}).get('message_id'),
             'error': None,
@@ -192,7 +198,7 @@ class IotHubUser(GrizzlyUser):
 
         return parser(data)
 
-    @event(events.user_event, tags={'type': 'iot::cloud-to-device'}, decoder=IotMessageDecoder(arg=0))
+    @event(events.user_event, tags={'type': 'iot::cloud-to-device'}, decoder=IotMessageDecoder(arg=1))  # 0 = self...
     def message_handler(self, message: Message) -> None:
         serialized_message = self._serialize_message(message)
 

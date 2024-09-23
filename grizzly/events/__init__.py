@@ -1,8 +1,8 @@
 """Logic for grizzly specific events."""
 from __future__ import annotations
 
+import logging
 from abc import ABCMeta, abstractmethod
-from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import wraps
@@ -18,6 +18,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 GrizzlyEventHandlerFunc = Callable[..., None]
+
+
+logger = logging.getLogger('grizzly.events')
 
 
 class GrizzlyEventHandlerClass(metaclass=ABCMeta):
@@ -159,7 +162,7 @@ def event(
                 response_time = (perf_counter() - start) * 1000
                 timestamp = datetime.now(timezone.utc).isoformat()
 
-                with suppress(Exception):
+                try:
                     metrics, decoded_tags = decoder(*args, tags=tags, return_value=return_value, exception=exception, **kwargs)
 
                     if tags is not None:
@@ -176,6 +179,8 @@ def event(
                         measurement=_measurement,
                         metrics=metrics,
                     )
+                except:
+                    logger.exception('failed to trigger event')
 
             return return_value
 
