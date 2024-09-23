@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import wraps
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, Union
 
 from locust.event import EventHook
 
@@ -43,7 +43,7 @@ class GrizzlyEventHandlerClass(metaclass=ABCMeta):
         ...
 
 
-GrizzlyEventHandler = GrizzlyEventHandlerFunc | GrizzlyEventHandlerClass
+GrizzlyEventHandler = Union[GrizzlyEventHandlerFunc, GrizzlyEventHandlerClass]
 
 
 class GrizzlyInternalEventHandler(Protocol):
@@ -56,8 +56,6 @@ class GrizzlyInternalEventHandler(Protocol):
 
 
 class GrizzlyEventHook(EventHook):
-    """Override locust.events.EventHook to get types, and not to catch any exceptions."""
-
     _handlers: list[GrizzlyEventHandler]
 
     def __init__(self) -> None:
@@ -115,9 +113,16 @@ def grizzly_internal_event_hook_factory(name: str) -> Callable[[], GrizzlyIntern
 
 @dataclass
 class GrizzlyEvents:
+    """Internal `grizzly` events, supported by `grizzly.listeners.influxdb`."""
+
     keystore_request: GrizzlyInternalEventHook = field(init=False, default_factory=grizzly_internal_event_hook_factory('request_keystore'))
+    """Triggered by a keystore request, both from producer and consumer, it will be triggered by any step that uses {@pylink grizzly.tasks.keystore}."""
+
     testdata_request: GrizzlyInternalEventHook = field(init=False, default_factory=grizzly_internal_event_hook_factory('request_testdata'))
+    """Triggered by a testdata request, which is done in the beginning of each iteration of a scenario."""
+
     user_event: GrizzlyInternalEventHook = field(init=False, default_factory=grizzly_internal_event_hook_factory('user_event'))
+    """This can be triggered by a {@pylink grizzly.users}, i.e. the handling of C2D messages in {@pylink grizzly.users.iothub} user."""
 
 
 class GrizzlyEventDecoder(metaclass=ABCMeta):

@@ -35,7 +35,8 @@ Executions of this task will be visible in `locust` request statistics with requ
 
 ### `endpoint`
 
-All arguments will be removed from `endpoint` before creating the task instance.
+All pipe arguments will be removed from `endpoint` before creating the task instance. Depending on the {@pylink grizzly.users}, other
+pipe arguments might be supported.
 
 ```plain
 <endpoint> [| content_type=<content_type>]

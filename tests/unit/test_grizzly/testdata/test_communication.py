@@ -183,7 +183,7 @@ value3,value4
                         'type': 'producer',
                         'identifier': grizzly.scenario.class_name,
                     },
-                    measurement=None,
+                    measurement='request_testdata',
                     metrics={
                         'response_time': ANY(float),
                         'error': None,
@@ -228,7 +228,7 @@ value3,value4
                         'key': 'foobar',
                         'type': 'producer',
                     },
-                    measurement=None,
+                    measurement='request_keystore',
                     metrics={
                         'response_time': ANY(float),
                         'error': None,
@@ -914,7 +914,7 @@ class TestTestdataConsumer:
                     'action': 'consume',
                     'identifier': consumer.identifier,
                 },
-                measurement=None,
+                measurement='request_testdata',
                 metrics={
                     'error': None,
                     'response_time': ANY(float),
@@ -1040,7 +1040,7 @@ class TestTestdataConsumer:
                 'identifier': consumer.identifier,
                 'type': 'consumer',
             },
-            measurement=None,
+            measurement='request_keystore',
             metrics={
                 'response_time': ANY(float),
                 'error': None,
@@ -1093,7 +1093,7 @@ class TestTestdataConsumer:
                 'identifier': consumer.identifier,
                 'type': 'consumer',
             },
-            measurement=None,
+            measurement='request_keystore',
             metrics={
                 'response_time': ANY(float),
                 'error': None,
@@ -1141,7 +1141,7 @@ class TestTestdataConsumer:
                 'identifier': consumer.identifier,
                 'type': 'consumer',
             },
-            measurement=None,
+            measurement='request_keystore',
             metrics={
                 'response_time': ANY(float),
                 'error': None,
@@ -1178,7 +1178,7 @@ class TestTestdataConsumer:
                 'identifier': consumer.identifier,
                 'type': 'consumer',
             },
-            measurement=None,
+            measurement='request_keystore',
             metrics={
                 'response_time': ANY(float),
                 'error': None,
@@ -1230,7 +1230,7 @@ class TestTestdataConsumer:
                 'identifier': consumer.identifier,
                 'type': 'consumer',
             },
-            measurement=None,
+            measurement='request_keystore',
             metrics={
                 'response_time': ANY(float),
                 'error': None,
