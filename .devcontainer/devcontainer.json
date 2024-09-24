@@ -17,14 +17,12 @@
             "settings": {
                 "python.defaultInterpreterPath": "/usr/local/bin/python",
                 "python.pythonPath": "/usr/local/bin/python",
-                "mypy-type-checker.path": ["mypy"],
                 "python.languageServer": "Pylance",
                 "pythonTestExplorer.testFramework": "pytest",
                 "files.associations": {
                     "*.j2.json": "jinja-json",
                     "*.j2.xml": "jinja-xml"
                 },
-                "mypy-type-checker.ignorePatterns": ["tests/project/**/*.py"],
                 "mypy.targets": [
                     "grizzly/",
                     "grizzly_extras/",
@@ -43,7 +41,6 @@
             "extensions": [
                 "ms-python.python",
                 "ms-python.vscode-pylance",
-                "ms-python.mypy-type-checker",
                 "editorconfig.editorconfig",
                 "eamodio.gitlens",
                 "samuelcolvin.jinjahtml",
