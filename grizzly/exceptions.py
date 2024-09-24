@@ -31,6 +31,10 @@ class RestartScenario(Exception):  # noqa: N818
 class StopScenario(Exception):  # noqa: N818
     pass
 
+
+class HaltUser(Exception):  # noqa: N818
+    pass
+
 class AssertionErrors(Exception):  # noqa: N818
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

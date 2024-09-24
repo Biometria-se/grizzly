@@ -17,7 +17,7 @@ from locust import task
 from locust.exception import InterruptTaskSet, RescheduleTask, RescheduleTaskImmediately
 from locust.user.task import LOCUST_STATE_RUNNING, LOCUST_STATE_STOPPING
 
-from grizzly.exceptions import RestartScenario, StopScenario
+from grizzly.exceptions import HaltUser, RestartScenario, StopScenario
 from grizzly.types import RequestType, ScenarioState
 from grizzly.types.locust import StopUser
 
@@ -85,6 +85,7 @@ class IteratorScenario(GrizzlyScenario):
                 )
             with suppress(Exception):
                 self.on_stop()
+
             raise StopUser from e
 
         while True:
@@ -185,6 +186,13 @@ class IteratorScenario(GrizzlyScenario):
                     raise exception from e
 
                 self.wait()
+            except HaltUser as e:
+                self.iteration_stop(has_error=False)
+
+                with suppress(Exception):
+                    self.on_stop()
+
+                raise StopUser from e
             except Exception as e:
                 self.iteration_stop(has_error=True)
                 self.user.environment.events.user_error.fire(user_instance=self.user, exception=e, tb=e.__traceback__)

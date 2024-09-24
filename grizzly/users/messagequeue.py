@@ -288,8 +288,6 @@ class MessageQueueUser(GrizzlyUser):
 
     def on_stop(self) -> None:
         self.logger.debug('on_stop called, worker_id=%s', self.worker_id)
-        if self.worker_id is None:
-            return
 
         with self._request_context({
             'action': RequestType.DISCONNECT(),
@@ -319,9 +317,17 @@ class MessageQueueUser(GrizzlyUser):
         yield context
         response = async_message_request(self.zmq_client, am_request)
 
+        payload = response.get('payload', None)
+        metadata = response.get('metadata', None)
+
+        worker_id = (payload or {}).get('worker', None)
+
+        if self.worker_id is None and worker_id is not None:
+            self.worker_id = worker_id
+
         context.update({
-            'metadata': response.get('metadata', None),
-            'payload': response.get('payload', None),
+            'metadata': metadata,
+            'payload': payload,
         })
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
