@@ -358,7 +358,7 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
     task.source = '{{ AtomicRandomString.test[:2] }}{{ integer | string}}'
 
     grizzly.scenario.tasks.add(
-        RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get'),
+        RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get/{{ __internal__.id }}/{{ __external_id__ }}'),
     )
     task = cast(RequestTask, grizzly.scenario.tasks()[-1])
     task.source = '{{ AtomicIntegerIncrementer.test }} {%- set hello = world -%}'

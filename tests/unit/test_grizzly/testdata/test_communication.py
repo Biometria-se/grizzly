@@ -30,16 +30,14 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def echo(value: dict[str, Any]) -> dict[str, Any]:
-    return value
+    return {'data': None, **value}
 
 def echo_add_data(return_value: Any | list[Any]) -> Callable[[dict[str, Any]], dict[str, Any]]:
     if not isinstance(return_value, list):
         return_value = [return_value]
 
     def wrapped(request: dict[str, Any]) -> dict[str, Any]:
-        response = request.copy()
-        response.update({'data': return_value.pop(0)})
-        return response
+        return {'data': return_value.pop(0), **request}
 
     return wrapped
 
@@ -50,6 +48,7 @@ class TestTestdataProducer:
         grizzly_fixture: GrizzlyFixture,
         cleanup: AtomicVariableCleanupFixture,
         caplog: LogCaptureFixture,
+        mocker: MockerFixture,
     ) -> None:
         producer: Optional[TestdataProducer] = None
         context: Optional[zmq.Context] = None
@@ -95,6 +94,10 @@ value3,value4
             })
 
             grizzly = grizzly_fixture.grizzly
+
+            testdata_request_spy = mocker.spy(grizzly.events.testdata_request, 'fire')
+            keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
+
             grizzly.scenarios.clear()
             grizzly.scenarios.create(grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
             grizzly.scenario.orphan_templates.append('{{ AtomicCsvWriter.output }}')
@@ -147,7 +150,7 @@ value3,value4
                 def request_testdata() -> dict[str, Any]:
                     socket.send_json({
                         'message': 'testdata',
-                        'scenario': grizzly.scenario.class_name,
+                        'identifier': grizzly.scenario.class_name,
                     })
 
                     gevent.sleep(0.1)
@@ -157,6 +160,7 @@ value3,value4
                 def request_keystore(action: str, key: str, value: Optional[Any] = None) -> dict[str, Any]:
                     request = {
                         'message': 'keystore',
+                        'identifier': grizzly.scenario.class_name,
                         'action': action,
                         'key': key,
                     }
@@ -171,6 +175,22 @@ value3,value4
                     return cast(dict[str, Any], socket.recv_json())
 
                 message: dict[str, Any] = request_testdata()
+                testdata_request_spy.assert_called_once_with(
+                    reverse=False,
+                    timestamp=ANY(str),
+                    tags={
+                        'action': 'consume',
+                        'type': 'producer',
+                        'identifier': grizzly.scenario.class_name,
+                    },
+                    measurement='request_testdata',
+                    metrics={
+                        'response_time': ANY(float),
+                        'error': None,
+                    },
+                )
+                testdata_request_spy.reset_mock()
+                keystore_request_spy.assert_not_called()
                 assert message['action'] == 'consume'
                 data = message['data']
                 assert 'variables' in data
@@ -198,9 +218,26 @@ value3,value4
                 assert producer.keystore == {}
 
                 message = request_keystore('set', 'foobar', {'hello': 'world'})
+                testdata_request_spy.assert_not_called()
+                keystore_request_spy.assert_called_once_with(
+                    reverse=False,
+                    timestamp=ANY(str),
+                    tags={
+                        'identifier': grizzly.scenario.class_name,
+                        'action': 'set',
+                        'key': 'foobar',
+                        'type': 'producer',
+                    },
+                    measurement='request_keystore',
+                    metrics={
+                        'response_time': ANY(float),
+                        'error': None,
+                    },
+                )
                 assert message == {
                     'message': 'keystore',
                     'action': 'set',
+                    'identifier': grizzly.scenario.class_name,
                     'key': 'foobar',
                     'data': {'hello': 'world'},
                 }
@@ -229,6 +266,7 @@ value3,value4
                 assert message == {
                     'message': 'keystore',
                     'action': 'get',
+                    'identifier': grizzly.scenario.class_name,
                     'key': 'foobar',
                     'data': {'hello': 'world'},
                 }
@@ -240,6 +278,7 @@ value3,value4
                     assert message == {
                         'message': 'keystore',
                         'action': 'inc',
+                        'identifier': grizzly.scenario.class_name,
                         'key': 'counter',
                         'data': 1,
                     }
@@ -254,6 +293,7 @@ value3,value4
                     assert message == {
                         'message': 'keystore',
                         'action': 'inc',
+                        'identifier': grizzly.scenario.class_name,
                         'key': 'counter',
                         'data': None,
                         'error': 'value asdf for key "counter" cannot be incremented',
@@ -269,6 +309,7 @@ value3,value4
                     assert message == {
                         'message': 'keystore',
                         'action': 'inc',
+                        'identifier': grizzly.scenario.class_name,
                         'key': 'counter',
                         'data': 2,
                     }
@@ -280,6 +321,7 @@ value3,value4
                     assert message == {
                         'message': 'keystore',
                         'action': 'inc',
+                        'identifier': grizzly.scenario.class_name,
                         'key': 'counter',
                         'data': 12,
                     }
@@ -835,6 +877,8 @@ class TestTestdataConsumer:
         parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
 
+        testdata_request_spy = mocker.spy(grizzly.events.testdata_request, 'fire')
+
         consumer = TestdataConsumer(parent)
 
         try:
@@ -849,7 +893,7 @@ class TestTestdataConsumer:
                 },
             })
 
-            assert consumer.testdata('test') == {
+            assert consumer.testdata() == {
                 'auth': {
                     'user': {
                         'username': 'username',
@@ -862,6 +906,22 @@ class TestTestdataConsumer:
                 }),
             }
 
+            testdata_request_spy.assert_called_once_with(
+                reverse=False,
+                timestamp=ANY(str),
+                tags={
+                    'type': 'consumer',
+                    'action': 'consume',
+                    'identifier': consumer.identifier,
+                },
+                measurement='request_testdata',
+                metrics={
+                    'error': None,
+                    'response_time': ANY(float),
+                },
+            )
+            testdata_request_spy.reset_mock()
+
             mock_recv_json({
                 'variables': {
                     'AtomicIntegerIncrementer.messageID': 100,
@@ -870,7 +930,7 @@ class TestTestdataConsumer:
             }, 'stop')
 
             with caplog.at_level(logging.DEBUG):
-                assert consumer.testdata('test') is None
+                assert consumer.testdata() is None
             assert caplog.messages[-1] == 'received stop command'
 
             caplog.clear()
@@ -883,7 +943,7 @@ class TestTestdataConsumer:
             }, 'asdf')
 
             with caplog.at_level(logging.DEBUG), pytest.raises(StopUser):
-                consumer.testdata('test')
+                consumer.testdata()
             assert 'unknown action "asdf" received, stopping user' in caplog.text
 
             caplog.clear()
@@ -895,7 +955,7 @@ class TestTestdataConsumer:
                 },
             }, 'consume')
 
-            assert consumer.testdata('test') == {
+            assert consumer.testdata() == {
                 'variables': transform(grizzly.scenario, {
                     'AtomicIntegerIncrementer.messageID': 100,
                     'test': None,
@@ -948,26 +1008,45 @@ class TestTestdataConsumer:
         consumer = TestdataConsumer(parent)
 
         with pytest.raises(ZMQAgain):
-            consumer.testdata('test')
+            consumer.testdata()
 
         gsleep_mock.assert_called_once_with(0.1)
 
         mocker.patch.object(consumer, '_request', return_value=None)
 
         with caplog.at_level(logging.ERROR):
-            assert consumer.testdata('test') is None
+            assert consumer.testdata() is None
 
         assert caplog.messages == ['no testdata received']
 
     def test_keystore_get(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
         parent = grizzly_fixture()
+        grizzly = grizzly_fixture.grizzly
 
         consumer = TestdataConsumer(parent)
+
+        keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
 
         assert consumer.keystore_get('hello') is None
+        keystore_request_spy.assert_called_once_with(
+            reverse=False,
+            timestamp=ANY(str),
+            tags={
+                'action': 'get',
+                'key': 'hello',
+                'identifier': consumer.identifier,
+                'type': 'consumer',
+            },
+            measurement='request_keystore',
+            metrics={
+                'response_time': ANY(float),
+                'error': None,
+            },
+        )
+        keystore_request_spy.reset_mock()
 
         request_spy.assert_called_once_with({
             'action': 'get',
@@ -989,28 +1068,48 @@ class TestTestdataConsumer:
     def test_keystore_set(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
         parent = grizzly_fixture()
+        grizzly = grizzly_fixture.grizzly
 
         consumer = TestdataConsumer(parent)
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
+        keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
 
         consumer.keystore_set('world', {'hello': 'world'})
 
         request_spy.assert_called_once_with({
+            'message': 'keystore',
             'action': 'set',
             'key': 'world',
-            'message': 'keystore',
             'identifier': consumer.identifier,
             'data': {'hello': 'world'},
         })
+        keystore_request_spy.assert_called_once_with(
+            reverse=False,
+            timestamp=ANY(str),
+            tags={
+                'action': 'set',
+                'key': 'world',
+                'identifier': consumer.identifier,
+                'type': 'consumer',
+            },
+            measurement='request_keystore',
+            metrics={
+                'response_time': ANY(float),
+                'error': None,
+            },
+        )
+        keystore_request_spy.reset_mock()
 
     def test_keystore_inc(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
         parent = grizzly_fixture()
+        grizzly = grizzly_fixture.grizzly
 
         consumer = TestdataConsumer(parent)
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
+        keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
 
         assert consumer.keystore_inc('counter') == 1
 
@@ -1022,6 +1121,7 @@ class TestTestdataConsumer:
             'data': 1,
         })
         request_spy.reset_mock()
+        keystore_request_spy.reset_mock()
 
         assert consumer.keystore_inc('counter', step=10) == 10
 
@@ -1032,14 +1132,32 @@ class TestTestdataConsumer:
             'identifier': consumer.identifier,
             'data': 10,
         })
+        keystore_request_spy.assert_called_once_with(
+            reverse=False,
+            timestamp=ANY(str),
+            tags={
+                'action': 'inc',
+                'key': 'counter',
+                'identifier': consumer.identifier,
+                'type': 'consumer',
+            },
+            measurement='request_keystore',
+            metrics={
+                'response_time': ANY(float),
+                'error': None,
+            },
+        )
+        keystore_request_spy.reset_mock()
 
     def test_keystore_push(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
         parent = grizzly_fixture()
+        grizzly = grizzly_fixture.grizzly
 
         consumer = TestdataConsumer(parent)
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
+        keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
 
         consumer.keystore_push('foobar', 'hello')
 
@@ -1051,28 +1169,48 @@ class TestTestdataConsumer:
             'data': 'hello',
         })
         request_spy.reset_mock()
+        keystore_request_spy.assert_called_once_with(
+            reverse=False,
+            timestamp=ANY(str),
+            tags={
+                'action': 'push',
+                'key': 'foobar',
+                'identifier': consumer.identifier,
+                'type': 'consumer',
+            },
+            measurement='request_keystore',
+            metrics={
+                'response_time': ANY(float),
+                'error': None,
+            },
+        )
 
     def test_keystore_pop(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
         parent = grizzly_fixture()
+        grizzly = grizzly_fixture.grizzly
 
         consumer = TestdataConsumer(parent)
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo_add_data([None, None, 'hello']))
         gsleep_mock = mocker.patch('grizzly.testdata.communication.gsleep', return_value=None)
+        keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
 
         assert consumer.keystore_pop('foobar') == 'hello'
 
         assert gsleep_mock.call_count == 2
         assert request_spy.call_count == 3
+        assert keystore_request_spy.call_count == 3
 
     def test_keystore_del(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
         parent = grizzly_fixture()
+        grizzly = grizzly_fixture.grizzly
 
         consumer = TestdataConsumer(parent)
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
+        keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
 
         consumer.keystore_del('foobar')
 
@@ -1083,3 +1221,18 @@ class TestTestdataConsumer:
             'identifier': consumer.identifier,
         })
         request_spy.reset_mock()
+        keystore_request_spy.assert_called_once_with(
+            reverse=False,
+            timestamp=ANY(str),
+            tags={
+                'action': 'del',
+                'key': 'foobar',
+                'identifier': consumer.identifier,
+                'type': 'consumer',
+            },
+            measurement='request_keystore',
+            metrics={
+                'response_time': ANY(float),
+                'error': None,
+            },
+        )

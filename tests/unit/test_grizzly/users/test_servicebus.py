@@ -362,7 +362,7 @@ class TestServiceBusUser:
         send_json_spy = noop_zmq.get_mock('send_json')
         say_hello_spy = mocker.patch.object(parent.user, 'say_hello', side_effect=[None] * 10)
         request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
-        response_event_fire_spy = mocker.spy(parent.user.event_hook, 'fire')
+        response_event_fire_spy = mocker.spy(parent.user.events.request, 'fire')
 
         def mock_recv_json(response: AsyncMessageResponse) -> None:
             mocker.patch.object(

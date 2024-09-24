@@ -8,9 +8,10 @@ from typing import TYPE_CHECKING, Callable
 
 import pytest
 
-from grizzly.events import RequestLogger
+from grizzly.events import GrizzlyEventHandlerClass, RequestLogger
 from grizzly.tasks import RequestTask
 from grizzly.types import RequestMethod
+from grizzly.users import GrizzlyUser
 from tests.helpers import rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -43,8 +44,14 @@ class TestRequestLogger:
             assert not log_root.exists()
             parent = grizzly_fixture()
 
-            assert len(parent.user.event_hook._handlers) == 2
-            assert any(h.__class__ is RequestLogger and h.user is parent.user for h in parent.user.event_hook._handlers)
+            assert len(parent.user.events.request._handlers) == 2
+            assert any(
+                h.__class__ is RequestLogger
+                and isinstance(h, GrizzlyEventHandlerClass)
+                and isinstance(h.user, GrizzlyUser)
+                and h.user is parent.user
+                for h in parent.user.events.request._handlers
+            )
         finally:
             with suppress(KeyError):
                 del environ['GRIZZLY_LOG_DIR']

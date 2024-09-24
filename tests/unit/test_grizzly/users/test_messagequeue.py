@@ -427,7 +427,7 @@ class TestMessageQueueUser:
         })
 
         request_event_spy = mocker.spy(mq_parent.user.environment.events.request, 'fire')
-        response_event_spy = mocker.spy(mq_parent.user.event_hook, 'fire')
+        response_event_spy = mocker.spy(mq_parent.user.events.request, 'fire')
 
         request = cast(RequestTask, mq_parent.user._scenario.tasks()[-1])
         request.endpoint = 'queue:test-queue'

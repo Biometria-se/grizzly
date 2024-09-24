@@ -1,6 +1,4 @@
-"""Does nothing.
-
-Can be used with any tasks except {@pylink grizzly.tasks.request}.
+"""Does nothing (noop).
 
 ## Format
 

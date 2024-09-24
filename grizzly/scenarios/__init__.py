@@ -77,6 +77,7 @@ class GrizzlyScenario(SequentialTaskSet):
                 scenario=self,
                 address=producer_address,
             )
+            self.user.consumer = self.consumer
             self.user.scenario_state = ScenarioState.RUNNING
         else:
             self.logger.error('no address to testdata producer specified')

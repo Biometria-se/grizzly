@@ -41,8 +41,6 @@ def create_request_task(
     if source is not None:
         original_source = source
 
-        print(f'{source=}')
-
         try:
             possible_file = path / source
             if possible_file.is_file():

@@ -95,7 +95,7 @@ class TestIterationScenario:
 
         assert logger_spy.call_count == 1
         args, _ = logger_spy.call_args_list[0]
-        assert args[0] == 'hello '
+        assert args[0] == 'hello {{ world }}'
 
         parent.user.set_variable('world', 'world!')
 
@@ -168,7 +168,7 @@ class TestIterationScenario:
         parent.consumer = TestdataConsumer(parent)
 
         def mock_request(data: Optional[dict[str, Any]]) -> None:
-            def testdata_request(self: TestdataConsumer, scenario: str) -> Optional[dict[str, Any]]:  # noqa: ARG001
+            def testdata_request(self: TestdataConsumer) -> Optional[dict[str, Any]]:  # noqa: ARG001
                 if data is None or data == {}:
                     return None
 

@@ -8,8 +8,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from locust.exception import ResponseError
 
-from grizzly.context import GrizzlyContext
-from grizzly.events import GrizzlyEventHandler
+from grizzly.events import GrizzlyEventHandlerClass
 from grizzly.exceptions import ResponseHandlerError
 from grizzly_extras.transformer import PlainTransformer, TransformerContentType, TransformerError, transformer
 
@@ -19,8 +18,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.users import GrizzlyUser
 
 class ResponseHandlerAction(ABC):
-    grizzly = GrizzlyContext()
-
     def __init__(self, /, expression: str, match_with: str, expected_matches: str = '1', *, as_json: bool = False) -> None:
         self.expression = expression
         self.match_with = match_with
@@ -168,7 +165,7 @@ class SaveHandlerAction(ResponseHandlerAction):
             raise ResponseHandlerError(message)
 
 
-class ResponseHandler(GrizzlyEventHandler):
+class ResponseHandler(GrizzlyEventHandlerClass):
     def __call__(
         self,
         name: str,

@@ -489,12 +489,15 @@ class GrizzlyMarkdown:
             indent = '    ' if style == 'indent' else ''
             code_lines = [f'{indent}{line}' for line in node.raw.splitlines()]
             marker = code_lines[-1].strip()[-3:]
+
             if code_lines[-1].strip() != marker:
                 raw = '\n'.join(code_lines[1:])
                 raw = raw[:-3]
             else:
                 raw = '\n'.join(code_lines[1:-1])
+
             _, info = code_lines[0].split(marker, 1)
+
             node.ast = {
                 'type': 'block_code',
                 'raw': raw,

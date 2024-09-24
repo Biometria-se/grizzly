@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import urlparse, urlunparse
 
-from grizzly.events import GrizzlyEventHandler
+from grizzly.events import GrizzlyEventHandlerClass
 from grizzly.utils import normalize
 from grizzly_extras.transformer import JsonBytesEncoder
 
@@ -38,7 +38,7 @@ payload:
 """  # noqa: E501
 
 
-class RequestLogger(GrizzlyEventHandler):
+class RequestLogger(GrizzlyEventHandlerClass):
     _context: dict[str, Any]
 
     log_dir: Path

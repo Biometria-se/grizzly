@@ -3,14 +3,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
 import yaml
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import DebugUndefined, Environment, FileSystemLoader
 from jinja2.filters import FILTERS
+from typing_extensions import Self
 
 from grizzly.testdata import GrizzlyVariables
 from grizzly.types import MessageCallback, MessageDirection
@@ -19,6 +20,7 @@ from grizzly.utils import MergeYamlTag, flatten, merge_dicts
 if TYPE_CHECKING:  # pragma: no cover
     from locust.dispatch import UsersDispatcher
 
+    from grizzly.events import GrizzlyEvents
     from grizzly.types.behave import Scenario
     from grizzly.types.locust import LocalRunner, MasterRunner, WorkerRunner
 
@@ -67,6 +69,8 @@ class GrizzlyContext:
     _state: GrizzlyContextState
     _setup: GrizzlyContextSetup
     _scenarios: GrizzlyContextScenarios
+    _events: GrizzlyEvents
+
 
     def __new__(cls, *_args: Any, **_kwargs: Any) -> GrizzlyContext:  # noqa: PYI034
         """Class is a singleton, there should only be once instance of it."""
@@ -86,9 +90,11 @@ class GrizzlyContext:
 
     def __init__(self) -> None:
         if not self._initialized:
+            from grizzly.events import events
             self._setup = GrizzlyContextSetup()
             self._scenarios = GrizzlyContextScenarios(self)
             self._state = GrizzlyContextState()
+            self._events = events
             self._initialized = True
 
     @property
@@ -112,12 +118,32 @@ class GrizzlyContext:
     def scenarios(self) -> GrizzlyContextScenarios:
         return self._scenarios
 
+    @property
+    def events(self) -> GrizzlyEvents:
+        return self._events
+
+
+class DebugChainableUndefined(DebugUndefined):
+    _undefined_name: str | None
+
+    def __getattr__(self, attr: str) -> Self:
+        self._undefined_name = f'{self._undefined_name}.{attr}'
+        return self
+
+    def __getitem__(self, key: str) -> Self:
+        self._undefined_name = f"{self._undefined_name}['{key}']"
+        return self
+
+
 
 def jinja2_environment_factory() -> Environment:
     """Create a Jinja2 environment, so same instance is used throughout each grizzly scenario, with custom filters."""
-    environment = Environment(autoescape=False, loader=FileSystemLoader(Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'requests'))
+    environment = Environment(autoescape=False, loader=FileSystemLoader(Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'requests'), undefined=DebugChainableUndefined)
 
-    environment.globals.update({'datetime': datetime})
+    environment.globals.update({
+        'datetime': datetime,
+        'timezone': timezone,
+    })
 
     return environment
 
