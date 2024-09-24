@@ -129,13 +129,6 @@ class Worker:
 
             self.socket.send_multipart(response_proto)
 
-        self.logger.info('stopping')
-        if self.integration is not None:
-            self.integration.close()
-
-        self.socket.close()
-        self.logger.info('stopped')
-
 
 def create_router_socket(context: zmq.Context) -> zmq.Socket:
     socket = cast(zmq.Socket, context.socket(zmq.ROUTER))
@@ -162,8 +155,12 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
 
     workers: dict[str, tuple[futures.Future, Worker]] = {}
 
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=500) as executor:
+        worker_is_spawning = False
+
         def spawn_worker() -> None:
+            nonlocal worker_is_spawning
+
             identity = str(uuid4())
 
             worker = Worker(context, identity, run_daemon)
@@ -171,6 +168,7 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
             future = executor.submit(worker.run)
             workers.update({identity: (future, worker)})
             logger.info('spawned worker %s', identity)
+            worker_is_spawning = True
 
         workers_available: list[str] = []
         client_worker_map: dict[str, str] = {}
@@ -210,9 +208,12 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                     logger.debug('sending %r', reply)
                     frontend.send_multipart(reply)
                     logger.debug('forwarding backend response from %s', worker_id)
+                    if worker_is_spawning:
+                        continue
                 else:
                     logger.info('worker %s ready', worker_id)
                     workers_available.append(worker_id)
+                    worker_is_spawning = False
 
             if socks.get(frontend) == zmq.POLLIN:
                 logger.debug('polling frontend')
