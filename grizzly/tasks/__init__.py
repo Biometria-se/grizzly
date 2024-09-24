@@ -140,7 +140,6 @@ class GrizzlyTask(ABC):
 
     _context_root: str
 
-    step: str
     grizzly: GrizzlyContext
 
     def __init__(self) -> None:

@@ -1,6 +1,7 @@
 """Unit tests of grizzly.gevent."""
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import pytest
@@ -19,19 +20,19 @@ def func(a: str, i: int) -> None:
 
 class TestGreenletWithExceptionCatching:
     def test___init__(self) -> None:
-        g = GreenletWithExceptionCatching()
+        g = GreenletWithExceptionCatching(logger=logging.getLogger(), ignore_exceptions=[])
 
         assert g.started_from == getcurrent()
         assert isinstance(g, Greenlet)
 
     def test_handle_exception(self) -> None:
-        g = GreenletWithExceptionCatching()
+        g = GreenletWithExceptionCatching(logger=logging.getLogger(), ignore_exceptions=[])
 
         with pytest.raises(RuntimeError, match='error'):
             g.handle_exception(RuntimeError('error'))
 
     def test_spawn(self, mocker: MockerFixture) -> None:
-        g = GreenletWithExceptionCatching()
+        g = GreenletWithExceptionCatching(logger=logging.getLogger(), ignore_exceptions=[])
         wrap_exceptions_spy = mocker.spy(g, 'wrap_exceptions')
 
         with pytest.raises(RuntimeError, match="func error, a='hello', i=1"):  # noqa: PT012
@@ -50,15 +51,15 @@ class TestGreenletWithExceptionCatching:
         def ok() -> None:
             pass
 
-        factory = GreenletWithExceptionCatching()
+        factory = GreenletWithExceptionCatching(logger=logging.getLogger(), ignore_exceptions=[])
 
         with pytest.raises(RuntimeError, match='foobar'):
-            factory.spawn_blocking(fail)
+            factory.spawn_blocking(fail, 'foobar')
 
-        factory.spawn_blocking(ok)
+        factory.spawn_blocking(ok, 'foobar')
 
     def test_spawn_later(self, mocker: MockerFixture) -> None:
-        g = GreenletWithExceptionCatching()
+        g = GreenletWithExceptionCatching(logger=logging.getLogger(), ignore_exceptions=[])
         wrap_exceptions_spy = mocker.spy(g, 'wrap_exceptions')
 
         with pytest.raises(RuntimeError, match="func error, a='foobar', i=1337"):  # noqa: PT012

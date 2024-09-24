@@ -5,6 +5,7 @@ import logging
 from os import environ
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
+from gevent.event import Event
 from locust.exception import LocustError
 from locust.user.sequential_taskset import SequentialTaskSet
 
@@ -28,7 +29,7 @@ class GrizzlyScenario(SequentialTaskSet):
     grizzly: GrizzlyContext
     task_greenlet: Optional[GreenletWithExceptionCatching]
     task_greenlet_factory: GreenletWithExceptionCatching
-    abort: bool
+    abort: Event
     spawning_complete: bool
 
     _task_index: int
@@ -39,8 +40,8 @@ class GrizzlyScenario(SequentialTaskSet):
         self.grizzly = GrizzlyContext()
         self.user.scenario_state = ScenarioState.STOPPED
         self.task_greenlet = None
-        self.task_greenlet_factory = GreenletWithExceptionCatching()
-        self.abort = False
+        self.task_greenlet_factory = GreenletWithExceptionCatching(logger=self.logger, ignore_exceptions=[StopScenario])
+        self.abort = Event()
         self.spawning_complete = False
         self.parent.environment.events.quitting.add_listener(self.on_quitting)
         self._task_index = 0
@@ -116,7 +117,7 @@ class GrizzlyScenario(SequentialTaskSet):
         running task to stop by throwing an exception in the greenlet where it is running.
         """
         if self.task_greenlet is not None and kwargs.get('abort', False):
-            self.abort = True
+            self.abort.set()
             self.task_greenlet.kill(StopScenario, block=False)
 
     def get_next_task(self) -> Union[TaskSet, Callable]:
@@ -130,12 +131,13 @@ class GrizzlyScenario(SequentialTaskSet):
 
         return task
 
-    def execute_next_task(self) -> None:
+    def execute_next_task(self, message: str) -> None:  # type: ignore[override]
         """Execute task in a greenlet, so that we have the possibility to stop it on demand. Any exceptions
         raised in the greenlet should be caught else where.
         """
         try:
-            self.task_greenlet_factory.spawn_blocking(super().execute_next_task)
+            with self.task_greenlet_factory.spawn_blocking(super().execute_next_task, message) as greenlet:
+                self.task_greenlet = greenlet
         finally:
             self.task_greenlet = None
 

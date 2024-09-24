@@ -16,6 +16,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Any, Callable, NoReturn, Optional, SupportsIndex, TypeVar, cast
 
 import gevent
+import gevent.event
 from locust import events
 from locust import stats as lstats
 from locust.dispatch import UsersDispatcher
@@ -47,7 +48,7 @@ if TYPE_CHECKING:
 
 
 unhandled_greenlet_exception: bool = False
-abort_test: bool = False
+abort_test: gevent.event.Event = gevent.event.Event()
 
 
 logger = logging.getLogger('grizzly.locust')
@@ -818,7 +819,7 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
 
         stat = stats.get(scenario.locust_name, RequestType.SCENARIO())
         if stat.num_requests > 0:
-            if abort_test:
+            if abort_test.is_set():
                 status = Status.skipped
                 stat.num_requests -= 1
             elif stat.num_failures == 0 and stat.num_requests == scenario.iterations and total_errors == 0:
@@ -849,10 +850,8 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
 
 
 def grizzly_test_abort(*_args: Any, **_kwargs: Any) -> None:
-    global abort_test  # noqa: PLW0603
-
-    if not abort_test:
-        abort_test = True
+    if not abort_test.is_set():
+        abort_test.set()
 
 def shutdown_external_processes(processes: dict[str, subprocess.Popen], greenlet: Optional[gevent.Greenlet]) -> None:
     if len(processes) < 1:
@@ -861,7 +860,7 @@ def shutdown_external_processes(processes: dict[str, subprocess.Popen], greenlet
     if greenlet is not None:
         greenlet.kill(block=False)
 
-    stop_method = 'killing' if abort_test else 'stopping'
+    stop_method = 'killing' if abort_test.is_set() else 'stopping'
 
     for dependency, process in processes.items():
         logger.info('%s %s', stop_method, dependency)
@@ -1143,9 +1142,9 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                         logger.debug('user_count=%d, user_classes_count=%r', runner.user_count, user_classes_count)
                         count = 0
 
-                logger.info('runner.user_count=%d, quit %s, abort_test=%r', runner.user_count, runner.__class__.__name__, abort_test)
+                logger.info('runner.user_count=%d, quit %s, abort_test=%r', runner.user_count, runner.__class__.__name__, abort_test.is_set())
                 # has already been fired if abort_test = True
-                if not abort_test:
+                if not abort_test.is_set():
                     runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
 
                 if isinstance(runner, MasterRunner):
@@ -1200,15 +1199,14 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 signame = 'UNKNOWN'
 
             def wrapper() -> None:
-                global abort_test  # noqa: PLW0603
-                if abort_test:
+                if abort_test.is_set():
                     return
 
                 logger.info('handling signal %s (%d)', signame, signum)
 
                 logger.debug('shutdown external processes')
 
-                abort_test = True
+                abort_test.set()
                 shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
 
                 if isinstance(runner, WorkerRunner):
@@ -1226,7 +1224,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
             main_greenlet.join()
             logger.debug('main greenlet finished')
         finally:
-            if abort_test:
+            if abort_test.is_set():
                 code = SIGTERM.value
             elif unhandled_greenlet_exception:
                 code = 2
@@ -1239,7 +1237,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         return code
     finally:
-        if not abort_test:
+        if not abort_test.is_set():
             shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
 
 

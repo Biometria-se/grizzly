@@ -9,7 +9,7 @@ from __future__ import annotations
 from contextlib import suppress
 from json import dumps as jsondumps
 from time import perf_counter
-from typing import TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
 from gevent import sleep as gsleep
 from gevent.exceptions import GreenletExit
@@ -17,7 +17,7 @@ from locust import task
 from locust.exception import InterruptTaskSet, RescheduleTask, RescheduleTaskImmediately
 from locust.user.task import LOCUST_STATE_RUNNING, LOCUST_STATE_STOPPING
 
-from grizzly.exceptions import HaltUser, RestartScenario, StopScenario
+from grizzly.exceptions import RestartScenario, StopScenario
 from grizzly.types import RequestType, ScenarioState
 from grizzly.types.locust import StopUser
 
@@ -51,6 +51,13 @@ class IteratorScenario(GrizzlyScenario):
         self.__class__.behave_steps = self.user._scenario.tasks.behave_steps.copy()
         self.stats = self.user.environment.stats.get(self.user._scenario.locust_name, RequestType.SCENARIO())
         self._prefetch = False
+
+    def on_quitting(self, *_args: Any, **kwargs: Any) -> None:
+        super().on_quitting(*_args, **kwargs)
+
+        # test has been aborted, log "request" failures for SCENARIO
+        if self.abort.is_set():
+            self.iteration_stop(error=StopScenario())
 
     @classmethod
     def populate(cls, task_factory: GrizzlyTask) -> None:
@@ -111,12 +118,11 @@ class IteratorScenario(GrizzlyScenario):
                     except Exception:
                         step = 'unknown'
 
-                    self.logger.debug('executing task %d of %d: %s', self.current_task_index+1, self.task_count, step)
+                    self.logger.debug('task %d of %d executing: %s', self.current_task_index+1, self.task_count, step)
                     try:
-                        self.execute_next_task()
+                        self.execute_next_task(f'task {self.current_task_index+1} of {self.task_count} failed: {step}')
                     except Exception as e:
                         if not isinstance(e, StopScenario):
-                            self.logger.exception('task %d of %d: %s, failed: %s', self.current_task_index+1, self.task_count, step, e.__class__.__name__)
                             execute_task_logged = True
                         raise
                 except RescheduleTaskImmediately:
@@ -126,7 +132,7 @@ class IteratorScenario(GrizzlyScenario):
                 except RestartScenario as e:
                     # tasks will wrap the grizzly.exceptions.StopScenario thrown when aborting to what ever
                     # the scenario has specified todo when failing, we must force it to stop scenario
-                    if self.abort:
+                    if self.abort.is_set():
                         self.on_stop()
                         raise StopUser from e
 
@@ -167,7 +173,7 @@ class IteratorScenario(GrizzlyScenario):
                     elif not isinstance(e, StopUser):
                         exception = StopUser
 
-                    self.iteration_stop(has_error=has_error)
+                    self.iteration_stop(error=e)
                     self.on_stop()
 
                     # to avoid spawning of a new user, we should wait until spawning is complete
@@ -186,15 +192,8 @@ class IteratorScenario(GrizzlyScenario):
                     raise exception from e
 
                 self.wait()
-            except HaltUser as e:
-                self.iteration_stop(has_error=False)
-
-                with suppress(Exception):
-                    self.on_stop()
-
-                raise StopUser from e
             except Exception as e:
-                self.iteration_stop(has_error=True)
+                self.iteration_stop(error=e)
                 self.user.environment.events.user_error.fire(user_instance=self.user, exception=e, tb=e.__traceback__)
                 if self.user.environment.catch_exceptions:
                     if not execute_task_logged:
@@ -204,25 +203,28 @@ class IteratorScenario(GrizzlyScenario):
                     self.on_stop()
                     raise
 
-    def iteration_stop(self, *, has_error: bool = False) -> None:
+    def iteration_stop(self, *, error: Exception | None) -> None:
         if self.start is not None:
             response_time = int((perf_counter() - self.start) * 1000)
             response_length = (self.current_task_index % self.task_count) + 1
 
-            self.stats.log(response_time, response_length)
-            if has_error:
+            if not isinstance(error, StopScenario):
+                self.stats.log(response_time, response_length)
+                self.start = None
+
+            if error is not None:
                 self.stats.log_error(None)
 
     def wait(self) -> None:
         if self.user._scenario_state == ScenarioState.STOPPING:
-            if self.current_task_index < self.task_count - 1 and not self.abort:
+            if self.current_task_index < self.task_count - 1 and not self.abort.is_set():
                 self.logger.debug('not finished with scenario, currently at task %d of %d, let me be!', self.current_task_index+1, self.task_count)
                 self.user._state = LOCUST_STATE_RUNNING
                 self._sleep(self.wait_time())
                 self.user._state = LOCUST_STATE_RUNNING
                 return
 
-            if not self.abort:
+            if not self.abort.self.isset():
                 self.logger.debug("okay, I'm done with my running tasks now")
             else:
                 self.logger.debug("since you're asking nicely")
@@ -256,6 +258,7 @@ class IteratorScenario(GrizzlyScenario):
 
         # scenario timer
         self.start = perf_counter()
+
 
         remote_context = self.consumer.testdata()
 

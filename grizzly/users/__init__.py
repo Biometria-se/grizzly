@@ -25,13 +25,14 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, TypeVar, cast, final
 
+from gevent.event import Event
 from locust.event import EventHook
 from locust.user.task import LOCUST_STATE_RUNNING
 from locust.user.users import User, UserMeta
 
 from grizzly.context import GrizzlyContext
 from grizzly.events import GrizzlyEventHook, RequestLogger, ResponseHandler
-from grizzly.exceptions import AsyncMessageAbort, HaltUser, RestartScenario
+from grizzly.exceptions import AsyncMessageAbort, RestartScenario, StopScenario
 from grizzly.testdata import GrizzlyVariables
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
 from grizzly.types.locust import Environment, StopUser
@@ -95,7 +96,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
     weight: int = 1
     host: str
-    abort: bool
+    abort: Event
     environment: Environment
     grizzly = GrizzlyContext()
     sticky_tag: Optional[str] = None
@@ -117,7 +118,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         # these are not copied, and we can share reference
         self._scenario._tasks = self.__scenario__._tasks
 
-        self.abort = False
+        self.abort = Event()
         self.events = GrizzlyUserEvents()
         self.events.request.add_listener(ResponseHandler(self))
         self.events.request.add_listener(RequestLogger(self))
@@ -129,8 +130,8 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
     def on_quitting(self, *_args: Any, **kwargs: Any) -> None:
         # if it already has been called with True, do not change it back to False
-        if not self.abort:
-            self.abort = cast(bool, kwargs.get('abort', False))
+        if not self.abort.is_set() and cast(bool, kwargs.get('abort', False)):
+            self.abort.set()
 
     def on_start(self) -> None:
         super().on_start()
@@ -178,7 +179,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         """Stop user.
         Make sure to stop gracefully, so that tasks that are currently executing have the chance to finish.
         """
-        if not force and not self.abort:
+        if not force and not self.abort.is_set():
             self.logger.debug('stop scenarios before stopping user')
             self.scenario_state = ScenarioState.STOPPING
             self._state = LOCUST_STATE_RUNNING
@@ -213,7 +214,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         except Exception as e:
             if isinstance(e, AsyncMessageAbort):
                 self.logger.warning('scenario aborted')
-                raise HaltUser from e
+                raise StopScenario from e
 
             message = f'request "{request.name}" failed: {str(e) or e.__class__}'
             self.logger.exception(message)

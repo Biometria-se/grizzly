@@ -414,7 +414,7 @@ class TestIterationScenario:
 
         parent.start = None
 
-        parent.iteration_stop(has_error=True)
+        parent.iteration_stop(error=RuntimeError('foobar'))
 
         assert stats_log_mock.call_count == 0
 
@@ -422,7 +422,7 @@ class TestIterationScenario:
 
         parent.start = 1.0
 
-        parent.iteration_stop(has_error=True)
+        parent.iteration_stop(error=RuntimeError('foobar'))
 
         assert stats_log_mock.call_count == 1
         args, _ = stats_log_mock.call_args_list[-1]
@@ -435,7 +435,7 @@ class TestIterationScenario:
         assert len(args) == 1
         assert args[0] is None
 
-        parent.iteration_stop(has_error=False)
+        parent.iteration_stop(error=RuntimeError('foobar'))
 
         assert stats_log_mock.call_count == 2
         args, _ = stats_log_mock.call_args_list[-1]
