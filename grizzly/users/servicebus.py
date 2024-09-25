@@ -209,7 +209,8 @@ class ServiceBusUser(GrizzlyUser):
 
                 self.disconnect(task)
 
-        zmq_disconnect(self.zmq_client, destroy_context=False)
+        with suppress(Exception):
+            zmq_disconnect(self.zmq_client, destroy_context=False)
 
         super().on_stop()
 
@@ -251,8 +252,9 @@ class ServiceBusUser(GrizzlyUser):
             'context': context,
         }
 
-        with self.request_context(task, request):
-            pass
+        with suppress(Exception):  # noqa: SIM117
+            with self.request_context(task, request):
+                pass
 
         self.hellos.remove(description)
 

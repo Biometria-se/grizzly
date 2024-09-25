@@ -13,8 +13,8 @@ from grizzly.types.behave import then
 from grizzly.utils import ModuleLoader
 
 if TYPE_CHECKING:
-    from grizzly.behave import Context
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.types.behave import Context
 
 
 class SleepTask(GrizzlyTask):

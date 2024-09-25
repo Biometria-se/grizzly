@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager, suppress
+from threading import Event
 from time import perf_counter as time
 from time import sleep
 from typing import TYPE_CHECKING, Any, Optional, cast
@@ -33,11 +34,11 @@ handlers: dict[str, AsyncMessageRequestHandler] = {}
 class AsyncMessageQueueHandler(AsyncMessageHandler):
     qmgr: Optional[pymqi.QueueManager] = None
 
-    def __init__(self, worker: str) -> None:
+    def __init__(self, worker: str, event: Event | None = None) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             pymqi.raise_for_error(self.__class__)
 
-        super().__init__(worker)
+        super().__init__(worker, event)
         self.header_type: Optional[str] = None
 
     def close(self) -> None:

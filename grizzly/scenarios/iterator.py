@@ -51,13 +51,15 @@ class IteratorScenario(GrizzlyScenario):
         self.__class__.behave_steps = self.user._scenario.tasks.behave_steps.copy()
         self.stats = self.user.environment.stats.get(self.user._scenario.locust_name, RequestType.SCENARIO())
         self._prefetch = False
+        self._on_quitting = False
 
     def on_quitting(self, *_args: Any, **kwargs: Any) -> None:
         super().on_quitting(*_args, **kwargs)
 
         # test has been aborted, log "request" failures for SCENARIO
-        if self.abort.is_set():
+        if self.abort.is_set() and not self._on_quitting:
             self.iteration_stop(error=StopScenario())
+            self._on_quitting = True
 
     @classmethod
     def populate(cls, task_factory: GrizzlyTask) -> None:
@@ -118,9 +120,8 @@ class IteratorScenario(GrizzlyScenario):
                     except Exception:
                         step = 'unknown'
 
-                    self.logger.debug('task %d of %d executing: %s', self.current_task_index+1, self.task_count, step)
                     try:
-                        self.execute_next_task(f'task {self.current_task_index+1} of {self.task_count} failed: {step}')
+                        self.execute_next_task(self.current_task_index + 1, self.task_count, step)
                     except Exception as e:
                         if not isinstance(e, StopScenario):
                             execute_task_logged = True
@@ -224,7 +225,7 @@ class IteratorScenario(GrizzlyScenario):
                 self.user._state = LOCUST_STATE_RUNNING
                 return
 
-            if not self.abort.self.isset():
+            if not self.abort.is_set():
                 self.logger.debug("okay, I'm done with my running tasks now")
             else:
                 self.logger.debug("since you're asking nicely")

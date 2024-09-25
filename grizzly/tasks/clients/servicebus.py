@@ -91,6 +91,7 @@ If credential is to be used for authenticating, the following `endpoint` parts m
 from __future__ import annotations
 
 import re
+from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
@@ -391,10 +392,11 @@ class ServiceBusClientTask(ClientTask):
         self.connect(parent)
 
     def on_stop(self, parent: GrizzlyScenario) -> None:
-        if self.text is not None:
-            self.unsubscribe(parent)
+        with suppress(zmq.ZMQError):
+            if self.text is not None:
+                self.unsubscribe(parent)
 
-        self.disconnect(parent)
+            self.disconnect(parent)
 
     def request(self, parent: GrizzlyScenario, request: AsyncMessageRequest) -> AsyncMessageResponse:
         response = None

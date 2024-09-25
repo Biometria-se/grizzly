@@ -103,10 +103,10 @@ class Worker:
 
                     if parsed.scheme in ['mq', 'mqs']:
                         from .mq import AsyncMessageQueueHandler
-                        self.integration = AsyncMessageQueueHandler(self.identity)
+                        self.integration = AsyncMessageQueueHandler(self.identity, self._event)
                     elif parsed.scheme == 'sb':
                         from .sb import AsyncServiceBusHandler
-                        self.integration = AsyncServiceBusHandler(self.identity)
+                        self.integration = AsyncServiceBusHandler(self.identity, self._event)
                     else:
                         message = f'integration for {parsed.scheme}:// is not implemented'
                         raise RuntimeError(message)
@@ -347,6 +347,7 @@ def main() -> int:
 
         # if the process is still alive after timeout, forcefully kill it
         if process.is_alive():
+            logger.warning('killing process')
             process.kill()
 
     except KeyboardInterrupt:

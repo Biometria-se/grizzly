@@ -289,13 +289,15 @@ class MessageQueueUser(GrizzlyUser):
     def on_stop(self) -> None:
         self.logger.debug('on_stop called, worker_id=%s', self.worker_id)
 
-        with self._request_context({
-            'action': RequestType.DISCONNECT(),
-            'worker': self.worker_id,
-            'client': id(self),
-            'context': self.am_context,
-        }):
-            pass
+        with suppress(Exception):
+            if self.worker_id is not None:
+                with self._request_context({
+                    'action': RequestType.DISCONNECT(),
+                    'worker': self.worker_id,
+                    'client': id(self),
+                    'context': self.am_context,
+                }):
+                    pass
 
         with suppress(Exception):
             zmq_disconnect(self.zmq_client, destroy_context=False)
@@ -320,7 +322,7 @@ class MessageQueueUser(GrizzlyUser):
         payload = response.get('payload', None)
         metadata = response.get('metadata', None)
 
-        worker_id = (payload or {}).get('worker', None)
+        worker_id = (response or {}).get('worker', None)
 
         if self.worker_id is None and worker_id is not None:
             self.worker_id = worker_id

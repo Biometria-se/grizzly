@@ -32,7 +32,7 @@ from locust.user.users import User, UserMeta
 
 from grizzly.context import GrizzlyContext
 from grizzly.events import GrizzlyEventHook, RequestLogger, ResponseHandler
-from grizzly.exceptions import AsyncMessageAbort, RestartScenario, StopScenario
+from grizzly.exceptions import RestartScenario, StopScenario
 from grizzly.testdata import GrizzlyVariables
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
 from grizzly.types.locust import Environment, StopUser
@@ -212,16 +212,20 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
             metadata, payload = request_impl(request)
         except Exception as e:
-            if isinstance(e, AsyncMessageAbort):
-                self.logger.warning('scenario aborted')
-                raise StopScenario from e
-
-            message = f'request "{request.name}" failed: {str(e) or e.__class__}'
-            self.logger.exception(message)
             exception = e
+
+            if isinstance(e, StopScenario):
+                self.environment.events.quitting.fire(environment=self.environment, abort=True)
+                self.logger.warning('scenario aborted')
+            else:
+                message = f'request "{request.name}" failed: {str(e) or e.__class__}'
+                self.logger.exception(message)
         finally:
             total_time = int((perf_counter() - start_time) * 1000)
             response_length = len((payload or '').encode())
+
+            if isinstance(exception, StopScenario):
+                raise exception
 
             # execute response listeners, but not on these exceptions
             if not isinstance(exception, (RestartScenario, StopUser, AsyncMessageError)):

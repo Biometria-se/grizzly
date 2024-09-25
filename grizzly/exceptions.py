@@ -5,15 +5,15 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from locust.exception import StopUser
 
-from grizzly_extras.async_message import AsyncMessageAbort
+from grizzly_extras.exceptions import StopScenario
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.types.behave import Scenario, Step
 
 
 __all__ = [
+    'StopScenario',
     'StopUser',
-    'AsyncMessageAbort',
 ]
 
 
@@ -25,10 +25,6 @@ class ResponseHandlerError(Exception):
 
 
 class RestartScenario(Exception):  # noqa: N818
-    pass
-
-
-class StopScenario(Exception):  # noqa: N818
     pass
 
 class AssertionErrors(Exception):  # noqa: N818

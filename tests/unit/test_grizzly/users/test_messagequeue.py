@@ -438,7 +438,11 @@ class TestMessageQueueUser:
         mq_parent.user.add_context(remote_variables)
         mq_parent.user.on_start()
 
+        assert mq_parent.user.worker_id == '0000-1337'
+
         metadata, payload = mq_parent.user.request(request)
+
+        assert mq_parent.user.worker_id == '0000-1337'
 
         request_event_spy.assert_called_once_with(
             request_type='GET',
@@ -798,9 +802,15 @@ class TestMessageQueueUser:
             ],
         )
 
+        assert getattr(mq_parent.user, 'worker_id', '0000-1337') is None
+
         mq_parent.user.on_start()
 
+        assert mq_parent.user.worker_id == '0000-1337'
+
         mq_parent.user.request(template)
+
+        assert mq_parent.user.worker_id == '0000-1337'
 
         request_event_spy.assert_called_once_with(
             request_type='SEND',

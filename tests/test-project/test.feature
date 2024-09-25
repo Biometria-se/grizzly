@@ -7,5 +7,5 @@ Feature: external only
     And repeat for "3" iterations
     And restart scenario on failure
 
-    # Then sleep in "3600.0"
+    Then sleep in "3600.0"
     Then raise exception "RuntimeError"

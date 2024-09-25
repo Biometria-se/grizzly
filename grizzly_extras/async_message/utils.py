@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 from time import perf_counter, sleep
 from typing import Any, Optional, Union, cast
 
 import zmq.green as zmq
 from zmq.error import Again as ZMQAgain
 
-from grizzly_extras.async_message import AsyncMessageAbort, AsyncMessageError, AsyncMessageRequest, AsyncMessageResponse
+from grizzly_extras.async_message import AsyncMessageError, AsyncMessageRequest, AsyncMessageResponse
+from grizzly_extras.exceptions import StopScenario
 
 logger = logging.getLogger(__name__)
 
@@ -28,38 +30,43 @@ def tohex(value: Union[int, str, bytes, bytearray, Any]) -> str:
 
 
 def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
-    try:
-        client.send_json(request)
+    client.send_json(request)
 
-        response: Optional[AsyncMessageResponse] = None
+    response: Optional[AsyncMessageResponse] = None
 
-        while True:
-            start = perf_counter()
+    while True:
+        start = perf_counter()
+        try:
+            response = cast(Optional[AsyncMessageResponse], client.recv_json(flags=zmq.NOBLOCK))
+            break
+        except ZMQAgain:
+            # with suppress(Exception):
             try:
-                response = cast(Optional[AsyncMessageResponse], client.recv_json(flags=zmq.NOBLOCK))
-                break
-            except ZMQAgain:
                 sleep(0.1)
+            except StopScenario:
+                if response is None:
+                    response = {}
 
-            delta = perf_counter() - start
-            if delta > 1.0:
-                logger.debug('async_message_request::recv_json took %f seconds', delta)
+                response.update({'success': False, 'message': 'abort'})
+                break
+            except:  # noqa: S110
+                pass
 
-        if response is None:
-            msg = 'no response'
-            raise AsyncMessageError(msg)
+        delta = perf_counter() - start
+        if delta > 1.0:
+            logger.debug('async_message_request::recv_json took %f seconds', delta)
 
-        message = response.get('message', None)
+    if response is None:
+        msg = 'no response'
+        raise AsyncMessageError(msg)
 
-        if not response['success']:
-            if response['message'] == 'abort':
-                raise AsyncMessageAbort
+    message = response.get('message', None)
 
-            raise AsyncMessageError(message)
+    if not response['success']:
+        if message == 'abort':
+            logger.warning('received abort message')
+            raise StopScenario
 
-    except Exception as e:
-        if not isinstance(e, (AsyncMessageError, AsyncMessageAbort)):
-            logger.exception('failed to send request=%r', request)
-        raise
-    else:
-        return response
+        raise AsyncMessageError(message)
+
+    return response

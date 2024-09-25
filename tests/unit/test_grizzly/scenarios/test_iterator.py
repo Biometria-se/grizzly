@@ -416,34 +416,34 @@ class TestIterationScenario:
 
         parent.iteration_stop(error=RuntimeError('foobar'))
 
-        assert stats_log_mock.call_count == 0
-
-        assert stats_log_error_mock.call_count == 0
+        stats_log_mock.assert_not_called()
+        stats_log_error_mock.assert_not_called()
 
         parent.start = 1.0
 
         parent.iteration_stop(error=RuntimeError('foobar'))
 
-        assert stats_log_mock.call_count == 1
-        args, _ = stats_log_mock.call_args_list[-1]
-        assert len(args) == 2
-        assert args[0] == 10000
-        assert args[1] == (parent._task_index % parent.task_count) + 1
+        stats_log_mock.assert_called_once_with(10000, (parent._task_index % parent.task_count) + 1)
+        stats_log_mock.reset_mock()
 
-        assert stats_log_error_mock.call_count == 1
-        args, _ = stats_log_error_mock.call_args_list[-1]
-        assert len(args) == 1
-        assert args[0] is None
+        stats_log_error_mock.assert_called_once_with(None)
+        stats_log_error_mock.reset_mock()
+        assert getattr(parent, 'start', 'foo') is None
 
-        parent.iteration_stop(error=RuntimeError('foobar'))
+        parent.iteration_stop(error=None)
 
-        assert stats_log_mock.call_count == 2
-        args, _ = stats_log_mock.call_args_list[-1]
-        assert len(args) == 2
-        assert args[0] == 10000
-        assert args[1] == (parent._task_index % parent.task_count) + 1
+        stats_log_mock.assert_not_called()
+        stats_log_error_mock.assert_not_called()
 
-        assert stats_log_error_mock.call_count == 1
+        parent.start = 2.0
+
+        parent.iteration_stop(error=None)
+
+        stats_log_mock.assert_called_once_with(9000, (parent._task_index % parent.task_count) + 1)
+        stats_log_mock.reset_mock()
+
+        stats_log_error_mock.assert_not_called()
+
 
     def test_wait(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         parent = grizzly_fixture(scenario_type=IteratorScenario)
@@ -461,8 +461,10 @@ class TestIterationScenario:
         with caplog.at_level(logging.DEBUG):
             parent.wait()
 
-        assert wait_mocked.call_count == 0
-        assert sleep_mocked.call_count == 1
+        wait_mocked.assert_not_called()
+        sleep_mocked.assert_called_once_with(0)
+        sleep_mocked.reset_mock()
+
         assert parent.user._state == LOCUST_STATE_RUNNING
         assert len(caplog.messages) == 1
         assert caplog.messages[-1] == 'not finished with scenario, currently at task 4 of 10, let me be!'
@@ -473,7 +475,8 @@ class TestIterationScenario:
         with caplog.at_level(logging.DEBUG):
             parent.wait()
 
-        assert wait_mocked.call_count == 1
+        wait_mocked.assert_called_once_with()
+        wait_mocked.reset_mock()
         assert parent.user._state == LOCUST_STATE_STOPPING
         assert parent.user.scenario_state == ScenarioState.STOPPED
 
@@ -487,7 +490,8 @@ class TestIterationScenario:
         with caplog.at_level(logging.DEBUG):
             parent.wait()
 
-        assert wait_mocked.call_count == 2
+        wait_mocked.assert_called_once_with()
+        wait_mocked.reset_mock()
         assert len(caplog.messages) == 0
 
     def test_run(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
@@ -739,38 +743,37 @@ class TestIterationScenario:
                 scenario.run()
 
             expected_messages = [
-                'executing task 1 of 13: iterator',  # IteratorScenario.iterator()
-                'executing task 2 of 13: test-task-1',
-                'executing task 3 of 13: test-task-2',
-                'executing task 4 of 13: test-task-3',
-                'executing task 5 of 13: test-task-4',
-                'executing task 6 of 13: test-task-5',
-                'executing task 7 of 13: test-error-task-1',
-                'task 7 of 13: test-error-task-1, failed: RestartScenario',
+                'task 1 of 13 executed: iterator',  # IteratorScenario.iterator()
+                'task 2 of 13 executed: test-task-1',
+                'task 3 of 13 executed: test-task-2',
+                'task 4 of 13 executed: test-task-3',
+                'task 5 of 13 executed: test-task-4',
+                'task 6 of 13 executed: test-task-5',
+                'task 7 of 13 failed: test-error-task-1',
                 'restarting scenario at task 7 of 13',
                 '0 tasks in queue',
-                'executing task 1 of 13: iterator',  # IteratorScenario.iterator()
-                'executing task 2 of 13: test-task-1',
-                'executing task 3 of 13: test-task-2',
-                'executing task 4 of 13: test-task-3',
-                'executing task 5 of 13: test-task-4',
-                'executing task 6 of 13: test-task-5',
-                'executing task 7 of 13: test-error-task-1',
+                'task 1 of 13 executed: iterator',  # IteratorScenario.iterator()
+                'task 2 of 13 executed: test-task-1',
+                'task 3 of 13 executed: test-task-2',
+                'task 4 of 13 executed: test-task-3',
+                'task 5 of 13 executed: test-task-4',
+                'task 6 of 13 executed: test-task-5',
                 'stop scenarios before stopping user',
                 'scenario state=ScenarioState.RUNNING -> ScenarioState.STOPPING',
+                'task 7 of 13 executed: test-error-task-1',
                 'not finished with scenario, currently at task 7 of 13, let me be!',
-                'executing task 8 of 13: test-task-6',
+                'task 8 of 13 executed: test-task-6',
                 'not finished with scenario, currently at task 8 of 13, let me be!',
-                'executing task 9 of 13: test-task-7',
+                'task 9 of 13 executed: test-task-7',
                 'not finished with scenario, currently at task 9 of 13, let me be!',
-                'executing task 10 of 13: test-task-8',
+                'task 10 of 13 executed: test-task-8',
                 'not finished with scenario, currently at task 10 of 13, let me be!',
-                'executing task 11 of 13: test-task-9',
+                'task 11 of 13 executed: test-task-9',
                 'not finished with scenario, currently at task 11 of 13, let me be!',
-                'executing task 12 of 13: test-task-10',
+                'task 12 of 13 executed: test-task-10',
                 'not finished with scenario, currently at task 12 of 13, let me be!',
-                'executing task 13 of 13: pace',
                 r'^keeping pace by sleeping [0-9\.]+ milliseconds$',
+                'task 13 of 13 executed: pace',
                 "okay, I'm done with my running tasks now",
                 'scenario state=ScenarioState.STOPPING -> ScenarioState.STOPPED',
                 "scenario_state=STOPPED, user_state=stopping, exception=StopUser()",

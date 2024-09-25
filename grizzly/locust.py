@@ -31,7 +31,7 @@ from .listeners import init, init_statistics_listener, locust_test_start, locust
 from .testdata.utils import initialize_testdata
 from .types import RequestType, TestdataType
 from .types.behave import Context, Status
-from .types.locust import Environment, LocustRunner, MasterRunner, Message, WorkerRunner
+from .types.locust import Environment, LocustRunner, MasterRunner, WorkerRunner
 from .users import GrizzlyUser
 from .utils import create_scenario_class_type, create_user_class_type
 
@@ -849,10 +849,6 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     print(separator)
 
 
-def grizzly_test_abort(*_args: Any, **_kwargs: Any) -> None:
-    if not abort_test.is_set():
-        abort_test.set()
-
 def shutdown_external_processes(processes: dict[str, subprocess.Popen], greenlet: Optional[gevent.Greenlet]) -> None:
     if len(processes) < 1:
         return
@@ -1035,8 +1031,6 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 grizzly.state.locust.register_message(message_type, callback)
                 logger.info('registered callback for message type "%s"', message_type)
 
-            runner.register_message('client_aborted', grizzly_test_abort)
-
         main_greenlet = runner.greenlet
 
         # And run for maximum
@@ -1204,14 +1198,10 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
                 logger.info('handling signal %s (%d)', signame, signum)
 
-                logger.debug('shutdown external processes')
-
                 abort_test.set()
-                shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
 
                 if isinstance(runner, WorkerRunner):
                     runner._send_stats()
-                    runner.client.send(Message('client_aborted', None, runner.client_id))
 
                 runner.environment.events.quitting.fire(environment=runner.environment, reverse=True, abort=True)
 
@@ -1237,8 +1227,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         return code
     finally:
-        if not abort_test.is_set():
-            shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
+        shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> list[tuple[str, str, int]]:

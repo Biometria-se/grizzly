@@ -29,7 +29,7 @@ from time import perf_counter as time
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast, final
 from urllib.parse import unquote, urlparse
 
-from grizzly.exceptions import AsyncMessageAbort, StopUser
+from grizzly.exceptions import StopScenario
 from grizzly.tasks import GrizzlyMetaRequestTask, grizzlytask, template
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
@@ -254,9 +254,13 @@ class ClientTask(GrizzlyMetaRequestTask):
             # get metadata back from actual implementation
             yield meta
         except Exception as e:
-            parent.logger.exception('%s:', self.__class__.__name__)
+            if not isinstance(e, StopScenario):
+                parent.logger.exception('%s:', self.__class__.__name__)
             exception = e
         finally:
+            if isinstance(exception, StopScenario):
+                raise exception
+
             if self.name is None:
                 action = action or meta.get('action', self.payload_variable)
                 name = f'{parent.user._scenario.identifier} {self._short_name}{meta.get("direction", self._direction_arrow[self.direction])}{action}'
@@ -270,7 +274,7 @@ class ClientTask(GrizzlyMetaRequestTask):
             if exception is None:
                 exception = meta.get('exception')
 
-            if not suppress or (exception is not None and not isinstance(exception, AsyncMessageAbort)):
+            if not suppress or (exception is not None):
                 parent.user.environment.events.request.fire(
                     request_type=RequestType.CLIENT_TASK(),
                     name=name,
@@ -301,9 +305,6 @@ class ClientTask(GrizzlyMetaRequestTask):
                     )})
 
                 log_file.write_text(jsondumps(request_log, indent=2))
-
-            if isinstance(exception, AsyncMessageAbort):
-                raise StopUser
 
             if exception is not None and parent.user._scenario.failure_exception is not None:
                 raise parent.user._scenario.failure_exception

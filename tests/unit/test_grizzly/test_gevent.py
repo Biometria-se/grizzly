@@ -5,12 +5,15 @@ import logging
 from typing import TYPE_CHECKING
 
 import pytest
-from gevent import Greenlet, getcurrent
+from gevent import getcurrent
+from greenlet import greenlet
 
-from grizzly.gevent import GreenletWithExceptionCatching
+from grizzly.gevent import GreenletFactory
 
 if TYPE_CHECKING:  # pragma: no cover
-    from tests.fixtures import MockerFixture
+    from _pytest.logging import LogCaptureFixture
+
+    from tests.fixtures import GrizzlyFixture, MockerFixture
 
 
 def func(a: str, i: int) -> None:
@@ -18,21 +21,22 @@ def func(a: str, i: int) -> None:
     raise RuntimeError(msg)
 
 
-class TestGreenletWithExceptionCatching:
+class TestGreenletFactory:
     def test___init__(self) -> None:
-        g = GreenletWithExceptionCatching(logger=logging.getLogger(), ignore_exceptions=[])
+        g = GreenletFactory(logger=logging.getLogger())
 
         assert g.started_from == getcurrent()
-        assert isinstance(g, Greenlet)
+        assert isinstance(g, GreenletFactory)
+        assert isinstance(g.started_from, greenlet)
 
     def test_handle_exception(self) -> None:
-        g = GreenletWithExceptionCatching(logger=logging.getLogger(), ignore_exceptions=[])
+        g = GreenletFactory(logger=logging.getLogger())
 
         with pytest.raises(RuntimeError, match='error'):
             g.handle_exception(RuntimeError('error'))
 
     def test_spawn(self, mocker: MockerFixture) -> None:
-        g = GreenletWithExceptionCatching(logger=logging.getLogger(), ignore_exceptions=[])
+        g = GreenletFactory(logger=logging.getLogger())
         wrap_exceptions_spy = mocker.spy(g, 'wrap_exceptions')
 
         with pytest.raises(RuntimeError, match="func error, a='hello', i=1"):  # noqa: PT012
@@ -43,7 +47,9 @@ class TestGreenletWithExceptionCatching:
 
         wrap_exceptions_spy.assert_called_once_with(g.handle_exception)
 
-    def test_spawn_blocking(self) -> None:
+    def test_spawn_task(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+        parent = grizzly_fixture()
+
         def fail() -> None:
             msg = 'foobar'
             raise RuntimeError(msg)
@@ -51,21 +57,16 @@ class TestGreenletWithExceptionCatching:
         def ok() -> None:
             pass
 
-        factory = GreenletWithExceptionCatching(logger=logging.getLogger(), ignore_exceptions=[])
+        factory = GreenletFactory(logger=parent.logger)
 
-        with pytest.raises(RuntimeError, match='foobar'):
-            factory.spawn_blocking(fail, 'foobar')
+        with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError, match='foobar'), factory.spawn_task(fail, 1, 10, 'Then fail'):
+            pass
 
-        factory.spawn_blocking(ok, 'foobar')
+        assert caplog.messages == ['task 1 of 10 failed: Then fail']
+        caplog.clear()
 
-    def test_spawn_later(self, mocker: MockerFixture) -> None:
-        g = GreenletWithExceptionCatching(logger=logging.getLogger(), ignore_exceptions=[])
-        wrap_exceptions_spy = mocker.spy(g, 'wrap_exceptions')
+        with caplog.at_level(logging.DEBUG), factory.spawn_task(ok, 3, 11, 'Then succeed'):
+            pass
 
-        with pytest.raises(RuntimeError, match="func error, a='foobar', i=1337"):  # noqa: PT012
-            func_g = g.spawn_later(1, func, 'foobar', i=1337)
-            wrap_exceptions_spy.assert_called_once_with(func)
-            wrap_exceptions_spy.reset_mock()
-            func_g.join()
-
-        wrap_exceptions_spy.assert_called_once_with(g.handle_exception)
+        assert caplog.messages == ['task 3 of 11 executed: Then succeed']
+        caplog.clear()

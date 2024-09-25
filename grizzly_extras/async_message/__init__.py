@@ -9,6 +9,7 @@ from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
 from platform import node as hostname
+from threading import Event
 from time import monotonic as time
 from typing import Any, Callable, Optional, TypedDict, final
 
@@ -102,19 +103,17 @@ class AsyncMessageError(Exception):
     pass
 
 
-class AsyncMessageAbort(Exception):  # noqa: N818
-    pass
-
-
 class AsyncMessageHandler(ABC):
     worker: str
     message_wait: Optional[int]
     logger: logging.Logger
+    _event: Event
 
-    def __init__(self, worker: str) -> None:
+    def __init__(self, worker: str, event: Event | None) -> None:
         self.worker = worker
         self.message_wait = None
         self.logger = logging.getLogger(f'handler::{self.__class__.__name__}::{worker}')
+        self._event = event if event is not None else Event()
 
         # silence uamqp loggers
         for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
@@ -151,6 +150,8 @@ class AsyncMessageHandler(ABC):
 
             response = request_handler(self, request)
             response['success'] = True
+            if self._event.is_set():
+                response.update({'success': False, 'message': 'abort'})
         except Exception as e:
             response = {
                 'success': False,
