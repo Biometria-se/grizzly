@@ -340,6 +340,13 @@ class TestServiceBusUser:
     def test_request(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.users.servicebus')
 
+        uuid4_mock = mocker.MagicMock()
+        uuid4_mock.hex = 'deadbeefdeadbeefdeadbeefdeadbeef'
+        mocker.patch(
+            'grizzly_extras.async_message.utils.uuid.uuid4',
+            return_value=uuid4_mock,
+        )
+
         grizzly_fixture.grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test scenario'))
         grizzly = grizzly_fixture.grizzly
 
@@ -435,6 +442,7 @@ class TestServiceBusUser:
                 'password': None,
                 'tenant': None,
             },
+            'request_id': 'deadbeefdeadbeefdeadbeefdeadbeef',
         })
 
         send_json_spy.reset_mock()
@@ -505,6 +513,7 @@ class TestServiceBusUser:
                 'password': None,
                 'tenant': None,
             },
+            'request_id': 'deadbeefdeadbeefdeadbeefdeadbeef',
         })
         send_json_spy.reset_mock()
 
@@ -561,5 +570,6 @@ class TestServiceBusUser:
                 'password': None,
                 'tenant': None,
             },
+            'request_id': 'deadbeefdeadbeefdeadbeefdeadbeef',
         })
         send_json_spy.reset_mock()

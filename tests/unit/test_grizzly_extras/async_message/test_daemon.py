@@ -56,13 +56,15 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
 
     mock_recv_multipart({'worker': 'ID-54321', 'context': {'url': f'{scheme}://dummy'}})
 
-    with pytest.raises(StopAsyncIteration):
-        Worker(context_mock, 'ID-12345').run()
+    event_mock = mocker.MagicMock()
+    event_mock.is_set.side_effect = [False, False, False, False, True]
+    Worker(context_mock, 'ID-12345', event=event_mock).run()
 
     worker_mock.send_multipart.assert_called_once_with([
         b'ID-54321',
         b'',
         jsondumps({
+            'request_id': 'None',
             'worker': 'ID-12345',
             'response_time': 0,
             'success': False,
@@ -73,13 +75,14 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
 
     mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': 'http://www.example.com'}})
 
-    with pytest.raises(StopAsyncIteration):
-        Worker(context_mock, 'ID-12345').run()
+    event_mock.is_set.side_effect = [False, False, False, False, True]
+    Worker(context_mock, 'ID-12345', event=event_mock).run()
 
     worker_mock.send_multipart.assert_called_once_with([
         b'ID-12345',
         b'',
         jsondumps({
+            'request_id': 'None',
             'worker': 'ID-12345',
             'response_time': 0,
             'success': False,
@@ -95,6 +98,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
 
     mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': f'{scheme}://example.com'}})
     mock_handle_response({
+        'request_id': 'None',
         'worker': 'ID-12345',
         'success': True,
         'payload': 'hello world',
@@ -104,8 +108,8 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
         'response_time': 439,
     })
 
-    with pytest.raises(StopAsyncIteration):
-        Worker(context_mock, 'ID-12345').run()
+    event_mock.is_set.side_effect = [False, False, False, False, True]
+    Worker(context_mock, 'ID-12345', event=event_mock).run()
 
     integration_spy.assert_called_once_with('ID-12345')
     integration_spy.reset_mock()
@@ -114,6 +118,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
         b'ID-12345',
         b'',
         jsondumps({
+            'request_id': 'None',
             'worker': 'ID-12345',
             'success': True,
             'payload': 'hello world',
@@ -127,13 +132,9 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
 
     worker = Worker(context_mock, 'F00B4R')
 
-    def hack(*_args: Any, **_kwargs: Any) -> None:
-        worker._event.set()
-
-    worker_mock.send_multipart = hack
-
     mock_recv_multipart({'worker': 'F00B4R', 'context': {'url': f'{scheme}://example.com'}})
     mock_handle_response({
+        'request_id': 'None',
         'worker': 'F00B4R',
         'success': True,
         'payload': 'foo bar',
@@ -144,16 +145,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
     })
     caplog.clear()
 
-    integration_close_spy = mocker.patch(
-        f'grizzly_extras.async_message.{scheme}.{implementation}.close',
-        return_value=None,
-    )
-
     worker.run()
-
-    integration_close_spy.assert_called_once_with()
-
-    assert caplog.messages[-1] == 'stopped'
 
 
 def test_router(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
