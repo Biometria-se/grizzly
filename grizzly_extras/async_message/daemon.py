@@ -145,9 +145,9 @@ class Worker:
                 ]
 
                 self.socket.send_multipart(response_proto)
-        except Exception as e:
-            err_msg = f'unhandled exception in worker: {e}'
-            self.logger.exception(err_msg)
+        except Exception:
+            if not self._event.is_set():
+                self.logger.exception('unhandled exception')
 
 
 def create_router_socket(context: ztypes.Context) -> ztypes.Socket:
@@ -338,9 +338,9 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                 context.destroy(linger=0)
             except:
                 logger.exception('failed to destroy zmq context')
-        except Exception as e:
-            err_msg = f'unhandled exception in router for client_id {request_client_id}, request_id {request_request_id}: {e}'
-            logger.exception(err_msg)
+        except Exception:
+            if not run_daemon.is_set():
+                logger.exception('unhandled exception for client %s, request id %s', request_client_id, request_request_id)
 
     logger.info('stopped')
 
