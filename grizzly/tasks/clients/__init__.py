@@ -254,8 +254,6 @@ class ClientTask(GrizzlyMetaRequestTask):
             # get metadata back from actual implementation
             yield meta
         except Exception as e:
-            if not isinstance(e, StopScenario):
-                parent.logger.exception('%s:', self.__class__.__name__)
             exception = e
         finally:
             if isinstance(exception, StopScenario):

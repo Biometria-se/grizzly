@@ -77,11 +77,11 @@ class Worker:
 
         if parsed.scheme in ['mq', 'mqs']:
             from .mq import AsyncMessageQueueHandler
-            return AsyncMessageQueueHandler(self.identity)
+            return AsyncMessageQueueHandler(self.identity, event=self._event)
 
         if parsed.scheme == 'sb':
             from .sb import AsyncServiceBusHandler
-            return AsyncServiceBusHandler(self.identity)
+            return AsyncServiceBusHandler(self.identity, event=self._event)
 
         message = f'integration for {parsed.scheme}:// is not implemented'
         raise RuntimeError(message)
@@ -89,6 +89,7 @@ class Worker:
 
     def run(self) -> None:
         connected = True
+
         try:
             while not self._event.is_set() and connected:
                 received = False
@@ -132,11 +133,13 @@ class Worker:
 
                 if response is None and self.integration is not None:
                     response = self.integration.handle(request)
-                    response.update({
-                        'request_id': str(request_request_id),
-                    })
+                    response.update({'request_id': str(request_request_id)})
+
                     if response.get('action', None) in ['DISC', 'DISCONNECT']:
                         connected = False
+
+                    if self._event.is_set():
+                        response.update({'message': 'abort', 'success': False})
 
                 response_proto = [
                     request_proto[0],
@@ -324,7 +327,6 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
 
                     worker.integration.close()
                     worker.socket.close()
-                    worker.logger.info('socket closed')
 
                     # stop worker
                     cancelled = future.cancel()  # let's try at least...
@@ -333,11 +335,9 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                     # should complete when `worker.stop()` has had effect
                     futures.wait([future])
 
-            try:
-                logger.debug('destroy zmq context')
-                context.destroy(linger=0)
-            except:
-                logger.exception('failed to destroy zmq context')
+            logger.debug('destroy zmq context')
+            context.destroy(linger=0)
+            logger.info('stopped')
         except Exception:
             if not run_daemon.is_set():
                 logger.exception('unhandled exception for client %s, request id %s', request_client_id, request_request_id)

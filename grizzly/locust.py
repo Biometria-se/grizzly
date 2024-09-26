@@ -31,7 +31,7 @@ from .listeners import init, init_statistics_listener, locust_test_start, locust
 from .testdata.utils import initialize_testdata
 from .types import RequestType, TestdataType
 from .types.behave import Context, Status
-from .types.locust import Environment, LocustRunner, MasterRunner, WorkerRunner
+from .types.locust import Environment, LocustRunner, MasterRunner, Message, WorkerRunner
 from .users import GrizzlyUser
 from .utils import create_scenario_class_type, create_user_class_type
 
@@ -849,6 +849,22 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     print(separator)
 
 
+def sig_trap(msg: Message, **_kwargs: Environment) -> None:
+    if not abort_test.is_set():
+        abort_test.set()
+        logger.info('worker %s triggered test abort on master', msg.node_id)
+
+
+def return_code(environment: Environment, msg: Message) -> None:
+    rc = int(msg.data)
+    old_rc = environment.process_exit_code
+
+    environment.process_exit_code = max(environment.process_exit_code or -1, rc)
+
+    if old_rc != rc:
+        logger.info('worker %s changed environment.process_exit_code: %r -> %r', msg.node_id, old_rc, environment.process_exit_code)
+
+
 def shutdown_external_processes(processes: dict[str, subprocess.Popen], greenlet: Optional[gevent.Greenlet]) -> None:
     if len(processes) < 1:
         return
@@ -1031,6 +1047,9 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 grizzly.state.locust.register_message(message_type, callback)
                 logger.info('registered callback for message type "%s"', message_type)
 
+            runner.register_message('sig_trap', sig_trap)
+            runner.register_message('return_code', return_code)
+
         main_greenlet = runner.greenlet
 
         # And run for maximum
@@ -1202,6 +1221,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
                 if isinstance(runner, WorkerRunner):
                     runner._send_stats()
+                    runner.client.send(Message('sig_trap', None, runner.client_id))
 
                 runner.environment.events.quitting.fire(environment=runner.environment, reverse=True, abort=True)
 
@@ -1212,9 +1232,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         try:
             main_greenlet.join()
-            logger.debug('main greenlet finished')
         finally:
-            if abort_test.is_set():
+            if abort_test.is_set() and not isinstance(runner, MasterRunner):
                 code = SIGTERM.value
             elif unhandled_greenlet_exception:
                 code = 2
@@ -1224,6 +1243,13 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 code = 3
             else:
                 code = 0
+
+        if isinstance(runner, WorkerRunner):
+            runner.client.send(Message('return_code', code, runner.client_id))
+        else:
+            code = max(code, environment.process_exit_code or -1)
+
+        logger.debug('main greenlet finished, rc = %d', code)
 
         return code
     finally:

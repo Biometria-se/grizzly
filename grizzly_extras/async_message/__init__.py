@@ -118,9 +118,9 @@ class AsyncMessageHandler(ABC):
         self.logger = logging.getLogger(f'handler::{self.__class__.__name__}::{worker}')
         self._event = event if event is not None else Event()
 
-        # silence uamqp loggers
-        for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
-            logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
+        # silence loggers
+        for logger_name in ['uamqp', 'uamqp.c_uamqp', 'urllib3.connectionpool']:
+            logging.getLogger(logger_name).setLevel(logging.ERROR)
 
     @abstractmethod
     def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
@@ -169,7 +169,8 @@ class AsyncMessageHandler(ABC):
                 'action': action or 'UNKNOWN',
             })
 
-            self.logger.debug('handled %s, response=\n%s', action, jsondumps(response, indent=2, cls=JsonBytesEncoder))
+            if not self._event.is_set():
+                self.logger.debug('handled %s, response=\n%s', action, jsondumps(response, indent=2, cls=JsonBytesEncoder))
 
         return response
 

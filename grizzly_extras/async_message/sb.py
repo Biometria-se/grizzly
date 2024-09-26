@@ -79,7 +79,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         self.logger.debug('close: soft=%r', soft)
         if not soft:
             for subscription in self._subscriptions:
-                self.unsubscribe(subscription)
+                with suppress(AsyncMessageError):
+                    self.unsubscribe(subscription)
 
             self._subscriptions.clear()
 
@@ -389,7 +390,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             message = 'no mgmt client found'
             raise AsyncMessageError(message)
 
-
         topic: Optional[TopicProperties] = None
 
         try:
@@ -427,10 +427,13 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             subscription_name=subscription_name,
         )
 
-        self.logger.debug('removed subscription %s on topic %s', subscription_name, topic_name)
+
+        message = f'removed subscription {subscription_name} on topic {topic_name} (stats: {topic_statistics})'
+
+        self.logger.debug(message)
 
         return {
-            'message': f'removed subscription {subscription_name} on topic {topic_name} (stats: {topic_statistics})',
+            'message': message,
         }
 
     def _prepare_clients(self, context: AsyncMessageContext, *, only_mgmt: bool = False) -> None:
@@ -625,6 +628,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 receiver._handler._last_activity_timestamp = time() if isinstance(receiver._handler, ReceiveClient) else None
 
             for retry in range(1, 4):
+                if self._event.is_set():
+                    break
+
                 try:
                     if expression is not None:
                         try:
@@ -706,8 +712,10 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     else:
                         error_message = 'unhandled service bus error'
 
-                    if not self._event.is_set():
-                        raise AsyncMessageError(error_message) from e
+                    if self._event.is_set():
+                        break
+
+                    raise AsyncMessageError(error_message) from e
                 except StopIteration:
                     delta = perf_counter() - wait_start
 
@@ -718,9 +726,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             if message_wait > 0:
                                 error_message = f'{error_message} within {message_wait} seconds'
                         elif consume and expression is not None:
-                            if not self._event.is_set():
-                                self.logger.debug('%d::%s: waiting for more messages', client, cache_endpoint)
-                                continue
+                            if self._event.is_set():
+                                break
+
+                            self.logger.debug('%d::%s: waiting for more messages', client, cache_endpoint)
+                            continue
                         else:  # noqa: PLR5501
                             # ugly brute-force way of handling no messages on service bus
                             if retry < 3:
@@ -754,16 +764,22 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                 receiver = self._receiver_cache[cache_endpoint]
                                 message = None
 
-                                if not self._event.is_set():
-                                    continue
+                                if self._event.is_set():
+                                    break
+
+                                continue
                     else:
                         error_message = f'{endpoint} receiver returned no messages, without trying'
 
-                    if not self._event.is_set():
-                        raise AsyncMessageError(error_message) from None
+                    if self._event.is_set():
+                        break
+
+                    raise AsyncMessageError(error_message) from None
                 except:
-                    if not self._event.is_set():
-                        raise
+                    if self._event.is_set():
+                        break
+
+                    raise
 
         if expression is None:
             metadata, payload = self.from_message(message)
