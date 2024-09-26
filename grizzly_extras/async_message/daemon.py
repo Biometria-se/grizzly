@@ -19,6 +19,7 @@ from uuid import uuid4
 import setproctitle as proc
 import zmq.green as zmq
 from typing_extensions import Literal
+from zmq import sugar as ztypes
 
 from grizzly_extras.transformer import JsonBytesEncoder
 
@@ -48,13 +49,13 @@ class ThreadPoolExecutor(futures.ThreadPoolExecutor):
 class Worker:
     logger: logging.Logger
     identity: str
-    context: zmq.Context
+    context: ztypes.Context
 
     integration: Optional[AsyncMessageHandler]
 
     _event: Event
 
-    def __init__(self, context: zmq.Context, identity: str, event: Optional[Event] = None) -> None:
+    def __init__(self, context: ztypes.Context, identity: str, event: Optional[Event] = None) -> None:
         self.logger = logging.getLogger(f'worker::{identity}')
         self.identity = identity
         self.context = context
@@ -149,8 +150,8 @@ class Worker:
             self.logger.exception(err_msg)
 
 
-def create_router_socket(context: zmq.Context) -> zmq.Socket:
-    socket = cast(zmq.Socket, context.socket(zmq.ROUTER))
+def create_router_socket(context: ztypes.Context) -> ztypes.Socket:
+    socket = cast(ztypes.Socket, context.socket(zmq.ROUTER))
     socket.setsockopt(zmq.LINGER, 0)
     socket.setsockopt(zmq.ROUTER_HANDOVER, 1)
 

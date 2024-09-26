@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 from contextlib import suppress
-from threading import Event
 from time import perf_counter, sleep, time
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 from urllib.parse import urlparse
@@ -31,6 +30,8 @@ from . import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
+    from threading import Event
+
     from azure.servicebus.amqp._amqp_message import DictMixin
 
 __all__ = [

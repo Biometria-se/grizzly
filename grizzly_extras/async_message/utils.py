@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from time import perf_counter, sleep
-from typing import Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from uuid import uuid4
 
 import zmq.green as zmq
@@ -11,6 +11,9 @@ from zmq.error import Again as ZMQAgain
 
 from grizzly_extras.async_message import AsyncMessageError, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.exceptions import StopScenario
+
+if TYPE_CHECKING:
+    from zmq import sugar as ztypes
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +32,7 @@ def tohex(value: Union[int, str, bytes, bytearray, Any]) -> str:
     raise ValueError(message)
 
 
-def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
+def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
     request.update({'request_id': str(uuid4())})
 
     client.send_json(request)

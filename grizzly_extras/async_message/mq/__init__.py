@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from contextlib import contextmanager, suppress
-from threading import Event
 from time import perf_counter as time
 from time import sleep
 from typing import TYPE_CHECKING, Any, Optional, cast
@@ -21,6 +20,7 @@ from .rfh2 import Rfh2Decoder, Rfh2Encoder
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from threading import Event
 
 __all__ = [
     'AsyncMessageQueueHandler',

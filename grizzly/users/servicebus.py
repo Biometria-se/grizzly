@@ -83,6 +83,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 from urllib.parse import parse_qs, urlparse
 
 import zmq.green as zmq
+from zmq import sugar as ztypes
 
 from grizzly.tasks import RequestTask
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
@@ -119,7 +120,7 @@ class ServiceBusUser(GrizzlyUser):
     am_context: AsyncMessageContext
     worker_id: Optional[str]
     zmq_context = zmq.Context()
-    zmq_client: zmq.Socket
+    zmq_client: ztypes.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
     hellos: set[str]
 

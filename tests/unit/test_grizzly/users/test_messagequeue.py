@@ -746,6 +746,8 @@ class TestMessageQueueUser:
     def test_send(self, mq_parent: GrizzlyScenario, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.users.messagequeue')
 
+        assert isinstance(mq_parent.user, MessageQueueUser)
+
         response_connected: AsyncMessageResponse = {
             'worker': '0000-1337',
             'success': True,

@@ -20,7 +20,7 @@ from grizzly_extras.async_message.utils import async_message_request
 if TYPE_CHECKING:
     from http.cookiejar import CookieJar
 
-    import zmq.green as zmq
+    from zmq import sugar as ztypes
 
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.types.behave import Context
@@ -59,7 +59,7 @@ def http_populate_cookiejar(holder: HttpCookieHolder, cookies: dict[str, str], *
         ))
 
 
-def async_message_request_wrapper(parent: GrizzlyScenario, client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
+def async_message_request_wrapper(parent: GrizzlyScenario, client: ztypes.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
     """Wrap `grizzly_extras.async_message.async_message_request` to make it easier to communicating with `async-messaged` from within `grizzly`."""
     request_string: Optional[str] = None
     request_rendered: Optional[str] = None
@@ -78,7 +78,7 @@ def async_message_request_wrapper(parent: GrizzlyScenario, client: zmq.Socket, r
     return async_message_request(client, request)
 
 
-def zmq_disconnect(socket: zmq.Socket, *, destroy_context: bool) -> None:
+def zmq_disconnect(socket: ztypes.Socket, *, destroy_context: bool) -> None:
     socket.close(linger=0)
     if destroy_context:
         socket.context.destroy(linger=0)

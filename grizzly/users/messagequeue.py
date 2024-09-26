@@ -132,6 +132,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import zmq.green as zmq
+from zmq import sugar as ztypes
 
 from grizzly.exceptions import StopScenario
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
@@ -177,7 +178,7 @@ class MessageQueueUser(GrizzlyUser):
     am_context: AsyncMessageContext
     worker_id: Optional[str]
     zmq_context = zmq.Context()
-    zmq_client: zmq.Socket
+    zmq_client: ztypes.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:

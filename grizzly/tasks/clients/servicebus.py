@@ -103,6 +103,7 @@ from typing import TYPE_CHECKING, ClassVar, Optional, cast
 from urllib.parse import parse_qs, quote_plus, unquote_plus, urlparse
 
 import zmq.green as zmq
+from zmq import sugar as ztypes
 
 from grizzly.tasks import template
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
@@ -122,7 +123,7 @@ class State:
     worker: Optional[str] = field(init=False, default=None)
     parent: GrizzlyScenario
     _first_response: Optional[AsyncMessageResponse] = field(init=False, default=None)
-    client: zmq.Socket
+    client: ztypes.Socket
     context: AsyncMessageContext
 
     @property
@@ -148,7 +149,7 @@ class ServiceBusClientTask(ClientTask):
     __dependencies__: ClassVar[set[str]] = {'async-messaged'}
 
     _zmq_url = 'tcp://127.0.0.1:5554'
-    _zmq_context: zmq.Context
+    _zmq_context: ztypes.Context
 
     _state: dict[GrizzlyScenario, State]
     context: AsyncMessageContext
@@ -302,7 +303,7 @@ class ServiceBusClientTask(ClientTask):
 
             state = State(
                 parent=parent,
-                client=cast(zmq.Socket, self._zmq_context.socket(zmq.REQ)),
+                client=cast(ztypes.Socket, self._zmq_context.socket(zmq.REQ)),
                 context=context,
             )
             state.client.setsockopt(zmq.LINGER, 0)
