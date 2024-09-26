@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import logging
-from contextlib import suppress
 from time import perf_counter, sleep
 from typing import Any, Optional, Union, cast
+from uuid import uuid4
 
 import zmq.green as zmq
 from zmq.error import Again as ZMQAgain
@@ -30,6 +30,8 @@ def tohex(value: Union[int, str, bytes, bytearray, Any]) -> str:
 
 
 def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
+    request.update({'request_id': str(uuid4())})
+
     client.send_json(request)
 
     response: Optional[AsyncMessageResponse] = None
@@ -40,7 +42,6 @@ def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> A
             response = cast(Optional[AsyncMessageResponse], client.recv_json(flags=zmq.NOBLOCK))
             break
         except ZMQAgain:
-            # with suppress(Exception):
             try:
                 sleep(0.1)
             except StopScenario:
@@ -51,6 +52,9 @@ def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> A
                 break
             except:  # noqa: S110
                 pass
+            delta = perf_counter() - start
+            if delta > 1.0:
+                logger.debug('async_message_request::recv_json took %f seconds for request_id %s', delta, request['request_id'])
 
         delta = perf_counter() - start
         if delta > 1.0:
