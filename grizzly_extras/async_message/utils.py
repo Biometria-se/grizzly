@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from time import perf_counter, sleep
 from typing import Any, Optional, Union, cast
 
@@ -29,6 +30,7 @@ def tohex(value: Union[int, str, bytes, bytearray, Any]) -> str:
 
 def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
     try:
+        request['request_id'] = str(uuid.uuid4())
         client.send_json(request)
 
         response: Optional[AsyncMessageResponse] = None
@@ -43,7 +45,7 @@ def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> A
 
             delta = perf_counter() - start
             if delta > 1.0:
-                logger.debug('async_message_request::recv_json took %f seconds', delta)
+                logger.debug('async_message_request::recv_json took %f seconds for request_id %s', delta, request['request_id'])
 
         if response is None:
             msg = 'no response'
