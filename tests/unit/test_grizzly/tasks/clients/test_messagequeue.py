@@ -7,10 +7,11 @@ import sys
 from contextlib import suppress
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import pytest
 import zmq.green as zmq
+from zmq import sugar as ztypes
 from zmq.error import Again as ZMQAgain
 
 from grizzly.exceptions import RestartScenario
@@ -28,6 +29,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class TestMessageQueueClientTaskNoPymqi:
+    @pytest.mark.timeout(20)
     def test_no_pymqi_dependencies(self) -> None:
         env = environ.copy()
         with suppress(KeyError):
@@ -65,7 +67,7 @@ class TestMessageQueueClientTask:
         create_client_mocked = mocker.patch('grizzly.tasks.clients.messagequeue.MessageQueueClientTask.create_client', return_value=None)
         create_context_mocked = mocker.patch('grizzly.tasks.clients.messagequeue.MessageQueueClientTask.create_context')
 
-        zmq_context: Optional[zmq.Context] = None
+        zmq_context: ztypes.Context | None = None
         try:
             MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(RequestDirection.FROM, 'mqs://localhost:1')
@@ -118,7 +120,7 @@ class TestMessageQueueClientTask:
         noop_zmq('grizzly.tasks.clients.messagequeue')
         create_client_mocked = mocker.patch('grizzly.tasks.clients.messagequeue.MessageQueueClientTask.create_client', return_value=None)
 
-        zmq_context: Optional[zmq.Context] = None
+        zmq_context: ztypes.Context | None = None
         try:
             MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(RequestDirection.FROM, (
@@ -272,7 +274,7 @@ class TestMessageQueueClientTask:
         setsockopt_mock = noop_zmq.get_mock('zmq.Socket.setsockopt')
         close_mock = noop_zmq.get_mock('zmq.Socket.close')
 
-        zmq_context: Optional[zmq.Context] = None
+        zmq_context: ztypes.Context | None = None
         try:
             MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(
@@ -302,9 +304,9 @@ class TestMessageQueueClientTask:
 
     def test_connect(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.tasks.clients.messagequeue')
-        mocker.patch('grizzly_extras.async_message.utils.uuid.uuid4', return_value='foobar')
+        mocker.patch('grizzly_extras.async_message.utils.uuid4', return_value='foobar')
 
-        zmq_context: Optional[zmq.Context] = None
+        zmq_context: ztypes.Context | None = None
         try:
             MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(
@@ -415,7 +417,7 @@ class TestMessageQueueClientTask:
 
     def test_request_from(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.tasks.clients.messagequeue')
-        mocker.patch('grizzly_extras.async_message.utils.uuid.uuid4', return_value='foobar')
+        mocker.patch('grizzly_extras.async_message.utils.uuid4', return_value='foobar')
 
         parent = grizzly_fixture(scenario_type=IteratorScenario)
 
@@ -431,7 +433,7 @@ class TestMessageQueueClientTask:
 
         recv_json_mock.side_effect = [ZMQAgain, None]
 
-        zmq_context: Optional[zmq.Context] = None
+        zmq_context: ztypes.Context | None = None
         try:
             MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(
@@ -607,7 +609,7 @@ class TestMessageQueueClientTask:
 
     def test_request_to(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
-        mocker.patch('grizzly_extras.async_message.utils.uuid.uuid4', return_value='foobar')
+        mocker.patch('grizzly_extras.async_message.utils.uuid4', return_value='foobar')
 
         parent = grizzly_fixture()
 
@@ -615,7 +617,7 @@ class TestMessageQueueClientTask:
         recv_json_mock = noop_zmq.get_mock('recv_json')
         send_json_mock = noop_zmq.get_mock('send_json')
 
-        zmq_context: Optional[zmq.Context] = None
+        zmq_context: ztypes.Context | None = None
         try:
             MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
 

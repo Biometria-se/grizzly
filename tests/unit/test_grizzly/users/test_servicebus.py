@@ -339,7 +339,7 @@ class TestServiceBusUser:
 
     def test_request(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.users.servicebus')
-        mocker.patch('grizzly_extras.async_message.utils.uuid.uuid4', return_value='foobar')
+        mocker.patch('grizzly_extras.async_message.utils.uuid4', return_value='foobar')
 
         grizzly_fixture.grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test scenario'))
         grizzly = grizzly_fixture.grizzly
