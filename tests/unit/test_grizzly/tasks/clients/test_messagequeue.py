@@ -266,7 +266,7 @@ class TestMessageQueueClientTask:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_create_client(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, mocker: MockerFixture) -> None:
+    def test_create_client(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
         connect_mock = noop_zmq.get_mock('zmq.Socket.connect')
         setsockopt_mock = noop_zmq.get_mock('zmq.Socket.setsockopt')
@@ -302,13 +302,7 @@ class TestMessageQueueClientTask:
 
     def test_connect(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.tasks.clients.messagequeue')
-
-        uuid4_mock = mocker.MagicMock()
-        uuid4_mock.hex = 'deadbeefdeadbeefdeadbeefdeadbeef'
-        mocker.patch(
-            'grizzly_extras.async_message.utils.uuid.uuid4',
-            return_value=uuid4_mock,
-        )
+        mocker.patch('grizzly_extras.async_message.utils.uuid.uuid4', return_value='foobar')
 
         zmq_context: Optional[zmq.Context] = None
         try:
@@ -348,7 +342,7 @@ class TestMessageQueueClientTask:
                         'heartbeat_interval': None,
                         'header_type': None,
                     },
-                    'request_id': 'deadbeefdeadbeefdeadbeefdeadbeef',
+                    'request_id': 'foobar',
                 })
                 assert recv_json_mock.call_count == 2
                 _, kwargs = recv_json_mock.call_args_list[-1]
@@ -413,7 +407,7 @@ class TestMessageQueueClientTask:
                         'heartbeat_interval': None,
                         'header_type': 'rfh2',
                     },
-                    'request_id': 'deadbeefdeadbeefdeadbeefdeadbeef',
+                    'request_id': 'foobar',
                 })
         finally:
             if zmq_context is not None:
@@ -421,13 +415,7 @@ class TestMessageQueueClientTask:
 
     def test_request_from(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.tasks.clients.messagequeue')
-
-        uuid4_mock = mocker.MagicMock()
-        uuid4_mock.hex = 'deadbeefdeadbeefdeadbeefdeadbeef'
-        mocker.patch(
-            'grizzly_extras.async_message.utils.uuid.uuid4',
-            return_value=uuid4_mock,
-        )
+        mocker.patch('grizzly_extras.async_message.utils.uuid.uuid4', return_value='foobar')
 
         parent = grizzly_fixture(scenario_type=IteratorScenario)
 
@@ -485,7 +473,7 @@ class TestMessageQueueClientTask:
                     'endpoint': 'topic:INCOMING.MSG',
                 },
                 'payload': None,
-                'request_id': 'deadbeefdeadbeefdeadbeefdeadbeef',
+                'request_id': 'foobar',
             },)
             assert kwargs == {}
             send_json_mock.reset_mock()
@@ -533,7 +521,7 @@ class TestMessageQueueClientTask:
                     'endpoint': 'topic:INCOMING.MSG, max_message_size:13337',
                 },
                 'payload': None,
-                'request_id': 'deadbeefdeadbeefdeadbeefdeadbeef',
+                'request_id': 'foobar',
             })
             send_json_mock.reset_mock()
             assert recv_json_mock.call_count == 4
@@ -619,13 +607,7 @@ class TestMessageQueueClientTask:
 
     def test_request_to(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
-
-        uuid4_mock = mocker.MagicMock()
-        uuid4_mock.hex = 'deadbeefdeadbeefdeadbeefdeadbeef'
-        mocker.patch(
-            'grizzly_extras.async_message.utils.uuid.uuid4',
-            return_value=uuid4_mock,
-        )
+        mocker.patch('grizzly_extras.async_message.utils.uuid.uuid4', return_value='foobar')
 
         parent = grizzly_fixture()
 
@@ -694,7 +676,7 @@ class TestMessageQueueClientTask:
                     'endpoint': 'queue:INCOMING.MSG',
                 },
                 'payload': source,
-                'request_id': 'deadbeefdeadbeefdeadbeefdeadbeef',
+                'request_id': 'foobar',
             },)
             assert kwargs == {}
             send_json_mock.reset_mock()
@@ -741,7 +723,7 @@ class TestMessageQueueClientTask:
                     'endpoint': 'queue:INCOMING.MSG',
                 },
                 'payload': source_file.read_text(),
-                'request_id': 'deadbeefdeadbeefdeadbeefdeadbeef',
+                'request_id': 'foobar',
             })
             send_json_mock.reset_mock()
 

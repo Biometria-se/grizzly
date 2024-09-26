@@ -7,7 +7,7 @@ from itertools import cycle
 from json import dumps as jsondumps
 from multiprocessing import Process
 from threading import Event
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 import zmq.green as zmq

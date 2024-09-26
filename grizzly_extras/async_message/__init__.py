@@ -98,6 +98,7 @@ class AsyncMessageResponse(TypedDict, total=False):
     metadata: AsyncMessageMetadata
     response_length: int
     response_time: int
+    action: str
 
 
 class AsyncMessageError(Exception):
@@ -164,7 +165,7 @@ class AsyncMessageHandler(ABC):
             response.update({
                 'worker': self.worker,
                 'response_time': total_time,
-                'action': action,
+                'action': action or 'UNKNOWN',
             })
 
             self.logger.debug('handled %s, response=\n%s', action, jsondumps(response, indent=2, cls=JsonBytesEncoder))

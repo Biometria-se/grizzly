@@ -65,6 +65,27 @@ class Worker:
         self.socket.connect('inproc://workers')
         self.socket.send_string(LRU_READY)
 
+
+    def _create_integration(self, request: AsyncMessageRequest) -> AsyncMessageHandler:
+        integration_url = request.get('context', {}).get('url', None)
+        if integration_url is None:
+            message = 'no url found in request context'
+            raise RuntimeError(message)
+
+        parsed = urlparse(integration_url)
+
+        if parsed.scheme in ['mq', 'mqs']:
+            from .mq import AsyncMessageQueueHandler
+            return AsyncMessageQueueHandler(self.identity)
+
+        if parsed.scheme == 'sb':
+            from .sb import AsyncServiceBusHandler
+            return AsyncServiceBusHandler(self.identity)
+
+        message = f'integration for {parsed.scheme}:// is not implemented'
+        raise RuntimeError(message)
+
+
     def run(self) -> None:
         connected = True
         try:
@@ -97,22 +118,8 @@ class Worker:
                         raise RuntimeError(message)
 
                     if self.integration is None:
-                        integration_url = request.get('context', {}).get('url', None)
-                        if integration_url is None:
-                            message = 'no url found in request context'
-                            raise RuntimeError(message)
+                        self.integration = self._create_integration(request)
 
-                        parsed = urlparse(integration_url)
-
-                        if parsed.scheme in ['mq', 'mqs']:
-                            from .mq import AsyncMessageQueueHandler
-                            self.integration = AsyncMessageQueueHandler(self.identity)
-                        elif parsed.scheme == 'sb':
-                            from .sb import AsyncServiceBusHandler
-                            self.integration = AsyncServiceBusHandler(self.identity)
-                        else:
-                            message = f'integration for {parsed.scheme}:// is not implemented'
-                            raise RuntimeError(message)
                 except Exception as e:
                     response = {
                         'request_id': str(request_request_id),
@@ -188,8 +195,8 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
         spawn_worker()
 
         worker_id: str
-        request_client_id: str|None
-        request_request_id: str|None
+        request_client_id: str | None
+        request_request_id: str | None
 
         try:
             while not run_daemon.is_set():

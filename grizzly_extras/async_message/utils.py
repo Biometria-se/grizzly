@@ -30,7 +30,7 @@ def tohex(value: Union[int, str, bytes, bytearray, Any]) -> str:
 
 def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
     try:
-        request['request_id'] = uuid.uuid4().hex
+        request['request_id'] = str(uuid.uuid4())
         client.send_json(request)
 
         response: Optional[AsyncMessageResponse] = None
