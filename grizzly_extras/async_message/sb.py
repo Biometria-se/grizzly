@@ -275,8 +275,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             with suppress(KeyError):
                 del cache[cache_endpoint]
 
-            self.close(soft=True)
-
         return {
             'message': 'thanks for all the fish',
         }
