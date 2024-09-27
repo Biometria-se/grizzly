@@ -92,6 +92,7 @@ class AsyncMessageRequest(TypedDict, total=False):
 
 class AsyncMessageResponse(TypedDict, total=False):
     request_id: str
+    client: int
     success: bool
     worker: str
     message: Optional[str]

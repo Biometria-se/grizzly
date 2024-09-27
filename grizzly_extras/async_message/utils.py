@@ -37,6 +37,8 @@ def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -
 
     client.send_json(request)
 
+    logger.debug('async_message_request::send_json: sent %r', request)
+
     response: Optional[AsyncMessageResponse] = None
 
     while True:
@@ -45,23 +47,27 @@ def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -
             response = cast(Optional[AsyncMessageResponse], client.recv_json(flags=zmq.NOBLOCK))
             break
         except ZMQAgain:
+            exception: Exception | None = None
+
             try:
                 sleep(0.1)
-            except StopScenario:
+            except StopScenario as e:
+                exception = e
+            except Exception as e:
+                exception = e
+
+            if exception is not None:
+                msg = 'abort' if isinstance(exception, StopScenario) else str(exception)
+
                 if response is None:
                     response = {}
 
-                response.update({'success': False, 'message': 'abort'})
+                response.update({'success': False, 'message': msg})
                 break
-            except:  # noqa: S110
-                pass
+        finally:
             delta = perf_counter() - start
             if delta > 1.0:
                 logger.debug('async_message_request::recv_json took %f seconds for request_id %s', delta, request['request_id'])
-
-        delta = perf_counter() - start
-        if delta > 1.0:
-            logger.debug('async_message_request::recv_json took %f seconds', delta)
 
     if response is None:
         msg = 'no response'

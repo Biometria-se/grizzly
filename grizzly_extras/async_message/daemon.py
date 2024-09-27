@@ -111,6 +111,7 @@ class Worker:
                 )
 
                 request_request_id = request.get('request_id', None)
+                request_client_id = request['client']
 
                 response: Optional[AsyncMessageResponse] = None
 
@@ -133,7 +134,10 @@ class Worker:
 
                 if response is None and self.integration is not None:
                     response = self.integration.handle(request)
-                    response.update({'request_id': str(request_request_id)})
+                    response.update({
+                        'request_id': str(request_request_id),
+                        'client': request_client_id,
+                    })
 
                     if response.get('action', None) in ['DISC', 'DISCONNECT']:
                         connected = False
@@ -202,21 +206,26 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
         worker_id: str
         request_client_id: str | None
         request_request_id: str | None
+        socks_polled = 0
 
         try:
             while not run_daemon.is_set():
                 socks = dict(poller.poll(timeout=1000))
 
+                # every 10 seconds ---------------^
+                if socks_polled % 10 == 0:
+                    logger.debug("i'm alive!")
+                    socks_polled = 0
+
+                socks_polled += 1
+
                 if not socks:
                     continue
 
-                logger.debug("i'm alive!")
-
                 if socks.get(backend) == zmq.POLLIN:
-                    logger.debug('polling backend')
                     try:
-                        logger.debug('waiting for backend')
                         backend_response = backend.recv_multipart(flags=zmq.NOBLOCK)
+                        logger.debug('backend: received a message')
                     except zmq.Again:
                         sleep(0.1)
                         continue
@@ -224,7 +233,6 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                     if not backend_response:
                         continue
 
-                    logger.debug('backend_response: %r', backend_response)
                     reply = backend_response[2:]
                     worker_id = backend_response[0].decode()
 
@@ -233,40 +241,49 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                     if reply[0] == LRU_READY.encode():
                         workers_available.append(worker_id)
                         waiting_for_worker = False
+                        logger.debug('worker %s is available', worker_id)
                     else:
-                        if len(reply) > 0 and reply[0] is not None:
-                            async_response = jsonloads(reply[-1].decode())
-                            if async_response.get('action', None) in ['DISC', 'DISCONNECT']:
-                                del workers[worker_id]
-                                del worker_identifiers_map[worker_id]
-                                client_id = async_response.get('client', None)
-                                if client_id:
-                                    del client_worker_map[client_id]
+                        payload = jsonloads(reply[-1].decode())
+                        request_request_id = payload.get('request_id', None)
+                        request_client_id = payload.get('client', None)
 
-                        logger.debug('sending %r', reply)
+                        if len(reply) > 0 and reply[0] is not None and payload.get('action', None) in ['DISC', 'DISCONNECT']:
+                            del workers[worker_id]
+                            del worker_identifiers_map[worker_id]
+                            if request_client_id is not None:
+                                del client_worker_map[request_client_id]
+
+                            logger.debug('removed mappings for worker %s and client %s', worker_id, request_client_id)
+
                         frontend.send_multipart(reply)
-                        logger.debug('forwarding backend response from %s', worker_id)
+                        logger.debug('backend: sent message %r to %r from %r', request_request_id, request_client_id, worker_id)
+
                         if waiting_for_worker:
+                            logger.debug('backend: waiting for worker LRU')
                             continue
 
                 if socks.get(frontend) == zmq.POLLIN:
-                    logger.debug('polling frontend')
                     try:
-                        logger.debug('waiting for frontend')
-                        msg = frontend.recv_multipart(flags=zmq.NOBLOCK)
+                        frontend_response = frontend.recv_multipart(flags=zmq.NOBLOCK)
+                        logger.debug('frontend: received a message')
                     except zmq.Again:
                         sleep(0.1)
                         continue
 
-                    request_id = msg[0]
-                    payload = cast(AsyncMessageRequest, jsonloads(msg[-1].decode()))
+                    request_id = frontend_response[0]
+                    payload = cast(AsyncMessageRequest, jsonloads(frontend_response[-1].decode()))
 
                     request_worker_id = payload.get('worker', None)
                     request_client_id = str(payload.get('client', None))
                     request_request_id = payload.get('request_id', None)
                     client_key: Optional[str] = None
 
-                    logger.debug('request_worker_id=%r (%r), request_client_id=%r (%r)', request_worker_id, type(request_worker_id), request_client_id, type(request_client_id))
+                    logger.debug(
+                        'frontend: received message %r from %r to %r',
+                        request_request_id,
+                        request_client_id,
+                        request_worker_id,
+                    )
 
                     if request_client_id is not None:
                         integration_url = payload.get('context', {}).get('url', None)
@@ -288,15 +305,12 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
 
                         if client_key is not None:
                             client_worker_map.update({client_key: worker_id})
-
-                        payload['worker'] = worker_id
-
                     else:
-                        logger.debug('%s is assigned %s', request_client_id, request_worker_id)
+                        logger.debug('frontend: client %r is assigned worker %r', request_client_id, request_worker_id)
                         worker_id = request_worker_id
 
-                        if payload.get('worker', None) is None:
-                            payload['worker'] = worker_id
+                    if payload.get('worker', None) is None:
+                        payload['worker'] = worker_id
 
                     request = jsondumps(payload).encode()
                     backend_request = [worker_id.encode(), SPLITTER_FRAME, request_id, SPLITTER_FRAME, request]
