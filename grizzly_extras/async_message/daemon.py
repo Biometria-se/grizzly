@@ -86,7 +86,6 @@ class Worker:
         message = f'integration for {parsed.scheme}:// is not implemented'
         raise RuntimeError(message)
 
-
     def run(self) -> None:
         connected = True
 
@@ -111,7 +110,6 @@ class Worker:
                 )
 
                 request_request_id = request.get('request_id', None)
-                request_client_id = request['client']
 
                 response: Optional[AsyncMessageResponse] = None
 
@@ -134,10 +132,7 @@ class Worker:
 
                 if response is None and self.integration is not None:
                     response = self.integration.handle(request)
-                    response.update({
-                        'request_id': str(request_request_id),
-                        'client': request_client_id,
-                    })
+                    response.update({'request_id': str(request_request_id)})
 
                     if response.get('action', None) in ['DISC', 'DISCONNECT']:
                         connected = False
@@ -250,13 +245,11 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                         if len(reply) > 0 and reply[0] is not None and payload.get('action', None) in ['DISC', 'DISCONNECT']:
                             del workers[worker_id]
                             del worker_identifiers_map[worker_id]
-                            if request_client_id is not None:
-                                del client_worker_map[request_client_id]
 
                             logger.debug('removed mappings for worker %s and client %s', worker_id, request_client_id)
 
                         frontend.send_multipart(reply)
-                        logger.debug('backend: sent message %r to %r from %r', request_request_id, request_client_id, worker_id)
+                        logger.debug('backend: sent message %s to %d from %s', request_request_id, request_client_id, worker_id)
 
                         if waiting_for_worker:
                             logger.debug('backend: waiting for worker LRU')
@@ -279,7 +272,7 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                     client_key: Optional[str] = None
 
                     logger.debug(
-                        'frontend: received message %r from %r to %r',
+                        'frontend: received message %s from %d to %s',
                         request_request_id,
                         request_client_id,
                         request_worker_id,
@@ -306,7 +299,7 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                         if client_key is not None:
                             client_worker_map.update({client_key: worker_id})
                     else:
-                        logger.debug('frontend: client %r is assigned worker %r', request_client_id, request_worker_id)
+                        logger.debug('frontend: client %d is assigned worker %s', request_client_id, request_worker_id)
                         worker_id = request_worker_id
 
                     if payload.get('worker', None) is None:

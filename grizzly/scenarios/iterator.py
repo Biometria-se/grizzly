@@ -190,6 +190,7 @@ class IteratorScenario(GrizzlyScenario):
                             gsleep(0.1)
                             count += 1
 
+                    self.logger.debug('raising %r', exception)
                     raise exception from e
 
                 self.wait()

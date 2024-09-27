@@ -112,7 +112,7 @@ class TestdataConsumer:
         if self.stopped:
             return
 
-        self.logger.debug('stopping consumer')
+        self.logger.debug('consumer stopping')
         try:
             zmq_disconnect(self.socket, destroy_context=True)
         except:
