@@ -777,6 +777,7 @@ class TestIterationScenario:
                 "okay, I'm done with my running tasks now",
                 'scenario state=ScenarioState.STOPPING -> ScenarioState.STOPPED',
                 "scenario_state=STOPPED, user_state=stopping, exception=StopUser()",
+                "stopping scenario with <class 'locust.exception.StopUser'>",
             ]
 
             actual_messages = [message for message in caplog.messages if 'instance variable=' not in message]
