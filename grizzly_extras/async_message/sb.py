@@ -275,9 +275,19 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             with suppress(KeyError):
                 del cache[cache_endpoint]
 
-        return {
+        # if we still have endpoints, we shouldn't let the worker to disconnect quite yet
+        action = 'DISCONNECTING' if len(self._sender_cache) + len(self._receiver_cache) > 0 else None
+
+        self.logger.debug('action: %s, sender cache: %d, receiver cache: %d', action, len(self._sender_cache), len(self._receiver_cache))
+
+        response: AsyncMessageResponse = {
             'message': 'thanks for all the fish',
         }
+
+        if action is not None:
+            response.update({'action': action})
+
+        return response
 
     @register(handlers, 'SUBSCRIBE')
     def subscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:

@@ -99,7 +99,7 @@ class Worker:
                     sleep(0.1)
                     continue
 
-                self.logger.debug("i'm alive! run_daemon=%r, received=%r", self._event.is_set(), received)
+                self.logger.debug("i'm alive! event=%r, received=%r", self._event.is_set(), received)
 
                 if not request_proto:
                     continue
@@ -240,16 +240,15 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                     else:
                         payload = jsonloads(reply[-1].decode())
                         request_request_id = payload.get('request_id', None)
-                        request_client_id = payload.get('client', None)
 
                         if len(reply) > 0 and reply[0] is not None and payload.get('action', None) in ['DISC', 'DISCONNECT']:
                             del workers[worker_id]
                             del worker_identifiers_map[worker_id]
 
-                            logger.debug('removed mappings for worker %s and client %s', worker_id, request_client_id)
+                            logger.debug('removed mappings for worker %s', worker_id)
 
                         frontend.send_multipart(reply)
-                        logger.debug('backend: sent message %s to %d from %s', request_request_id, request_client_id, worker_id)
+                        logger.debug('backend: sent message %s from %s', request_request_id, worker_id)
 
                         if waiting_for_worker:
                             logger.debug('backend: waiting for worker LRU')

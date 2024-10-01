@@ -166,8 +166,10 @@ class AsyncMessageHandler(ABC):
             response.update({
                 'worker': self.worker,
                 'response_time': total_time,
-                'action': action or 'UNKNOWN',
             })
+
+            if response.get('action', None) is None:
+                response.update({'action': str(action)})
 
             if not self._event.is_set():
                 self.logger.debug('handled %s, response=\n%s', action, jsondumps(response, indent=2, cls=JsonBytesEncoder))
