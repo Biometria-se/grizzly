@@ -30,6 +30,8 @@ from . import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
+    from threading import Event
+
     from azure.servicebus.amqp._amqp_message import DictMixin
 
 __all__ = [
@@ -48,16 +50,18 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
     _sender_cache: dict[str, ServiceBusSender]
     _receiver_cache: dict[str, ServiceBusReceiver]
     _arguments: dict[str, dict[str, str]]
+    _subscriptions: list[AsyncMessageRequest]
 
     _client: Optional[ServiceBusClient] = None
     mgmt_client: Optional[ServiceBusAdministrationClient] = None
 
-    def __init__(self, worker: str) -> None:
-        super().__init__(worker)
+    def __init__(self, worker: str, event: Event | None = None) -> None:
+        super().__init__(worker, event)
 
         self._sender_cache = {}
         self._receiver_cache = {}
         self._arguments = {}
+        self._subscriptions = []
 
     @property
     def client(self) -> ServiceBusClient:
@@ -74,6 +78,12 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
     def close(self, *, soft: bool = False) -> None:
         self.logger.debug('close: soft=%r', soft)
         if not soft:
+            for subscription in self._subscriptions:
+                with suppress(AsyncMessageError):
+                    self.unsubscribe(subscription)
+
+            self._subscriptions.clear()
+
             for key, sender in self._sender_cache.items():
                 self.logger.debug('closing sender %s', key)
                 sender.close()
@@ -265,11 +275,19 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             with suppress(KeyError):
                 del cache[cache_endpoint]
 
-            self.close(soft=True)
+        # if we still have endpoints, we shouldn't let the worker to disconnect quite yet
+        action = 'DISCONNECTING' if len(self._sender_cache) + len(self._receiver_cache) > 0 else None
 
-        return {
+        self.logger.debug('action: %s, sender cache: %d, receiver cache: %d', action, len(self._sender_cache), len(self._receiver_cache))
+
+        response: AsyncMessageResponse = {
             'message': 'thanks for all the fish',
         }
+
+        if action is not None:
+            response.update({'action': action})
+
+        return response
 
     @register(handlers, 'SUBSCRIBE')
     def subscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
@@ -346,8 +364,14 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             rule=rule,
         )
 
+        self._subscriptions.append(request)
+
+        message = f'created subscription {subscription_name} on topic {topic_name}'
+
+        self.logger.debug(message)
+
         return {
-            'message': f'created subscription {subscription_name} on topic {topic_name}',
+            'message': message,
         }
 
     @register(handlers, 'UNSUBSCRIBE')
@@ -373,7 +397,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         if self.mgmt_client is None:
             message = 'no mgmt client found'
             raise AsyncMessageError(message)
-
 
         topic: Optional[TopicProperties] = None
 
@@ -412,8 +435,13 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             subscription_name=subscription_name,
         )
 
+
+        message = f'removed subscription {subscription_name} on topic {topic_name} (stats: {topic_statistics})'
+
+        self.logger.debug(message)
+
         return {
-            'message': f'removed subscription {subscription_name} on topic {topic_name} (stats: {topic_statistics})',
+            'message': message,
         }
 
     def _prepare_clients(self, context: AsyncMessageContext, *, only_mgmt: bool = False) -> None:
@@ -608,6 +636,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 receiver._handler._last_activity_timestamp = time() if isinstance(receiver._handler, ReceiveClient) else None
 
             for retry in range(1, 4):
+                if self._event.is_set():
+                    break
+
                 try:
                     if expression is not None:
                         try:
@@ -676,9 +707,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         raise StopIteration
 
                     break
-                except ServiceBusError as e:
-                    if any(msg in str(e) for msg in ['Connection to remote host was lost', 'socket is already closed']):
-                        if retry < 3:
+                except (ServiceBusError, ValueError) as e:
+                    if any(msg in str(e) for msg in ['Connection to remote host was lost', 'socket is already closed', 'handler has already been shutdown']):
+                        if retry < 3 and not self._event.is_set():
                             self.logger.warning('connection unexpectedly closed, reconnecting', exc_info=True)
                             self._hello(request, force=True)
                             receiver = self._receiver_cache[cache_endpoint]
@@ -688,6 +719,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         error_message = 'could not reconnect on last retry'
                     else:
                         error_message = 'unhandled service bus error'
+
+                    if self._event.is_set():
+                        break
 
                     raise AsyncMessageError(error_message) from e
                 except StopIteration:
@@ -700,6 +734,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             if message_wait > 0:
                                 error_message = f'{error_message} within {message_wait} seconds'
                         elif consume and expression is not None:
+                            if self._event.is_set():
+                                break
+
                             self.logger.debug('%d::%s: waiting for more messages', client, cache_endpoint)
                             continue
                         else:  # noqa: PLR5501
@@ -734,11 +771,23 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                 self._hello(request, force=True)
                                 receiver = self._receiver_cache[cache_endpoint]
                                 message = None
+
+                                if self._event.is_set():
+                                    break
+
                                 continue
                     else:
                         error_message = f'{endpoint} receiver returned no messages, without trying'
 
+                    if self._event.is_set():
+                        break
+
                     raise AsyncMessageError(error_message) from None
+                except:
+                    if self._event.is_set():
+                        break
+
+                    raise
 
         if expression is None:
             metadata, payload = self.from_message(message)

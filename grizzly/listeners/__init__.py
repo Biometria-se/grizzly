@@ -143,13 +143,16 @@ def quitting(**_kwargs: Any) -> None:
     logger.debug('locust quitting')
     global producer_greenlet, producer  # noqa: PLW0603
     if producer is not None:
-        logger.debug('stopping producer')
         producer.stop()
         producer = None
 
     if producer_greenlet is not None:
-        producer_greenlet.kill(block=True)
-        producer_greenlet = None
+        try:
+            producer_greenlet.kill(block=False)
+        except:  # noqa: S110
+            pass
+        finally:
+            producer_greenlet = None
 
 
 def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) -> None:

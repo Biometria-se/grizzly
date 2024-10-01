@@ -5,7 +5,7 @@ import subprocess
 import sys
 from contextlib import suppress
 from os import environ
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 import pytest
 from zmq.error import Again as ZMQAgain
@@ -57,6 +57,7 @@ def mq_parent(grizzly_fixture: GrizzlyFixture) -> GrizzlyScenario:
 
 
 class TestMessageQueueUserNoPymqi:
+    @pytest.mark.timeout(20)
     def test_no_pymqi_dependencies(self) -> None:
         env = environ.copy()
         with suppress(KeyError):
@@ -132,6 +133,8 @@ class TestMessageQueueUser:
         parent.user.on_stop()
 
         request_context_spy.assert_not_called()
+        zmq_disconnect_mock.assert_called_once_with(parent.user.zmq_client, destroy_context=False)
+        zmq_disconnect_mock.reset_mock()
 
         parent.user.worker_id = 'foobar'
 
@@ -281,7 +284,7 @@ class TestMessageQueueUser:
         assert isinstance(parent, IteratorScenario)
         assert isinstance(parent.user, MessageQueueUser)
 
-        process: Optional[subprocess.Popen] = None
+        process: subprocess.Popen | None = None
         try:
             process = subprocess.Popen(
                 ['async-messaged'],  # noqa: S607
@@ -337,7 +340,7 @@ class TestMessageQueueUser:
         assert isinstance(parent.user, MessageQueueUser)
         grizzly = grizzly_fixture.grizzly
 
-        process: Optional[subprocess.Popen] = None
+        process: subprocess.Popen | None = None
         try:
             process = subprocess.Popen(
                 ['async-messaged'],  # noqa: S607
@@ -438,7 +441,11 @@ class TestMessageQueueUser:
         mq_parent.user.add_context(remote_variables)
         mq_parent.user.on_start()
 
+        assert mq_parent.user.worker_id == '0000-1337'
+
         metadata, payload = mq_parent.user.request(request)
+
+        assert mq_parent.user.worker_id == '0000-1337'
 
         request_event_spy.assert_called_once_with(
             request_type='GET',
@@ -742,6 +749,8 @@ class TestMessageQueueUser:
     def test_send(self, mq_parent: GrizzlyScenario, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.users.messagequeue')
 
+        assert isinstance(mq_parent.user, MessageQueueUser)
+
         response_connected: AsyncMessageResponse = {
             'worker': '0000-1337',
             'success': True,
@@ -798,9 +807,15 @@ class TestMessageQueueUser:
             ],
         )
 
+        assert getattr(mq_parent.user, 'worker_id', '0000-1337') is None
+
         mq_parent.user.on_start()
 
+        assert mq_parent.user.worker_id == '0000-1337'
+
         mq_parent.user.request(template)
+
+        assert mq_parent.user.worker_id == '0000-1337'
 
         request_event_spy.assert_called_once_with(
             request_type='SEND',

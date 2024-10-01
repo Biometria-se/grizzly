@@ -20,6 +20,7 @@ from .rfh2 import Rfh2Decoder, Rfh2Encoder
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from threading import Event
 
 __all__ = [
     'AsyncMessageQueueHandler',
@@ -33,11 +34,11 @@ handlers: dict[str, AsyncMessageRequestHandler] = {}
 class AsyncMessageQueueHandler(AsyncMessageHandler):
     qmgr: Optional[pymqi.QueueManager] = None
 
-    def __init__(self, worker: str) -> None:
+    def __init__(self, worker: str, event: Event | None = None) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             pymqi.raise_for_error(self.__class__)
 
-        super().__init__(worker)
+        super().__init__(worker, event)
         self.header_type: Optional[str] = None
 
     def close(self) -> None:

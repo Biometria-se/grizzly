@@ -80,6 +80,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import zmq.green as zmq
+from zmq import sugar as ztypes
 from zmq.error import ZMQError
 
 from grizzly.testdata.utils import resolve_variable
@@ -106,7 +107,7 @@ class MessageQueueClientTask(ClientTask):
     __dependencies__: ClassVar[set[str]] = {'async-messaged'}
 
     _zmq_url = 'tcp://127.0.0.1:5554'
-    _zmq_context: zmq.Context
+    _zmq_context: ztypes.Context
     _worker: dict[int, str]
 
     endpoint_path: str
@@ -239,12 +240,12 @@ class MessageQueueClientTask(ClientTask):
         })
 
     @contextmanager
-    def create_client(self) -> Generator[zmq.Socket, None, None]:
-        client: Optional[zmq.Socket] = None
+    def create_client(self) -> Generator[ztypes.Socket, None, None]:
+        client: Optional[ztypes.Socket] = None
 
         try:
             client = cast(
-                zmq.Socket,
+                ztypes.Socket,
                 self._zmq_context.socket(zmq.REQ),
             )
             client.setsockopt(zmq.LINGER, 0)
@@ -258,7 +259,7 @@ class MessageQueueClientTask(ClientTask):
             if client is not None:
                 zmq_disconnect(client, destroy_context=False)
 
-    def connect(self, client_id: int, client: zmq.Socket, meta: dict[str, Any]) -> None:
+    def connect(self, client_id: int, client: ztypes.Socket, meta: dict[str, Any]) -> None:
         request: AsyncMessageRequest = {
             'action': RequestType.CONNECT(),
             'client': client_id,

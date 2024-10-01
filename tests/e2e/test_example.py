@@ -86,31 +86,31 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
 
     # check debugging and that task index -> step expression is correct
     # dog facts api
-    assert 'executing task 1 of 4: iterator' in result
+    assert '1 of 4 executed: iterator' in result
     assert (
-        'executing task 2 of 4: Then get request with name "get-dog-facts" from endpoint '
+        '2 of 4 executed: Then get request with name "get-dog-facts" from endpoint '
         '"/api/v1/resources/dogs?number={{ AtomicRandomInteger.dog_facts_count }}'
     ) in result
-    assert 'executing task 3 of 4: Then log message' in result
-    assert 'executing task 4 of 4: pace' in result
+    assert '3 of 4 executed: Then log message' in result
+    assert '4 of 4 executed: pace' in result
 
     # cat facts api
-    assert 'executing task 1 of 6: iterator' in result
-    assert 'executing task 2 of 6: Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"' in result
-    assert 'executing task 3 of 6: And send message "{\'client\': \'server\'}"' in result
-    assert 'executing task 4 of 6: Then log message "foo={{ foo | touppercase }}, bar={{ bar | touppercase }}"' in result
-    assert 'executing task 5 of 6: Then log message' in result
-    assert 'executing task 6 of 6: pace' in result
+    assert '1 of 6 executed: iterator' in result
+    assert '2 of 6 executed: Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"' in result
+    assert '3 of 6 executed: And send message "{\'client\': \'server\'}"' in result
+    assert '4 of 6 executed: Then log message "foo={{ foo | touppercase }}, bar={{ bar | touppercase }}"' in result
+    assert '5 of 6 executed: Then log message' in result
+    assert '6 of 6 executed: pace' in result
 
     assert 'foo=BAR, bar=BAR' in result
 
     # book api
-    assert 'executing task 1 of 6: iterator' in result
-    assert 'executing task 2 of 6: Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvReader.books.book }}.json | content_type=json"' in result
-    assert 'executing task 3 of 6: Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"' in result
-    assert 'executing task 4 of 6: Then log message "AtomicCustomVariable.foobar=\'{{ steps.custom.AtomicCustomVariable.foobar }}\'"' in result
-    assert 'executing task 5 of 6: Then log message' in result
-    assert 'executing task 6 of 6: pace' in result
+    assert '1 of 6 executed: iterator' in result
+    assert '2 of 6 executed: Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvReader.books.book }}.json | content_type=json"' in result
+    assert '3 of 6 executed: Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"' in result
+    assert '4 of 6 executed: Then log message "AtomicCustomVariable.foobar=\'{{ steps.custom.AtomicCustomVariable.foobar }}\'"' in result
+    assert '5 of 6 executed: Then log message' in result
+    assert '6 of 6 executed: pace' in result
 
     # global var
     assert 'cat=foobar' in result

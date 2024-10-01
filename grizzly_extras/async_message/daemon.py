@@ -19,6 +19,7 @@ from uuid import uuid4
 import setproctitle as proc
 import zmq.green as zmq
 from typing_extensions import Literal
+from zmq import sugar as ztypes
 
 from grizzly_extras.transformer import JsonBytesEncoder
 
@@ -48,13 +49,13 @@ class ThreadPoolExecutor(futures.ThreadPoolExecutor):
 class Worker:
     logger: logging.Logger
     identity: str
-    context: zmq.Context
+    context: ztypes.Context
 
     integration: Optional[AsyncMessageHandler]
 
     _event: Event
 
-    def __init__(self, context: zmq.Context, identity: str, event: Optional[Event] = None) -> None:
+    def __init__(self, context: ztypes.Context, identity: str, event: Optional[Event] = None) -> None:
         self.logger = logging.getLogger(f'worker::{identity}')
         self.identity = identity
         self.context = context
@@ -76,18 +77,18 @@ class Worker:
 
         if parsed.scheme in ['mq', 'mqs']:
             from .mq import AsyncMessageQueueHandler
-            return AsyncMessageQueueHandler(self.identity)
+            return AsyncMessageQueueHandler(self.identity, event=self._event)
 
         if parsed.scheme == 'sb':
             from .sb import AsyncServiceBusHandler
-            return AsyncServiceBusHandler(self.identity)
+            return AsyncServiceBusHandler(self.identity, event=self._event)
 
         message = f'integration for {parsed.scheme}:// is not implemented'
         raise RuntimeError(message)
 
-
     def run(self) -> None:
         connected = True
+
         try:
             while not self._event.is_set() and connected:
                 received = False
@@ -98,7 +99,7 @@ class Worker:
                     sleep(0.1)
                     continue
 
-                self.logger.debug("i'm alive! run_daemon=%r, received=%r", self._event.is_set(), received)
+                self.logger.debug("i'm alive! event=%r, received=%r", self._event.is_set(), received)
 
                 if not request_proto:
                     continue
@@ -131,11 +132,13 @@ class Worker:
 
                 if response is None and self.integration is not None:
                     response = self.integration.handle(request)
-                    response.update({
-                        'request_id': str(request_request_id),
-                    })
+                    response.update({'request_id': str(request_request_id)})
+
                     if response.get('action', None) in ['DISC', 'DISCONNECT']:
                         connected = False
+
+                    if self._event.is_set():
+                        response.update({'message': 'abort', 'success': False})
 
                 response_proto = [
                     request_proto[0],
@@ -144,13 +147,13 @@ class Worker:
                 ]
 
                 self.socket.send_multipart(response_proto)
-        except Exception as e:
-            err_msg = f'unhandled exception in worker: {e}'
-            self.logger.exception(err_msg)
+        except Exception:
+            if not self._event.is_set():
+                self.logger.exception('unhandled exception')
 
 
-def create_router_socket(context: zmq.Context) -> zmq.Socket:
-    socket = cast(zmq.Socket, context.socket(zmq.ROUTER))
+def create_router_socket(context: ztypes.Context) -> ztypes.Socket:
+    socket = cast(ztypes.Socket, context.socket(zmq.ROUTER))
     socket.setsockopt(zmq.LINGER, 0)
     socket.setsockopt(zmq.ROUTER_HANDOVER, 1)
 
@@ -176,10 +179,11 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
     workers_available: list[str] = []
 
     with ThreadPoolExecutor(max_workers=500) as executor:
-        waiting_for_worker = False
+        worker_is_spawning = False
 
         def spawn_worker() -> None:
-            nonlocal waiting_for_worker
+            nonlocal worker_is_spawning
+
             identity = str(uuid4())
 
             worker = Worker(context, identity, run_daemon)
@@ -187,7 +191,7 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
             future = executor.submit(worker.run)
             workers.update({identity: (future, worker)})
             logger.info('spawned worker %s', identity)
-            waiting_for_worker = True
+            worker_is_spawning = True
 
         client_worker_map: dict[str, str] = {}
         worker_identifiers_map: dict[str, bytes] = {}
@@ -197,21 +201,26 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
         worker_id: str
         request_client_id: str | None
         request_request_id: str | None
+        socks_polled = 0
 
         try:
             while not run_daemon.is_set():
                 socks = dict(poller.poll(timeout=1000))
 
+                # every 10 seconds ---------------^
+                if socks_polled % 10 == 0:
+                    logger.debug("i'm alive!")
+                    socks_polled = 0
+
+                socks_polled += 1
+
                 if not socks:
                     continue
 
-                logger.debug("i'm alive!")
-
                 if socks.get(backend) == zmq.POLLIN:
-                    logger.debug('polling backend')
                     try:
-                        logger.debug('waiting for backend')
                         backend_response = backend.recv_multipart(flags=zmq.NOBLOCK)
+                        logger.debug('backend: received a message')
                     except zmq.Again:
                         sleep(0.1)
                         continue
@@ -219,7 +228,6 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                     if not backend_response:
                         continue
 
-                    logger.debug('backend_response: %r', backend_response)
                     reply = backend_response[2:]
                     worker_id = backend_response[0].decode()
 
@@ -228,40 +236,46 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                     if reply[0] == LRU_READY.encode():
                         workers_available.append(worker_id)
                         waiting_for_worker = False
+                        logger.debug('worker %s is available', worker_id)
                     else:
-                        if len(reply) > 0 and reply[0] is not None:
-                            async_response = jsonloads(reply[-1].decode())
-                            if async_response.get('action', None) in ['DISC', 'DISCONNECT']:
-                                del workers[worker_id]
-                                del worker_identifiers_map[worker_id]
-                                client_id = async_response.get('client', None)
-                                if client_id:
-                                    del client_worker_map[client_id]
+                        payload = jsonloads(reply[-1].decode())
+                        request_request_id = payload.get('request_id', None)
 
-                        logger.debug('sending %r', reply)
+                        if len(reply) > 0 and reply[0] is not None and payload.get('action', None) in ['DISC', 'DISCONNECT']:
+                            del workers[worker_id]
+                            del worker_identifiers_map[worker_id]
+
+                            logger.debug('removed mappings for worker %s', worker_id)
+
                         frontend.send_multipart(reply)
-                        logger.debug('forwarding backend response from %s', worker_id)
+                        logger.debug('backend: sent message %s from %s', request_request_id, worker_id)
+
                         if waiting_for_worker:
+                            logger.debug('backend: waiting for worker LRU')
                             continue
 
                 if socks.get(frontend) == zmq.POLLIN:
-                    logger.debug('polling frontend')
                     try:
-                        logger.debug('waiting for frontend')
-                        msg = frontend.recv_multipart(flags=zmq.NOBLOCK)
+                        frontend_response = frontend.recv_multipart(flags=zmq.NOBLOCK)
+                        logger.debug('frontend: received a message')
                     except zmq.Again:
                         sleep(0.1)
                         continue
 
-                    request_id = msg[0]
-                    payload = cast(AsyncMessageRequest, jsonloads(msg[-1].decode()))
+                    request_id = frontend_response[0]
+                    payload = cast(AsyncMessageRequest, jsonloads(frontend_response[-1].decode()))
 
                     request_worker_id = payload.get('worker', None)
                     request_client_id = str(payload.get('client', None))
                     request_request_id = payload.get('request_id', None)
                     client_key: Optional[str] = None
 
-                    logger.debug('request_worker_id=%r (%r), request_client_id=%r (%r)', request_worker_id, type(request_worker_id), request_client_id, type(request_client_id))
+                    logger.debug(
+                        'frontend: received message %s from %d to %s',
+                        request_request_id,
+                        request_client_id,
+                        request_worker_id,
+                    )
 
                     if request_client_id is not None:
                         integration_url = payload.get('context', {}).get('url', None)
@@ -283,15 +297,12 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
 
                         if client_key is not None:
                             client_worker_map.update({client_key: worker_id})
-
-                        payload['worker'] = worker_id
-
                     else:
-                        logger.debug('%s is assigned %s', request_client_id, request_worker_id)
+                        logger.debug('frontend: client %d is assigned worker %s', request_client_id, request_worker_id)
                         worker_id = request_worker_id
 
-                        if payload.get('worker', None) is None:
-                            payload['worker'] = worker_id
+                    if payload.get('worker', None) is None:
+                        payload['worker'] = worker_id
 
                     request = jsondumps(payload).encode()
                     backend_request = [worker_id.encode(), SPLITTER_FRAME, request_id, SPLITTER_FRAME, request]
@@ -322,7 +333,6 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
 
                     worker.integration.close()
                     worker.socket.close()
-                    worker.logger.info('socket closed')
 
                     # stop worker
                     cancelled = future.cancel()  # let's try at least...
@@ -331,14 +341,12 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                     # should complete when `worker.stop()` has had effect
                     futures.wait([future])
 
-            try:
-                logger.debug('destroy zmq context')
-                context.destroy(linger=0)
-            except:
-                logger.exception('failed to destroy zmq context')
-        except Exception as e:
-            err_msg = f'unhandled exception in router for client_id {request_client_id}, request_id {request_request_id}: {e}'
-            logger.exception(err_msg)
+            logger.debug('destroy zmq context')
+            context.destroy(linger=0)
+            logger.info('stopped')
+        except Exception:
+            if not run_daemon.is_set():
+                logger.exception('unhandled exception for client %s, request id %s', request_client_id, request_request_id)
 
     logger.info('stopped')
 
@@ -379,6 +387,7 @@ def main() -> int:
 
         # if the process is still alive after timeout, forcefully kill it
         if process.is_alive():
+            logger.warning('killing process')
             process.kill()
 
     except KeyboardInterrupt:

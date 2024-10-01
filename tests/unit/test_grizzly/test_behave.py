@@ -33,6 +33,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
+@pytest.mark.timeout(20)
 def test_behave_no_pymqi_dependencies() -> None:
     env = environ.copy()
     with suppress(KeyError):

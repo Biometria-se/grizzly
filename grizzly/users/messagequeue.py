@@ -132,6 +132,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import zmq.green as zmq
+from zmq import sugar as ztypes
 
 from grizzly.exceptions import StopScenario
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
@@ -177,7 +178,7 @@ class MessageQueueUser(GrizzlyUser):
     am_context: AsyncMessageContext
     worker_id: Optional[str]
     zmq_context = zmq.Context()
-    zmq_client: zmq.Socket
+    zmq_client: ztypes.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
@@ -288,16 +289,16 @@ class MessageQueueUser(GrizzlyUser):
 
     def on_stop(self) -> None:
         self.logger.debug('on_stop called, worker_id=%s', self.worker_id)
-        if self.worker_id is None:
-            return
 
-        with self._request_context({
-            'action': RequestType.DISCONNECT(),
-            'worker': self.worker_id,
-            'client': id(self),
-            'context': self.am_context,
-        }):
-            pass
+        with suppress(Exception):
+            if self.worker_id is not None:
+                with self._request_context({
+                    'action': RequestType.DISCONNECT(),
+                    'worker': self.worker_id,
+                    'client': id(self),
+                    'context': self.am_context,
+                }):
+                    pass
 
         with suppress(Exception):
             zmq_disconnect(self.zmq_client, destroy_context=False)
@@ -319,9 +320,17 @@ class MessageQueueUser(GrizzlyUser):
         yield context
         response = async_message_request(self.zmq_client, am_request)
 
+        payload = response.get('payload', None)
+        metadata = response.get('metadata', None)
+
+        worker_id = (response or {}).get('worker', None)
+
+        if self.worker_id is None and worker_id is not None:
+            self.worker_id = worker_id
+
         context.update({
-            'metadata': response.get('metadata', None),
-            'payload': response.get('payload', None),
+            'metadata': metadata,
+            'payload': payload,
         })
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:

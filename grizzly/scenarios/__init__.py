@@ -5,18 +5,20 @@ import logging
 from os import environ
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
+from gevent.event import Event
 from locust.exception import LocustError
 from locust.user.sequential_taskset import SequentialTaskSet
 
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import StopScenario
-from grizzly.gevent import GreenletWithExceptionCatching
+from grizzly.gevent import GreenletFactory
 from grizzly.tasks import GrizzlyTask, grizzlytask
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.types import ScenarioState
 from grizzly.types.locust import StopUser
 
 if TYPE_CHECKING:  # pragma: no cover
+    from gevent import Greenlet
     from locust.user.task import TaskSet
 
     from grizzly.users import GrizzlyUser
@@ -26,9 +28,9 @@ class GrizzlyScenario(SequentialTaskSet):
     consumer: TestdataConsumer
     logger: logging.Logger
     grizzly: GrizzlyContext
-    task_greenlet: Optional[GreenletWithExceptionCatching]
-    task_greenlet_factory: GreenletWithExceptionCatching
-    abort: bool
+    task_greenlet: Optional[Greenlet]
+    task_greenlet_factory: GreenletFactory
+    abort: Event
     spawning_complete: bool
 
     _task_index: int
@@ -39,8 +41,8 @@ class GrizzlyScenario(SequentialTaskSet):
         self.grizzly = GrizzlyContext()
         self.user.scenario_state = ScenarioState.STOPPED
         self.task_greenlet = None
-        self.task_greenlet_factory = GreenletWithExceptionCatching()
-        self.abort = False
+        self.task_greenlet_factory = GreenletFactory(logger=self.logger, ignore_exceptions=[StopScenario])
+        self.abort = Event()
         self.spawning_complete = False
         self.parent.environment.events.quitting.add_listener(self.on_quitting)
         self._task_index = 0
@@ -115,9 +117,10 @@ class GrizzlyScenario(SequentialTaskSet):
         """When locust is quitting, with abort=True (signal received) we should force the
         running task to stop by throwing an exception in the greenlet where it is running.
         """
-        if self.task_greenlet is not None and kwargs.get('abort', False):
-            self.abort = True
+        if self.task_greenlet is not None and kwargs.get('abort', False) and not self.abort.is_set():
+            self.abort.set()
             self.task_greenlet.kill(StopScenario, block=False)
+            self.logger.debug('killed task (greenlet)')
 
     def get_next_task(self) -> Union[TaskSet, Callable]:
         """Use old way of getting task, so we can reset which task to start from."""
@@ -130,12 +133,13 @@ class GrizzlyScenario(SequentialTaskSet):
 
         return task
 
-    def execute_next_task(self) -> None:
+    def execute_next_task(self, index: int, total: int, description: str) -> None:  # type: ignore[override]
         """Execute task in a greenlet, so that we have the possibility to stop it on demand. Any exceptions
         raised in the greenlet should be caught else where.
         """
         try:
-            self.task_greenlet_factory.spawn_blocking(super().execute_next_task)
+            with self.task_greenlet_factory.spawn_task(super().execute_next_task, index, total, description) as greenlet:
+                self.task_greenlet = greenlet
         finally:
             self.task_greenlet = None
 

@@ -16,6 +16,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Any, Callable, NoReturn, Optional, SupportsIndex, TypeVar, cast
 
 import gevent
+import gevent.event
 from locust import events
 from locust import stats as lstats
 from locust.dispatch import UsersDispatcher
@@ -47,7 +48,7 @@ if TYPE_CHECKING:
 
 
 unhandled_greenlet_exception: bool = False
-abort_test: bool = False
+abort_test: gevent.event.Event = gevent.event.Event()
 
 
 logger = logging.getLogger('grizzly.locust')
@@ -818,7 +819,7 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
 
         stat = stats.get(scenario.locust_name, RequestType.SCENARIO())
         if stat.num_requests > 0:
-            if abort_test:
+            if abort_test.is_set():
                 status = Status.skipped
                 stat.num_requests -= 1
             elif stat.num_failures == 0 and stat.num_requests == scenario.iterations and total_errors == 0:
@@ -848,11 +849,21 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     print(separator)
 
 
-def grizzly_test_abort(*_args: Any, **_kwargs: Any) -> None:
-    global abort_test  # noqa: PLW0603
+def sig_trap(msg: Message, **_kwargs: Environment) -> None:
+    if not abort_test.is_set():
+        abort_test.set()
+        logger.info('worker %s triggered test abort on master', msg.node_id)
 
-    if not abort_test:
-        abort_test = True
+
+def return_code(environment: Environment, msg: Message) -> None:
+    rc = int(msg.data)
+    old_rc = environment.process_exit_code
+
+    environment.process_exit_code = max(environment.process_exit_code or -1, rc)
+
+    if old_rc != rc:
+        logger.info('worker %s changed environment.process_exit_code: %r -> %r', msg.node_id, old_rc, environment.process_exit_code)
+
 
 def shutdown_external_processes(processes: dict[str, subprocess.Popen], greenlet: Optional[gevent.Greenlet]) -> None:
     if len(processes) < 1:
@@ -861,7 +872,7 @@ def shutdown_external_processes(processes: dict[str, subprocess.Popen], greenlet
     if greenlet is not None:
         greenlet.kill(block=False)
 
-    stop_method = 'killing' if abort_test else 'stopping'
+    stop_method = 'killing' if abort_test.is_set() else 'stopping'
 
     for dependency, process in processes.items():
         logger.info('%s %s', stop_method, dependency)
@@ -1036,7 +1047,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 grizzly.state.locust.register_message(message_type, callback)
                 logger.info('registered callback for message type "%s"', message_type)
 
-            runner.register_message('client_aborted', grizzly_test_abort)
+            runner.register_message('sig_trap', sig_trap)
+            runner.register_message('return_code', return_code)
 
         main_greenlet = runner.greenlet
 
@@ -1143,9 +1155,9 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                         logger.debug('user_count=%d, user_classes_count=%r', runner.user_count, user_classes_count)
                         count = 0
 
-                logger.info('runner.user_count=%d, quit %s, abort_test=%r', runner.user_count, runner.__class__.__name__, abort_test)
+                logger.info('runner.user_count=%d, quit %s, abort_test=%r', runner.user_count, runner.__class__.__name__, abort_test.is_set())
                 # has already been fired if abort_test = True
-                if not abort_test:
+                if not abort_test.is_set():
                     runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
 
                 if isinstance(runner, MasterRunner):
@@ -1200,20 +1212,16 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 signame = 'UNKNOWN'
 
             def wrapper() -> None:
-                global abort_test  # noqa: PLW0603
-                if abort_test:
+                if abort_test.is_set():
                     return
 
                 logger.info('handling signal %s (%d)', signame, signum)
 
-                logger.debug('shutdown external processes')
-
-                abort_test = True
-                shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
+                abort_test.set()
 
                 if isinstance(runner, WorkerRunner):
                     runner._send_stats()
-                    runner.client.send(Message('client_aborted', None, runner.client_id))
+                    runner.client.send(Message('sig_trap', None, runner.client_id))
 
                 runner.environment.events.quitting.fire(environment=runner.environment, reverse=True, abort=True)
 
@@ -1224,9 +1232,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         try:
             main_greenlet.join()
-            logger.debug('main greenlet finished')
         finally:
-            if abort_test:
+            if abort_test.is_set() and not isinstance(runner, MasterRunner):
                 code = SIGTERM.value
             elif unhandled_greenlet_exception:
                 code = 2
@@ -1237,10 +1244,16 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
             else:
                 code = 0
 
+        if isinstance(runner, WorkerRunner):
+            runner.client.send(Message('return_code', code, runner.client_id))
+        else:
+            code = max(code, environment.process_exit_code or -1)
+
+        logger.debug('main greenlet finished, rc = %d', code)
+
         return code
     finally:
-        if not abort_test:
-            shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
+        shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> list[tuple[str, str, int]]:

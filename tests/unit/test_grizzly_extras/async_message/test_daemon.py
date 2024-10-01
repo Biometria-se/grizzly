@@ -57,7 +57,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
     mock_recv_multipart({'worker': 'ID-54321', 'context': {'url': f'{scheme}://dummy'}})
 
     event_mock = mocker.MagicMock()
-    event_mock.is_set.side_effect = [False, False, False, False, True]
+    event_mock.is_set.side_effect = [False, False, False, False, False, True]
     Worker(context_mock, 'ID-12345', event=event_mock).run()
 
     worker_mock.send_multipart.assert_called_once_with([
@@ -75,7 +75,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
 
     mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': 'http://www.example.com'}})
 
-    event_mock.is_set.side_effect = [False, False, False, False, True]
+    event_mock.is_set.side_effect = [False, False, False, False, False, True]
     Worker(context_mock, 'ID-12345', event=event_mock).run()
 
     worker_mock.send_multipart.assert_called_once_with([
@@ -108,10 +108,10 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
         'response_time': 439,
     })
 
-    event_mock.is_set.side_effect = [False, False, False, False, True]
+    event_mock.is_set.side_effect = [False, False, False, False, False, False, True]
     Worker(context_mock, 'ID-12345', event=event_mock).run()
 
-    integration_spy.assert_called_once_with('ID-12345')
+    integration_spy.assert_called_once_with('ID-12345', event=event_mock)
     integration_spy.reset_mock()
 
     worker_mock.send_multipart.assert_called_once_with([

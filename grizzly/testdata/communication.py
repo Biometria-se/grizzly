@@ -112,7 +112,7 @@ class TestdataConsumer:
         if self.stopped:
             return
 
-        self.logger.debug('stopping consumer')
+        self.logger.debug('consumer stopping')
         try:
             zmq_disconnect(self.socket, destroy_context=True)
         except:
@@ -360,8 +360,12 @@ class TestdataProducer:
             self.logger.exception('failed to stop')
         finally:
             # make sure that socket is properly released
-            gsleep(0.1)
-            self.persist_data()
+            try:
+                gsleep(0.1)
+            except:  # noqa: S110
+                pass
+            finally:
+                self.persist_data()
 
     @event(events.keystore_request, tags={'type': 'producer'}, decoder=KeystoreDecoder(arg='request'))
     def _handle_request_keystore(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912

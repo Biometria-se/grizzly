@@ -27,7 +27,7 @@ class TestAsyncMessageHandler:
             def close(self) -> None:
                 pass
 
-        handler = AsyncMessageTest('ID-12345')
+        handler = AsyncMessageTest('ID-12345', None)
 
         assert handler.worker == 'ID-12345'
 
@@ -48,7 +48,7 @@ class TestAsyncMessageHandler:
             def close(self) -> None:
                 pass
 
-        handler = AsyncMessageTest(worker='asdf-asdf-asdf')
+        handler = AsyncMessageTest(worker='asdf-asdf-asdf', event=None)
 
         request: AsyncMessageRequest = {
             'action': 'NONE',
