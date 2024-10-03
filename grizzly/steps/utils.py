@@ -47,4 +47,9 @@ def step_utils_add_orphan_template(context: Context, template: str) -> None:
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    grizzly.scenario.orphan_templates.append(template)
+    if not context.step.in_background:
+        grizzly.scenario.orphan_templates.append(template)
+    else:
+        for scenario in grizzly.scenarios:
+            scenario.orphan_templates.append(template)
+
