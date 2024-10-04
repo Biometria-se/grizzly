@@ -323,7 +323,7 @@ class TestIterationScenario:
         assert kwargs.get('response_length', None) == 0
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
-        assert str(exception) == 'pace falling behind'
+        assert str(exception) == 'pace falling behind, iteration takes longer than 500.0 milliseconds'
 
         perf_counter_spy.reset_mock()
         request_spy.reset_mock()
@@ -397,7 +397,7 @@ class TestIterationScenario:
         assert kwargs.get('response_length', None) == 0
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
-        assert str(exception) == 'pace falling behind'
+        assert str(exception) == 'pace falling behind, iteration takes longer than 500.0 milliseconds'
 
         perf_counter_spy.reset_mock()
         request_spy.reset_mock()
