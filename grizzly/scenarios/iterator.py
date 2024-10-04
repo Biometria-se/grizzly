@@ -314,8 +314,8 @@ class IteratorScenario(GrizzlyScenario):
                     gsleep((value / 1000) - pace_correction)
                     response_length = 1
                 else:
-                    self.logger.error('pace falling behind, currently at %d milliseconds', abs(pace_correction * 1000))
-                    message = 'pace falling behind'
+                    self.logger.error('pace falling behind, currently at %d milliseconds expecting %f milliseconds', abs(pace_correction * 1000), value)
+                    message = f'pace falling behind, iteration takes longer than {value} milliseconds'
                     raise RuntimeError(message)
         except Exception as e:
             exception = e

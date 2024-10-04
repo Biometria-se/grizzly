@@ -78,4 +78,4 @@ def test_e2e_iteration_pace(e2e_fixture: End2EndFixture) -> None:
 
     assert rc == 1
     assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
-    assert "1                  PACE 001 RequestTask: RuntimeError('pace falling behind')" in result
+    assert "1                  PACE 001 RequestTask: RuntimeError('pace falling behind, iteration takes longer than 500.0 milliseconds')" in result

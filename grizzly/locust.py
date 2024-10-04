@@ -987,6 +987,13 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 runner.send_message('grizzly_worker_quit', None)
 
             if not isinstance(runner, WorkerRunner):
+                for scenario in grizzly.scenarios:
+                    logger.info('# %s:', scenario.name)
+
+                    for variable, value in scenario.variables.items():
+                        if value is None or (isinstance(value, str) and value.lower() == 'none'):
+                            continue
+                        logger.info('    %s = %s', variable, value)
                 runner.quit()
                 return 0
 
