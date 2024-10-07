@@ -1051,7 +1051,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         if not isinstance(runner, WorkerRunner):
             for message_type, callback in message_handlers.items():
-                grizzly.state.locust.register_message(message_type, callback)
+                grizzly.state.locust.register_message(message_type, callback, concurrent=True)
                 logger.info('registered callback for message type "%s"', message_type)
 
             runner.register_message('sig_trap', sig_trap)
