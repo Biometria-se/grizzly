@@ -31,6 +31,7 @@ from __future__ import annotations
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Callable
 
+from grizzly.exceptions import failure_handler
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 
 from . import GrizzlyTask, grizzlytask, template
@@ -115,7 +116,6 @@ class TransformerTask(GrizzlyTask):
                     exception=exception,
                 )
 
-                if exception is not None and parent.user._scenario.failure_exception is not None:
-                    raise parent.user._scenario.failure_exception from exception
+                failure_handler(exception, parent.user._scenario)
 
         return task

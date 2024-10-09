@@ -157,7 +157,7 @@ class TestAsyncRequestGroup:
 
         # exception before spawning greenlets, with a scenario failure exception
         joinall_mock.side_effect = [RuntimeError]
-        parent.user._scenario.failure_exception = RestartScenario
+        parent.user._scenario.failure_handling.update({None: RestartScenario})
 
         with pytest.raises(RestartScenario):
             task(parent)
@@ -167,7 +167,7 @@ class TestAsyncRequestGroup:
         spawn_mock.reset_mock()
         try:
             environ['GEVENT_MONITOR_THREAD_ENABLE'] = 'true'
-            parent.user._scenario.failure_exception = StopUser
+            parent.user._scenario.failure_handling.update({None: StopUser})
 
             with caplog.at_level(logging.DEBUG), pytest.raises(StopUser):
                     task(parent)

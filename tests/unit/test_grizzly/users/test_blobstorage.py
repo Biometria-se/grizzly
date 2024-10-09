@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+from contextlib import suppress
 from typing import TYPE_CHECKING, cast
 from unittest.mock import ANY
 
@@ -200,7 +201,7 @@ class TestBlobStorageUser:
         upload_blob = mocker.patch('azure.storage.blob._blob_service_client.BlobClient.upload_blob', side_effect=[RuntimeError('failed to upload blob')])
 
         request.method = RequestMethod.SEND
-        blob_storage_parent.user._scenario.failure_exception = RestartScenario
+        blob_storage_parent.user._scenario.failure_handling.update({None: RestartScenario})
 
         with pytest.raises(RestartScenario):
             blob_storage_parent.user.request(request)
@@ -262,7 +263,7 @@ class TestBlobStorageUser:
 
         download_blob = mocker.patch('azure.storage.blob._blob_service_client.BlobClient.download_blob', side_effect=[RuntimeError('failed to download blob')])
 
-        blob_storage_parent.user._scenario.failure_exception = StopUser
+        blob_storage_parent.user._scenario.failure_handling.update({None: StopUser})
 
         with pytest.raises(StopUser):
             blob_storage_parent.user.request(request)
@@ -307,15 +308,17 @@ class TestBlobStorageUser:
         assert isinstance(exception, NotImplementedError)
         assert 'has not implemented POST' in str(exception)
 
-        blob_storage_parent.user._scenario.failure_exception = None
+        with suppress(KeyError):
+            del blob_storage_parent.user._scenario.failure_handling[None]
+
         with pytest.raises(StopUser):
             blob_storage_parent.user.request(request)
 
-        blob_storage_parent.user._scenario.failure_exception = StopUser
+        blob_storage_parent.user._scenario.failure_handling.update({None: StopUser})
         with pytest.raises(StopUser):
             blob_storage_parent.user.request(request)
 
-        blob_storage_parent.user._scenario.failure_exception = RestartScenario
+        blob_storage_parent.user._scenario.failure_handling.update({None: RestartScenario})
         with pytest.raises(StopUser):
             blob_storage_parent.user.request(request)
 

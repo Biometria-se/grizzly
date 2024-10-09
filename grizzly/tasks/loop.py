@@ -31,6 +31,8 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from gevent import sleep as gsleep
 
+from grizzly.exceptions import failure_handler
+
 from . import GrizzlyTask, GrizzlyTaskWrapper, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -98,7 +100,12 @@ class LoopTask(GrizzlyTaskWrapper):
             finally:
                 response_time = int((perf_counter() - start) * 1000)
 
-                if exception is not None and parent.user._scenario.failure_exception is not None and isinstance(exception, parent.user._scenario.failure_exception):
+                # if task in loop throws the "failure_handling" exception, do not fire LOOP request
+                if (
+                    exception is not None
+                    and parent.user._scenario.failure_handling.get(None, None) is not None
+                    and exception.__class__ is parent.user._scenario.failure_handling.get(None, None)
+                ):
                     raise exception
 
                 parent.user.environment.events.request.fire(
@@ -110,8 +117,7 @@ class LoopTask(GrizzlyTaskWrapper):
                     exception=exception,
                 )
 
-                if exception is not None and parent.user._scenario.failure_exception is not None:
-                    raise parent.user._scenario.failure_exception
+                failure_handler(exception, parent.user._scenario)
 
         @task.on_start
         def on_start(parent: GrizzlyScenario) -> None:

@@ -583,7 +583,7 @@ class TestMessageQueueClientTask:
             fire_spy.reset_mock()
 
             async_message_request_mock = mocker.patch('grizzly.tasks.clients.messagequeue.async_message_request', side_effect=[AsyncMessageError('oooh nooo')])
-            parent.user._scenario.failure_exception = RestartScenario
+            parent.user._scenario.failure_handling.update({None: RestartScenario})
 
             log_error_mock = mocker.patch.object(parent.stats, 'log_error')
             mocker.patch.object(parent, 'on_start', return_value=None)

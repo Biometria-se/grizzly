@@ -42,12 +42,13 @@ from __future__ import annotations
 
 import json
 import logging
+from contextlib import suppress
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 from gevent import sleep as gsleep
 
-from grizzly.exceptions import StopScenario
+from grizzly.exceptions import StopScenario, failure_handler
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import RequestType
 from grizzly.types.locust import StopUser
@@ -133,8 +134,10 @@ class UntilRequestTask(GrizzlyTask):
             response_length = 0
 
             # when doing the until task, disable that the wrapped task will throw an exception
-            original_failure_exception = parent.user._scenario.failure_exception
-            parent.user._scenario.failure_exception = None
+            original_failure_exception = parent.user._scenario.failure_handling.get(None)
+
+            with suppress(KeyError):
+                del parent.user._scenario.failure_handling[None]
 
             start = perf_counter()
 
@@ -191,7 +194,8 @@ class UntilRequestTask(GrizzlyTask):
                     exception = e
             finally:
                 # restore original
-                parent.user._scenario.failure_exception = original_failure_exception
+                if original_failure_exception is not None:
+                    parent.user._scenario.failure_handling.update({None: original_failure_exception})
 
                 response_time = int((perf_counter() - start) * 1000)
 
@@ -225,8 +229,7 @@ class UntilRequestTask(GrizzlyTask):
                     exception=exception,
                 )
 
-                if exception is not None and parent.user._scenario.failure_exception is not None:
-                    raise parent.user._scenario.failure_exception from exception
+                failure_handler(exception, parent.user._scenario)
 
         @task.on_start
         def on_start(parent: GrizzlyScenario) -> None:

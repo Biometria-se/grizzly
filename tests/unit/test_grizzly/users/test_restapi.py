@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import suppress
 from hashlib import sha256
 from time import time
 from typing import TYPE_CHECKING, Any, Callable, cast
@@ -338,7 +339,7 @@ class TestRestApiUser:
         request.metadata = {'x-foo': 'bar'}
         expected_parameters['headers'].update({'x-foo': 'bar'})
 
-        parent.user._scenario.failure_exception = StopUser
+        parent.user._scenario.failure_handling.update({None: StopUser})
 
         with pytest.raises(StopUser):
             parent.user.request(request)
@@ -358,7 +359,10 @@ class TestRestApiUser:
         response_spy.status_code = 404
         response_spy.text = '{"error_description": "borked"}'
         response_spy.request_meta = {}
-        parent.user._scenario.failure_exception = None
+
+        with suppress(KeyError):
+            del parent.user._scenario.failure_handling[None]
+
         request.metadata = {}
         del expected_parameters['headers']['x-foo']
 
@@ -401,7 +405,9 @@ class TestRestApiUser:
 
         # request POST, invalid json
         request.source = '{"hello}'
-        parent.user._scenario.failure_exception = None  # always stop for this error
+
+        with suppress(KeyError):
+            del parent.user._scenario.failure_handling[None]  # always stop for this error
 
         with pytest.raises(StopUser):
             parent.user.request(request)

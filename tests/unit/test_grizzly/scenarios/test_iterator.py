@@ -49,7 +49,7 @@ class TestIterationScenario:
         assert len(parent.tasks) == 3
 
         task_method = parent.tasks[-2]
-        parent.user._scenario.failure_exception = StopUser
+        parent.user._scenario.failure_handling.update({None: StopUser})
 
         assert callable(task_method)
         with pytest.raises(StopUser):

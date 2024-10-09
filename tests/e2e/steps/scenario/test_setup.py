@@ -221,8 +221,8 @@ def test_e2e_step_setup_stop_user_on_failure(e2e_fixture: End2EndFixture) -> Non
         from grizzly.types.locust import StopUser
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        assert grizzly.scenario.failure_exception is not None
-        assert isinstance(grizzly.scenario.failure_exception(), StopUser), 'failure exception is not StopUser'
+        assert grizzly.scenario.failure_handling.get(None, None) is not None
+        assert isinstance(grizzly.scenario.failure_handling.get(None, RuntimeError)(), StopUser), 'failure exception is not StopUser'
 
     e2e_fixture.add_validator(validate_stop_user_on_failure)
 
@@ -242,8 +242,8 @@ def test_e2e_step_setup_restart_scenario_on_failure(e2e_fixture: End2EndFixture)
         from grizzly.exceptions import RestartScenario
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        assert grizzly.scenario.failure_exception is not None
-        assert isinstance(grizzly.scenario.failure_exception(), RestartScenario), 'failure exception is not RestartScenario'
+        assert grizzly.scenario.failure_handling.get(None, None) is not None
+        assert isinstance(grizzly.scenario.failure_handling.get(None, RuntimeError)(), RestartScenario), 'failure exception is not RestartScenario'
 
     e2e_fixture.add_validator(validate_restart_scenario_on_failure)
 

@@ -257,7 +257,7 @@ def test_e2e_step_response_validate(e2e_fixture: End2EndFixture) -> None:
 
             assert len(grizzly.scenario.orphan_templates) == 0, 'unexpected number of orphan templates'
 
-            assert grizzly.scenario.failure_exception is None
+            assert grizzly.scenario.failure_handling.get(None, None) is None
 
             request = grizzly.scenario.tasks()[index]
 
