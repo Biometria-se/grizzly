@@ -815,6 +815,7 @@ def step_start_webserver(context: Context, port: int) -> None:
         add_user_count_step = True
         add_user_type_step = True
         add_spawn_rate_step = True
+        add_iterations_step = True
 
         if background is None:
             background = []
@@ -833,6 +834,9 @@ def step_start_webserver(context: Context, port: int) -> None:
             if re.match(r'(And|Given) spawn rate is "[^"]*" user[s]? per second', step) is not None:
                 add_spawn_rate_step = False
 
+            if re.match(r'And repeat for "[^"]*" iteration[s]?', step) is not None:
+                add_iterations_step = False
+
         if add_user_count_step:
             background.insert(0, 'Given "1" user')
             if add_spawn_rate_step:
@@ -843,6 +847,9 @@ def step_start_webserver(context: Context, port: int) -> None:
 
         if add_spawn_rate_step and not add_user_count_step:
             background.append('Given spawn rate is "1" user per second')
+
+        if add_iterations_step:
+            scenario.insert(1, 'And repeat for "1" iteration')
 
         if self._distributed and not any(step.strip().startswith('Then start webserver on master port') for step in background):
             background.append(f'Then start webserver on master port "{self.webserver.port}"')
