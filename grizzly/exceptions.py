@@ -29,6 +29,10 @@ class RestartScenario(Exception):  # noqa: N818
     pass
 
 
+class RetryTask(Exception):  # noqa: N818
+    pass
+
+
 class AssertionErrors(Exception):  # noqa: N818
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -94,7 +98,13 @@ def failure_handler(exception: Exception | None, scenario: GrizzlyContextScenari
     if isinstance(exception, (NotImplementedError, KeyError, IndexError, AttributeError, TypeError, SyntaxError)):
         raise StopUser from exception
 
-    # @TODO: loop through and check any error specific exceptions
+    # custom actions based on failure
+    for failure_type, failure_action in scenario.failure_handling.items():
+        if failure_type is None:
+            continue
+
+        if (isinstance(failure_type, str) and failure_type in str(exception)) or exception.__class__ is failure_type:
+            raise failure_action from exception
 
     # no match, raise the default if it has been set
     default_exception = scenario.failure_handling.get(None, None)

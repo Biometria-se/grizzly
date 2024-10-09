@@ -3,6 +3,7 @@ This module contains step implementations that setup the load test scenario with
 """
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import Any, Optional, cast
 
 import parse
@@ -12,9 +13,10 @@ from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
 from grizzly.tasks import GrizzlyTask, RequestTask
 from grizzly.testdata.utils import resolve_variable
-from grizzly.types.behave import Context, given, register_type, then
+from grizzly.types import FailureAction
+from grizzly.types.behave import Context, given, register_type, then, when
 from grizzly.types.locust import StopUser
-from grizzly.utils import has_template
+from grizzly.utils import ModuleLoader, has_template
 from grizzly_extras.text import permutation
 
 
@@ -24,8 +26,33 @@ def parse_iteration_gramatical_number(text: str) -> str:
     return text.strip()
 
 
+def parse_failure_type(value: str) -> type[Exception] | str:
+    result: type[Exception] | str | None = None
+
+    if '.' in value:
+        module_name, value = value.rsplit('.', 1)
+        module_names = [module_name]
+    else:
+        module_names = ['grizzly.exceptions', 'builtins']
+
+    # check if value corresponds to an exception type
+    for module_name in module_names:
+        with suppress(Exception):
+            result = ModuleLoader[Exception].load(module_name, value)
+            break
+
+    # an exception message which should be checked against the string representation
+    # of the exception that was thrown
+    if result is None:
+        result = value
+
+    return result
+
+
 register_type(
     IterationGramaticalNumber=parse_iteration_gramatical_number,
+    FailureActionStepExpression=FailureAction.from_step_expression,
+    FailureType=parse_failure_type,
 )
 
 
@@ -142,6 +169,9 @@ def step_setup_log_all_requests(context: Context) -> None:
 def step_setup_stop_user_on_failure(context: Context) -> None:
     """Stop user if a request fails.
 
+    !!! attention
+        This step is deprecated and will be removed in the future, use {@pylink grizzly.steps.scenario.setup.step_setup_failed_task_default} instead.
+
     Default behavior is to continue the scenario if a request fails.
 
     Example:
@@ -158,6 +188,9 @@ def step_setup_stop_user_on_failure(context: Context) -> None:
 def step_setup_restart_scenario_on_failure(context: Context) -> None:
     """Restart scenario, from first task, if a request fails.
 
+    !!! attention
+        This step is deprecated and will be removed in the future, use {@pylink grizzly.steps.scenario.setup.step_setup_failed_task_default} instead.
+
     Default behavior is to continue the scenario if a request fails.
 
     Example:
@@ -168,6 +201,42 @@ def step_setup_restart_scenario_on_failure(context: Context) -> None:
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.failure_handling.update({None: RestartScenario})
+
+
+@when('a task fails with "{failure:FailureType}" {failure_action:FailureActionStepExpression}')
+def step_setup_failed_task_custom(context: Context, failure: type[Exception] | str, failure_action: FailureAction) -> None:
+    """Set behavior when specific failure occurs.
+
+    It can be either a `str` or an exception type, where the later is more specific.
+
+    Example:
+    ```gherkin
+    When a task fails with "504 gateway timeout" retry step
+    When a task fails with "RuntimeError" stop user
+    ```
+
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.failure_handling.update({failure: failure_action.exception})
+
+
+@when('a task fails {failure_action:FailureActionStepExpression}')
+def step_setup_failed_task_default(context: Context, failure_action: FailureAction) -> None:
+    """Set default behavior when a task fails.
+
+    If no default behavior is set, the scenario will continue as nothing happened.
+
+    Example:
+    ```gherkin
+    When a task fails restart scenario
+    When a task fails stop user
+    ```
+
+    """
+    assert failure_action.default_friendly, f'{failure_action.step_expression} should not be used as the default behavior, only use it for specific failures'
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.failure_handling.update({None: failure_action.exception})
 
 
 @then('metadata "{key}" is "{value}"')

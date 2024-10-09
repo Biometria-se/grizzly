@@ -285,3 +285,30 @@ def test_e2e_setup_metadata(e2e_fixture: End2EndFixture) -> None:
     rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
+
+
+def test_e2e_setup_failed_task(e2e_fixture: End2EndFixture) -> None:
+    def validate_failure_handling(context: Context) -> None:
+        from grizzly.exceptions import RestartScenario, RetryTask, StopUser
+
+        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        assert grizzly.scenario.failure_handling == {
+            None: RestartScenario,
+            '504 gateway timeout': RetryTask,
+            MemoryError: StopUser,
+        }
+
+    e2e_fixture.add_validator(validate_failure_handling)
+
+    feature_file = e2e_fixture.test_steps(
+        scenario=[
+            'When a task fails restart scenario',
+            'When a task fails with "504 gateway timeout" retry task',
+            'When a task fails with "MemoryError" stop user',
+        ],
+    )
+
+    rc, _ = e2e_fixture.execute(feature_file)
+
+    assert rc == 0
