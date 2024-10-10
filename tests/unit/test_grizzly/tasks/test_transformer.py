@@ -1,6 +1,7 @@
 """Unit tests for grizzly.tasks.transformer."""
 from __future__ import annotations
 
+from contextlib import suppress
 from json import dumps as jsondumps
 from typing import TYPE_CHECKING
 
@@ -152,7 +153,7 @@ class TestTransformerTask:
             }),
         )
         task = task_factory()
-        parent.user._scenario.failure_exception = RestartScenario
+        parent.user._scenario.failure_handling.update({None: RestartScenario})
         with pytest.raises(RestartScenario):
             task(parent)
 
@@ -166,7 +167,8 @@ class TestTransformerTask:
         )
         fire_spy.reset_mock()
 
-        parent.user._scenario.failure_exception = None
+        with suppress(KeyError):
+            del parent.user._scenario.failure_handling[None]
 
         task_factory = TransformerTask(
             variable='test_variable',

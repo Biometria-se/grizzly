@@ -1,6 +1,7 @@
 """Unit tests of grizzly.tasks.conditional."""
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
@@ -167,7 +168,7 @@ class TestConditionalTask:
 
         # invalid condition, RestartScenario scenario.failure_exception
         parent.user.set_variable('value', 'foobar')
-        scenario_context.failure_exception = RestartScenario
+        scenario_context.failure_handling.update({None: RestartScenario})
 
         with pytest.raises(RestartScenario):
             task(parent)
@@ -182,7 +183,8 @@ class TestConditionalTask:
         )
         request_spy.reset_mock()
 
-        scenario_context.failure_exception = None  # reset
+        with suppress(KeyError):
+            del scenario_context.failure_handling[None]  # reset
 
         # true condition
         task_factory.condition = '{{ value | int > 0 }}'

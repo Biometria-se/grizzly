@@ -181,13 +181,13 @@ class TestHttpClientTask:
 
             assert len(list(task_factory.log_dir.rglob('**/*'))) == 2
 
-            parent.user._scenario.failure_exception = StopUser
+            parent.user._scenario.failure_handling.update({None: StopUser})
             task_factory.name = 'test-3'
 
             with pytest.raises(StopUser):
                 task(parent)
 
-            parent.user._scenario.failure_exception = RestartScenario
+            parent.user._scenario.failure_handling.update({None: RestartScenario})
             task_factory.name = 'test-4'
 
             requests_get_spy.reset_mock()
@@ -214,7 +214,8 @@ class TestHttpClientTask:
             request_fire_spy.reset_mock()
             assert len(list(task_factory.log_dir.rglob('**/*'))) == 4
 
-            parent.user._scenario.failure_exception = None
+            with suppress(KeyError):
+                del parent.user._scenario.failure_handling[None]
 
             task_factory = test_cls(RequestDirection.FROM, 'http://example.org', 'http-get', payload_variable='test')
             task = task_factory()
@@ -406,7 +407,9 @@ class TestHttpClientTask:
         )
         request_fire_spy.reset_mock()
 
-        grizzly.scenario.failure_exception = None
+        with suppress(KeyError):
+            del grizzly.scenario.failure_handling[None]
+
         response.status_code = 500
         response.headers = CaseInsensitiveDict({'x-foo-bar': 'test'})
         requests_request_spy.return_value = response

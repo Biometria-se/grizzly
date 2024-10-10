@@ -990,7 +990,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 for scenario in grizzly.scenarios:
                     logger.info('# %s:', scenario.name)
 
-                    for variable, value in scenario.variables.items():
+                    for variable, value in dict(sorted(scenario.variables.items())).items():
                         if value is None or (isinstance(value, str) and value.lower() == 'none'):
                             continue
                         logger.info('    %s = %s', variable, value)

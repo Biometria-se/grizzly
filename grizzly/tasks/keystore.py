@@ -35,6 +35,8 @@ from json import dumps as jsondumps
 from json import loads as jsonloads
 from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
+from grizzly.exceptions import failure_handler
+
 from . import GrizzlyTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -72,7 +74,7 @@ class KeystoreTask(GrizzlyTask):
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
-        def task(parent: GrizzlyScenario) -> Any:  # noqa: PLR0912
+        def task(parent: GrizzlyScenario) -> Any:
             key = parent.user.render(self.key)
 
             try:
@@ -120,7 +122,6 @@ class KeystoreTask(GrizzlyTask):
                     exception=e,
                 )
 
-                if parent.user._scenario.failure_exception is not None:
-                    raise parent.user._scenario.failure_exception from e
+                failure_handler(e, parent.user._scenario)
 
         return task

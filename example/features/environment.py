@@ -38,4 +38,4 @@ def before_scenario(
     grizzly_before_scenario(context, scenario, *args, **kwargs)
 
     grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.failure_exception = StopUser
+    grizzly.scenario.failure_handling.update({None: StopUser})

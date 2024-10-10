@@ -322,12 +322,14 @@ class TestValidationHandlerAction:
             handler((TransformerContentType.JSON, True), parent.user)
 
         for failure_exception in [None, StopUser, RestartScenario]:
-            parent.user._scenario.failure_exception = failure_exception
+            if failure_exception is not None:
+                parent.user._scenario.failure_handling.update({None: failure_exception})
 
             with pytest.raises(ResponseHandlerError, match=r'".*?": "False" was None'):
                 handler((TransformerContentType.JSON, True), parent.user)
 
-        parent.user._scenario.failure_exception = None
+            with suppress(KeyError):
+                del parent.user._scenario.failure_handling[None]
 
         handler((TransformerContentType.JSON, False), parent.user)
 
@@ -382,7 +384,8 @@ class TestSaveHandlerAction:
 
 
         for failure_exception in [None, StopUser, RestartScenario]:
-            parent.user._scenario.failure_exception = failure_exception
+            if failure_exception is not None:
+                parent.user._scenario.failure_handling.update({None: failure_exception})
 
             with pytest.raises(ResponseHandlerError, match='did not match value'):
                 handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), parent.user)
@@ -706,7 +709,7 @@ class TestResponseHandler:
         request = RequestTask(RequestMethod.GET, name='test-request', endpoint='/api/v2/test | content_type=json')
         request.response.handlers.add_payload(SaveHandlerAction('foobar', expression='$.hello.world[?value="foobar"]', match_with='.*'))
 
-        parent.user._scenario.failure_exception = StopUser
+        parent.user._scenario.failure_handling.update({None: StopUser})
 
         assert get_log_files() == []
 

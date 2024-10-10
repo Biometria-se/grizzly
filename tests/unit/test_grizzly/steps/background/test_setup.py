@@ -120,11 +120,11 @@ def test_step_setup_stop_user_on_failure(behave_fixture: BehaveFixture) -> None:
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
-    assert grizzly.scenario.failure_exception is None
+    assert grizzly.scenario.failure_handling.get(None, None) is None
 
     step_setup_stop_user_on_failure(behave)
 
-    assert grizzly.scenario.failure_exception == StopUser
+    assert isinstance(grizzly.scenario.failure_handling.get(None, RuntimeError)(), StopUser)
 
 
 def test_step_setup_restart_scenario_on_failure(behave_fixture: BehaveFixture) -> None:
@@ -133,12 +133,12 @@ def test_step_setup_restart_scenario_on_failure(behave_fixture: BehaveFixture) -
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert not behave.config.stop
-    assert grizzly.scenario.failure_exception is None
+    assert grizzly.scenario.failure_handling.get(None, None) is None
 
     step_setup_restart_scenario_on_failure(behave)
 
     assert not behave.config.stop
-    assert grizzly.scenario.failure_exception == RestartScenario
+    assert isinstance(grizzly.scenario.failure_handling.get(None, RuntimeError)(), RestartScenario)
 
 
 def test_step_setup_log_level(behave_fixture: BehaveFixture) -> None:

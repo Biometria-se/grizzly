@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 
 from jinja2.meta import find_undeclared_variables
 
+from grizzly.exceptions import failure_handler
 from grizzly.testdata.ast import get_template_variables
 from grizzly.utils import has_template, is_file, merge_dicts, unflatten
 
@@ -78,8 +79,7 @@ def transform(scenario: GrizzlyContextScenario, data: dict[str, Any], *, objecti
                 except Exception as e:
                     logger.exception('failed to get value from variable instance')
 
-                    if scenario.failure_exception is not None:
-                        raise scenario.failure_exception from e
+                    failure_handler(e, scenario)
 
             paths: list[str] = key.split('.')
             variable = paths.pop(0)

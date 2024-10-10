@@ -29,7 +29,7 @@ from time import perf_counter as time
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast, final
 from urllib.parse import unquote, urlparse
 
-from grizzly.exceptions import StopScenario
+from grizzly.exceptions import StopScenario, failure_handler
 from grizzly.tasks import GrizzlyMetaRequestTask, grizzlytask, template
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
@@ -304,9 +304,9 @@ class ClientTask(GrizzlyMetaRequestTask):
 
                 log_file.write_text(jsondumps(request_log, indent=2))
 
-            if exception is not None and parent.user._scenario.failure_exception is not None:
-                raise parent.user._scenario.failure_exception
-            elif exception is not None:
+            failure_handler(exception, parent.user._scenario)
+
+            if exception is not None:
                 parent.logger.warning('%s ignoring %s', self.__class__.__name__, exception)
 
 

@@ -187,14 +187,20 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
     right = args.get('right')
     as_array = args.get('as_array', None)
 
+    if wrong is None or right is None:
+        response = jsonify({'message': 'missing wrong and/or right in query string'})
+        response.status_code = 400
+
+        return response
+
     if app_request_count[x_grizzly_user] < nth - 1:
-        status = wrong
+        status = wrong if not wrong.isnumeric() else 'foobar'
         app_request_count[x_grizzly_user] += 1
-        status_code = 400
+        status_code = 400 if not wrong.isnumeric() else int(wrong)
     else:
-        status = right
+        status = right if not right.isnumeric() else 'foobar'
         app_request_count[x_grizzly_user] = 0
-        status_code = 200
+        status_code = 200 if not right.isnumeric() else int(right)
 
     json_result: Any = {attribute: status}
 

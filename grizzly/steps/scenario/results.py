@@ -32,7 +32,9 @@ def step_results_fail_ratio(context: Context, fail_ratio: int) -> None:
 
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
-    assert grizzly.scenario.failure_exception is None, f"cannot use step 'fail ratio is greater than \"{fail_ratio}\" fail scenario' togheter with 'on failure' steps"
+    assert grizzly.scenario.failure_handling.get(None, None) is None, (
+        f"cannot use step 'fail ratio is greater than \"{fail_ratio}\" fail scenario' togheter with 'on failure' steps"
+    )
     grizzly.scenario.validation.fail_ratio = fail_ratio / 100.0
 
 

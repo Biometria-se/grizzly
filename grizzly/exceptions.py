@@ -8,6 +8,7 @@ from locust.exception import StopUser
 from grizzly_extras.exceptions import StopScenario
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContextScenario
     from grizzly.types.behave import Scenario, Step
 
 
@@ -27,6 +28,11 @@ class ResponseHandlerError(Exception):
 class RestartScenario(Exception):  # noqa: N818
     pass
 
+
+class RetryTask(Exception):  # noqa: N818
+    pass
+
+
 class AssertionErrors(Exception):  # noqa: N818
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -44,6 +50,8 @@ class AssertionErrors(Exception):  # noqa: N818
             error = self.errors[self._index]
             self._index += 1
             return error
+
+        self._index = 0
 
         raise StopIteration
 
@@ -79,3 +87,27 @@ class FeatureError(Exception):
 
     def __str__(self) -> str:
         return f'{self.error!s}'
+
+
+def failure_handler(exception: Exception | None, scenario: GrizzlyContextScenario) -> None:
+    # no failure, just return
+    if exception is None:
+        return
+
+    # always raise StopUser when these unhandled exceptions has occured
+    if isinstance(exception, (NotImplementedError, KeyError, IndexError, AttributeError, TypeError, SyntaxError)):
+        raise StopUser from exception
+
+    # custom actions based on failure
+    for failure_type, failure_action in scenario.failure_handling.items():
+        if failure_type is None:
+            continue
+
+        if (isinstance(failure_type, str) and failure_type in str(exception)) or exception.__class__ is failure_type:
+            raise failure_action from exception
+
+    # no match, raise the default if it has been set
+    default_exception = scenario.failure_handling.get(None, None)
+
+    if default_exception is not None:
+        raise default_exception from exception

@@ -56,14 +56,14 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
         task = task_factory()
 
         assert task_factory._context.get('test', None) is None
-        parent.user._scenario.failure_exception = StopUser
+        parent.user._scenario.failure_handling.update({None: StopUser})
 
         with pytest.raises(StopUser):
             task(parent)
 
         assert task_factory._context.get('test', None) == 'was here'
 
-        parent.user._scenario.failure_exception = RestartScenario
+        parent.user._scenario.failure_handling.update({None: RestartScenario})
         parent.user._context.update({'test': 'is here', 'foo': 'bar'})
 
         assert task_factory._context.get('foo', None) is None
@@ -74,7 +74,7 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
         assert parent.user._context.get('test', None) == 'is here'
         assert parent.user._context.get('foo', None) == 'bar'
 
-        parent.user._scenario.failure_exception = None
+        del parent.user._scenario.failure_handling[None]
 
         task(parent)
 
@@ -82,7 +82,7 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
         mocker.patch.object(parent, 'on_start', return_value=None)
         mocker.patch.object(parent, 'wait', side_effect=[NotImplementedError, NotImplementedError])
         parent.user.environment.catch_exceptions = True
-        parent.user._scenario.failure_exception = RestartScenario
+        parent.user._scenario.failure_handling.update({None: RestartScenario})
 
         parent.tasks.clear()
         parent._task_queue.clear()

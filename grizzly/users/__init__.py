@@ -32,7 +32,7 @@ from locust.user.users import User, UserMeta
 
 from grizzly.context import GrizzlyContext
 from grizzly.events import GrizzlyEventHook, RequestLogger, ResponseHandler
-from grizzly.exceptions import RestartScenario, StopScenario
+from grizzly.exceptions import RestartScenario, StopScenario, failure_handler
 from grizzly.testdata import GrizzlyVariables
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
 from grizzly.types.locust import Environment, StopUser
@@ -255,12 +255,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             )
 
         # ...request handled
-        if exception is not None:
-            if isinstance(exception, (NotImplementedError, KeyError, IndexError, AttributeError, TypeError, SyntaxError)):
-                raise StopUser
-
-            if self._scenario.failure_exception is not None:
-                raise self._scenario.failure_exception
+        failure_handler(exception, self._scenario)
 
         return (metadata, payload)
 

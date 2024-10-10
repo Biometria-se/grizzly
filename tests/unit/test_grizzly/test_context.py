@@ -369,7 +369,7 @@ class TestGrizzlyContextScenario:
         assert scenario.tasks() == []
         assert getattr(scenario, 'pace', '') is None
         assert isinstance(scenario.validation, GrizzlyContextScenarioValidation)
-        assert not scenario.failure_exception
+        assert scenario.failure_handling.get(None, None) is None
         assert scenario.class_type == 'IteratorScenario'
 
         assert scenario.class_name == f'IteratorScenario_{identifier}'
