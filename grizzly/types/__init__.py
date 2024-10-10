@@ -93,7 +93,7 @@ class FailureAction(PermutationEnum):
         return obj
 
     @classmethod
-    def from_step_expression(cls, value: str) -> FailureAction:
+    def from_string(cls, value: str) -> FailureAction:
         """Convert string value to enum value."""
         for enum in FailureAction:
             if enum.step_expression == value:
@@ -101,6 +101,10 @@ class FailureAction(PermutationEnum):
 
         message = f'"{value}" is not a mapped step expression'
         raise AssertionError(message)
+
+    @classmethod
+    def from_step_expression(cls, value: str) -> FailureAction:
+        return cls.from_string(value)
 
     @classmethod
     def from_exception(cls, value: type[Exception]) -> FailureAction:

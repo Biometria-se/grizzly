@@ -51,8 +51,8 @@ def parse_failure_type(value: str) -> type[Exception] | str:
 
 register_type(
     IterationGramaticalNumber=parse_iteration_gramatical_number,
-    FailureActionStepExpression=FailureAction.from_step_expression,
     FailureType=parse_failure_type,
+    FailureActionStepExpression=FailureAction.from_string,
 )
 
 
