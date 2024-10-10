@@ -306,7 +306,8 @@ class ClientTask(GrizzlyMetaRequestTask):
 
             failure_handler(exception, parent.user._scenario)
 
-            parent.logger.warning('%s ignoring %s', self.__class__.__name__, exception)
+            if exception is not None:
+                parent.logger.warning('%s ignoring %s', self.__class__.__name__, exception)
 
 
 class client:
