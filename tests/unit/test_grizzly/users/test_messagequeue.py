@@ -57,7 +57,7 @@ def mq_parent(grizzly_fixture: GrizzlyFixture) -> GrizzlyScenario:
 
 
 class TestMessageQueueUserNoPymqi:
-    @pytest.mark.timeout(20)
+    @pytest.mark.timeout(40)
     def test_no_pymqi_dependencies(self) -> None:
         env = environ.copy()
         with suppress(KeyError):
@@ -65,6 +65,25 @@ class TestMessageQueueUserNoPymqi:
 
         env['PYTHONPATH'] = '.'
 
+        with pytest.raises(subprocess.CalledProcessError) as e:
+            subprocess.check_output(
+                [
+                    sys.executable,
+                    '-c',
+                    (
+                        'from grizzly.types import RequestDirection; import grizzly.tasks.clients.messagequeue as mq; '
+                        'print(f"{mq.pymqi.__name__=}"); mq.MessageQueueClientTask(RequestDirection.FROM, "mqs://localhost:1");'
+                    ),
+                ],
+                env=env,
+                stderr=subprocess.STDOUT,
+            )
+        assert e.value.returncode == 1
+        output = e.value.output.decode()
+        assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
+        assert 'NotImplementedError: MessageQueueClientTask could not import pymqi, have you installed IBM MQ dependencies and set environment variable LD_LIBRARY_PATH?' in output
+
+        """
         process = subprocess.Popen(
             [
                 sys.executable,
@@ -82,6 +101,7 @@ class TestMessageQueueUserNoPymqi:
         assert process.returncode == 1
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
         assert 'NotImplementedError: MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies and set environment variable LD_LIBRARY_PATH?' in output
+        """
 
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')

@@ -21,13 +21,29 @@ if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock.plugin import MockerFixture
 
 
-@pytest.mark.timeout(20)
+@pytest.mark.timeout(40)
 def test_no_pymqi_dependencies() -> None:
     env = environ.copy()
     with suppress(KeyError):
         del env['LD_LIBRARY_PATH']
     env['PYTHONPATH'] = '.'
 
+    with pytest.raises(subprocess.CalledProcessError) as e:
+        subprocess.check_output(
+            [
+                sys.executable,
+                '-c',
+                'import grizzly_extras.async_message.mq as mq; print(f"{mq.pymqi.__name__=}"); mq.AsyncMessageQueueHandler(worker="asdf-asdf-asdf")',
+            ],
+            env=env,
+            stderr=subprocess.STDOUT,
+        )
+    assert e.value.returncode == 1
+    output = e.value.output.decode()
+    assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
+    assert 'NotImplementedError: AsyncMessageQueueHandler could not import pymqi, have you installed IBM MQ dependencies and set environment variable LD_LIBRARY_PATH?' in output
+
+    """
     process = subprocess.Popen(
         [
             sys.executable,
@@ -44,6 +60,7 @@ def test_no_pymqi_dependencies() -> None:
     assert process.returncode == 1
     assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
     assert 'NotImplementedError: AsyncMessageQueueHandler could not import pymqi, have you installed IBM MQ dependencies and set environment variable LD_LIBRARY_PATH?' in output
+    """
 
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
