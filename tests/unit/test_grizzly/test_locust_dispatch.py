@@ -5230,6 +5230,128 @@ class TestFixedUsersDispatcher(unittest.TestCase):
         self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[0].id), 6)
         self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[2].id), 3)
 
+    def test_user_type_stopped_during_test(self) -> None:  # noqa: PLR0915
+        class User1(GrizzlyUser):
+            sticky_tag = "foo"
+            fixed_count = 4
+
+        class User2(GrizzlyUser):
+            sticky_tag = "foo"
+            fixed_count = 2
+
+        class User3(GrizzlyUser):
+            sticky_tag = "bar"
+            fixed_count = 3
+
+        user_classes = [User1, User2, User3]
+
+        worker_nodes = [WorkerNode(str(i + 1)) for i in range(3)]
+
+        users_dispatcher = FixedUsersDispatcher(worker_nodes=worker_nodes, user_classes=user_classes)
+
+        sleep_time = 0.2
+
+        users_dispatcher.new_dispatch(target_user_count=-1, spawn_rate=3)
+        users_dispatcher._wait_between_dispatch = sleep_time
+
+        self.assertEqual(
+            [
+                worker_node.id
+                for worker_node in users_dispatcher._FixedUsersDispatcher__sticky_tag_to_workers.get("foo", [])  # type: ignore[attr-defined]
+            ],
+            ["1", "3"],
+        )
+        self.assertEqual(
+            [
+                worker_node.id
+                for worker_node in users_dispatcher._FixedUsersDispatcher__sticky_tag_to_workers.get("bar", [])  # type: ignore[attr-defined]
+            ],
+            ["2"],
+        )
+
+        # Dispatch iteration 1
+        ts = time.perf_counter()
+        dispatched_users = next(users_dispatcher)
+        delta = time.perf_counter() - ts
+        self.assertTrue(0 <= delta <= _TOLERANCE, delta)
+        self.assertDictEqual(_aggregate_dispatched_users(dispatched_users), {"User1": 1, "User2": 1, "User3": 1})
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[0].id), 1)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[1].id), 1)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[2].id), 1)
+
+        # Dispatch iteration 2
+        ts = time.perf_counter()
+        dispatched_users = next(users_dispatcher)
+        delta = time.perf_counter() - ts
+        self.assertTrue(sleep_time - _TOLERANCE <= delta <= sleep_time + _TOLERANCE, delta)
+        self.assertDictEqual(_aggregate_dispatched_users(dispatched_users), {"User1": 3, "User2": 1, "User3": 2})
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[0].id), 2)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[1].id), 2)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[2].id), 2)
+
+        target_user = 'User1'
+        current_target_users = {**users_dispatcher.target_user_count}
+        if target_user in current_target_users:
+            current_target_users.update({target_user: (current_target_users.get(target_user) or 1) - 1})
+            users_dispatcher.target_user_count = current_target_users
+
+        # Dispatch iteration 3
+        ts = time.perf_counter()
+        dispatched_users = next(users_dispatcher)
+        delta = time.perf_counter() - ts
+        self.assertTrue(sleep_time - _TOLERANCE <= delta <= sleep_time + _TOLERANCE, delta)
+        self.assertDictEqual(_aggregate_dispatched_users(dispatched_users), {"User1": 3, "User2": 2, "User3": 3})
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[0].id), 3)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[1].id), 3)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[2].id), 2)
+
+        target_user = 'User1'
+        current_target_users = {**users_dispatcher.target_user_count}
+        if target_user in current_target_users:
+            current_target_users.update({target_user: (current_target_users.get(target_user) or 1) - 1})
+            users_dispatcher.target_user_count = current_target_users
+
+        # Dispatch iteration 4
+        ts = time.perf_counter()
+        dispatched_users = next(users_dispatcher)
+        delta = time.perf_counter() - ts
+        self.assertTrue(sleep_time - _TOLERANCE <= delta <= sleep_time + _TOLERANCE, delta)
+        self.assertDictEqual(_aggregate_dispatched_users(dispatched_users), {"User1": 3, "User2": 2, "User3": 3})
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[0].id), 3)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[1].id), 3)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[2].id), 2)
+
+        target_user = 'User1'
+        current_target_users = {**users_dispatcher.target_user_count}
+        if target_user in current_target_users:
+            current_target_users.update({target_user: (current_target_users.get(target_user) or 1) - 1})
+            users_dispatcher.target_user_count = current_target_users
+
+        # Dispatch iteration 5
+        ts = time.perf_counter()
+        dispatched_users = next(users_dispatcher)
+        delta = time.perf_counter() - ts
+        self.assertTrue(sleep_time - _TOLERANCE <= delta <= sleep_time + _TOLERANCE, delta)
+        self.assertDictEqual(_aggregate_dispatched_users(dispatched_users), {"User1": 1, "User2": 2, "User3": 3})
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[0].id), 2)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[1].id), 3)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[2].id), 1)
+
+        target_user = 'User1'
+        current_target_users = {**users_dispatcher.target_user_count}
+        if target_user in current_target_users:
+            current_target_users.update({target_user: (current_target_users.get(target_user) or 1) - 1})
+            users_dispatcher.target_user_count = current_target_users
+
+        # Dispatch iteration 6
+        ts = time.perf_counter()
+        dispatched_users = next(users_dispatcher)
+        delta = time.perf_counter() - ts
+        self.assertTrue(sleep_time - _TOLERANCE <= delta <= sleep_time + _TOLERANCE, delta)
+        self.assertDictEqual(_aggregate_dispatched_users(dispatched_users), {"User1": 0, "User2": 2, "User3": 3})
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[0].id), 0)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[1].id), 3)
+        self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[2].id), 2)
 
 if __name__ == "__main__":
     unittest.main()

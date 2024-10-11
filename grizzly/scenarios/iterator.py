@@ -82,167 +82,174 @@ class IteratorScenario(GrizzlyScenario):
         task 0) exceptions.
         """
         try:
-            start = perf_counter()
-            self.on_start()
-        except InterruptTaskSet as e:
-            if e.reschedule:
-                raise RescheduleTaskImmediately(e.reschedule).with_traceback(e.__traceback__) from e
-
-            raise RescheduleTask(e.reschedule).with_traceback(e.__traceback__) from e
-        except Exception as e:
-            if not isinstance(e, StopScenario):
-                self.logger.exception('on_start failed')
-                response_time = int((perf_counter() - start) * 1000)
-                self.user.environment.events.request.fire(
-                    request_type=RequestType.SCENARIO(),
-                    name=self.user._scenario.locust_name,
-                    response_time=response_time,
-                    response_length=self.task_count,
-                    context=self.user._context,
-                    exception=StopUser(f'on_start failed for {self.user._scenario.locust_name}: {e}'),
-                )
-            with suppress(Exception):
-                self.on_stop()
-
-            raise StopUser from e
-
-        while True:
-            execute_task_logged = False
             try:
-                self.current_task_index = (self._task_index % self.task_count)
+                start = perf_counter()
+                self.on_start()
+            except InterruptTaskSet as e:
+                if e.reschedule:
+                    raise RescheduleTaskImmediately(e.reschedule).with_traceback(e.__traceback__) from e
 
-                if not self._task_queue:
-                    self.schedule_task(self.get_next_task())
+                raise RescheduleTask(e.reschedule).with_traceback(e.__traceback__) from e
+            except Exception as e:
+                if not isinstance(e, StopScenario):
+                    self.logger.exception('on_start failed')
+                    response_time = int((perf_counter() - start) * 1000)
+                    self.user.environment.events.request.fire(
+                        request_type=RequestType.SCENARIO(),
+                        name=self.user._scenario.locust_name,
+                        response_time=response_time,
+                        response_length=self.task_count,
+                        context=self.user._context,
+                        exception=StopUser(f'on_start failed for {self.user._scenario.locust_name}: {e}'),
+                    )
+                with suppress(Exception):
+                    self.on_stop()
 
+                raise StopUser from e
+
+            while True:
+                execute_task_logged = False
                 try:
-                    if self.user._state == LOCUST_STATE_STOPPING:
-                        on_stop_exception: Optional[Exception] = None
+                    self.current_task_index = (self._task_index % self.task_count)
 
-                        try:
-                            self.on_stop()
-                        except Exception as e:
-                            on_stop_exception = e
-                        raise StopUser from on_stop_exception
+                    if not self._task_queue:
+                        self.schedule_task(self.get_next_task())
 
                     try:
-                        step = self.behave_steps.get(self.current_task_index + 1, self._task_queue[0].__name__)
-                    except Exception:
-                        step = 'unknown'
+                        if self.user._state == LOCUST_STATE_STOPPING:
+                            on_stop_exception: Optional[Exception] = None
 
-                    retries = 0
-                    while True:
+                            try:
+                                self.on_stop()
+                            except Exception as e:
+                                on_stop_exception = e
+                            raise StopUser from on_stop_exception
+
                         try:
-                            self.execute_next_task(self.current_task_index + 1, self.task_count, step)
-                            break
-                        except RetryTask as e:
-                            retries += 1
+                            step = self.behave_steps.get(self.current_task_index + 1, self._task_queue[0].__name__)
+                        except Exception:
+                            step = 'unknown'
 
-                            if retries >= 3:
-                                message = f'task {self.current_task_index + 1} of {self.task_count} failed after {retries} retries: {step}'
-                                self.logger.error(message)  # noqa: TRY400
-
-                                default_exception = self.user._scenario.failure_handling.get(None, None)
-
-                                # default failure handling
-                                if default_exception is not None:
-                                    raise default_exception from e
-
+                        retries = 0
+                        while True:
+                            try:
+                                self.execute_next_task(self.current_task_index + 1, self.task_count, step)
                                 break
+                            except RetryTask as e:
+                                retries += 1
 
-                            sleep_time = retries * uniform(1.0, 2.0)  # noqa: S311
-                            message = f'task {self.current_task_index + 1} of {self.task_count} will execute a {NUMBER_TO_WORD[retries+1]} time in {sleep_time:.2f} seconds: {step}'
-                            self.logger.warning(message)
+                                if retries >= 3:
+                                    message = f'task {self.current_task_index + 1} of {self.task_count} failed after {retries} retries: {step}'
+                                    self.logger.error(message)  # noqa: TRY400
 
-                            gsleep(sleep_time)  # random back-off time
-                            self.wait()
+                                    default_exception = self.user._scenario.failure_handling.get(None, None)
 
-                            # step back counter, and re-schedule the same task again
-                            self._task_index -= 1
-                            self.schedule_task(self.get_next_task(), first=True)
+                                    # default failure handling
+                                    if default_exception is not None:
+                                        raise default_exception from e
 
-                            continue
-                        except Exception as e:
-                            if not isinstance(e, StopScenario):
-                                execute_task_logged = True
-                            raise
-                except RescheduleTaskImmediately:
-                    pass
-                except RescheduleTask:
-                    self.wait()
-                except RestartScenario as e:
-                    # tasks will wrap the grizzly.exceptions.StopScenario thrown when aborting to what ever
-                    # the scenario has specified todo when failing, we must force it to stop scenario
-                    if self.abort.is_set():
-                        self.on_stop()
-                        raise StopUser from e
+                                    break
 
-                    self.logger.info('restarting scenario at task %d of %d', self.current_task_index+1, self.task_count)
-                    # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over
-                    tasks_left = self.task_count - (self._task_index % self.task_count)
-                    self._task_index += tasks_left
-                    self.logger.debug('%d tasks in queue', len(self._task_queue))
-                    self._task_queue.clear()  # we should remove any scheduled tasks when restarting
+                                sleep_time = retries * uniform(1.0, 2.0)  # noqa: S311
+                                message = f'task {self.current_task_index + 1} of {self.task_count} will execute a {NUMBER_TO_WORD[retries+1]} time in {sleep_time:.2f} seconds: {step}'
+                                self.logger.warning(message)
 
-                    self.stats.log_error(None)
-                    self.wait()
-                else:
-                    self.wait()
-            except InterruptTaskSet as e:
-                if self.user._scenario_state != ScenarioState.STOPPING:
-                    self.start = None
+                                gsleep(sleep_time)  # random back-off time
+                                self.wait()
 
-                    if e.reschedule:
-                        raise RescheduleTaskImmediately(e.reschedule) from e
-                    raise RescheduleTask(e.reschedule) from e
+                                # step back counter, and re-schedule the same task again
+                                self._task_index -= 1
+                                self.schedule_task(self.get_next_task(), first=True)
 
-                self.wait()
-            except (StopScenario, StopUser, GreenletExit) as e:
-                if self.user._scenario_state != ScenarioState.STOPPING:
-                    scenario_state = self.user._scenario_state.name if self.user._scenario_state is not None else 'UNKNOWN'
-                    self.logger.debug('scenario_state=%s, user_state=%s, exception=%r', scenario_state, self.user._state, e)
-                    has_error = False
+                                continue
+                            except Exception as e:
+                                if not isinstance(e, StopScenario):
+                                    execute_task_logged = True
+                                raise
+                    except RescheduleTaskImmediately:
+                        pass
+                    except RescheduleTask:
+                        self.wait()
+                    except RestartScenario as e:
+                        # tasks will wrap the grizzly.exceptions.StopScenario thrown when aborting to what ever
+                        # the scenario has specified todo when failing, we must force it to stop scenario
+                        if self.abort.is_set():
+                            self.on_stop()
+                            raise StopUser from e
 
-                    if isinstance(e, StopScenario):
+                        self.logger.info('restarting scenario at task %d of %d', self.current_task_index+1, self.task_count)
+                        # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over
+                        tasks_left = self.task_count - (self._task_index % self.task_count)
+                        self._task_index += tasks_left
+                        self.logger.debug('%d tasks in queue', len(self._task_queue))
+                        self._task_queue.clear()  # we should remove any scheduled tasks when restarting
+
+                        self.stats.log_error(None)
+                        self.wait()
+                    else:
+                        self.wait()
+                except InterruptTaskSet as e:
+                    if self.user._scenario_state != ScenarioState.STOPPING:
                         self.start = None
 
-                    exception = e.__class__
+                        if e.reschedule:
+                            raise RescheduleTaskImmediately(e.reschedule) from e
+                        raise RescheduleTask(e.reschedule) from e
 
-                    # unexpected exit of scenario, log as error
-                    if not isinstance(e, StopScenario) and self.user._state != LOCUST_STATE_STOPPING:
-                        has_error = True
-                    elif not isinstance(e, StopUser):
-                        exception = StopUser
-
-                    self.iteration_stop(error=e)
-                    self.on_stop()
-
-                    # to avoid spawning of a new user, we should wait until spawning is complete
-                    # if we abort too soon, locust will see that there are too few users, and spawn
-                    # another one
-                    if has_error:
-                        count = 0
-                        while not self.grizzly.state.spawning_complete:
-                            if count % 10 == 0:
-                                self.logger.debug('spawning not complete, wait')
-                                if count > 0:
-                                    count = 0
-                            gsleep(0.1)
-                            count += 1
-
-                    self.logger.debug('stopping scenario with %r', exception)
-                    raise exception from e
-
-                self.wait()
-            except Exception as e:
-                self.iteration_stop(error=e)
-                self.user.environment.events.user_error.fire(user_instance=self.user, exception=e, tb=e.__traceback__)
-                if self.user.environment.catch_exceptions:
-                    if not execute_task_logged:
-                        self.logger.exception('unhandled exception: %s', e.__class__.__qualname__)
                     self.wait()
-                else:
-                    self.on_stop()
-                    raise
+                except (StopScenario, StopUser, GreenletExit) as e:
+                    if self.user._scenario_state != ScenarioState.STOPPING:
+                        scenario_state = self.user._scenario_state.name if self.user._scenario_state is not None else 'UNKNOWN'
+                        self.logger.debug('scenario_state=%s, user_state=%s, exception=%r', scenario_state, self.user._state, e)
+                        has_error = False
+
+                        if isinstance(e, StopScenario):
+                            self.start = None
+
+                        exception = e.__class__
+
+                        # unexpected exit of scenario, log as error
+                        if not isinstance(e, StopScenario) and self.user._state != LOCUST_STATE_STOPPING:
+                            has_error = True
+                        elif not isinstance(e, StopUser):
+                            exception = StopUser
+
+                        self.iteration_stop(error=e)
+                        self.on_stop()
+
+                        # to avoid spawning of a new user, we should wait until spawning is complete
+                        # if we abort too soon, locust will see that there are too few users, and spawn
+                        # another one
+                        if has_error:
+                            count = 0
+                            while not self.grizzly.state.spawning_complete:
+                                if count % 10 == 0:
+                                    self.logger.debug('spawning not complete, wait')
+                                    if count > 0:
+                                        count = 0
+                                gsleep(0.1)
+                                count += 1
+
+                        self.logger.debug('stopping scenario with %r', exception)
+                        raise exception from e
+
+                    self.wait()
+                except Exception as e:
+                    self.iteration_stop(error=e)
+                    self.user.environment.events.user_error.fire(user_instance=self.user, exception=e, tb=e.__traceback__)
+                    if self.user.environment.catch_exceptions:
+                        if not execute_task_logged:
+                            self.logger.exception('unhandled exception: %s', e.__class__.__qualname__)
+                        self.wait()
+                    else:
+                        self.on_stop()
+                        raise
+        except StopUser:
+            if self.user.environment.runner is not None:
+                # @TODO this user type should decrease by one, so no new ones will be spawned
+                self.user.environment.runner.send_message('stop_user', None)
+
+            raise
 
     def iteration_stop(self, *, error: Exception | None) -> None:
         if self.start is not None:

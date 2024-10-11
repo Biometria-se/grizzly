@@ -181,6 +181,7 @@ class FixedUsersDispatcher(UsersDispatcher):
         return dict(zip(users_on_workers.keys(), map(dict.copy, users_on_workers.values())))  # type: ignore[arg-type]
 
     def __next__(self) -> dict[str, dict[str, int]]:
+        print('next dispatch iteration')
         users_on_workers = next(self._dispatcher_generator)
         return self._fast_users_on_workers_copy(users_on_workers)
 
@@ -542,11 +543,13 @@ class FixedUsersDispatcher(UsersDispatcher):
                 return
 
         if self.has_reached_target_user_count():
+            print('already reached')
             yield self._initial_users_on_workers
             self._dispatch_in_progress = False
             return
 
         while self.is_below_target_user_count():
+            print('spawn more')
             with self._wait_between_dispatch_iteration_context():
                 yield self._add_users_on_workers()
                 if self._rebalance:
@@ -557,6 +560,7 @@ class FixedUsersDispatcher(UsersDispatcher):
                     break
 
         while self.is_above_target_user_count():
+            print('de-spawn more')
             with self._wait_between_dispatch_iteration_context():
                 yield self._remove_users_from_workers()
                 if self._rebalance:
