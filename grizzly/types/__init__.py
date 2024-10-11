@@ -71,6 +71,9 @@ class ResponseTarget(PermutationEnum):
             message = f'"{value.upper()}" is not a valid value of {cls.__name__}'
             raise AssertionError(message) from e
 
+    def get_value(self) -> str:
+        return self.name.lower()
+
 
 class FailureAction(PermutationEnum):
     __vector__ = (False, True)
@@ -115,6 +118,9 @@ class FailureAction(PermutationEnum):
         message = f'"{value}" is not a mapped exception'
         raise AssertionError(message)
 
+    def get_value(self) -> str:
+        return self.step_expression
+
 
 class ResponseAction(Enum):
     VALIDATE = 0
@@ -147,6 +153,9 @@ class RequestDirection(PermutationEnum):
         """All RequestMethods that has this request direction."""
         return [method for method in RequestMethod if method.direction == self]
 
+    def get_value(self) -> str:
+        return cast(str, self.value)
+
 
 class RequestDirectionWrapper:
     wrapped: RequestDirection
@@ -177,6 +186,9 @@ class RequestMethod(PermutationEnum):
     def direction(self) -> RequestDirection:
         """Request direction for this request method."""
         return cast(RequestDirection, self.value.wrapped)
+
+    def get_value(self) -> str:
+        return self.name.lower()
 
 
 class RequestType(Enum):

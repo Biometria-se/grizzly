@@ -152,6 +152,12 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
         message = f'{cls.__name__} has not implemented `from_string`'
         raise NotImplementedError(message)  # pragma: no cover
 
+    @abstractmethod
+    def get_value(self) -> str:
+        message = f'{self.__class__.__name__} has not implemented `get_value`'
+        raise NotImplementedError(message)  # pragma: no cover
+
+
 
 def has_sequence(sequence: str, value: str) -> bool:
     """Test string for a sequence of characters, and that it only occurs once in the string."""
