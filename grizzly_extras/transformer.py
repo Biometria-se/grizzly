@@ -46,6 +46,9 @@ class TransformerContentType(PermutationEnum):
         message = f'"{value}" is an unknown response content type'
         raise ValueError(message)
 
+    def get_value(self) -> str:
+        return self.name.lower()
+
 
 class Transformer(metaclass=ABCMeta):
     __wrapped_transform__: ClassVar[Callable[[str], Any]]
