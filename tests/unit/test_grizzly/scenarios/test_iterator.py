@@ -13,7 +13,7 @@ from locust.exception import InterruptTaskSet, RescheduleTask, RescheduleTaskImm
 from locust.user.sequential_taskset import SequentialTaskSet
 from locust.user.task import LOCUST_STATE_RUNNING, LOCUST_STATE_STOPPING
 
-from grizzly.exceptions import RestartScenario, StopScenario
+from grizzly.exceptions import RestartScenario, RetryTask, StopScenario
 from grizzly.scenarios import IteratorScenario
 from grizzly.tasks import ExplicitWaitTask, LogMessageTask, grizzlytask
 from grizzly.testdata.communication import TestdataConsumer
@@ -49,7 +49,7 @@ class TestIterationScenario:
         assert len(parent.tasks) == 3
 
         task_method = parent.tasks[-2]
-        parent.user._scenario.failure_exception = StopUser
+        parent.user._scenario.failure_handling.update({None: StopUser})
 
         assert callable(task_method)
         with pytest.raises(StopUser):
@@ -781,6 +781,125 @@ class TestIterationScenario:
             ]
 
             actual_messages = [message for message in caplog.messages if 'instance variable=' not in message]
+
+            assert len(actual_messages) == len(expected_messages)
+
+            for actual, _expected in zip(actual_messages, expected_messages):
+                expected = regex.possible(_expected)
+                assert actual == expected
+
+        finally:
+            with suppress(KeyError):
+                del environ['TESTDATA_PRODUCER_ADDRESS']
+
+    def test_run_retry_task(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
+        class TestErrorTask(TestTask):
+            def __call__(self) -> grizzlytask:
+                self.call_count += 1
+                self.task_call_count = 0
+
+                @grizzlytask
+                def task(parent: GrizzlyScenario) -> Any:  # noqa: ARG001
+                    self.task_call_count += 1
+
+                    # second time, always raise RetryTask
+                    if self.task_call_count < 3 or self.task_call_count > 3:
+                        raise RetryTask
+
+                return task
+
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
+
+        assert isinstance(parent, IteratorScenario)
+
+        mocker.patch('grizzly.scenarios.iterator.gsleep', return_value=None)
+        mocker.patch('grizzly.scenarios.iterator.uniform', return_value=1.0)
+        parent.grizzly.state.spawning_complete = True
+
+        # add tasks to IteratorScenario.tasks
+        try:
+            for i in range(1, 6):
+                name = f'test-task-{i}'
+                parent.user._scenario.tasks.behave_steps.update({i + 1: name})
+                parent.__class__.populate(TestTask(name=name))
+
+            parent.__class__.populate(TestErrorTask(name='test-error-task-1'))
+            parent.user._scenario.tasks.behave_steps.update({7: 'test-error-task-1'})
+
+            for i in range(6, 11):
+                name = f'test-task-{i}'
+                parent.user._scenario.tasks.behave_steps.update({i + 2: name})
+                parent.__class__.populate(TestTask(name=name))
+
+            scenario = parent.__class__(parent.user)
+            scenario.__class__.pace_time = '10000'
+            mocker.patch.object(scenario, 'prefetch', return_value=None)
+            parent.user._scenario.failure_handling.update({None: StopUser})
+
+            assert parent.task_count == 13
+            assert len(parent.tasks) == 13
+
+            mocker.patch('grizzly.scenarios.TestdataConsumer.__init__', return_value=None)
+            mocker.patch('grizzly.scenarios.TestdataConsumer.stop', return_value=None)
+
+            environ['TESTDATA_PRODUCER_ADDRESS'] = 'tcp://localhost:5555'
+
+            scenario.on_start()  # create scenario.consumer, so we can patch request below
+
+            # same as 1 iteration
+            mocker.patch.object(scenario.consumer, 'testdata', side_effect=[
+                {'variables': {'hello': 'world'}},
+                {'variables': {'foo': 'bar'}},
+                None,
+            ])
+            mocker.patch.object(scenario, 'on_start', return_value=None)
+
+            with caplog.at_level(logging.DEBUG), pytest.raises(StopUser):
+                scenario.run()
+
+            expected_messages = [
+                'task 1 of 13 executed: iterator',  # IteratorScenario.iterator()
+                'task 2 of 13 executed: test-task-1',
+                'task 3 of 13 executed: test-task-2',
+                'task 4 of 13 executed: test-task-3',
+                'task 5 of 13 executed: test-task-4',
+                'task 6 of 13 executed: test-task-5',
+                'task 7 of 13 failed: test-error-task-1',
+                'task 7 of 13 will execute a 2nd time in 1.00 seconds: test-error-task-1',
+                'task 7 of 13 failed: test-error-task-1',
+                'task 7 of 13 will execute a 3rd time in 2.00 seconds: test-error-task-1',
+                'task 7 of 13 executed: test-error-task-1',
+                'task 8 of 13 executed: test-task-6',
+                'task 9 of 13 executed: test-task-7',
+                'task 10 of 13 executed: test-task-8',
+                'task 11 of 13 executed: test-task-9',
+                'task 12 of 13 executed: test-task-10',
+                r'^keeping pace by sleeping [0-9\.]+ milliseconds$',
+                'task 13 of 13 executed: pace',
+                'task 1 of 13 executed: iterator',  # IteratorScenario.iterator()
+                'task 2 of 13 executed: test-task-1',
+                'task 3 of 13 executed: test-task-2',
+                'task 4 of 13 executed: test-task-3',
+                'task 5 of 13 executed: test-task-4',
+                'task 6 of 13 executed: test-task-5',
+                'task 7 of 13 failed: test-error-task-1',
+                'task 7 of 13 will execute a 2nd time in 1.00 seconds: test-error-task-1',
+                'task 7 of 13 failed: test-error-task-1',
+                'task 7 of 13 will execute a 3rd time in 2.00 seconds: test-error-task-1',
+                'task 7 of 13 failed: test-error-task-1',
+                'task 7 of 13 failed after 3 retries: test-error-task-1',
+                'scenario_state=RUNNING, user_state=running, exception=StopUser()',
+                'scenario state=ScenarioState.RUNNING -> ScenarioState.STOPPED',
+                "stopping scenario with <class 'locust.exception.StopUser'>",
+            ]
+
+            actual_messages = [
+                message for message in caplog.messages
+                    if 'instance variable=' not in message
+            ]
+
+            for m in actual_messages:
+                print(f'{m=}')
 
             assert len(actual_messages) == len(expected_messages)
 

@@ -201,7 +201,7 @@ class TestIotHubUser:
 
         user.request(request)
 
-        user._scenario.failure_exception = RestartScenario
+        user._scenario.failure_handling.update({None: RestartScenario})
         parent_fixture.blob_client_mock.upload_blob.side_effect=[RuntimeError('failed to upload blob')]
         parent_fixture.iot_device_mock.notify_blob_upload_status.reset_mock()
 
@@ -284,7 +284,7 @@ class TestIotHubUser:
         request.metadata['content_type'] = 'application/octet-stream; charset=utf-8'
         request.metadata['content_encoding'] = 'vulcan'
 
-        user._scenario.failure_exception = RestartScenario
+        user._scenario.failure_handling.update({None: RestartScenario})
         with pytest.raises(RestartScenario):
             user.request(request)
 
@@ -316,7 +316,7 @@ class TestIotHubUser:
         gzip_compress = mocker.patch('gzip.compress', autospec=True, return_value='this_is_compressed')
         request.source = None
 
-        parent_fixture.user._scenario.failure_exception = RestartScenario
+        parent_fixture.user._scenario.failure_handling.update({None: RestartScenario})
         with pytest.raises(RestartScenario):
             parent_fixture.user.request(request)
 

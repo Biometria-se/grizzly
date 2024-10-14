@@ -279,7 +279,7 @@ class ServiceBusUser(GrizzlyUser):
             'context': request_context,
         }
 
-        with self.request_context(task, request) as context:
+        with self.request_context(task, request):
             if 'queue' not in arguments and 'topic' not in arguments:
                 message = 'endpoint needs to be prefixed with queue: or topic:'
                 raise RuntimeError(message)
@@ -308,8 +308,6 @@ class ServiceBusUser(GrizzlyUser):
             if task.method.direction == RequestDirection.TO and arguments.get('expression', None) is not None:
                 message = 'argument expression is only allowed when receiving messages'
                 raise RuntimeError(message)
-
-            context['failure_exception'] = self._scenario.failure_exception
 
         self.hellos.add(description)
 

@@ -8,8 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from locust.rpc.protocol import Message
 from typing_extensions import Concatenate, ParamSpec
 
-P = ParamSpec('P')
-
+from grizzly.exceptions import RestartScenario, RetryTask, StopUser
 from grizzly_extras.text import PermutationEnum
 
 from .locust import Environment
@@ -23,6 +22,9 @@ try:
     import pymqi
 except:
     from grizzly_extras import dummy_pymqi as pymqi
+
+
+P = ParamSpec('P')
 
 
 __all__ = [
@@ -68,6 +70,50 @@ class ResponseTarget(PermutationEnum):
         except KeyError as e:
             message = f'"{value.upper()}" is not a valid value of {cls.__name__}'
             raise AssertionError(message) from e
+
+
+class FailureAction(PermutationEnum):
+    __vector__ = (False, True)
+
+    STOP_USER = (StopUser, 'stop user', True)
+    RESTART_SCENARIO = (RestartScenario, 'restart scenario', True)
+    RETRY_TASK = (RetryTask, 'retry task', False)
+
+    step_expression: str
+    exception: type[Exception]
+    default_friendly: bool
+
+    def __new__(cls, exception: type[Exception], step_exression: str, default_friendly: bool) -> Self:  # noqa: FBT001
+        obj = object.__new__(cls)
+        obj._value_ = exception
+        obj.step_expression = step_exression
+        obj.exception = exception
+        obj.default_friendly = default_friendly
+
+        return obj
+
+    @classmethod
+    def from_string(cls, value: str) -> FailureAction:
+        """Convert string value to enum value."""
+        for enum in FailureAction:
+            if enum.step_expression == value:
+                return enum
+
+        message = f'"{value}" is not a mapped step expression'
+        raise AssertionError(message)
+
+    @classmethod
+    def from_step_expression(cls, value: str) -> FailureAction:
+        return cls.from_string(value)
+
+    @classmethod
+    def from_exception(cls, value: type[Exception]) -> FailureAction:
+        for enum in FailureAction:
+            if enum.exception is value:
+                return enum
+
+        message = f'"{value}" is not a mapped exception'
+        raise AssertionError(message)
 
 
 class ResponseAction(Enum):

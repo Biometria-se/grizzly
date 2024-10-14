@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -384,7 +385,7 @@ class TestServiceBusUser:
         task = RequestTask(RequestMethod.PUT, name='test-send', endpoint='queue:test-queue')
         task.source = 'hello'
         parent.user._scenario.tasks.add(task)
-        parent.user._scenario.failure_exception = StopUser
+        parent.user._scenario.failure_handling.update({None: StopUser})
         mocker.patch.object(parent.user.zmq_client, 'disconnect', side_effect=[TypeError])
 
         with pytest.raises(StopUser):
@@ -414,7 +415,8 @@ class TestServiceBusUser:
         task.method = RequestMethod.SEND
 
         # unsuccessful response from async-messaged
-        parent.user._scenario.failure_exception = None
+        with suppress(KeyError):
+            del parent.user._scenario.failure_handling[None]
 
         parent.user.request(task)
 

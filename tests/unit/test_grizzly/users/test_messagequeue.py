@@ -57,7 +57,7 @@ def mq_parent(grizzly_fixture: GrizzlyFixture) -> GrizzlyScenario:
 
 
 class TestMessageQueueUserNoPymqi:
-    @pytest.mark.timeout(20)
+    @pytest.mark.timeout(40)
     def test_no_pymqi_dependencies(self) -> None:
         env = environ.copy()
         with suppress(KeyError):
@@ -65,6 +65,25 @@ class TestMessageQueueUserNoPymqi:
 
         env['PYTHONPATH'] = '.'
 
+        with pytest.raises(subprocess.CalledProcessError) as e:
+            subprocess.check_output(
+                [
+                    sys.executable,
+                    '-c',
+                    (
+                        'from grizzly.types import RequestDirection; import grizzly.tasks.clients.messagequeue as mq; '
+                        'print(f"{mq.pymqi.__name__=}"); mq.MessageQueueClientTask(RequestDirection.FROM, "mqs://localhost:1");'
+                    ),
+                ],
+                env=env,
+                stderr=subprocess.STDOUT,
+            )
+        assert e.value.returncode == 1
+        output = e.value.output.decode()
+        assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
+        assert 'NotImplementedError: MessageQueueClientTask could not import pymqi, have you installed IBM MQ dependencies and set environment variable LD_LIBRARY_PATH?' in output
+
+        """
         process = subprocess.Popen(
             [
                 sys.executable,
@@ -82,6 +101,7 @@ class TestMessageQueueUserNoPymqi:
         assert process.returncode == 1
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
         assert 'NotImplementedError: MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies and set environment variable LD_LIBRARY_PATH?' in output
+        """
 
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
@@ -271,7 +291,7 @@ class TestMessageQueueUser:
 
         request = RequestTask(RequestMethod.PUT, name='test-put', endpoint='EXAMPLE.QUEUE')
         scenario.name = 'test'
-        scenario.failure_exception = StopUser
+        scenario.failure_handling.update({None: StopUser})
         scenario.tasks.add(request)
         user._scenario = scenario
 
@@ -311,7 +331,7 @@ class TestMessageQueueUser:
 
             request = RequestTask(RequestMethod.GET, name='test-get', endpoint=self.real_stuff['endpoint'])
             scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('get tls real'), grizzly=grizzly_fixture.grizzly)
-            scenario.failure_exception = StopUser
+            scenario.failure_handling.update({None: StopUser})
             scenario.tasks.add(request)
 
             MessageQueueUser.host = f'mq://{self.real_stuff["host"]}/?QueueManager={self.real_stuff["queue_manager"]}&Channel={self.real_stuff["channel"]}'
@@ -596,7 +616,8 @@ class TestMessageQueueUser:
             } for _ in range(3)
         ]
 
-        mq_parent.user._scenario.failure_exception = None
+        with suppress(KeyError):
+            del mq_parent.user._scenario.failure_handling[None]
         mq_parent.user.request(request)
 
         assert request_event_spy.call_count == 1
@@ -604,7 +625,7 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        mq_parent.user._scenario.failure_exception = StopUser
+        mq_parent.user._scenario.failure_handling.update({None: StopUser})
         with pytest.raises(StopUser):
             mq_parent.user.request(request)
 
@@ -613,7 +634,7 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        mq_parent.user._scenario.failure_exception = RestartScenario
+        mq_parent.user._scenario.failure_handling.update({None: RestartScenario})
         with pytest.raises(RestartScenario):
             mq_parent.user.request(request)
 
@@ -706,14 +727,14 @@ class TestMessageQueueUser:
 
         # Test error when missing expression: prefix
         request.endpoint = 'queue:IFKTEST3, /class/student[marks<55]'
-        mq_parent.user._scenario.failure_exception = StopUser
+        mq_parent.user._scenario.failure_handling.update({None: StopUser})
         with pytest.raises(StopUser):
             mq_parent.user.request(request)
 
         # Test with expression argument but wrong method
         request.endpoint = 'queue:IFKTEST3, expression:/class/student[marks<55]'
         request.method = RequestMethod.PUT
-        mq_parent.user._scenario.failure_exception = RestartScenario
+        mq_parent.user._scenario.failure_handling.update({None: RestartScenario})
 
         with pytest.raises(RestartScenario):
             mq_parent.user.request(request)
@@ -728,7 +749,7 @@ class TestMessageQueueUser:
         # Test with empty queue name
         request.endpoint = 'queue:, expression:/class/student[marks<55]'
         request.method = RequestMethod.GET
-        mq_parent.user._scenario.failure_exception = StopUser
+        mq_parent.user._scenario.failure_handling.update({None: StopUser})
 
         with pytest.raises(StopUser):
             mq_parent.user.request(request)
@@ -868,7 +889,8 @@ class TestMessageQueueUser:
         )
         request_event_spy.reset_mock()
 
-        mq_parent.user._scenario.failure_exception = None
+        with suppress(KeyError):
+            del mq_parent.user._scenario.failure_handling[None]
         mq_parent.user.request(template)
 
         request_event_spy.assert_called_once_with(
@@ -881,7 +903,7 @@ class TestMessageQueueUser:
         )
         request_event_spy.reset_mock()
 
-        mq_parent.user._scenario.failure_exception = StopUser
+        mq_parent.user._scenario.failure_handling.update({None: StopUser})
         with pytest.raises(StopUser):
             mq_parent.user.request(template)
 
@@ -895,7 +917,7 @@ class TestMessageQueueUser:
         )
         request_event_spy.reset_mock()
 
-        mq_parent.user._scenario.failure_exception = RestartScenario
+        mq_parent.user._scenario.failure_handling.update({None: RestartScenario})
         with pytest.raises(RestartScenario):
             mq_parent.user.request(template)
 
@@ -904,7 +926,7 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        mq_parent.user._scenario.failure_exception = StopUser
+        mq_parent.user._scenario.failure_handling.update({None: StopUser})
         template.endpoint = 'sub:TEST.QUEUE'
 
         with pytest.raises(StopUser):

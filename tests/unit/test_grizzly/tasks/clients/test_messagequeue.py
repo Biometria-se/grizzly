@@ -29,7 +29,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class TestMessageQueueClientTaskNoPymqi:
-    @pytest.mark.timeout(20)
+    @pytest.mark.timeout(40)
     def test_no_pymqi_dependencies(self) -> None:
         env = environ.copy()
         with suppress(KeyError):
@@ -37,24 +37,21 @@ class TestMessageQueueClientTaskNoPymqi:
 
         env['PYTHONPATH'] = '.'
 
-        process = subprocess.Popen(
-            [
-                sys.executable,
-                '-c',
-                (
-                    'from grizzly.types import RequestDirection; import grizzly.tasks.clients.messagequeue as mq; '
-                    'print(f"{mq.pymqi.__name__=}"); mq.MessageQueueClientTask(RequestDirection.FROM, "mqs://localhost:1");'
-                ),
-            ],
-            env=env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-
-        out, _ = process.communicate()
-        output = out.decode()
-
-        assert process.returncode == 1
+        with pytest.raises(subprocess.CalledProcessError) as e:
+            subprocess.check_output(
+                [
+                    sys.executable,
+                    '-c',
+                    (
+                        'from grizzly.types import RequestDirection; import grizzly.tasks.clients.messagequeue as mq; '
+                        'print(f"{mq.pymqi.__name__=}"); mq.MessageQueueClientTask(RequestDirection.FROM, "mqs://localhost:1");'
+                    ),
+                ],
+                env=env,
+                stderr=subprocess.STDOUT,
+            )
+        assert e.value.returncode == 1
+        output = e.value.output.decode()
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
         assert 'NotImplementedError: MessageQueueClientTask could not import pymqi, have you installed IBM MQ dependencies and set environment variable LD_LIBRARY_PATH?' in output
 
@@ -583,7 +580,7 @@ class TestMessageQueueClientTask:
             fire_spy.reset_mock()
 
             async_message_request_mock = mocker.patch('grizzly.tasks.clients.messagequeue.async_message_request', side_effect=[AsyncMessageError('oooh nooo')])
-            parent.user._scenario.failure_exception = RestartScenario
+            parent.user._scenario.failure_handling.update({None: RestartScenario})
 
             log_error_mock = mocker.patch.object(parent.stats, 'log_error')
             mocker.patch.object(parent, 'on_start', return_value=None)

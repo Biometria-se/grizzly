@@ -72,7 +72,7 @@ class TestKeystoreTask:
         task_factory = KeystoreTask('foobar', 'get', 'foobar')
         task = task_factory()
 
-        parent.user._scenario.failure_exception = RestartScenario
+        parent.user._scenario.failure_handling.update({None: RestartScenario})
 
         with pytest.raises(RestartScenario):
             task(parent)

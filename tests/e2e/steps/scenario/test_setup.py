@@ -221,8 +221,8 @@ def test_e2e_step_setup_stop_user_on_failure(e2e_fixture: End2EndFixture) -> Non
         from grizzly.types.locust import StopUser
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        assert grizzly.scenario.failure_exception is not None
-        assert isinstance(grizzly.scenario.failure_exception(), StopUser), 'failure exception is not StopUser'
+        assert grizzly.scenario.failure_handling.get(None, None) is not None
+        assert isinstance(grizzly.scenario.failure_handling.get(None, RuntimeError)(), StopUser), 'failure exception is not StopUser'
 
     e2e_fixture.add_validator(validate_stop_user_on_failure)
 
@@ -242,8 +242,8 @@ def test_e2e_step_setup_restart_scenario_on_failure(e2e_fixture: End2EndFixture)
         from grizzly.exceptions import RestartScenario
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        assert grizzly.scenario.failure_exception is not None
-        assert isinstance(grizzly.scenario.failure_exception(), RestartScenario), 'failure exception is not RestartScenario'
+        assert grizzly.scenario.failure_handling.get(None, None) is not None
+        assert isinstance(grizzly.scenario.failure_handling.get(None, RuntimeError)(), RestartScenario), 'failure exception is not RestartScenario'
 
     e2e_fixture.add_validator(validate_restart_scenario_on_failure)
 
@@ -279,6 +279,33 @@ def test_e2e_setup_metadata(e2e_fixture: End2EndFixture) -> None:
             'And metadata "Ocp-Apim-Subscription-Key" is "9asdf00asdf00adsf034"',
             'And metadata "nested" is "{{ nested_value }}"',
             'Then log message "nested_value={{ nested_value }}"',
+        ],
+    )
+
+    rc, _ = e2e_fixture.execute(feature_file)
+
+    assert rc == 0
+
+
+def test_e2e_setup_failed_task(e2e_fixture: End2EndFixture) -> None:
+    def validate_failure_handling(context: Context) -> None:
+        from grizzly.exceptions import RestartScenario, RetryTask, StopUser
+
+        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        assert grizzly.scenario.failure_handling == {
+            None: RestartScenario,
+            '504 gateway timeout': RetryTask,
+            MemoryError: StopUser,
+        }
+
+    e2e_fixture.add_validator(validate_failure_handling)
+
+    feature_file = e2e_fixture.test_steps(
+        scenario=[
+            'When a task fails restart scenario',
+            'When a task fails with "504 gateway timeout" retry task',
+            'When a task fails with "MemoryError" stop user',
         ],
     )
 

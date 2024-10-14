@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from json import dumps as jsondumps
+from random import uniform
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
@@ -17,7 +18,7 @@ from locust import task
 from locust.exception import InterruptTaskSet, RescheduleTask, RescheduleTaskImmediately
 from locust.user.task import LOCUST_STATE_RUNNING, LOCUST_STATE_STOPPING
 
-from grizzly.exceptions import RestartScenario, StopScenario
+from grizzly.exceptions import RestartScenario, RetryTask, StopScenario
 from grizzly.types import RequestType, ScenarioState
 from grizzly.types.locust import StopUser
 
@@ -28,6 +29,14 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from grizzly.tasks import GrizzlyTask
     from grizzly.users import GrizzlyUser
+
+
+NUMBER_TO_WORD: dict[int, str] = {
+    1: '1st',
+    2: '2nd',
+    3: '3rd',
+    4: '4th',
+}
 
 
 class IteratorScenario(GrizzlyScenario):
@@ -120,12 +129,42 @@ class IteratorScenario(GrizzlyScenario):
                     except Exception:
                         step = 'unknown'
 
-                    try:
-                        self.execute_next_task(self.current_task_index + 1, self.task_count, step)
-                    except Exception as e:
-                        if not isinstance(e, StopScenario):
-                            execute_task_logged = True
-                        raise
+                    retries = 0
+                    while True:
+                        try:
+                            self.execute_next_task(self.current_task_index + 1, self.task_count, step)
+                            break
+                        except RetryTask as e:
+                            retries += 1
+
+                            if retries >= 3:
+                                message = f'task {self.current_task_index + 1} of {self.task_count} failed after {retries} retries: {step}'
+                                self.logger.error(message)  # noqa: TRY400
+
+                                default_exception = self.user._scenario.failure_handling.get(None, None)
+
+                                # default failure handling
+                                if default_exception is not None:
+                                    raise default_exception from e
+
+                                break
+
+                            sleep_time = retries * uniform(1.0, 2.0)  # noqa: S311
+                            message = f'task {self.current_task_index + 1} of {self.task_count} will execute a {NUMBER_TO_WORD[retries+1]} time in {sleep_time:.2f} seconds: {step}'
+                            self.logger.warning(message)
+
+                            gsleep(sleep_time)  # random back-off time
+                            self.wait()
+
+                            # step back counter, and re-schedule the same task again
+                            self._task_index -= 1
+                            self.schedule_task(self.get_next_task(), first=True)
+
+                            continue
+                        except Exception as e:
+                            if not isinstance(e, StopScenario):
+                                execute_task_logged = True
+                            raise
                 except RescheduleTaskImmediately:
                     pass
                 except RescheduleTask:

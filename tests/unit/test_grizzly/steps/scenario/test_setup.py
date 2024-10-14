@@ -5,13 +5,15 @@ from contextlib import suppress
 from os import environ
 from typing import TYPE_CHECKING, cast
 
+import pytest
 from parse import compile
 
 from grizzly.context import GrizzlyContext
+from grizzly.exceptions import RestartScenario, RetryTask, StepError
 from grizzly.steps import *
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
-from grizzly.types import RequestDirection, RequestMethod
+from grizzly.types import FailureAction, RequestDirection, RequestMethod
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -33,6 +35,25 @@ def test_parse_iteration_gramatical_number() -> None:
     assert p.parse('run for 4 laps') is None
 
     assert parse_iteration_gramatical_number(' asdf ') == 'asdf'
+
+
+def test_parse_failure_type() -> None:
+    p = compile('yeehaw "{failure_type:FailureType}"', extra_types={'FailureType': parse_failure_type})
+
+    assert p.parse('yeehaw "RuntimeError"')['failure_type'] is RuntimeError
+    assert p.parse('yeehaw "RestartScenario"')['failure_type'] is RestartScenario
+    assert p.parse('yeehaw "504 gateway timeout"')['failure_type'] == '504 gateway timeout'
+
+
+def test_failure_action_from_step_expression() -> None:
+    p = compile('{failure_action:FailureAction}', extra_types={'FailureAction': FailureAction.from_step_expression})
+
+    assert p.parse('stop user')['failure_action'] is FailureAction.STOP_USER
+    assert p.parse('restart scenario')['failure_action'] is FailureAction.RESTART_SCENARIO
+    assert p.parse('retry task')['failure_action'] is FailureAction.RETRY_TASK
+
+    with pytest.raises(AssertionError, match='"foobar" is not a mapped step expression'):
+        p.parse('foobar')
 
 
 def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
@@ -220,3 +241,58 @@ def test_step_setup_metadata(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.context.get('metadata', {}) is None
     assert request.metadata == {'new_header': 'new_value'}
     assert task_factory._context['metadata'] == {'x-test-header': 'foobar'}
+
+
+def test_step_setup_failed_task_default(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario
+    behave_fixture.create_step('test step', in_background=False, context=behave)
+
+    assert grizzly.scenario.failure_handling == {}
+
+    step_setup_failed_task_default(behave, FailureAction.STOP_USER)
+
+    assert grizzly.scenario.failure_handling == {None: StopUser}
+
+    step_setup_failed_task_default(behave, FailureAction.RESTART_SCENARIO)
+
+    assert grizzly.scenario.failure_handling == {None: RestartScenario}
+
+    step_setup_failed_task_default(behave, FailureAction.RETRY_TASK)
+
+    assert behave.exceptions == {grizzly.scenario.name: [
+        ANY(StepError),
+    ]}
+
+    exception = cast(StepError, behave.exceptions[grizzly.scenario.name][0])
+
+    assert exception.error == 'retry task should not be used as the default behavior, only use it for specific failures'
+
+
+def test_step_setup_failed_task_custom(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
+    assert grizzly.scenario.failure_handling == {}
+
+    step_setup_failed_task_custom(behave, RuntimeError, FailureAction.STOP_USER)
+
+    assert grizzly.scenario.failure_handling == {RuntimeError: StopUser}
+
+    step_setup_failed_task_custom(behave, RestartScenario, FailureAction.RESTART_SCENARIO)
+
+    assert grizzly.scenario.failure_handling == {
+        RuntimeError: StopUser,
+        RestartScenario: RestartScenario,
+    }
+
+    step_setup_failed_task_custom(behave, '504 gateway timeout', FailureAction.RETRY_TASK)
+
+    assert grizzly.scenario.failure_handling == {
+        RuntimeError: StopUser,
+        RestartScenario: RestartScenario,
+        '504 gateway timeout': RetryTask,
+    }

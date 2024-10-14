@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import gevent
 
+from grizzly.exceptions import failure_handler
 from grizzly.types import RequestType
 from grizzly.users import AsyncRequests
 
@@ -66,7 +67,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
 
     def __call__(self) -> grizzlytask:  # noqa: C901
         @grizzlytask
-        def task(parent: GrizzlyScenario) -> Any:  # noqa: C901
+        def task(parent: GrizzlyScenario) -> Any:
             if not isinstance(parent.user, AsyncRequests):
                 message = f'{parent.user.__class__.__name__} does not inherit AsyncRequests'
                 raise NotImplementedError(message)  # pragma: no cover
@@ -136,7 +137,6 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
                     exception=exception,
                 )
 
-                if exception is not None and parent.user._scenario.failure_exception is not None:
-                    raise parent.user._scenario.failure_exception from exception
+                failure_handler(exception, parent.user._scenario)
 
         return task

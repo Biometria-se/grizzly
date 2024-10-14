@@ -1,6 +1,7 @@
 """Unit tests for grizzly.tasks.until."""
 from __future__ import annotations
 
+from contextlib import suppress
 from json import dumps as jsondumps
 from logging import ERROR
 from typing import TYPE_CHECKING, Any
@@ -200,7 +201,7 @@ class TestUntilRequestTask:
             ],
         )
 
-        parent.user._scenario.failure_exception = StopUser
+        parent.user._scenario.failure_handling.update({None: StopUser})
         task_factory = UntilRequestTask(meta_request_task, '$.`this`[?status="ready"] | wait=10, retries=2')
         task = task_factory()
 
@@ -235,7 +236,7 @@ class TestUntilRequestTask:
             ],
         )
 
-        parent.user._scenario.failure_exception = RestartScenario
+        parent.user._scenario.failure_handling.update({None: RestartScenario})
         with pytest.raises(RestartScenario), caplog.at_level(ERROR):
             task(parent)
 
@@ -388,7 +389,9 @@ class TestUntilRequestTask:
         task_factory = UntilRequestTask(meta_request_task, '$.list[?(@.count == 18)] | wait=4, expected_matches=1, retries=1')
         task = task_factory()
         request_spy.return_value = ({}, None)
-        parent.user._scenario.failure_exception = None
+
+        with suppress(KeyError):
+            del parent.user._scenario.failure_handling[None]
 
         task(parent)
 

@@ -206,7 +206,7 @@ class TestLoopTask:
 
         # not a valid json input
         task_factory.values = '"hello'
-        scenario_context.failure_exception = RestartScenario
+        scenario_context.failure_handling.update({None: RestartScenario})
 
         task = task_factory()
 
@@ -228,7 +228,7 @@ class TestLoopTask:
 
         task = task_factory()
 
-        with pytest.raises(RestartScenario):
+        with pytest.raises(StopUser):
             task(parent)
 
         request_spy.assert_called_once_with(
@@ -271,7 +271,7 @@ class TestLoopTask:
 
         # wrapped task throws scenario.failure_exception
         for failure_exception in [RestartScenario, StopUser]:
-            scenario_context.failure_exception = failure_exception
+            scenario_context.failure_handling.update({None: failure_exception})
             task_factory.tasks = []
             task_factory.add(TestExceptionTask(failure_exception))
 
