@@ -693,25 +693,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                 )
                                 receiver.complete_message(message)
                                 had_error = False
-
-                                # handle any remaining messages on the entity
-                                if consume and '|=' not in expression:
-                                    try:
-                                        start_sequence_number = (message.sequence_number or -1) + 1
-                                        post_consumed_message_count = 0
-                                        post_consume_start = perf_counter()
-                                        while len(receiver.peek_messages(max_message_count=1, sequence_number=start_sequence_number, timeout=10)) > 0:
-                                            for consume_message in receiver.receive_messages(max_message_count=100, max_wait_time=10):
-                                                receiver.complete_message(consume_message)
-                                                post_consumed_message_count += 1
-
-                                        if post_consumed_message_count > 0:
-                                            post_consume_took = perf_counter() - post_consume_start
-                                            self.logger.info(
-                                                '! %d:%s: removed %d messages which took %.2f seconds', client, cache_endpoint, post_consumed_message_count, post_consume_took,
-                                            )
-                                    except:
-                                        self.logger.exception('%d:%s: failed to consume entity after finding correct message', client, cache_endpoint)
                                 break
                         finally:
                             if had_error:
