@@ -623,6 +623,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             consume = context.get('consume', False)
 
             wait_start = perf_counter()
+            original_wait_start = perf_counter()
 
             # make sure receiver or it's handler hasn't gone stale
             if receiver is None or receiver._handler is None:
@@ -680,13 +681,15 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                             # message matching expression found, return it
                             if len(values) > 0:
+                                wait_time = perf_counter() - original_wait_start
                                 self.logger.info(
-                                    '! %d::%s: completing message id %s, with expression "%s" after consuming %d messages',
+                                    '! %d::%s: completing message id %s, with expression "%s" after consuming %d messages (%.2fs)',
                                     client,
                                     cache_endpoint,
                                     message.message_id,
                                     expression,
                                     consume_message_ignore_count,
+                                    wait_time,
                                 )
                                 receiver.complete_message(message)
                                 had_error = False
@@ -705,6 +708,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                         receiver.complete_message(message)  # remove message from endpoint, but ignore contents
                                         message = payload = metadata = None
                                         consume_message_ignore_count += 1
+                                        if message_wait > 0:
+                                            receiver._handler._last_activity_timestamp = time() if isinstance(receiver._handler, ReceiveClient) else None
+                                        wait_start = perf_counter()
 
                                 # do not wait any longer, give up due to message_wait
                                 if message_wait > 0 and (perf_counter() - wait_start) >= message_wait:
@@ -803,20 +809,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         break
 
                     raise
-
-            """
-            if not had_error and expression is not None and consume and not self._event.is_set():
-                self.logger.info('! consume remaining messages on %s', cache_endpoint)
-                ignored_messages = 0
-                try:
-                    for ignored_message in receiver:
-                        receiver.complete_message(ignored_message)
-                        ignored_messages += 1
-                except:
-                    self.logger.exception('failed to consume remaining messages on %s, managed %d messages', cache_endpoint, ignored_messages)
-                else:
-                    self.logger.info('! consumed %d messages on %s to clear endpoint', ignored_messages, cache_endpoint)
-            """
 
         if expression is None:
             metadata, payload = self.from_message(message)
