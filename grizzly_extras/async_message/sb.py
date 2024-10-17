@@ -651,10 +651,10 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     for received_message in receiver:
                         message = received_message
 
-                        self.logger.info('! %d::%s: got message id %s', client, cache_endpoint, message.message_id)
+                        self.logger.debug('%d::%s: got message id %s', client, cache_endpoint, message.message_id)
 
                         if expression is None:
-                            self.logger.info('! %d::%s: completing message id %s', client, cache_endpoint, message.message_id)
+                            self.logger.debug('%d::%s: completing message id %s', client, cache_endpoint, message.message_id)
                             receiver.complete_message(message)
                             break
 
@@ -674,11 +674,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                             values = get_values(transformed_payload)
 
-                            self.logger.info('! %d::%s: expression=%s, matches=%r, payload=%s', client, cache_endpoint, request_arguments['expression'], values, transformed_payload)
+                            self.logger.debug('%d::%s: expression=%s, matches=%r, payload=%s', client, cache_endpoint, request_arguments['expression'], values, transformed_payload)
 
                             if len(values) > 0:
-                                self.logger.info(
-                                    '! %d::%s: completing message id %s, with expression "%s"', client, cache_endpoint, message.message_id, request_arguments['expression'],
+                                self.logger.debug(
+                                    '%d::%s: completing message id %s, with expression "%s"', client, cache_endpoint, message.message_id, request_arguments['expression'],
                                 )
                                 receiver.complete_message(message)
                                 had_error = False
@@ -687,13 +687,13 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             if had_error:
                                 if message is not None:
                                     if not consume:
-                                        self.logger.info(
-                                            '! %d::%s: abandoning message id %s, %d', client, cache_endpoint, message.message_id, message._raw_amqp_message.header.delivery_count,
+                                        self.logger.debug(
+                                            '%d::%s: abandoning message id %s, %d', client, cache_endpoint, message.message_id, message._raw_amqp_message.header.delivery_count,
                                         )
                                         receiver.abandon_message(message)
                                         message = None
                                     else:
-                                        self.logger.info('! %d::%s: consuming and ignoring message id %s', client, cache_endpoint, message.message_id)
+                                        self.logger.debug('%d::%s: consuming and ignoring message id %s', client, cache_endpoint, message.message_id)
                                         receiver.complete_message(message)  # remove message from endpoint, but ignore contents
                                         message = payload = metadata = None
 
@@ -795,14 +795,17 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                     raise
 
-            if not had_error and expression is not None and consume:
+            if not had_error and expression is not None and consume and not self._event.is_set():
+                self.logger.info('! consume remaining messages on %s', cache_endpoint)
                 ignored_messages = 0
-                with suppress(Exception):
+                try:
                     for ignored_message in receiver:
                         receiver.complete_message(ignored_message)
                         ignored_messages += 1
-
-                self.logger.info('! consumed %d messages on %s to clear endpoint', ignored_messages, cache_endpoint)
+                except:
+                    self.logger.exception('failed to consume remaining messages on %s, managed %d messages', cache_endpoint, ignored_messages)
+                else:
+                    self.logger.info('! consumed %d messages on %s to clear endpoint', ignored_messages, cache_endpoint)
 
         if expression is None:
             metadata, payload = self.from_message(message)
