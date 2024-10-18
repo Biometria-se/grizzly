@@ -398,7 +398,10 @@ class ServiceBusClientTask(ClientTask):
         }
 
         response = async_message_request_wrapper(parent, state.client, request)
-        logger.info(response['message'])
+        message = response['message']
+
+        if message is not None and len(message) > 0:
+            logger.info(response['message'])
 
     def on_start(self, parent: GrizzlyScenario) -> None:
         # create subscription before connecting to it
@@ -421,7 +424,8 @@ class ServiceBusClientTask(ClientTask):
 
     def on_iteration(self, parent: GrizzlyScenario) -> None:
         try:
-            self.empty(parent)
+            if self.text is not None:
+                self.empty(parent)
         except:
             parent.logger.exception('failed to empty')
 

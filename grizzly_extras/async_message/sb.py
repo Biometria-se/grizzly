@@ -635,19 +635,19 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             if action == 'EMPTY':
                 empty_message_count = 0
                 empty_message_start = perf_counter()
-                while len(receiver.peek_messages(max_message_count=10, timeout=1)) > 10:
+                while len(receiver.peek_messages(max_message_count=10, timeout=1)) >= 10:
                     with suppress(Exception):
                         for message in receiver.receive_messages(max_message_count=100, max_wait_time=10):
                             receiver.complete_message(message)
                             empty_message_count += 1
 
                 empty_message_time = perf_counter() - empty_message_start
-                msg = f'{client}::{cache_endpoint}: emptied endpoint by {empty_message_count} which took {empty_message_time:.2f}'
+                msg = f'{client}::{cache_endpoint}: consumed {empty_message_count} messages which took {empty_message_time:.2f}'
 
                 self.logger.info(msg)
 
                 return {
-                    'message': msg,
+                    'message': msg if empty_message_count > 0 else '',
                 }
 
             # reset last activity timestamp, might be set from previous usage that was more

@@ -94,7 +94,7 @@ class Testgrizzlytask:
         bar = DummyOther(parent.user)
         assert task._is_parent(bar)
 
-    @pytest.mark.parametrize('event', ['on_start', 'on_stop'])
+    @pytest.mark.parametrize('event', ['on_start', 'on_stop', 'on_iteration'])
     def test_on_event(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, event: str) -> None:
         parent = grizzly_fixture()
 

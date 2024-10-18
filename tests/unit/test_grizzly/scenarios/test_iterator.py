@@ -167,6 +167,8 @@ class TestIterationScenario:
 
         parent.consumer = TestdataConsumer(parent)
 
+        on_iteration_mock = mocker.patch.object(parent, 'on_iteration', return_value=None)
+
         def mock_request(data: Optional[dict[str, Any]]) -> None:
             def testdata_request(self: TestdataConsumer) -> Optional[dict[str, Any]]:  # noqa: ARG001
                 if data is None or data == {}:
@@ -188,6 +190,8 @@ class TestIterationScenario:
             parent.iterator()
 
         assert parent.user.variables == {}
+        on_iteration_mock.assert_called_once_with()
+        on_iteration_mock.reset_mock()
 
         mock_request({})
 
@@ -195,6 +199,8 @@ class TestIterationScenario:
             parent.iterator()
 
         assert parent.user.variables == {}
+        on_iteration_mock.assert_called_once_with()
+        on_iteration_mock.reset_mock()
 
         mock_request({
             'variables': {
@@ -208,6 +214,8 @@ class TestIterationScenario:
 
         parent.iterator(prefetch=True)
 
+        on_iteration_mock.assert_called_once_with()
+        on_iteration_mock.reset_mock()
         assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1337
         assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value1'
         assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value2'
@@ -229,6 +237,8 @@ class TestIterationScenario:
         assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value1'
         assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value2'
         assert not getattr(parent, '_prefetch', True)
+        on_iteration_mock.assert_not_called()
+        on_iteration_mock.reset_mock()
 
         parent.iterator()
 
@@ -236,6 +246,8 @@ class TestIterationScenario:
         assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value3'
         assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value4'
         assert not getattr(parent, '_prefetch', True)
+        on_iteration_mock.assert_called_once_with()
+        on_iteration_mock.reset_mock()
 
     def test_pace(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         parent = grizzly_fixture(scenario_type=IteratorScenario)
