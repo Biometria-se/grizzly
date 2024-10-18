@@ -206,6 +206,7 @@ class RequestType(Enum):
     DISCONNECT = ('DISC', None)
     SUBSCRIBE = ('SUB', None)
     UNSUBSCRIBE = ('UNSUB', None)
+    EMPTY = ('EMPTY', None)
 
     _value: str
     _weight: Optional[int]

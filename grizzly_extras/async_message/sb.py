@@ -564,9 +564,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             'message': 'there general kenobi',
         }
 
-    @register(handlers, 'SEND', 'RECEIVE')
+    @register(handlers, 'SEND', 'RECEIVE', 'EMPTY')
     def request(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: C901, PLR0912, PLR0915
         context = request.get('context', None)
+        action = request.get('action', None)
+
         if context is None:
             msg = 'no context in request'
             raise AsyncMessageError(msg)
@@ -581,7 +583,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
-        self.logger.info('handling request towards %s', cache_endpoint)
+        self.logger.info('handling %s request towards %s', action, cache_endpoint)
 
         message: Optional[ServiceBusMessage] = None
         metadata: Optional[dict[str, Any]] = None
@@ -629,6 +631,24 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             if receiver is None or receiver._handler is None:
                 self._hello(request, force=True)
                 receiver = self._receiver_cache[cache_endpoint]
+
+            if action == 'EMPTY':
+                empty_message_count = 0
+                empty_message_start = perf_counter()
+                while len(receiver.peek_messages(max_message_count=10, timeout=1)) > 10:
+                    with suppress(Exception):
+                        for message in receiver.receive_messages(max_message_count=100, max_wait_time=10):
+                            receiver.complete_message(message)
+                            empty_message_count += 1
+
+                empty_message_time = perf_counter() - empty_message_start
+                msg = f'{client}::{cache_endpoint}: emptied endpoint by {empty_message_count} which took {empty_message_time:.2f}'
+
+                self.logger.info(msg)
+
+                return {
+                    'message': msg,
+                }
 
             # reset last activity timestamp, might be set from previous usage that was more
             # than message_wait ago, which will cause a "timeout" when trying to read it now
@@ -714,7 +734,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                     self.logger.warning('giving up in read loop since it took more than %d seconds, might still be messages on %s', cache_endpoint, message_wait)
                                     raise StopIteration
 
-                                sleep(0.2)
+                                sleep(0.01)
 
                     if message is None:
                         raise StopIteration

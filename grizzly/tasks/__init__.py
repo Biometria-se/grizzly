@@ -73,6 +73,7 @@ class grizzlytask:
 
     _on_start: Optional[OnGrizzlyTask] = None
     _on_stop: Optional[OnGrizzlyTask] = None
+    _on_iteration: Optional[OnGrizzlyTask] = None
 
     class OnGrizzlyTask:
         _on_func: GrizzlyTaskOnType
@@ -131,6 +132,23 @@ class grizzlytask:
             self._on_stop(cast('GrizzlyScenario', arg))
         elif not is_parent and self._on_stop is None:
             self._on_stop = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
+        else:  # decorated function does not exist, so don't do anything
+            pass
+
+    @overload
+    def on_iteration(self, parent: GrizzlyScenario, /) -> None:  # pragma: no coverage
+        ...
+
+    @overload
+    def on_iteration(self, on_start: GrizzlyTaskOnType, /) -> None:  # pragma: no coverage
+        ...
+
+    def on_iteration(self, arg: Union[GrizzlyTaskOnType, GrizzlyScenario], /) -> None:
+        is_parent = self._is_parent(arg)
+        if is_parent and self._on_iteration is not None:
+            self._on_iteration(cast('GrizzlyScenario', arg))
+        elif not is_parent and self._on_iteration is None:
+            self._on_iteration = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
         else:  # decorated function does not exist, so don't do anything
             pass
 
@@ -211,6 +229,9 @@ class GrizzlyMetaRequestTask(GrizzlyTask, metaclass=ABCMeta):
         pass
 
     def on_stop(self, parent: GrizzlyScenario) -> None:
+        pass
+
+    def on_iteration(self, parent: GrizzlyScenario) -> None:
         pass
 
 

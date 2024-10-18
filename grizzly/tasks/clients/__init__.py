@@ -222,6 +222,11 @@ class ClientTask(GrizzlyMetaRequestTask):
             self.__class__._context = merge_dicts(parent.user._context, self._context)
             return self.on_stop(parent)
 
+        @task.on_iteration
+        def on_iteration(parent: GrizzlyScenario) -> None:
+            self.__class__._context = merge_dicts(parent.user._context, self._context)
+            return self.on_iteration(parent)
+
         return task
 
     def execute(self, parent: GrizzlyScenario) -> GrizzlyResponse:

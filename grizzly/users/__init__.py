@@ -139,6 +139,9 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     def on_stop(self) -> None:
         super().on_stop()
 
+    def on_iteration(self) -> None:
+        pass
+
     def on_state(self, *, state: ScenarioState) -> None:
         pass
 

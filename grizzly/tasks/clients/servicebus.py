@@ -384,6 +384,22 @@ class ServiceBusClientTask(ClientTask):
         response = async_message_request_wrapper(parent, state.client, request)
         logger.info(response['message'])
 
+    def empty(self, parent: GrizzlyScenario) -> None:
+        state = self.get_state(parent)
+
+        # only empty receiving instances, which has a subscription created
+        if state.context.get('connection', 'sender') == 'sender' or self.text is None:
+            return
+
+        request: AsyncMessageRequest = {
+            'worker': state.worker,
+            'action': RequestType.EMPTY.name,
+            'context': state.context,
+        }
+
+        response = async_message_request_wrapper(parent, state.client, request)
+        logger.info(response['message'])
+
     def on_start(self, parent: GrizzlyScenario) -> None:
         # create subscription before connecting to it
         if self.text is not None:
@@ -395,13 +411,19 @@ class ServiceBusClientTask(ClientTask):
         try:
             if self.text is not None:
                 self.unsubscribe(parent)
-        except Exception:
+        except:
             parent.logger.exception('failed to unsubscribe')
 
         try:
             self.disconnect(parent)
-        except Exception:
+        except:
             parent.logger.exception('failed to disconnect')
+
+    def on_iteration(self, parent: GrizzlyScenario) -> None:
+        try:
+            self.empty(parent)
+        except:
+            parent.logger.exception('failed to empty')
 
     def request(self, parent: GrizzlyScenario, request: AsyncMessageRequest) -> AsyncMessageResponse:
         response = None

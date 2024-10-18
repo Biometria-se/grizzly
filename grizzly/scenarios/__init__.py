@@ -96,6 +96,18 @@ class GrizzlyScenario(SequentialTaskSet):
         # only prefetch iterator testdata if everything was started OK
         self.prefetch()
 
+    def on_iteration(self) -> None:
+        self.user.on_iteration()
+
+        for task in self.tasks:
+            if isinstance(task, grizzlytask):
+                try:  # type: ignore[unreachable]
+                    task.on_iteration(self)
+                except:
+                    self.logger.exception('on_iteration failed for task %r', task)
+                    raise StopUser from None
+
+
     def on_stop(self) -> None:
         """When locust test is stopping, all tasks on_stop methods must be called, even though
         one might fail, so just log those as errors.
