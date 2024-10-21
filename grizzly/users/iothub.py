@@ -395,6 +395,8 @@ class IotHubUser(GrizzlyUser):
                     status_description=f'Failed: {filename}',
                 )
                 self.logger.exception('failed to upload file "%s" to IoT hub', filename)
+            else:
+                self.logger.exception('failed to get storage info for blob "%s"', filename)
 
             raise
         else:

@@ -12,7 +12,7 @@ from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
 from azure.servicebus._pyamqp import ReceiveClient
 from azure.servicebus.amqp import AmqpMessageBodyType
-from azure.servicebus.exceptions import ServiceBusError
+from azure.servicebus.exceptions import MessageLockLostError, ServiceBusError
 from azure.servicebus.management import ServiceBusAdministrationClient, SqlRuleFilter, TopicProperties
 
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
@@ -635,14 +635,14 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             if action == 'EMPTY':
                 empty_message_count = 0
                 empty_message_start = perf_counter()
-                while len(receiver.peek_messages(max_message_count=10, timeout=1)) >= 10:
+                while len(receiver.peek_messages(max_message_count=10, timeout=10)) >= 10:
                     with suppress(Exception):
                         for message in receiver.receive_messages(max_message_count=100, max_wait_time=10):
                             receiver.complete_message(message)
                             empty_message_count += 1
 
                 empty_message_time = perf_counter() - empty_message_start
-                msg = f'{client}::{cache_endpoint}: consumed {empty_message_count} messages which took {empty_message_time:.2f}'
+                msg = f'{client}::{cache_endpoint}: consumed {empty_message_count} messages which took {empty_message_time:.2f} seconds'
 
                 self.logger.info(msg)
 
@@ -740,6 +740,18 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         raise StopIteration
 
                     break
+                except MessageLockLostError as e:
+                    if message is not None:
+                        self.logger.warning('message lock expired for message id %s', message.message_id)
+
+                    if self._event.is_set():
+                        break
+
+                    if retry < 3:
+                        message = None
+                        continue
+
+                    raise AsyncMessageError(str(e)) from e
                 except (ServiceBusError, ValueError) as e:
                     if any(msg in str(e) for msg in [
                         'Connection to remote host was lost',
