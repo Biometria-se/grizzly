@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 from gevent.fileobject import FileObjectThread
 
-from grizzly.events import event, events
+from grizzly.events import GrizzlyEventDecoder, event, events
 from grizzly.types import bool_type, list_type
 from grizzly.types.locust import Environment, MasterRunner, Message
 from grizzly_extras.arguments import parse_arguments, split_value
@@ -87,7 +87,35 @@ def atomiccsvwriter__base_type__(value: str) -> str:
     return value
 
 
-@event(events.user_event, tags={'type': 'testdata::atomiccsvwriter'})
+class CsvMessageDecoder(GrizzlyEventDecoder):
+    def __call__(
+        self,
+        *args: Any,
+        tags: dict[str, str | None] | None,
+        return_value: Any,  # noqa: ARG002
+        exception: Exception | None,
+        **kwargs: Any,
+    ) -> tuple[dict[str, Any], dict[str, str | None]]:
+        if tags is None:
+            tags = {}
+
+        message = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
+
+        tags = {
+            'filename': message.data['destination'],
+            **tags,
+        }
+
+        metrics: dict[str, Any] = {
+            'error': None,
+        }
+
+        if exception is not None:
+            metrics.update({'error': str(exception)})
+
+        return metrics, tags
+
+@event(events.user_event, tags={'type': 'testdata::atomiccsvwriter'}, decoder=CsvMessageDecoder(arg='msg'))
 def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
     """Receive messages containing CSV data.
     Write the data to a CSV file.
