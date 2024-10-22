@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 from gevent.fileobject import FileObjectThread
 
+from grizzly.events import event, events
 from grizzly.types import bool_type, list_type
 from grizzly.types.locust import Environment, MasterRunner, Message
 from grizzly_extras.arguments import parse_arguments, split_value
@@ -86,6 +87,7 @@ def atomiccsvwriter__base_type__(value: str) -> str:
     return value
 
 
+@event(events.user_event, tags={'type': 'testdata::atomiccsvwriter'})
 def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
     """Receive messages containing CSV data.
     Write the data to a CSV file.
