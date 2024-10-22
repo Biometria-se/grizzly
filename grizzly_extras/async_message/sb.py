@@ -625,7 +625,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             consume = context.get('consume', False)
 
             wait_start = perf_counter()
-            original_wait_start = perf_counter()
 
             # make sure receiver or it's handler hasn't gone stale
             if receiver is None or receiver._handler is None:
@@ -701,7 +700,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                             # message matching expression found, return it
                             if len(values) > 0:
-                                wait_time = perf_counter() - original_wait_start
+                                wait_time = perf_counter() - wait_start
                                 self.logger.info(
                                     '! %d::%s: completing message id %s, with expression "%s" after consuming %d messages (%.2fs)',
                                     client,

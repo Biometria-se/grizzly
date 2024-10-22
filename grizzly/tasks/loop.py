@@ -48,7 +48,7 @@ class LoopTask(GrizzlyTaskWrapper):
     variable: str
 
     def __init__(self, name: str, values: str, variable: str) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         self.name = name
         self.values = values

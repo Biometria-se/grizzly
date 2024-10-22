@@ -12,6 +12,9 @@ a previous response or fetching additional test data from a different endpoint (
 It is possible to implement custom tasks, the only requirement is that they inherit `grizzly.tasks.GrizzlyTask`. To get them to be executed by `grizzly`,
 a step implementation is also needed.
 
+One can also set some metadata (timeout, method, name) on a task with the `@grizzlytask.metadata` decorator. This is not mandatory, but can be useful if
+the task should not be able to run forever.
+
 Boilerplate example of a custom task:
 
 ```python
@@ -25,6 +28,7 @@ from grizzly.types.behave import Context, then
 
 class TestTask(GrizzlyTask):
     def __call__(self) -> grizzlytask:
+        @grizzlytask.metadata(timeout=20.0, method='TASK', name='TestTask')
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
             print(f'{self.__class__.__name__}::task called')
@@ -101,6 +105,15 @@ class grizzlytask:
 
         return 'GrizzlyScenario' in mro_list
 
+    @staticmethod
+    def metadata(*, timeout: float | None = None, method: str | None = None, name: str | None = None) -> Callable[[grizzlytask], grizzlytask]:
+        def wrapper(task: grizzlytask) -> grizzlytask:
+            setattr(task, '__grizzly_metadata__', {'timeout': timeout, 'method': method, 'name': name})  # noqa: B010
+
+            return task
+
+        return wrapper
+
     @overload
     def on_start(self, parent: GrizzlyScenario, /) -> None:  # pragma: no coverage
         ...
@@ -158,11 +171,14 @@ class GrizzlyTask(ABC):
 
     _context_root: str
 
+    timeout: float | None
+
     grizzly: GrizzlyContext
 
-    def __init__(self) -> None:
+    def __init__(self, *, timeout: float | None) -> None:
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
         self.grizzly = GrizzlyContext()
+        self.timeout = timeout
 
     @abstractmethod
     def __call__(self) -> grizzlytask:

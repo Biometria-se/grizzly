@@ -10,7 +10,7 @@ from locust.exception import LocustError
 from locust.user.sequential_taskset import SequentialTaskSet
 
 from grizzly.context import GrizzlyContext
-from grizzly.exceptions import StopScenario
+from grizzly.exceptions import StopScenario, TaskTimeoutError, failure_handler
 from grizzly.gevent import GreenletFactory
 from grizzly.tasks import GrizzlyTask, grizzlytask
 from grizzly.testdata.communication import TestdataConsumer
@@ -150,8 +150,17 @@ class GrizzlyScenario(SequentialTaskSet):
         raised in the greenlet should be caught else where.
         """
         try:
-            with self.task_greenlet_factory.spawn_task(super().execute_next_task, index, total, description) as greenlet:
+            task = self._task_queue.popleft()
+
+            with self.task_greenlet_factory.spawn_task(self, task, index, total, description) as greenlet:
                 self.task_greenlet = greenlet
+        except TaskTimeoutError as e:
+            metadata = getattr(task, '__grizzly_metadata__', {})
+            method = metadata.get('method', None) or 'TASK'
+            name = metadata.get('name', None) or description
+
+            self.user.environment.stats.log_error(method, name, str(e))
+            failure_handler(e, self.user._scenario)
         finally:
             self.task_greenlet = None
 

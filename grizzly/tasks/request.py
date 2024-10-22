@@ -39,12 +39,14 @@ All pipe arguments will be removed from `endpoint` before creating the task inst
 pipe arguments might be supported.
 
 ```plain
-<endpoint> [| content_type=<content_type>]
+<endpoint> [| content_type=<content_type>[, timeout=<seconds]]
 ```
 
 * `endpoint` _str_ - endpoint in format that the specified {@pylink grizzly.users} understands
 
 * `content_type` _TransformerContentType_ (optional) - MIME type of response from `endpoint`
+
+* `timeout` _float_ (optional) - Maximum number of seconds that the task is allowed to execute, if it is exceeded `TaskTimeOutError` will be raised
 
 Specifying MIME/content type as an argument to `endpoint` is the same as using {@pylink grizzly.steps.scenario.response.step_response_content_type}.
 
@@ -122,8 +124,6 @@ class RequestTask(GrizzlyMetaRequestTask):
     response: RequestTaskResponse
 
     def __init__(self, method: RequestMethod, name: str, endpoint: str, source: Optional[str] = None) -> None:
-        super().__init__()
-
         self.method = method
         self.name = name
         self.endpoint = endpoint
@@ -137,6 +137,7 @@ class RequestTask(GrizzlyMetaRequestTask):
         self.__rendered__ = False
 
         content_type: TransformerContentType = TransformerContentType.UNDEFINED
+        timeout: float | None = None
 
         if has_separator('|', self.endpoint):
             value, value_arguments = split_value(self.endpoint)
@@ -156,16 +157,27 @@ class RequestTask(GrizzlyMetaRequestTask):
                     message = f'Content type multipart/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename: {self.endpoint}'
                     raise AssertionError(message)
 
+            if 'timeout' in self.arguments:
+                try:
+                    timeout = float(self.arguments['timeout'])
+                    del self.arguments['timeout']
+                except:
+                    message = f'unable to interprent value of "timeout" argument in "{self.endpoint}"'
+                    raise AssertionError(message) from None
+
             self.endpoint = value
 
         self.response.content_type = content_type
         self.content_type = content_type
+
+        super().__init__(timeout=timeout)
 
     def add_metadata(self, key: str, value: str) -> None:
         """Add new metadata key value, where default value of metadata is None, it must be initialized as a dict."""
         self.metadata.update({key: value})
 
     def __call__(self) -> grizzlytask:
+        @grizzlytask.metadata(timeout=self.timeout, method=self.method.name, name=self.name)
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
             return parent.user.request(self)

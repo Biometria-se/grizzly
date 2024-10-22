@@ -23,10 +23,21 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger('webserver')
 
 
-auth_expected: Optional[dict[str, Any]] = None
+class TestApp(Flask):
+    _user_request_tracker: dict[str, int]
+    auth_expected: dict[str, Any] | None
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._user_request_tracker = {}
+        self.auth_expected = None
+
+    @property
+    def user_request_tracker(self) -> dict[str, int]:
+        return self._user_request_tracker
 
 
-app = Flask('webserver')
+app = TestApp('webserver')
 
 # ugly hack to get correct path when webserver.py is injected for running distributed
 root_dir = (Path(__file__).parent / '..').resolve()
@@ -92,7 +103,6 @@ def app_get_author(author_key: str) -> FlaskResponse:
     if len(request.get_data(cache=False, as_text=True)) > 0:
         return FlaskResponse(status=403)
 
-
     return jsonify({
         'name': name.replace('_', ' '),
     })
@@ -120,11 +130,11 @@ def app_echo() -> FlaskResponse:
         for key, value in request.args.items():
             payload[key] = value
 
-    if auth_expected is not None:
+    if app.auth_expected is not None:
         try:
-            assert request.headers.get('Authorization', '') == f'Bearer {auth_expected["token"]}', 'not authenticated'
+            assert request.headers.get('Authorization', '') == f'Bearer {app.auth_expected["token"]}', 'not authenticated'
 
-            expected_headers = auth_expected.get('headers', None)
+            expected_headers = app.auth_expected.get('headers', None)
             if expected_headers is not None:
                 for key, expected_value in expected_headers.items():
                     actual_value = request.headers.get(key, '')
@@ -161,15 +171,32 @@ def app_sleep(seconds: str) -> FlaskResponse:
     return response
 
 
-app_request_count: dict[str, int] = {}
+@app.route('/api/sleep-once/<seconds>', methods=['GET'])
+def app_sleep_once(seconds: str) -> FlaskResponse:
+    x_grizzly_user = request.headers.get('x-grizzly-user', 'unknown')
+
+    x_grizzly_user = f'{x_grizzly_user}::sleep-once'
+
+    app._user_request_tracker.update({x_grizzly_user: app._user_request_tracker.get(x_grizzly_user, 0) + 1})
+
+    start = perf_counter()
+    if app.user_request_tracker.get(x_grizzly_user, 1) == 1:
+        gevent.sleep(float(seconds))
+
+    took = int((perf_counter() - start) * 1000)
+
+    response = jsonify({'slept': float(seconds), 'took': took})
+    response.status_code = 200
+
+    return response
 
 
 @app.route('/api/until/reset')
 def app_until_reset() -> FlaskResponse:
     x_grizzly_user = request.headers.get('x-grizzly-user', 'unknown')
 
-    if x_grizzly_user in app_request_count:
-        app_request_count[x_grizzly_user] = 0
+    if x_grizzly_user in app.user_request_tracker:
+        app.user_request_tracker[x_grizzly_user] = 0
 
     return jsonify({})
 
@@ -178,8 +205,8 @@ def app_until_reset() -> FlaskResponse:
 def app_until_attribute(attribute: str) -> FlaskResponse:
     x_grizzly_user = request.headers.get('x-grizzly-user', 'unknown')
 
-    if x_grizzly_user not in app_request_count:
-        app_request_count[x_grizzly_user] = 0
+    if x_grizzly_user not in app.user_request_tracker:
+        app.user_request_tracker[x_grizzly_user] = 0
 
     args = request.args
     nth = int(args['nth'])
@@ -193,13 +220,13 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
 
         return response
 
-    if app_request_count[x_grizzly_user] < nth - 1:
+    if app.user_request_tracker[x_grizzly_user] < nth - 1:
         status = wrong if not wrong.isnumeric() else 'foobar'
-        app_request_count[x_grizzly_user] += 1
+        app.user_request_tracker[x_grizzly_user] += 1
         status_code = 400 if not wrong.isnumeric() else int(wrong)
     else:
         status = right if not right.isnumeric() else 'foobar'
-        app_request_count[x_grizzly_user] = 0
+        app.user_request_tracker[x_grizzly_user] = 0
         status_code = 200 if not right.isnumeric() else int(right)
 
     json_result: Any = {attribute: status}
@@ -224,22 +251,22 @@ def app_oauth2_authorize(tenant: str) -> FlaskResponse:
 def app_oauth2_token(tenant: str) -> FlaskResponse:
     form = request.form
 
-    if auth_expected is None:
+    if app.auth_expected is None:
         response = jsonify({'error_description': 'not setup for authentication'})
         response.status_code = 400
         return response
 
     try:
-        assert tenant == auth_expected['tenant'], f'{tenant} != {auth_expected["tenant"]}'
+        assert tenant == app.auth_expected['tenant'], f'{tenant} != {app.auth_expected["tenant"]}'
         assert form['grant_type'] == 'client_credentials', f'grant_type {form["grant_type"]} != client_credentials'
-        assert form['client_secret'] == auth_expected['client']['secret'], f'client_secret {form["client_secret"]} != {auth_expected["client"]["secret"]}'
-        assert form['client_id'] == auth_expected['client']['id'], f'client_id {form["client_id"]} != {auth_expected["client"]["id"]}'
+        assert form['client_secret'] == app.auth_expected['client']['secret'], f'client_secret {form["client_secret"]} != {app.auth_expected["client"]["secret"]}'
+        assert form['client_id'] == app.auth_expected['client']['id'], f'client_id {form["client_id"]} != {app.auth_expected["client"]["id"]}'
     except AssertionError as e:
         response = jsonify({'error_description': str(e)})
         response.status_code = 400
         return response
 
-    return jsonify({'access_token': auth_expected['token']})
+    return jsonify({'access_token': app.auth_expected['token']})
 
 
 @app.route('/write', methods=['POST'])
@@ -273,12 +300,11 @@ class Webserver:
 
     @property
     def auth(self) -> Optional[dict[str, Any]]:
-        return auth_expected
+        return app.auth_expected
 
     @auth.setter
     def auth(self, value: Optional[dict[str, Any]]) -> None:
-        global auth_expected  # noqa: PLW0603
-        auth_expected = value
+        app.auth_expected = value
 
     @property
     def auth_provider_uri(self) -> str:

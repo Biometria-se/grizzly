@@ -57,7 +57,7 @@ class TransformerTask(GrizzlyTask):
         content: str,
         content_type: TransformerContentType,
     ) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         self.expression = expression
         self.variable = variable

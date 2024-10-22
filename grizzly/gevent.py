@@ -5,11 +5,15 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable
 
-from gevent import Greenlet, getcurrent
+from gevent import Greenlet, Timeout, getcurrent
+
+from grizzly.exceptions import TaskTimeoutError
 
 if TYPE_CHECKING:
     import logging
     from collections.abc import Generator
+
+    from grizzly.scenarios import GrizzlyScenario
 
 
 class GreenletFactory:
@@ -42,14 +46,18 @@ class GreenletFactory:
 
     def wrap_exceptions(self, func: Callable) -> Callable:
         """Make sure exceptions is thrown from the correct place, so it can be handled."""
+        metadata = getattr(func, '__grizzly_metadata__', {})
+        timeout = metadata.get('timeout')
+
         @wraps(func)
         def exception_handler(*args: Any, **kwargs: Any) -> Any:
             try:
-                result = func(*args, **kwargs)
+                with Timeout(seconds=timeout, exception=TaskTimeoutError(f'task took more than {timeout} seconds')):
+                    result = func(*args, **kwargs)
 
-                if self.total > 0:
-                    message = f'task {self.index} of {self.total} executed: {self.description}'
-                    self.logger.debug(message)
+                    if self.total > 0:
+                        message = f'task {self.index} of {self.total} executed: {self.description}'
+                        self.logger.debug(message)
             except Exception as exception:
                 self.wrap_exceptions(self.handle_exception)(exception)
                 return exception
@@ -67,7 +75,9 @@ class GreenletFactory:
         )
 
     @contextmanager
-    def spawn_task(self, func: Callable, index: int, total: int, description: str, *args: Any, **kwargs: Any) -> Generator[Greenlet, None, None]:
+    def spawn_task(
+        self, scenario: GrizzlyScenario, task: Callable, index: int, total: int, description: str, *args: Any, **kwargs: Any,
+    ) -> Generator[Greenlet, None, None]:
         """Spawn a greenlet executing the function and wait for the function to finish.
         Get the result of the executed function, if there was an exception raised, it will be
         re-raised by `get`.
@@ -76,7 +86,9 @@ class GreenletFactory:
         self.total = total
         self.description = description
 
-        greenlet = self.spawn(func, *args, **kwargs)
+        args = (scenario, *args)
+
+        greenlet = self.spawn(task, *args, **kwargs)
 
         yield greenlet
 

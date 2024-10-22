@@ -39,7 +39,7 @@ class TimerTask(GrizzlyTask):
     variable: str
 
     def __init__(self, name: str) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         name_hash = sha1(f'timer-{name}'.encode()).hexdigest()[:8]  # noqa: S324
 

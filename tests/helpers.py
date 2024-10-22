@@ -164,7 +164,8 @@ class TestTask(GrizzlyTask):
     task_call_count: int
 
     def __init__(self, name: Optional[str] = None) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
+
         self.name = name
         self.call_count = 0
         self.task_call_count = 0

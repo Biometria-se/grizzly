@@ -85,7 +85,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         text: Optional[str] = None,
         method: Optional[RequestMethod] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         if text is not None:
             self.text = text

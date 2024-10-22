@@ -211,8 +211,9 @@ def step_setup_failed_task_custom(context: Context, failure: type[Exception] | s
 
     Example:
     ```gherkin
-    When a task fails with "504 gateway timeout" retry step
+    When a task fails with "504 gateway timeout" retry task
     When a task fails with "RuntimeError" stop user
+    When a task fails with "TaskTimeoutError" retry task
     ```
 
     """

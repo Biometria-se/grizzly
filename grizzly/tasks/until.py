@@ -79,7 +79,7 @@ class UntilRequestTask(GrizzlyTask):
     expected_matches: int
 
     def __init__(self, request: GrizzlyMetaRequestTask, condition: str) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         self.request = request
         self.condition = condition

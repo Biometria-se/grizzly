@@ -53,7 +53,7 @@ class KeystoreTask(GrizzlyTask):
     default_value: Any | None
 
     def __init__(self, key: str, action: Action, action_context: str | Any, default_value: Any | None = None) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         self.key = key
         self.action = action

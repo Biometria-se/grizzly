@@ -33,6 +33,10 @@ class RetryTask(Exception):  # noqa: N818
     pass
 
 
+class TaskTimeoutError(Exception):
+    pass
+
+
 class AssertionErrors(Exception):  # noqa: N818
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
