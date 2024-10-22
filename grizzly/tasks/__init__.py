@@ -175,7 +175,7 @@ class GrizzlyTask(ABC):
 
     grizzly: GrizzlyContext
 
-    def __init__(self, *, timeout: float | None) -> None:
+    def __init__(self, *, timeout: float | None = None) -> None:
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
         self.grizzly = GrizzlyContext()
         self.timeout = timeout
