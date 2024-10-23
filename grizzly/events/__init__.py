@@ -146,7 +146,7 @@ class GrizzlyEventDecoder(metaclass=ABCMeta):
 def event(
         hook: GrizzlyInternalEventHook,
         *,
-        decoder: GrizzlyEventDecoder,
+        decoder: GrizzlyEventDecoder | None = None,
         measurement: str | None = None,
         tags: dict[str, str | None] | None = None,
     ) -> Callable[..., Any]:
@@ -168,7 +168,11 @@ def event(
                 timestamp = datetime.now(timezone.utc).isoformat()
 
                 try:
-                    metrics, decoded_tags = decoder(*args, tags=tags, return_value=return_value, exception=exception, **kwargs)
+                    if decoder:
+                        metrics, decoded_tags = decoder(*args, tags=tags, return_value=return_value, exception=exception, **kwargs)
+                    else:
+                        metrics = {}
+                        decoded_tags = {}
 
                     if tags is not None:
                         decoded_tags.update(tags)

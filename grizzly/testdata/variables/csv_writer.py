@@ -29,6 +29,9 @@ from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
+from gevent.fileobject import FileObjectThread
+
+from grizzly.events import GrizzlyEventDecoder, event, events
 from grizzly.types import bool_type, list_type
 from grizzly.types.locust import Environment, MasterRunner, Message
 from grizzly_extras.arguments import parse_arguments, split_value
@@ -39,6 +42,8 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
     from grizzly.types.locust import MessageHandler
 
+
+open_files: dict[str, FileObjectThread] = {}
 
 def atomiccsvwriter__base_type__(value: str) -> str:
     """Validate values that `AtomicCsvWriter` can be initialized with."""
@@ -82,6 +87,35 @@ def atomiccsvwriter__base_type__(value: str) -> str:
     return value
 
 
+class CsvMessageDecoder(GrizzlyEventDecoder):
+    def __call__(
+        self,
+        *args: Any,
+        tags: dict[str, str | None] | None,
+        return_value: Any,  # noqa: ARG002
+        exception: Exception | None,
+        **kwargs: Any,
+    ) -> tuple[dict[str, Any], dict[str, str | None]]:
+        if tags is None:
+            tags = {}
+
+        message = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
+
+        tags = {
+            'filename': message.data['destination'],
+            **tags,
+        }
+
+        metrics: dict[str, Any] = {
+            'error': None,
+        }
+
+        if exception is not None:
+            metrics.update({'error': str(exception)})
+
+        return metrics, tags
+
+@event(events.user_event, tags={'type': 'testdata::atomiccsvwriter'}, decoder=CsvMessageDecoder(arg='msg'))
 def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
     """Receive messages containing CSV data.
     Write the data to a CSV file.
@@ -93,15 +127,22 @@ def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **_k
         context_root = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
 
         output_path = context_root / destination_file
+        file_key = output_path.absolute().as_posix()
 
         exists = output_path.exists()
 
-        with output_path.open('a+', newline='') as csv_file:
-            writer = DictWriter(csv_file, fieldnames=headers)
-            if not exists:
-                writer.writeheader()
+        if file_key in open_files:
+            csv_file = open_files[file_key]
+        else:
+            csv_file = FileObjectThread(output_path.open('a+', newline=''))
+            open_files[file_key] = csv_file
 
-            writer.writerow(data['row'])
+        writer = DictWriter(csv_file, fieldnames=headers)
+        if not exists:
+            writer.writeheader()
+
+        writer.writerow(data['row'])
+        csv_file.flush()
 
 
 class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
