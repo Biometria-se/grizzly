@@ -1,11 +1,12 @@
 """Unit tests for grizzly.testdata.variable.csv_writer."""
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import TYPE_CHECKING
 
 import pytest
 
-from grizzly.testdata.variables.csv_writer import AtomicCsvWriter, atomiccsvwriter__base_type__, atomiccsvwriter_message_handler
+from grizzly.testdata.variables.csv_writer import AtomicCsvWriter, atomiccsvwriter__base_type__, atomiccsvwriter_message_handler, open_files
 from grizzly.types.locust import Message
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -39,37 +40,41 @@ def test_atomiccsvwriter__base_type__(grizzly_fixture: GrizzlyFixture) -> None:
 
 
 def test_atomiccsvwriter_message_handler(grizzly_fixture: GrizzlyFixture) -> None:
-    parent = grizzly_fixture()
+    try:
+        parent = grizzly_fixture()
 
-    destination_file = grizzly_fixture.test_context / 'requests' / 'foobar.csv'
+        destination_file = grizzly_fixture.test_context / 'requests' / 'foobar.csv'
 
-    assert not destination_file.exists()
+        assert not destination_file.exists()
 
-    message = Message('atomiccsvwriter', data={
-        'destination': 'foobar.csv',
-        'row': {
-            'foo': 'hello',
-            'bar': 'world!',
-        },
-    }, node_id=None)
+        message = Message('atomiccsvwriter', data={
+            'destination': 'foobar.csv',
+            'row': {
+                'foo': 'hello',
+                'bar': 'world!',
+            },
+        }, node_id=None)
 
-    atomiccsvwriter_message_handler(parent.user.environment, message)
+        atomiccsvwriter_message_handler(parent.user.environment, message)
 
-    assert destination_file.exists()
-    assert destination_file.read_text() == 'foo,bar\nhello,world!\n'
+        assert destination_file.exists()
+        assert destination_file.read_text() == 'foo,bar\nhello,world!\n'
 
-    message = Message('atomiccsvwriter', data={
-        'destination': 'foobar.csv',
-        'row': {
-            'foo': 'bar',
-            'bar': 'foo',
-        },
-    }, node_id=None)
+        message = Message('atomiccsvwriter', data={
+            'destination': 'foobar.csv',
+            'row': {
+                'foo': 'bar',
+                'bar': 'foo',
+            },
+        }, node_id=None)
 
-    atomiccsvwriter_message_handler(parent.user.environment, message)
+        atomiccsvwriter_message_handler(parent.user.environment, message)
 
-    assert destination_file.read_text() == 'foo,bar\nhello,world!\nbar,foo\n'
-
+        assert destination_file.read_text() == 'foo,bar\nhello,world!\nbar,foo\n'
+    finally:
+        for open_file in open_files.values():
+            with suppress(Exception):
+                open_file.close()
 
 class TestAtomicCsvWriter:
     def test___init__(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
