@@ -63,6 +63,10 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         self._arguments = {}
         self._subscriptions = []
 
+        for logger_name in ['azure.servicebus._base_handler']:
+            logger = logging.getLogger(logger_name)
+            logger.setLevel(logging.CRITICAL)
+
     @property
     def client(self) -> ServiceBusClient:
         if self._client is None:
@@ -631,24 +635,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 self._hello(request, force=True)
                 receiver = self._receiver_cache[cache_endpoint]
 
-            if action == 'EMPTY':
-                empty_message_count = 0
-                empty_message_start = perf_counter()
-                while len(receiver.peek_messages(max_message_count=10, timeout=10)) >= 10:
-                    with suppress(Exception):
-                        for message in receiver.receive_messages(max_message_count=100, max_wait_time=10):
-                            receiver.complete_message(message)
-                            empty_message_count += 1
-
-                empty_message_time = perf_counter() - empty_message_start
-                msg = f'{client}::{cache_endpoint}: consumed {empty_message_count} messages which took {empty_message_time:.2f} seconds'
-
-                self.logger.info(msg)
-
-                return {
-                    'message': msg if empty_message_count > 0 else '',
-                }
-
             # reset last activity timestamp, might be set from previous usage that was more
             # than message_wait ago, which will cause a "timeout" when trying to read it now
             # which means we'll not get any messages, even though the endpoint isn't empty
@@ -662,6 +648,24 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     break
 
                 try:
+                    if action == 'EMPTY':
+                        empty_message_count = 0
+                        empty_message_start = perf_counter()
+                        while len(receiver.peek_messages(max_message_count=10, timeout=20)) >= 10:
+                            with suppress(Exception):
+                                for message in receiver.receive_messages(max_message_count=100, max_wait_time=20):
+                                    receiver.complete_message(message)
+                                    empty_message_count += 1
+
+                        empty_message_time = perf_counter() - empty_message_start
+                        msg = f'{client}::{cache_endpoint}: consumed {empty_message_count} messages which took {empty_message_time:.2f} seconds'
+
+                        self.logger.info(msg)
+
+                        return {
+                            'message': msg if empty_message_count > 0 else '',
+                        }
+
                     if expression is not None:
                         try:
                             content_type = TransformerContentType.from_string(cast(str, request.get('context', {})['content_type']))

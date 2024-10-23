@@ -107,6 +107,10 @@ def failure_handler(exception: Exception | None, scenario: GrizzlyContextScenari
         if failure_type is None:
             continue
 
+        # continue test for this specific error, i.e. ignore it
+        if failure_action is None:
+            return
+
         if (isinstance(failure_type, str) and failure_type in str(exception)) or exception.__class__ is failure_type:
             raise failure_action from exception
 

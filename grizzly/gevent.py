@@ -40,7 +40,7 @@ class GreenletFactory:
         """Handle exception thrown, by throwing it from the greenlet that started this greenlet."""
         if exception.__class__ not in self.ignore_exceptions and self.total > 0:
             message = f'task {self.index} of {self.total} failed: {self.description}'
-            self.logger.exception(message)
+            self.logger.error(message)
 
         self.started_from.throw(exception)
 

@@ -81,12 +81,13 @@ class FailureAction(PermutationEnum):
     STOP_USER = (StopUser, 'stop user', True)
     RESTART_SCENARIO = (RestartScenario, 'restart scenario', True)
     RETRY_TASK = (RetryTask, 'retry task', False)
+    CONTINUE = (None, 'continue', True)
 
     step_expression: str
-    exception: type[Exception]
+    exception: type[Exception] | None
     default_friendly: bool
 
-    def __new__(cls, exception: type[Exception], step_exression: str, default_friendly: bool) -> Self:  # noqa: FBT001
+    def __new__(cls, exception: type[Exception] | None, step_exression: str, default_friendly: bool) -> Self:  # noqa: FBT001
         obj = object.__new__(cls)
         obj._value_ = exception
         obj.step_expression = step_exression
