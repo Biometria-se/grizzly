@@ -6,7 +6,7 @@ import logging
 import subprocess
 import sys
 from collections import defaultdict
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from math import ceil, floor
 from operator import attrgetter, itemgetter
@@ -891,7 +891,8 @@ def cleanup_resources(processes: dict[str, subprocess.Popen], greenlet: Optional
     processes.clear()
 
     for file_handle in file_handle_cache.values():
-        file_handle.close()
+        with suppress(Exception):
+            file_handle.close()
 
 
 def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912

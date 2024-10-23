@@ -127,7 +127,7 @@ def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **_k
         context_root = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
 
         output_path = context_root / destination_file
-        file_key = str(output_path.absolute())
+        file_key = output_path.absolute().as_posix()
 
         exists = output_path.exists()
 
