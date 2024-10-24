@@ -6,7 +6,7 @@ import logging
 import subprocess
 import sys
 from collections import defaultdict
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from math import ceil, floor
 from operator import attrgetter, itemgetter
@@ -29,6 +29,7 @@ from . import __locust_version__, __version__
 from .context import GrizzlyContext
 from .listeners import init, init_statistics_listener, locust_test_start, locust_test_stop, quitting, spawning_complete, validate_result, worker_report
 from .testdata.utils import initialize_testdata
+from .testdata.variables.csv_writer import open_files
 from .types import RequestType, TestdataType
 from .types.behave import Context, Status
 from .types.locust import Environment, LocustRunner, MasterRunner, Message, WorkerRunner
@@ -44,6 +45,7 @@ __all__ = [
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterator
 
+    from gevent.fileobject import FileObjectThread
     from locust.runners import WorkerNode
 
 
@@ -865,7 +867,7 @@ def return_code(environment: Environment, msg: Message) -> None:
         logger.info('worker %s changed environment.process_exit_code: %r -> %r', msg.node_id, old_rc, environment.process_exit_code)
 
 
-def shutdown_external_processes(processes: dict[str, subprocess.Popen], greenlet: Optional[gevent.Greenlet]) -> None:
+def cleanup_resources(processes: dict[str, subprocess.Popen], greenlet: Optional[gevent.Greenlet], file_handle_cache: dict[str, FileObjectThread]) -> None:
     if len(processes) < 1:
         return
 
@@ -887,6 +889,10 @@ def shutdown_external_processes(processes: dict[str, subprocess.Popen], greenlet
         logger.debug('%s: process.returncode=%d', dependency, process.returncode)
 
     processes.clear()
+
+    for file_handle in file_handle_cache.values():
+        with suppress(Exception):
+            file_handle.close()
 
 
 def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
@@ -1263,7 +1269,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         return code
     finally:
-        shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
+        cleanup_resources(external_processes, watch_running_external_processes_greenlet, open_files)
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> list[tuple[str, str, int]]:
