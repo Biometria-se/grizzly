@@ -11,8 +11,9 @@ from urllib.parse import urlparse
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
 from azure.servicebus._pyamqp import ReceiveClient
+from azure.servicebus._pyamqp.error import AMQPLinkError
 from azure.servicebus.amqp import AmqpMessageBodyType
-from azure.servicebus.exceptions import MessageLockLostError, ServiceBusError
+from azure.servicebus.exceptions import MessageLockLostError, OperationTimeoutError, ServiceBusError
 from azure.servicebus.management import ServiceBusAdministrationClient, SqlRuleFilter, TopicProperties
 
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
@@ -755,23 +756,15 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         continue
 
                     raise AsyncMessageError(str(e)) from e
-                except (ServiceBusError, ValueError) as e:
-                    if any(msg in str(e) for msg in [
-                        'Connection to remote host was lost',
-                        'socket is already closed',
-                        'handler has already been shutdown',
-                        'Authentication attempt timed-out',
-                    ]):
-                        if retry < 3 and not self._event.is_set():
-                            self.logger.warning('connection unexpectedly closed, reconnecting', exc_info=True)
-                            self._hello(request, force=True)
-                            receiver = self._receiver_cache[cache_endpoint]
-                            message = None
-                            continue
+                except (ServiceBusError, AMQPLinkError, OperationTimeoutError) as e:
+                    if retry < 3 and not self._event.is_set():
+                        self.logger.warning('connection unexpectedly closed, reconnecting', exc_info=True)
+                        self._hello(request, force=True)
+                        receiver = self._receiver_cache[cache_endpoint]
+                        message = None
+                        continue
 
-                        error_message = 'could not reconnect on last retry'
-                    else:
-                        error_message = 'unhandled service bus error'
+                    error_message = 'could not reconnect on last retry'
 
                     if self._event.is_set():
                         break
