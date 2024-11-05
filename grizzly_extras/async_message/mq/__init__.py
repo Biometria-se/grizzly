@@ -18,7 +18,7 @@ except:
 
 from .rfh2 import Rfh2Decoder, Rfh2Encoder
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Generator
     from threading import Event
 

@@ -17,7 +17,7 @@ from dateutil.parser import parse as dateparser
 from grizzly.utils import _print_table
 from grizzly_extras.async_message.utils import async_message_request
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from http.cookiejar import CookieJar
 
     from zmq import sugar as ztypes

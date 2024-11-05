@@ -42,7 +42,7 @@ __all__ = [
 ]
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Generator, Iterator
 
     from gevent.fileobject import FileObjectThread

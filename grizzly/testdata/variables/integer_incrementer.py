@@ -84,7 +84,7 @@ from grizzly_extras.text import has_separator
 
 from . import AtomicVariable, AtomicVariablePersist
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
 
 

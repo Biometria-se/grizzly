@@ -27,7 +27,7 @@ from pyotp import TOTP
 from requests.adapters import HTTPAdapter, Retry
 from typing_extensions import Self
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from types import TracebackType
 
 logger = logging.getLogger(__name__)

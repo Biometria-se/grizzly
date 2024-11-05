@@ -9,7 +9,7 @@ from gevent import Greenlet, Timeout, getcurrent
 
 from grizzly.exceptions import TaskTimeoutError
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     import logging
     from collections.abc import Generator
 

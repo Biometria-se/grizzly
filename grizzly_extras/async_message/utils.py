@@ -12,7 +12,7 @@ from zmq.error import Again as ZMQAgain
 from grizzly_extras.async_message import AsyncMessageError, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.exceptions import StopScenario
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from zmq import sugar as ztypes
 
 logger = logging.getLogger(__name__)

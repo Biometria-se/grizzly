@@ -96,7 +96,7 @@ from grizzly_extras.async_message.utils import async_message_request
 
 from . import GrizzlyUser, grizzlycontext
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Generator
 
 MAX_LENGTH = 65
