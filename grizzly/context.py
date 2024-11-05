@@ -296,7 +296,7 @@ class GrizzlyContextScenario:
     variables: GrizzlyVariables = field(init=False, repr=False, hash=False, default_factory=GrizzlyVariables)
     _tasks: GrizzlyContextTasks = field(init=False, repr=False, hash=False, compare=False)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
-    failure_handling: dict[type[Exception] | str | None, type[Exception]] = field(init=False, repr=False, hash=False, default_factory=dict)
+    failure_handling: dict[type[Exception] | str | None, type[Exception] | None] = field(init=False, repr=False, hash=False, default_factory=dict)
     orphan_templates: list[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
     _jinja2: Environment = field(init=False, repr=False, default_factory=jinja2_environment_factory)
 

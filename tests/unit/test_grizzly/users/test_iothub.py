@@ -4,9 +4,10 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
+from uuid import UUID
 
 import pytest
-from azure.iot.device import IoTHubDeviceClient
+from azure.iot.device import IoTHubDeviceClient, Message
 from azure.storage.blob._blob_client import BlobClient
 from azure.storage.blob._models import ContentSettings
 
@@ -16,9 +17,9 @@ from grizzly.tasks import RequestTask
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
 from grizzly.types import RequestMethod, ScenarioState
-from grizzly.users.iothub import IotHubUser
+from grizzly.users.iothub import IotHubUser, IotMessageDecoder, MessageJsonSerializer
 from grizzly_extras.transformer import TransformerContentType
-from tests.helpers import SOME
+from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
     from unittest.mock import MagicMock
@@ -84,6 +85,44 @@ def parent_fixture(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> Pa
         blob_client_factory_mock=blob_client_factory_mock,
         blob_client_mock=blob_client_mock.__enter__.return_value,
     )
+
+
+def test_message_json_serializer() -> None:
+    uuid = UUID(bytes=b'foobar31337fooba', version=4)
+    decoder = MessageJsonSerializer()
+
+    assert decoder.default(uuid) == '666f6f62-6172-4331-b333-37666f6f6261'
+    assert decoder.default(b'foobar') == 'foobar'
+
+    with pytest.raises(TypeError):
+        assert decoder.default(10) == 10
+
+
+def test_iot_message_decoder(mocker: MockerFixture) -> None:
+    decoder = IotMessageDecoder(arg='message')
+
+    instance_mock = mocker.MagicMock()
+    instance_mock.device_id = 'foobar'
+
+    message = Message(None, message_id='foobar', content_encoding='utf-8', content_type='application/json')
+    message.custom_properties = {'bar': 'foo'}
+
+    actual_metrics, actual_tags = decoder(instance_mock, tags={'foo': 'bar'}, return_value=None, message=message, exception=None)
+
+    assert actual_metrics == {'error': None, 'size': ANY(int), 'message_id': 'foobar'}
+    assert actual_tags == {'identifier': instance_mock.device_id, 'foo': 'bar', 'bar': 'foo'}
+
+    exception = RuntimeError('error')
+
+    actual_metrics, actual_tags = decoder(instance_mock, tags={'foo': 'bar'}, return_value=None, message=message, exception=exception)
+
+    assert actual_metrics == {'error': str(exception), 'size': ANY(int), 'message_id': 'foobar'}
+    assert actual_tags == {'identifier': instance_mock.device_id, 'foo': 'bar', 'bar': 'foo'}
+
+    actual_metrics, actual_tags = decoder(instance_mock, tags=None, return_value=None, message=message, exception=exception)
+
+    assert actual_metrics == {'error': str(exception), 'size': ANY(int), 'message_id': 'foobar'}
+    assert actual_tags == {'identifier': instance_mock.device_id, 'bar': 'foo'}
 
 
 class TestIotHubUser:
@@ -323,3 +362,11 @@ class TestIotHubUser:
         gzip_compress.assert_not_called()
         parent_fixture.blob_client_mock.upload_blob.assert_not_called()
         parent_fixture.iot_device_mock.notify_blob_upload_status.assert_not_called()
+
+    def test__extract(self, parent_fixture: ParentFixture) -> None:
+        assert isinstance(parent_fixture.user, IotHubUser)
+
+        assert parent_fixture.user._extract({'foo': {'bar': 'baz'}}, '$.foo.bar') == ['baz']
+
+        assert parent_fixture.user._extract('{"foo": {"bar": "baz"}}', '$.foo.bar') == ['baz']
+

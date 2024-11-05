@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import traceback
 from datetime import datetime, timedelta
 from os import environ
@@ -56,12 +57,13 @@ class RequestLogger(GrizzlyEventHandlerClass):
 
     @classmethod
     def _remove_secrets_attribute(cls, contents: Optional[Any]) -> Optional[Any]:
-        if not isinstance(contents, dict):
-            return contents
+        if isinstance(contents, str):
+            contents = re.sub(r'SharedAccessKey=[^;]+', 'SharedAccessKey=*** REMOVED ***', contents)
 
-        for attribute in contents:
-            if attribute in ['access_token', 'Authorization', 'authorization']:
-                contents[attribute] = '*** REMOVED ***'
+        if isinstance(contents, dict):
+            for attribute in contents:
+                if attribute in ['access_token', 'Authorization', 'authorization']:
+                    contents[attribute] = '*** REMOVED ***'
 
         return contents
 
@@ -169,6 +171,8 @@ class RequestLogger(GrizzlyEventHandlerClass):
 
         variables['response']['metadata'] = self._remove_secrets_attribute(variables['response']['metadata'])
         variables['request']['metadata'] = self._remove_secrets_attribute(variables['request']['metadata'])
+        variables['response']['url'] = self._remove_secrets_attribute(variables['response']['url'])
+        variables['request']['url'] = self._remove_secrets_attribute(variables['request']['url'])
 
         for v in ['response', 'request']:
             if variables[v]['metadata'] is not None:

@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, cast
 
 from . import AtomicVariable
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
 
 

@@ -43,7 +43,7 @@ class SetVariableTask(GrizzlyTask):
     _variable_key: str
 
     def __init__(self, variable: str, value: str, variable_type: VariableType) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         self.variable = variable
         self.value = value

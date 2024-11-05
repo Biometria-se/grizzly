@@ -252,7 +252,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
         if request.method.direction == RequestDirection.TO and request.source is not None:
             if request.response.content_type == TransformerContentType.JSON:
                 try:
-                    parameters['json'] = json.loads(request.source)
+                    parameters['json'] = json.loads(request.source) if len(request.source.strip()) > 0 else ''
                 except json.decoder.JSONDecodeError as e:
                     message = f'{url}: failed to decode'
                     self.logger.exception('%s: %s', url, request.source)

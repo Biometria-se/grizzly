@@ -55,7 +55,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
     _pointer: Optional[bool]
 
     def __init__(self, name: str, condition: str) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         self.name = name
         self.condition = condition

@@ -222,7 +222,9 @@ def test_e2e_step_setup_stop_user_on_failure(e2e_fixture: End2EndFixture) -> Non
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         assert grizzly.scenario.failure_handling.get(None, None) is not None
-        assert isinstance(grizzly.scenario.failure_handling.get(None, RuntimeError)(), StopUser), 'failure exception is not StopUser'
+        failure_action = grizzly.scenario.failure_handling.get(None, RuntimeError)
+        assert failure_action is not None
+        assert isinstance(failure_action(), StopUser), 'failure exception is not StopUser'
 
     e2e_fixture.add_validator(validate_stop_user_on_failure)
 
@@ -243,7 +245,9 @@ def test_e2e_step_setup_restart_scenario_on_failure(e2e_fixture: End2EndFixture)
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         assert grizzly.scenario.failure_handling.get(None, None) is not None
-        assert isinstance(grizzly.scenario.failure_handling.get(None, RuntimeError)(), RestartScenario), 'failure exception is not RestartScenario'
+        failure_action = grizzly.scenario.failure_handling.get(None, RuntimeError)
+        assert failure_action is not None
+        assert isinstance(failure_action(), RestartScenario), 'failure exception is not RestartScenario'
 
     e2e_fixture.add_validator(validate_restart_scenario_on_failure)
 
@@ -289,7 +293,7 @@ def test_e2e_setup_metadata(e2e_fixture: End2EndFixture) -> None:
 
 def test_e2e_setup_failed_task(e2e_fixture: End2EndFixture) -> None:
     def validate_failure_handling(context: Context) -> None:
-        from grizzly.exceptions import RestartScenario, RetryTask, StopUser
+        from grizzly.exceptions import RestartScenario, RetryTask, StopUser, TaskTimeoutError
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -297,6 +301,7 @@ def test_e2e_setup_failed_task(e2e_fixture: End2EndFixture) -> None:
             None: RestartScenario,
             '504 gateway timeout': RetryTask,
             MemoryError: StopUser,
+            TaskTimeoutError: None,
         }
 
     e2e_fixture.add_validator(validate_failure_handling)
@@ -306,6 +311,7 @@ def test_e2e_setup_failed_task(e2e_fixture: End2EndFixture) -> None:
             'When a task fails restart scenario',
             'When a task fails with "504 gateway timeout" retry task',
             'When a task fails with "MemoryError" stop user',
+            'When a task fails with "TaskTimeoutError" continue',
         ],
     )
 

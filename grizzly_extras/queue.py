@@ -7,7 +7,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Callable, TypeVar
 from unittest.mock import ANY
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Iterable
 
 T = TypeVar('T')

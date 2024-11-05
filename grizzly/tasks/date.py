@@ -63,7 +63,7 @@ class DateTask(GrizzlyTask):
     arguments: dict[str, Optional[str]]
 
     def __init__(self, variable: str, value: str) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         self.variable = variable
         self.value = value

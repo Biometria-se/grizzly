@@ -246,3 +246,61 @@ def test_e2e_scenario_failure_handling_retry_task(e2e_fixture: End2EndFixture) -
     log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
 
     assert len(log_files) == 4
+
+
+def test_e2e_scenario_failure_handling_timeout(e2e_fixture: End2EndFixture) -> None:
+    def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
+        from grizzly.locust import on_master
+        if on_master(context):
+            return
+
+        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        stats = grizzly.state.locust.environment.stats
+
+        expectations = [
+            ('001 long response time', 'SCEN', 1, 2),
+            ('001 long response time', 'TSTD', 0, 2),
+            ('001 slow-get1', 'GET', 1, 2),
+            ('001 fast-get2', 'GET', 0, 2),
+        ]
+
+        for name, method, expected_num_failures, expected_num_requests in expectations:
+            stat = stats.get(name, method)
+            assert stat.num_failures == expected_num_failures, f'{stat.method}:{stat.name}.num_failures: {stat.num_failures} != {expected_num_failures}'
+            assert stat.num_requests == expected_num_requests, f'{stat.method}:{stat.name}.num_requests: {stat.num_requests} != {expected_num_requests}'
+
+    e2e_fixture.add_after_feature(after_feature)
+
+    start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
+
+    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test scenario failure handling
+    Background: common configuration
+        Given "1" users
+        And spawn rate is "1" user per second
+        {start_webserver_step}
+    Scenario: long response time
+        Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
+        And repeat for "2" iterations
+        When a task fails stop user
+        When a task fails with "TaskTimeoutError" retry task
+        Then get request with name "slow-get1" from endpoint "/api/sleep-once/10 | timeout=1.0"
+        Then get request with name "fast-get2" from endpoint "/api/echo?foo=bar | content_type=json"
+    """))
+
+    log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
+
+    for log_file in log_files:
+        log_file.unlink()
+
+    rc, output = e2e_fixture.execute(feature_file)
+
+    result = ''.join(output)
+
+    assert rc == 1
+    assert "HOOK-ERROR in after_feature: RuntimeError: locust test failed" in result
+    assert "GET 001 slow-get1: TaskTimeoutError('task took more than 1.0 seconds')" in result
+
+    log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
+
+    assert len(log_files) == 1

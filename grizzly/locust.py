@@ -42,7 +42,7 @@ __all__ = [
 ]
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Generator, Iterator
 
     from gevent.fileobject import FileObjectThread
@@ -1052,8 +1052,11 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
                 return watch_running_external_processes
 
-            watch_running_external_processes_greenlet = gevent.spawn_later(10, start_watching_external_processes(external_processes))
-            watch_running_external_processes_greenlet.link_exception(greenlet_exception_handler)
+            def spawn_running_external_processes_check(*args: Any, **kwargs: Any) -> None:  # noqa: ARG001
+                watch_running_external_processes_greenlet = gevent.spawn(start_watching_external_processes(external_processes))
+                watch_running_external_processes_greenlet.link_exception(greenlet_exception_handler)
+
+            runner.environment.events.spawning_complete.add_listener(spawn_running_external_processes_check)
 
         if not isinstance(runner, WorkerRunner):
             for message_type, callback in message_handlers.items():

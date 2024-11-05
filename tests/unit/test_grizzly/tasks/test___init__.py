@@ -62,6 +62,16 @@ class Testgrizzlytask:
         assert task.__doc__ is not None
         assert task.__doc__.strip() == 'Hello world.'
 
+        assert not hasattr(task, '__grizzly_metadata__')
+
+        task = grizzlytask.metadata(timeout=1.0)(task)
+
+        assert getattr(task, '__grizzly_metadata__', None) == {'timeout': 1.0, 'method': None, 'name': None}
+
+        task = grizzlytask.metadata(timeout=10.0, method='TEST', name='foobar')(task)
+
+        assert getattr(task, '__grizzly_metadata__', None) == {'timeout': 10.0, 'method': 'TEST', 'name': 'foobar'}
+
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
 
@@ -79,7 +89,7 @@ class Testgrizzlytask:
         task = grizzlytask(on_func)
         assert not task._is_parent(on_func)
 
-        dummy = DummyTask()
+        dummy = DummyTask(timeout=None)
         assert not task._is_parent(dummy)
 
         class DummySomething(GrizzlyScenario):
@@ -94,7 +104,7 @@ class Testgrizzlytask:
         bar = DummyOther(parent.user)
         assert task._is_parent(bar)
 
-    @pytest.mark.parametrize('event', ['on_start', 'on_stop'])
+    @pytest.mark.parametrize('event', ['on_start', 'on_stop', 'on_iteration'])
     def test_on_event(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, event: str) -> None:
         parent = grizzly_fixture()
 
@@ -123,14 +133,14 @@ class TestGrizzlyTask:
         with suppress(KeyError):
             del environ['GRIZZLY_CONTEXT_ROOT']
 
-        task = DummyTask()
+        task = DummyTask(timeout=None)
 
         assert task._context_root == '.'
         assert task.__template_attributes__ == {'string_template', 'list_template', 'dict_template'}
 
         try:
             environ['GRIZZLY_CONTEXT_ROOT'] = 'foo bar!'
-            task = DummyTask()
+            task = DummyTask(timeout=None)
 
             assert task._context_root == 'foo bar!'
         finally:
@@ -138,13 +148,13 @@ class TestGrizzlyTask:
                 del environ['GRIZZLY_CONTEXT_ROOT']
 
     def test___call__(self) -> None:
-        task = DummyTask()
+        task = DummyTask(timeout=None)
 
         with pytest.raises(NotImplementedError, match='DummyTask has not been implemented'):
             task()
 
     def test_get_templates(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        task = DummyTask()
+        task = DummyTask(timeout=None)
 
         assert sorted(task.get_templates()) == sorted([
             '{{ string_template }}',

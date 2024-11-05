@@ -286,6 +286,8 @@ class IteratorScenario(GrizzlyScenario):
             self._prefetch = False
             return
 
+        self.on_iteration()
+
         if self.start is not None:
             response_time = int((perf_counter() - self.start) * 1000)
             self.user.environment.events.request.fire(
@@ -299,7 +301,6 @@ class IteratorScenario(GrizzlyScenario):
 
         # scenario timer
         self.start = perf_counter()
-
 
         remote_context = self.consumer.testdata()
 

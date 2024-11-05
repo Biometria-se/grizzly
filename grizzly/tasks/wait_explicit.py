@@ -29,7 +29,7 @@ class ExplicitWaitTask(GrizzlyTask):
     time_expression: str
 
     def __init__(self, time_expression: str) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         self.time_expression = time_expression
 

@@ -45,7 +45,7 @@ class WaitBetweenTask(GrizzlyTask):
     max_time: Optional[str]
 
     def __init__(self, min_time: str, max_time: Optional[str] = None) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         self.min_time = min_time
         self.max_time = max_time

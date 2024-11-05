@@ -35,7 +35,7 @@ class WriteFileTask(GrizzlyTask):
     temp_file: bool
 
     def __init__(self, file_name: str, content: str, *, temp_file: bool = False) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         self.file_name = file_name
         self.content = content

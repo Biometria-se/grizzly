@@ -77,6 +77,8 @@ class TestRequestLogger:
         assert RequestLogger._remove_secrets_attribute(None) is None
         assert RequestLogger._remove_secrets_attribute(True) is True  # noqa: FBT003
         assert RequestLogger._remove_secrets_attribute('hello world') == 'hello world'
+        assert RequestLogger._remove_secrets_attribute('SharedAccessKey=foobar') == 'SharedAccessKey=*** REMOVED ***'
+        assert RequestLogger._remove_secrets_attribute('hello;SharedAccessKey=foobar;world') == 'hello;SharedAccessKey=*** REMOVED ***;world'
 
     @pytest.mark.usefixtures('get_log_files')
     def test___call__(self, grizzly_fixture: GrizzlyFixture, get_log_files: Callable[[], list[Path]]) -> None:

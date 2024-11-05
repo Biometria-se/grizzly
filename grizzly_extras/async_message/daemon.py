@@ -120,7 +120,6 @@ class Worker:
 
                     if self.integration is None:
                         self.integration = self._create_integration(request)
-
                 except Exception as e:
                     response = {
                         'request_id': str(request_request_id),

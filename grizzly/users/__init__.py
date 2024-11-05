@@ -139,6 +139,9 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     def on_stop(self) -> None:
         super().on_stop()
 
+    def on_iteration(self) -> None:
+        pass
+
     def on_state(self, *, state: ScenarioState) -> None:
         pass
 
@@ -218,7 +221,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
                 self.environment.events.quitting.fire(environment=self.environment, abort=True)
                 self.logger.warning('scenario aborted')
             else:
-                message = f'request "{request.name}" failed: {str(e) or e.__class__}'
+                message = f'{request.method.name} request "{request.name}" failed: {str(e) or e.__class__}'
                 self.logger.exception(message)
         finally:
             total_time = int((perf_counter() - start_time) * 1000)

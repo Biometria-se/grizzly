@@ -11,8 +11,9 @@ from urllib.parse import urlparse
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
 from azure.servicebus._pyamqp import ReceiveClient
+from azure.servicebus._pyamqp.error import AMQPLinkError
 from azure.servicebus.amqp import AmqpMessageBodyType
-from azure.servicebus.exceptions import ServiceBusError
+from azure.servicebus.exceptions import MessageLockLostError, OperationTimeoutError, ServiceBusError
 from azure.servicebus.management import ServiceBusAdministrationClient, SqlRuleFilter, TopicProperties
 
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
@@ -62,6 +63,10 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         self._receiver_cache = {}
         self._arguments = {}
         self._subscriptions = []
+
+        for logger_name in ['azure.servicebus._base_handler']:
+            logger = logging.getLogger(logger_name)
+            logger.setLevel(logging.CRITICAL)
 
     @property
     def client(self) -> ServiceBusClient:
@@ -564,9 +569,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             'message': 'there general kenobi',
         }
 
-    @register(handlers, 'SEND', 'RECEIVE')
+    @register(handlers, 'SEND', 'RECEIVE', 'EMPTY')
     def request(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: C901, PLR0912, PLR0915
         context = request.get('context', None)
+        action = request.get('action', None)
+
         if context is None:
             msg = 'no context in request'
             raise AsyncMessageError(msg)
@@ -581,7 +588,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
-        self.logger.info('handling request towards %s', cache_endpoint)
+        self.logger.info('handling %s request towards %s', action, cache_endpoint)
 
         message: Optional[ServiceBusMessage] = None
         metadata: Optional[dict[str, Any]] = None
@@ -635,11 +642,31 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             if message_wait > 0:
                 receiver._handler._last_activity_timestamp = time() if isinstance(receiver._handler, ReceiveClient) else None
 
+            consume_message_ignore_count = 0
+
             for retry in range(1, 4):
                 if self._event.is_set():
                     break
 
                 try:
+                    if action == 'EMPTY':
+                        empty_message_count = 0
+                        empty_message_start = perf_counter()
+                        while len(receiver.peek_messages(max_message_count=10, timeout=20)) >= 10:
+                            with suppress(Exception):
+                                for message in receiver.receive_messages(max_message_count=100, max_wait_time=20):
+                                    receiver.complete_message(message)
+                                    empty_message_count += 1
+
+                        empty_message_time = perf_counter() - empty_message_start
+                        msg = f'{client}::{cache_endpoint}: consumed {empty_message_count} messages which took {empty_message_time:.2f} seconds'
+
+                        self.logger.info(msg)
+
+                        return {
+                            'message': msg if empty_message_count > 0 else '',
+                        }
+
                     if expression is not None:
                         try:
                             content_type = TransformerContentType.from_string(cast(str, request.get('context', {})['content_type']))
@@ -674,11 +701,19 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                             values = get_values(transformed_payload)
 
-                            self.logger.debug('%d::%s: expression=%s, matches=%r, payload=%s', client, cache_endpoint, request_arguments['expression'], values, transformed_payload)
+                            self.logger.debug('%d::%s: expression=%s, matches=%r, payload=%s', client, cache_endpoint, expression, values, transformed_payload)
 
+                            # message matching expression found, return it
                             if len(values) > 0:
-                                self.logger.debug(
-                                    '%d::%s: completing message id %s, with expression "%s"', client, cache_endpoint, message.message_id, request_arguments['expression'],
+                                wait_time = perf_counter() - wait_start
+                                self.logger.info(
+                                    '! %d::%s: completing message id %s, with expression "%s" after consuming %d messages (%.2fs)',
+                                    client,
+                                    cache_endpoint,
+                                    message.message_id,
+                                    expression,
+                                    consume_message_ignore_count,
+                                    wait_time,
                                 )
                                 receiver.complete_message(message)
                                 had_error = False
@@ -696,34 +731,40 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                         self.logger.debug('%d::%s: consuming and ignoring message id %s', client, cache_endpoint, message.message_id)
                                         receiver.complete_message(message)  # remove message from endpoint, but ignore contents
                                         message = payload = metadata = None
+                                        consume_message_ignore_count += 1
 
                                 # do not wait any longer, give up due to message_wait
                                 if message_wait > 0 and (perf_counter() - wait_start) >= message_wait:
+                                    self.logger.warning('giving up in read loop since it took more than %d seconds, might still be messages on %s', cache_endpoint, message_wait)
                                     raise StopIteration
 
-                                sleep(0.2)
+                                sleep(0.01)
 
                     if message is None:
                         raise StopIteration
 
                     break
-                except (ServiceBusError, ValueError) as e:
-                    if any(msg in str(e) for msg in [
-                        'Connection to remote host was lost',
-                        'socket is already closed',
-                        'handler has already been shutdown',
-                        'Authentication attempt timed-out',
-                    ]):
-                        if retry < 3 and not self._event.is_set():
-                            self.logger.warning('connection unexpectedly closed, reconnecting', exc_info=True)
-                            self._hello(request, force=True)
-                            receiver = self._receiver_cache[cache_endpoint]
-                            message = None
-                            continue
+                except MessageLockLostError as e:
+                    if message is not None:
+                        self.logger.warning('message lock expired for message id %s', message.message_id)
 
-                        error_message = 'could not reconnect on last retry'
-                    else:
-                        error_message = 'unhandled service bus error'
+                    if self._event.is_set():
+                        break
+
+                    if retry < 3:
+                        message = None
+                        continue
+
+                    raise AsyncMessageError(str(e)) from e
+                except (ServiceBusError, AMQPLinkError, OperationTimeoutError) as e:
+                    if retry < 3 and not self._event.is_set():
+                        self.logger.warning('connection unexpectedly closed, reconnecting', exc_info=True)
+                        self._hello(request, force=True)
+                        receiver = self._receiver_cache[cache_endpoint]
+                        message = None
+                        continue
+
+                    error_message = 'could not reconnect on last retry'
 
                     if self._event.is_set():
                         break

@@ -13,6 +13,7 @@ from grizzly.gevent import GreenletFactory
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
 
+    from grizzly.scenarios import GrizzlyScenario
     from tests.fixtures import GrizzlyFixture, MockerFixture
 
 
@@ -50,22 +51,22 @@ class TestGreenletFactory:
     def test_spawn_task(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
         parent = grizzly_fixture()
 
-        def fail() -> None:
+        def fail(_p: GrizzlyScenario) -> None:
             msg = 'foobar'
             raise RuntimeError(msg)
 
-        def ok() -> None:
+        def ok(_p: GrizzlyScenario) -> None:
             pass
 
         factory = GreenletFactory(logger=parent.logger)
 
-        with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError, match='foobar'), factory.spawn_task(fail, 1, 10, 'Then fail'):
+        with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError, match='foobar'), factory.spawn_task(parent, fail, 1, 10, 'Then fail'):
             pass
 
         assert caplog.messages == ['task 1 of 10 failed: Then fail']
         caplog.clear()
 
-        with caplog.at_level(logging.DEBUG), factory.spawn_task(ok, 3, 11, 'Then succeed'):
+        with caplog.at_level(logging.DEBUG), factory.spawn_task(parent, ok, 3, 11, 'Then succeed'):
             pass
 
         assert caplog.messages == ['task 3 of 11 executed: Then succeed']

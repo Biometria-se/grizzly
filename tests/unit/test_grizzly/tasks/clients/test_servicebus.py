@@ -512,6 +512,51 @@ class TestServiceBusClientTask:
             'context': state.context,
         })
 
+    def test_empty(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+        parent = grizzly_fixture()
+
+        client_mock = mocker.MagicMock()
+
+        async_message_request_mock = mocker.patch('grizzly.utils.protocols.async_message_request', return_value={'message': ''})
+
+        cls_task = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+
+        task = cls_task(
+            RequestDirection.FROM,
+            'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
+            'test',
+            text='1=1',
+        )
+
+        state = task.get_state(parent)
+        state.client = client_mock
+        state.worker = 'foo-bar-baz'
+
+        with caplog.at_level(logging.INFO):
+            task.empty(parent)
+
+        assert caplog.messages == []
+        async_message_request_mock.assert_called_once_with(client_mock, {
+            'worker': 'foo-bar-baz',
+            'client': id(parent.user),
+            'action': 'EMPTY',
+            'context': state.context,
+        })
+
+        async_message_request_mock.reset_mock()
+        async_message_request_mock.return_value = {'message': 'removed 100 messages which took 1.3 seconds'}
+
+        with caplog.at_level(logging.INFO):
+            task.empty(parent)
+
+        assert caplog.messages == ['removed 100 messages which took 1.3 seconds']
+        async_message_request_mock.assert_called_once_with(client_mock, {
+            'worker': 'foo-bar-baz',
+            'client': id(parent.user),
+            'action': 'EMPTY',
+            'context': state.context,
+        })
+
     def test_on_start(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
 
@@ -594,6 +639,31 @@ class TestServiceBusClientTask:
 
         disconnect_mock.assert_called_once_with(parent)
         unsubscribe_mock.assert_called_once_with(parent)
+
+    def test_on_iteration(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        parent = grizzly_fixture()
+
+        cls_task = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+
+        task = cls_task(
+            RequestDirection.FROM,
+            'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
+            'test',
+        )
+
+        empty_mock = mocker.patch.object(task, 'empty', return_value=None)
+
+        # no text
+        assert task._text is None
+
+        task.on_iteration(parent)
+
+        empty_mock.assert_not_called()
+        task._text = '1=1'
+
+        task.on_iteration(parent)
+
+        empty_mock.assert_called_once_with(parent)
 
     def test_request(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         sha256_mock = mocker.patch('grizzly.tasks.clients.servicebus.sha256')

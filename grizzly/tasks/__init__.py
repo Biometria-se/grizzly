@@ -12,6 +12,9 @@ a previous response or fetching additional test data from a different endpoint (
 It is possible to implement custom tasks, the only requirement is that they inherit `grizzly.tasks.GrizzlyTask`. To get them to be executed by `grizzly`,
 a step implementation is also needed.
 
+One can also set some metadata (timeout, method, name) on a task with the `@grizzlytask.metadata` decorator. This is not mandatory, but can be useful if
+the task should not be able to run forever.
+
 Boilerplate example of a custom task:
 
 ```python
@@ -25,6 +28,7 @@ from grizzly.types.behave import Context, then
 
 class TestTask(GrizzlyTask):
     def __call__(self) -> grizzlytask:
+        @grizzlytask.metadata(timeout=20.0, method='TASK', name='TestTask')
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
             print(f'{self.__class__.__name__}::task called')
@@ -73,6 +77,7 @@ class grizzlytask:
 
     _on_start: Optional[OnGrizzlyTask] = None
     _on_stop: Optional[OnGrizzlyTask] = None
+    _on_iteration: Optional[OnGrizzlyTask] = None
 
     class OnGrizzlyTask:
         _on_func: GrizzlyTaskOnType
@@ -99,6 +104,15 @@ class grizzlytask:
         mro_list = [m.__name__ for m in getmro(arg.__class__)]
 
         return 'GrizzlyScenario' in mro_list
+
+    @staticmethod
+    def metadata(*, timeout: float | None = None, method: str | None = None, name: str | None = None) -> Callable[[grizzlytask], grizzlytask]:
+        def wrapper(task: grizzlytask) -> grizzlytask:
+            setattr(task, '__grizzly_metadata__', {'timeout': timeout, 'method': method, 'name': name})  # noqa: B010
+
+            return task
+
+        return wrapper
 
     @overload
     def on_start(self, parent: GrizzlyScenario, /) -> None:  # pragma: no coverage
@@ -134,17 +148,37 @@ class grizzlytask:
         else:  # decorated function does not exist, so don't do anything
             pass
 
+    @overload
+    def on_iteration(self, parent: GrizzlyScenario, /) -> None:  # pragma: no coverage
+        ...
+
+    @overload
+    def on_iteration(self, on_start: GrizzlyTaskOnType, /) -> None:  # pragma: no coverage
+        ...
+
+    def on_iteration(self, arg: Union[GrizzlyTaskOnType, GrizzlyScenario], /) -> None:
+        is_parent = self._is_parent(arg)
+        if is_parent and self._on_iteration is not None:
+            self._on_iteration(cast('GrizzlyScenario', arg))
+        elif not is_parent and self._on_iteration is None:
+            self._on_iteration = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
+        else:  # decorated function does not exist, so don't do anything
+            pass
+
 
 class GrizzlyTask(ABC):
     __template_attributes__: ClassVar[set[str]] = set()
 
     _context_root: str
 
+    timeout: float | None
+
     grizzly: GrizzlyContext
 
-    def __init__(self) -> None:
+    def __init__(self, *, timeout: float | None = None) -> None:
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
         self.grizzly = GrizzlyContext()
+        self.timeout = timeout
 
     @abstractmethod
     def __call__(self) -> grizzlytask:
@@ -211,6 +245,9 @@ class GrizzlyMetaRequestTask(GrizzlyTask, metaclass=ABCMeta):
         pass
 
     def on_stop(self, parent: GrizzlyScenario) -> None:
+        pass
+
+    def on_iteration(self, parent: GrizzlyScenario) -> None:
         pass
 
 

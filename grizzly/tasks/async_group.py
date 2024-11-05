@@ -48,7 +48,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
     tasks: list[GrizzlyTask]
 
     def __init__(self, name: str) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         self.name = name
         self.tasks = []

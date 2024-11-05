@@ -33,6 +33,10 @@ class RetryTask(Exception):  # noqa: N818
     pass
 
 
+class TaskTimeoutError(Exception):
+    pass
+
+
 class AssertionErrors(Exception):  # noqa: N818
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -102,6 +106,10 @@ def failure_handler(exception: Exception | None, scenario: GrizzlyContextScenari
     for failure_type, failure_action in scenario.failure_handling.items():
         if failure_type is None:
             continue
+
+        # continue test for this specific error, i.e. ignore it
+        if failure_action is None:
+            return
 
         if (isinstance(failure_type, str) and failure_type in str(exception)) or exception.__class__ is failure_type:
             raise failure_action from exception

@@ -13,7 +13,7 @@ from locust.exception import InterruptTaskSet, RescheduleTask, RescheduleTaskImm
 from locust.user.sequential_taskset import SequentialTaskSet
 from locust.user.task import LOCUST_STATE_RUNNING, LOCUST_STATE_STOPPING
 
-from grizzly.exceptions import RestartScenario, RetryTask, StopScenario
+from grizzly.exceptions import RestartScenario, RetryTask, StopScenario, TaskTimeoutError
 from grizzly.scenarios import IteratorScenario
 from grizzly.tasks import ExplicitWaitTask, LogMessageTask, grizzlytask
 from grizzly.testdata.communication import TestdataConsumer
@@ -167,6 +167,8 @@ class TestIterationScenario:
 
         parent.consumer = TestdataConsumer(parent)
 
+        on_iteration_mock = mocker.patch.object(parent, 'on_iteration', return_value=None)
+
         def mock_request(data: Optional[dict[str, Any]]) -> None:
             def testdata_request(self: TestdataConsumer) -> Optional[dict[str, Any]]:  # noqa: ARG001
                 if data is None or data == {}:
@@ -188,6 +190,8 @@ class TestIterationScenario:
             parent.iterator()
 
         assert parent.user.variables == {}
+        on_iteration_mock.assert_called_once_with()
+        on_iteration_mock.reset_mock()
 
         mock_request({})
 
@@ -195,6 +199,8 @@ class TestIterationScenario:
             parent.iterator()
 
         assert parent.user.variables == {}
+        on_iteration_mock.assert_called_once_with()
+        on_iteration_mock.reset_mock()
 
         mock_request({
             'variables': {
@@ -208,6 +214,8 @@ class TestIterationScenario:
 
         parent.iterator(prefetch=True)
 
+        on_iteration_mock.assert_called_once_with()
+        on_iteration_mock.reset_mock()
         assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1337
         assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value1'
         assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value2'
@@ -229,6 +237,8 @@ class TestIterationScenario:
         assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value1'
         assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value2'
         assert not getattr(parent, '_prefetch', True)
+        on_iteration_mock.assert_not_called()
+        on_iteration_mock.reset_mock()
 
         parent.iterator()
 
@@ -236,6 +246,8 @@ class TestIterationScenario:
         assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value3'
         assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value4'
         assert not getattr(parent, '_prefetch', True)
+        on_iteration_mock.assert_called_once_with()
+        on_iteration_mock.reset_mock()
 
     def test_pace(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         parent = grizzly_fixture(scenario_type=IteratorScenario)
@@ -687,8 +699,14 @@ class TestIterationScenario:
     def test_run_tasks(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
         class TestErrorTask(TestTask):
             def __call__(self) -> grizzlytask:
+                @grizzlytask.metadata(timeout=1.0)
                 @grizzlytask
                 def task(parent: GrizzlyScenario) -> Any:
+                    if self.task_call_count == 0:
+                        self.task_call_count += 1
+                        from time import sleep
+                        sleep(2.0)
+
                     if parent.user.variables.get('foo', None) is None:
                         raise RestartScenario
 
@@ -701,6 +719,9 @@ class TestIterationScenario:
         assert isinstance(parent, IteratorScenario)
 
         mocker.patch('grizzly.scenarios.iterator.gsleep', return_value=None)
+        mocker.patch('grizzly.scenarios.iterator.uniform', return_value=1.0)
+
+        parent.user._scenario.failure_handling.update({TaskTimeoutError: RetryTask})
 
         # add tasks to IteratorScenario.tasks
         try:
@@ -734,6 +755,7 @@ class TestIterationScenario:
             # same as 1 iteration
             mocker.patch.object(scenario.consumer, 'testdata', side_effect=[
                 {'variables': {'hello': 'world'}},
+                {'variables': {'hello': 'world'}},
                 {'variables': {'foo': 'bar'}},
                 None,
             ])
@@ -743,6 +765,17 @@ class TestIterationScenario:
                 scenario.run()
 
             expected_messages = [
+                'task 1 of 13 executed: iterator',  # IteratorScenario.iterator()
+                'task 2 of 13 executed: test-task-1',
+                'task 3 of 13 executed: test-task-2',
+                'task 4 of 13 executed: test-task-3',
+                'task 5 of 13 executed: test-task-4',
+                'task 6 of 13 executed: test-task-5',
+                'task 7 of 13 failed: test-error-task-1',
+                'task 7 of 13 will execute a 2nd time in 1.00 seconds: test-error-task-1',
+                'task 7 of 13 failed: test-error-task-1',
+                'restarting scenario at task 7 of 13',
+                '0 tasks in queue',
                 'task 1 of 13 executed: iterator',  # IteratorScenario.iterator()
                 'task 2 of 13 executed: test-task-1',
                 'task 3 of 13 executed: test-task-2',
@@ -787,7 +820,6 @@ class TestIterationScenario:
             for actual, _expected in zip(actual_messages, expected_messages):
                 expected = regex.possible(_expected)
                 assert actual == expected
-
         finally:
             with suppress(KeyError):
                 del environ['TESTDATA_PRODUCER_ADDRESS']

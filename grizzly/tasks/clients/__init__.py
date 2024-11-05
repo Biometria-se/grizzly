@@ -85,7 +85,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         text: Optional[str] = None,
         method: Optional[RequestMethod] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(timeout=None)
 
         if text is not None:
             self.text = text
@@ -221,6 +221,11 @@ class ClientTask(GrizzlyMetaRequestTask):
         def on_stop(parent: GrizzlyScenario) -> None:
             self.__class__._context = merge_dicts(parent.user._context, self._context)
             return self.on_stop(parent)
+
+        @task.on_iteration
+        def on_iteration(parent: GrizzlyScenario) -> None:
+            self.__class__._context = merge_dicts(parent.user._context, self._context)
+            return self.on_iteration(parent)
 
         return task
 
