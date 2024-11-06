@@ -124,7 +124,7 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
         init_function(runner)
 
         assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
-            'test_message': (callback, False),
+            'test_message': (callback, True),
         })
     finally:
         if runner is not None:
@@ -168,7 +168,7 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
 
         assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'grizzly_worker_quit': (grizzly_worker_quit, False),
-            'test_message_ack': (callback_ack, False),
+            'test_message_ack': (callback_ack, True),
         })
     finally:
         if runner is not None:
@@ -213,8 +213,8 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
         init_function(runner)
 
         assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
-            'test_message': (callback, False),
-            'test_message_ack': (callback_ack, False),
+            'test_message': (callback, True),
+            'test_message_ack': (callback_ack, True),
         })
     finally:
         if runner is not None:
