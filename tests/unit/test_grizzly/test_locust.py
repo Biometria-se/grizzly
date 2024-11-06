@@ -426,7 +426,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
-        assert len(environment.events.quitting._handlers) == 1
+        assert len(environment.events.quitting._handlers) == 0
 
         AtomicIntegerIncrementer.destroy()
         grizzly.setup.statistics_url = 'influxdb://influx.example.com:1231/testdb'
@@ -437,7 +437,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
-        assert len(environment.events.quitting._handlers) == 1
+        assert len(environment.events.quitting._handlers) == 0
 
         grizzly.scenario.validation.fail_ratio = 0.1
         environment.events.spawning_complete._handlers = []
@@ -447,7 +447,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
-        assert len(environment.events.quitting._handlers) == 2
+        assert len(environment.events.quitting._handlers) == 1
 
         grizzly.setup.statistics_url = None
         environment.events.spawning_complete._handlers = []
@@ -556,7 +556,6 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     for method in [
         'locust.runners.WorkerRunner.start_worker',
         'gevent.sleep',
-        'grizzly.listeners._init_testdata_producer',
     ]:
         mocker.patch(
             method,
@@ -619,7 +618,6 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
         'locust.runners.MasterRunner.client_listener',
         'gevent.sleep',
         'locust.rpc.zmqrpc.Server.__init__',
-        'grizzly.listeners._init_testdata_producer',
     ]:
         mocker.patch(
             method,

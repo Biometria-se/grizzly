@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, cast
 import pytest
 from locust import TaskSet
 
-from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+from grizzly.context import GrizzlyContextScenario
 from grizzly.scenarios import IteratorScenario
 from grizzly.tasks import RequestTask
 from grizzly.types import RequestMethod
@@ -46,45 +46,42 @@ class TestModuleLoader:
             ModuleLoader[GrizzlyUser].load(default_module, class_name)
 
     def test_load_user_class(self, behave_fixture: BehaveFixture) -> None:
-        try:
-            test_context = GrizzlyContext()
-            test_context.scenarios.create(behave_fixture.create_scenario('test scenario'))
-            test_context.scenario.context['host'] = 'test'
-            user_class_name = 'RestApiUser'
-            for user_package in ['', 'grizzly.users.', 'grizzly.users.restapi.']:
-                user_class_name_value = f'{user_package}{user_class_name}'
-                user_class = cast(type[GrizzlyUser], ModuleLoader[GrizzlyUser].load('grizzly.users', user_class_name_value))  # type: ignore[redundant-cast]
-                user_class.__scenario__ = test_context.scenario
-                user_class.host = test_context.scenario.context['host']
-                assert user_class.__module__ == 'grizzly.users.restapi'
-                assert user_class.host == 'test'
-                assert hasattr(user_class, 'tasks')
+        test_context = behave_fixture.grizzly
+        test_context.scenarios.create(behave_fixture.create_scenario('test scenario'))
+        test_context.scenario.context['host'] = 'test'
+        user_class_name = 'RestApiUser'
+        for user_package in ['', 'grizzly.users.', 'grizzly.users.restapi.']:
+            user_class_name_value = f'{user_package}{user_class_name}'
+            user_class = cast(type[GrizzlyUser], ModuleLoader[GrizzlyUser].load('grizzly.users', user_class_name_value))  # type: ignore[redundant-cast]
+            user_class.__scenario__ = test_context.scenario
+            user_class.host = test_context.scenario.context['host']
+            assert user_class.__module__ == 'grizzly.users.restapi'
+            assert user_class.host == 'test'
+            assert hasattr(user_class, 'tasks')
 
-                # try to initialize it, without any token information
-                user_class_instance = user_class(behave_fixture.locust.environment)
+            # try to initialize it, without any token information
+            user_class_instance = user_class(behave_fixture.locust.environment)
 
-                # with token context
-                test_context.scenario.context['token'] = {
-                    'client_secret': 'asdf',
-                    'client_id': 'asdf',
-                    'url': 'http://test',
-                    'resource': None,
-                }
-                user_class_instance = user_class(behave_fixture.locust.environment)
+            # with token context
+            test_context.scenario.context['token'] = {
+                'client_secret': 'asdf',
+                'client_id': 'asdf',
+                'url': 'http://test',
+                'resource': None,
+            }
+            user_class_instance = user_class(behave_fixture.locust.environment)
 
-                # without token context
-                test_context.scenario.context['token'] = {
-                    'client_secret': None,
-                    'client_id': None,
-                    'url': None,
-                    'resource': None,
-                }
+            # without token context
+            test_context.scenario.context['token'] = {
+                'client_secret': None,
+                'client_id': None,
+                'url': None,
+                'resource': None,
+            }
 
-                assert type(user_class_instance).__name__ == 'RestApiUser'
-                assert user_class_instance.host == 'test'
-                assert hasattr(user_class_instance, 'tasks')
-        finally:
-            GrizzlyContext.destroy()
+            assert type(user_class_instance).__name__ == 'RestApiUser'
+            assert user_class_instance.host == 'test'
+            assert hasattr(user_class_instance, 'tasks')
 
 
 def test_fail_directly(behave_fixture: BehaveFixture) -> None:

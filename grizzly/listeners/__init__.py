@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import logging
-from os import environ
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 from urllib.parse import urlparse
 
-import gevent
 from locust.stats import (
     RequestStats,
     StatsEntry,
@@ -16,7 +14,7 @@ from locust.stats import (
 )
 from typing_extensions import Concatenate, ParamSpec
 
-from grizzly.testdata.communication import TestdataProducer
+from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.types import MessageDirection, RequestType, TestdataType
 from grizzly.types.behave import Status
 from grizzly.types.locust import Environment, LocustRunner, MasterRunner, Message, WorkerRunner
@@ -26,47 +24,18 @@ if TYPE_CHECKING:  # pragma: no cover
 
 P = ParamSpec('P')
 
-producer: Optional[TestdataProducer] = None
-
-producer_greenlet: Optional[gevent.Greenlet] = None
-
 logger = logging.getLogger(__name__)
-
-
-def _init_testdata_producer(grizzly: GrizzlyContext, port: str, testdata: TestdataType) -> Callable[[], None]:
-    def gtestdata_producer() -> None:
-        global producer  # noqa: PLW0603
-        producer_address = f'tcp://0.0.0.0:{port}'
-        producer = TestdataProducer(
-            grizzly=grizzly,
-            address=producer_address,
-            testdata=testdata,
-        )
-        producer.run()
-
-    return gtestdata_producer
 
 
 def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Callable[Concatenate[LocustRunner, P], None]:
     def ginit(runner: LocustRunner, **_kwargs: P.kwargs) -> None:
-        producer_port = environ.get('TESTDATA_PRODUCER_PORT', '5555')
-        if not isinstance(runner, MasterRunner):
-            producer_address = runner.master_host if isinstance(runner, WorkerRunner) else '127.0.0.1'
-
-            producer_address = f'tcp://{producer_address}:{producer_port}'
-            logger.debug('producer_address=%s', producer_address)
-            environ['TESTDATA_PRODUCER_ADDRESS'] = producer_address
-
         if not isinstance(runner, WorkerRunner):
             if testdata is not None:
-                global producer_greenlet  # noqa: PLW0603
-                producer_greenlet = gevent.spawn(
-                    _init_testdata_producer(
-                        grizzly,
-                        producer_port,
-                        testdata,
-                    ),
+                grizzly.state.producer = TestdataProducer(
+                    runner=runner,
+                    testdata=testdata,
                 )
+                runner.register_message('produce_testdata', grizzly.state.producer.handle_request, concurrent=True)
             else:
                 logger.error('there is no test data!')
         else:
@@ -76,6 +45,8 @@ def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Ca
         if not isinstance(runner, MasterRunner):
             for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.SERVER_CLIENT, {}).items():
                 runner.register_message(message_type, callback, concurrent=True)
+
+            runner.register_message('consume_testdata', TestdataConsumer.handle_response, concurrent=True)
 
         if not isinstance(runner, WorkerRunner):
             for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.CLIENT_SERVER, {}).items():
@@ -122,9 +93,12 @@ def locust_test_start(grizzly: GrizzlyContext) -> Callable[Concatenate[Environme
     return cast(Callable[Concatenate[Environment, P], None], gtest_start)
 
 
-def locust_test_stop(**_kwargs: Any) -> None:
-    if producer is not None:
-        producer.on_test_stop()
+def locust_test_stop(grizzly: GrizzlyContext) -> Callable[Concatenate[Environment, P], None]:
+    def gtest_stop(environment: Environment, **_kwargs: P.kwargs) -> None:  # noqa: ARG001
+        if grizzly.state.producer is not None:
+            grizzly.state.producer.on_test_stop()
+
+    return cast(Callable[Concatenate[Environment, P], None], gtest_stop)
 
 
 def spawning_complete(grizzly: GrizzlyContext) -> Callable[..., None]:
@@ -137,23 +111,6 @@ def spawning_complete(grizzly: GrizzlyContext) -> Callable[..., None]:
 
 def worker_report(client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG001
     logger.debug('received worker_report from %s', client_id)
-
-
-def quitting(**_kwargs: Any) -> None:
-    logger.debug('locust quitting')
-    global producer_greenlet, producer  # noqa: PLW0603
-    if producer is not None:
-        producer.stop()
-        producer = None
-
-    if producer_greenlet is not None:
-        try:
-            producer_greenlet.kill(block=False)
-        except:  # noqa: S110
-            pass
-        finally:
-            producer_greenlet = None
-
 
 def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) -> None:
     logger.debug('received message grizzly_worker_quit: msg=%r', msg)

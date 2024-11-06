@@ -14,7 +14,7 @@ from influxdb.exceptions import InfluxDBClientError
 
 from grizzly.listeners.influxdb import InfluxDb, InfluxDbError, InfluxDbListener, InfluxDbPoint
 from grizzly.types.locust import CatchResponseError
-from tests.helpers import ANY
+from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
@@ -469,40 +469,92 @@ class TestInfluxDblistener:
     def test_request(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
         patch_influxdblistener()
 
-        def generate_logger_call(
-            request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None,  # noqa: ARG001
-        ) -> Callable[[logging.Handler, str], None]:
-            result = 'Success' if exception is None else 'Failure'
-            expected_message = f'{result}: {request_type} {name} Response time: {int(round(response_time, 0))}'
-
-            if exception is not None:
-                expected_message = f'{expected_message} Exception: {exception!s}'
-
-            def logger_call(_self: logging.Handler, msg: str, *args: Any, **_kwargs: Any) -> None:
-                assert msg % args == expected_message
-
-            return logger_call
-
         listener = InfluxDbListener(
             locust_fixture.environment,
             'https://influx.example.com:1244/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
-        mocker.patch(
-            'logging.Logger.debug',
-            generate_logger_call('GET', '/api/v1/test', 133.7, 200, None),
-        )
+        mocker.patch.object(listener, 'run_events', return_value=None)
 
         listener.request('GET', '/api/v1/test', 133.7, 200, {}, None)
-        assert len(listener._events) == 1
-
-        mocker.patch(
-            'logging.Logger.exception',
-            generate_logger_call('POST', '/api/v2/test', 555.37, 137, CatchResponseError('request failed')),
-        )
+        assert listener._events == [
+            SOME(
+                dict,
+                measurement='request',
+                tags=SOME(
+                    dict,
+                    name='/api/v1/test',
+                    method='GET',
+                    result='Success',
+                    testplan='unittest-plan',
+                    hostname=get_hostname(),
+                    environment='local',
+                    profile='unittest-profile',
+                    description='unittesting',
+                ),
+                time=ANY(str),
+                fields=SOME(
+                    dict,
+                    response_time=134,
+                    response_length=200,
+                    exception=None,
+                    request_started=ANY(str),
+                    request_finished=ANY(str),
+                ),
+            ),
+        ]
 
         listener.request('POST', '/api/v2/test', 555.37, 137, {}, CatchResponseError('request failed'))
-        assert len(listener._events) == 2
+        assert listener._events == [
+            SOME(
+                dict,
+                measurement='request',
+                tags=SOME(
+                    dict,
+                    name='/api/v1/test',
+                    method='GET',
+                    result='Success',
+                    testplan='unittest-plan',
+                    hostname=get_hostname(),
+                    environment='local',
+                    profile='unittest-profile',
+                    description='unittesting',
+                ),
+                time=ANY(str),
+                fields=SOME(
+                    dict,
+                    response_time=134,
+                    response_length=200,
+                    exception=None,
+                    request_started=ANY(str),
+                    request_finished=ANY(str),
+                ),
+            ),
+            SOME(
+                dict,
+                measurement='request',
+                tags=SOME(
+                    dict,
+                    name='/api/v2/test',
+                    method='POST',
+                    result='Failure',
+                    testplan='unittest-plan',
+                    hostname=get_hostname(),
+                    environment='local',
+                    profile='unittest-profile',
+                    description='unittesting',
+                ),
+                time=ANY(str),
+                fields=SOME(
+                    dict,
+                    response_time=555,
+                    response_length=137,
+                    exception='request failed',
+                    request_started=ANY(str),
+                    request_finished=ANY(str),
+                ),
+            ),
+        ]
 
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test_request_exception(

@@ -286,7 +286,8 @@ class IteratorScenario(GrizzlyScenario):
             self._prefetch = False
             return
 
-        self.on_iteration()
+        if not prefetch:
+            self.on_iteration()
 
         if self.start is not None:
             response_time = int((perf_counter() - self.start) * 1000)

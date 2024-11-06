@@ -27,13 +27,14 @@ from locust.contrib.fasthttp import ResponseContextManager as FastResponseContex
 from pytest_mock.plugin import MockerFixture
 from requests.models import CaseInsensitiveDict
 
+from grizzly import context as grizzly_context
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.variables import destroy_variables
 from grizzly.types import RequestMethod
 from grizzly.types.behave import Context as BehaveContext
 from grizzly.types.behave import Feature, Scenario, Step
-from grizzly.types.locust import Environment, LocustRunner
+from grizzly.types.locust import Environment, LocalRunner
 from grizzly.utils import create_scenario_class_type, create_user_class_type
 
 from .helpers import TestScenario, TestUser, rm_rf, run_command
@@ -64,9 +65,6 @@ __all__ = [
 
 class AtomicVariableCleanupFixture:
     def __call__(self) -> None:
-        with suppress(Exception):
-            GrizzlyContext.destroy()
-
         destroy_variables()
 
 
@@ -75,7 +73,7 @@ class LocustFixture:
     _tmp_path_factory: TempPathFactory
 
     environment: Environment
-    runner: LocustRunner
+    runner: LocalRunner
 
     def __init__(self, tmp_path_factory: TempPathFactory) -> None:
         self._tmp_path_factory = tmp_path_factory
@@ -101,6 +99,9 @@ class LocustFixture:
             del environ['GRIZZLY_CONTEXT_ROOT']
 
         rm_rf(self._test_context_root)
+
+        with suppress(Exception):
+            self.runner.quit()
 
         return True
 
@@ -200,9 +201,8 @@ class BehaveFixture:
         context.scenario.steps = [context.step]
         context.scenario.background = Background(filename=None, line=None, keyword='', steps=[context.step], name='')
         context._runner.step_registry = step_registry
-        grizzly = GrizzlyContext()
-        grizzly.state.locust = self.locust.runner
-        context.grizzly = grizzly
+        context.grizzly = grizzly_context.grizzly
+        context.grizzly.state.locust = self.locust.runner
         context.exceptions = {}
 
         self.context = context
@@ -215,8 +215,7 @@ class BehaveFixture:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        with suppress(ValueError):
-            GrizzlyContext.destroy()
+        grizzly_context.grizzly = GrizzlyContext()
 
         return True
 
@@ -275,7 +274,6 @@ class RequestTaskFixture:
 
 class GrizzlyFixture:
     request_task: RequestTaskFixture
-    grizzly: GrizzlyContext
     behave: BehaveFixture
 
     def __init__(self, request_task: RequestTaskFixture, behave_fixture: BehaveFixture) -> None:
@@ -286,9 +284,12 @@ class GrizzlyFixture:
     def test_context(self) -> Path:
         return self.request_task.test_context.parent
 
+    @property
+    def grizzly(self) -> GrizzlyContext:
+        return cast(GrizzlyContext, self.behave.context.grizzly)
+
     def __enter__(self) -> Self:
         environ['GRIZZLY_CONTEXT_ROOT'] = Path(self.request_task.context_root).parent.as_posix()
-        self.grizzly = GrizzlyContext()
         self.grizzly.scenarios.clear()
         self.grizzly.scenarios.create(self.behave.create_scenario('test scenario'))
         self.grizzly.scenario.user.class_name = 'TestUser'
@@ -350,9 +351,6 @@ class GrizzlyFixture:
     ) -> Literal[True]:
         with suppress(KeyError):
             del environ['GRIZZLY_CONTEXT_ROOT']
-
-        with suppress(Exception):
-            GrizzlyContext.destroy()
 
         return True
 

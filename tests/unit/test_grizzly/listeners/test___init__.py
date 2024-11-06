@@ -2,26 +2,25 @@
 from __future__ import annotations
 
 import logging
-from contextlib import suppress
 from os import environ
 from secrets import choice
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 import pytest
+from locust.runners import STATE_RUNNING, WorkerNode
 from locust.stats import RequestStats, StatsError
 
-from grizzly.context import GrizzlyContext, GrizzlyContextScenarioResponseTimePercentile
+from grizzly.context import GrizzlyContextScenarioResponseTimePercentile
 from grizzly.listeners import (
-    _init_testdata_producer,
     grizzly_worker_quit,
     init,
     init_statistics_listener,
     locust_test_start,
     locust_test_stop,
-    quitting,
     spawning_complete,
     validate_result,
 )
+from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.types import MessageDirection
 from grizzly.types.behave import Scenario, Status
 from grizzly.types.locust import Environment, LocalRunner, MasterRunner, Message, WorkerRunner
@@ -31,26 +30,15 @@ if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 
-    from grizzly.testdata.communication import TestdataProducer
     from tests.fixtures import GrizzlyFixture, LocustFixture, NoopZmqFixture
 
 
-class Running(Exception):  # noqa: N818
-    pass
-
-
-def mocked_testdata_producer___init__(self: TestdataProducer, grizzly: GrizzlyContext, testdata: Any, address: str) -> None:  # noqa: ARG001
-    self.grizzly = GrizzlyContext()
+def mocked_testdata_producer___init__(self: TestdataProducer, runner: MasterRunner | LocalRunner, testdata: Any) -> None:  # noqa: ARG001
     self.testdata = testdata
 
 
 @pytest.fixture()
 def _listener_test_mocker(mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
-    mocker.patch(
-        'grizzly.testdata.communication.TestdataProducer.run',
-        side_effect=Running,
-    )
-
     mocker.patch(
         'grizzly.testdata.communication.TestdataProducer.__init__',
         mocked_testdata_producer___init__,
@@ -67,25 +55,7 @@ def _listener_test_mocker(mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> No
 
 
 @pytest.mark.usefixtures('_listener_test_mocker')
-def test__init_testdata_producer(grizzly_fixture: GrizzlyFixture) -> None:
-    init_function = _init_testdata_producer(grizzly_fixture.grizzly, '1337', {})
-
-    assert callable(init_function)
-
-    with pytest.raises(Running):
-        init_function()
-
-    from grizzly.listeners import producer
-
-    assert producer is not None
-    assert producer.__class__.__name__ == 'TestdataProducer'
-    assert producer.__class__.__module__ == 'grizzly.testdata.communication'
-    assert producer.testdata == {}
-
-
-@pytest.mark.usefixtures('_listener_test_mocker')
 def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture) -> None:
-    runner: Optional[MasterRunner] = None
     try:
         grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
@@ -97,12 +67,10 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == {}
+        assert grizzly.state.producer is not None
+        assert grizzly.state.locust.custom_messages == {'produce_testdata': (grizzly.state.producer.handle_request, True)}
 
-        from grizzly.listeners import producer_greenlet
-
-        assert producer_greenlet is not None
-        producer_greenlet.kill(block=False)
+        grizzly.state.locust.custom_messages.clear()
 
         with caplog.at_level(logging.ERROR):
             init_function = init(grizzly, None)
@@ -125,6 +93,7 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
 
         assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'test_message': (callback, True),
+            'produce_testdata': (grizzly.state.producer.handle_request, True),
         })
     finally:
         if runner is not None:
@@ -148,9 +117,10 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
 
         init_function(runner)
 
-        assert environ.get('TESTDATA_PRODUCER_ADDRESS', None) == 'tcp://localhost:5555'
+        assert environ.get('TESTDATA_PRODUCER_ADDRESS', None) is None
         assert runner.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'grizzly_worker_quit': (grizzly_worker_quit, False),
+            'consume_testdata': (TestdataConsumer.handle_response, True),
         })
 
         def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
@@ -168,60 +138,51 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
 
         assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'grizzly_worker_quit': (grizzly_worker_quit, False),
+            'consume_testdata': (TestdataConsumer.handle_response, True),
             'test_message_ack': (callback_ack, True),
         })
     finally:
         if runner is not None:
             runner.quit()
-
-        with suppress(KeyError):
-            del environ['TESTDATA_PRODUCER_ADDRESS']
+            runner.custom_messages.clear()
 
 
 @pytest.mark.usefixtures('_listener_test_mocker')
 def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
     grizzly_fixture()
-    runner: Optional[LocalRunner] = None
 
-    try:
-        grizzly = grizzly_fixture.grizzly
-        runner = LocalRunner(grizzly_fixture.behave.locust.environment)
-        grizzly.state.locust = runner
+    grizzly = grizzly_fixture.grizzly
 
-        init_function: Callable[..., None] = init(grizzly, {})
-        assert callable(init_function)
+    init_function: Callable[..., None] = init(grizzly, {})
+    assert callable(init_function)
 
-        init_function(runner)
+    init_function(grizzly.state.locust)
 
-        assert grizzly.state.locust.custom_messages == {}
+    assert grizzly.state.producer is not None
+    assert grizzly.state.locust.custom_messages == {
+        'consume_testdata': (TestdataConsumer.handle_response, True),
+        'produce_testdata': (grizzly.state.producer.handle_request, True),
+    }
 
-        from grizzly.listeners import producer_greenlet
-        assert producer_greenlet is not None
-        producer_greenlet.kill(block=False)
+    grizzly.state.locust.custom_messages.clear()
 
-        assert environ.get('TESTDATA_PRODUCER_ADDRESS', None) == 'tcp://127.0.0.1:5555'
+    def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
+        pass
 
-        def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
-            pass
+    def callback_ack(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
+        pass
 
-        def callback_ack(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
-            pass
+    grizzly.setup.locust.messages.register(MessageDirection.CLIENT_SERVER, 'test_message', callback)
+    grizzly.setup.locust.messages.register(MessageDirection.SERVER_CLIENT, 'test_message_ack', callback_ack)
 
-        grizzly.setup.locust.messages.register(MessageDirection.CLIENT_SERVER, 'test_message', callback)
-        grizzly.setup.locust.messages.register(MessageDirection.SERVER_CLIENT, 'test_message_ack', callback_ack)
+    init_function(grizzly.state.locust)
 
-        init_function(runner)
-
-        assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
-            'test_message': (callback, True),
-            'test_message_ack': (callback_ack, True),
-        })
-    finally:
-        if runner is not None:
-            runner.quit()
-
-        with suppress(KeyError):
-            del environ['TESTDATA_PRODUCER_ADDRESS']
+    assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
+        'consume_testdata': (TestdataConsumer.handle_response, True),
+        'produce_testdata': (grizzly.state.producer.handle_request, True),
+        'test_message': (callback, True),
+        'test_message_ack': (callback_ack, True),
+    })
 
 
 def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
@@ -247,131 +208,96 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
         autospec=True,
     )
 
-    try:
-        grizzly = GrizzlyContext()
+    from grizzly.context import grizzly
 
-        environment = locust_fixture.environment
+    environment = locust_fixture.environment
 
-        environment.events.quitting._handlers = []
-        environment.events.spawning_complete._handlers = []
+    environment.events.quitting._handlers = []
+    environment.events.spawning_complete._handlers = []
 
-        # not a valid scheme
-        grizzly.setup.statistics_url = 'http://localhost'
+    # not a valid scheme
+    grizzly.setup.statistics_url = 'http://localhost'
+    init_statistics_listener(grizzly.setup.statistics_url)(environment)
+    assert len(environment.events.request._handlers) == 1
+    assert len(environment.events.quitting._handlers) == 0
+    assert len(environment.events.quit._handlers) == 0
+    assert len(environment.events.spawning_complete._handlers) == 0
+
+    grizzly.setup.statistics_url = 'influxdb://test/database?Testplan=test'
+    init_statistics_listener(grizzly.setup.statistics_url)(environment)
+    assert len(environment.events.request._handlers) == 2
+    assert len(environment.events.quitting._handlers) == 0
+    assert len(environment.events.quit._handlers) == 1
+    assert len(environment.events.spawning_complete._handlers) == 0
+
+    grizzly.setup.statistics_url = 'insights://?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
+    with pytest.raises(AssertionError, match='IngestionEndpoint was neither set as the hostname or in the query string'):
         init_statistics_listener(grizzly.setup.statistics_url)(environment)
-        assert len(environment.events.request._handlers) == 1
-        assert len(environment.events.quitting._handlers) == 0
-        assert len(environment.events.quit._handlers) == 0
-        assert len(environment.events.spawning_complete._handlers) == 0
 
-        grizzly.setup.statistics_url = 'influxdb://test/database?Testplan=test'
-        init_statistics_listener(grizzly.setup.statistics_url)(environment)
-        assert len(environment.events.request._handlers) == 2
-        assert len(environment.events.quitting._handlers) == 0
-        assert len(environment.events.quit._handlers) == 1
-        assert len(environment.events.spawning_complete._handlers) == 0
-
-        grizzly.setup.statistics_url = 'insights://?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
-        with pytest.raises(AssertionError, match='IngestionEndpoint was neither set as the hostname or in the query string'):
-            init_statistics_listener(grizzly.setup.statistics_url)(environment)
-
-        grizzly.setup.statistics_url = 'insights://insights.example.se/?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
-        init_statistics_listener(grizzly.setup.statistics_url)(environment)
-        assert len(environment.events.request._handlers) == 3
-        assert len(environment.events.quitting._handlers) == 0
-        assert len(environment.events.quit._handlers) == 1
-        assert len(environment.events.spawning_complete._handlers) == 0
-    finally:
-        GrizzlyContext.destroy()
+    grizzly.setup.statistics_url = 'insights://insights.example.se/?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
+    init_statistics_listener(grizzly.setup.statistics_url)(environment)
+    assert len(environment.events.request._handlers) == 3
+    assert len(environment.events.quitting._handlers) == 0
+    assert len(environment.events.quit._handlers) == 1
+    assert len(environment.events.spawning_complete._handlers) == 0
 
 
 @pytest.mark.usefixtures('_listener_test_mocker')
-def test_locust_test_start(grizzly_fixture: GrizzlyFixture) -> None:
+def test_locust_test_start(grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
     grizzly_fixture()
-    try:
-        grizzly = grizzly_fixture.grizzly
-        scenario = Scenario(filename=None, line=None, keyword='', name='Test Scenario')
-        grizzly.scenarios.create(scenario)
-        grizzly.scenario.iterations = -1
-        runner = MasterRunner(grizzly_fixture.behave.locust.environment, '0.0.0.0', 5555)
-        grizzly.state.locust = runner
 
+    grizzly = grizzly_fixture.grizzly
+    grizzly.scenario.iterations = 2
+    runner = MasterRunner(grizzly_fixture.behave.locust.environment, '0.0.0.0', 5555)
+    runner.clients._worker_nodes.update({
+        'worker-1': WorkerNode('worker-1', STATE_RUNNING),
+        'worker-2': WorkerNode('worker-2', STATE_RUNNING),
+    })
+    grizzly.state.locust = runner
+    grizzly.state.locust.environment.runner = runner
+
+    with caplog.at_level(logging.ERROR):
         locust_test_start(grizzly)(grizzly.state.locust.environment)
-    finally:
-        GrizzlyContext.destroy()
+
+    assert caplog.messages == []
+
+    grizzly.scenario.iterations = 1
+
+    with caplog.at_level(logging.ERROR):
+        locust_test_start(grizzly)(grizzly.state.locust.environment)
+
+    assert caplog.messages == ['number of iterations is lower than number of workers, 1 < 2']
 
 
 @pytest.mark.usefixtures('_listener_test_mocker')
 def test_locust_test_stop(mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
     grizzly_fixture()
 
-    mocker.patch(
-        'grizzly.testdata.communication.TestdataProducer.on_test_stop',
-        side_effect=Running,
+    grizzly = grizzly_fixture.grizzly
+
+    grizzly.state.producer = TestdataProducer(
+        runner=cast(LocalRunner, grizzly.state.locust),
+        testdata={},
     )
-    init_function = _init_testdata_producer(grizzly_fixture.grizzly, '1337', {})
 
-    assert callable(init_function)
-
-    with pytest.raises(Running):
-        init_function()
-
-    with pytest.raises(Running):
-        locust_test_stop()
-
-
-def test_spawning_complete() -> None:
-    grizzly = GrizzlyContext()
-
-    try:
-        assert not grizzly.state.spawning_complete
-        func = spawning_complete(grizzly)
-
-        func()
-
-        assert grizzly.state.spawning_complete
-    finally:
-        GrizzlyContext.destroy()
-
-
-@pytest.mark.usefixtures('_listener_test_mocker')
-def test_quitting(mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
-    grizzly_fixture()
-    mocker.patch(
-        'grizzly.testdata.communication.TestdataProducer.stop',
+    on_test_stop_mock = mocker.patch.object(grizzly.state.producer, 'on_test_stop',
         return_value=None,
     )
 
-    runner: Optional[MasterRunner] = None
+    locust_test_stop(grizzly)(grizzly.state.locust.environment)
 
-    try:
-        grizzly = grizzly_fixture.grizzly
-        runner = MasterRunner(grizzly_fixture.behave.locust.environment, '0.0.0.0', 5555)
-        grizzly.state.locust = runner
+    on_test_stop_mock.assert_called_once_with()
 
-        init_testdata = _init_testdata_producer(grizzly, '5557', {})
 
-        with pytest.raises(Running):
-            init_testdata()
+def test_spawning_complete(grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly = grizzly_fixture.grizzly
 
-        init_function: Callable[..., None] = init(grizzly, {})
-        assert callable(init_function)
+    assert not grizzly.state.spawning_complete
+    func = spawning_complete(grizzly)
 
-        init_function(runner)
+    func()
 
-        from grizzly.listeners import producer, producer_greenlet
-
-        assert producer_greenlet is not None
-        assert producer is not None
-
-        quitting()
-
-        from grizzly.listeners import producer, producer_greenlet
-
-        assert producer_greenlet is None
-        assert producer is None
-    finally:
-        if runner is not None:
-            runner.greenlet.kill(block=False)
+    assert grizzly.state.spawning_complete
 
 
 @pytest.mark.usefixtures('_listener_test_mocker')
@@ -481,7 +407,6 @@ def test_validate_result(mocker: MockerFixture, caplog: LogCaptureFixture, grizz
 
 def test_grizzly_worker_quit_non_worker(locust_fixture: LocustFixture, caplog: LogCaptureFixture) -> None:
     environment = locust_fixture.environment
-    environment.runner = LocalRunner(environment=environment)
 
     message = Message(message_type='test', data=None, node_id=None)
 

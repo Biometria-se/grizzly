@@ -6,13 +6,14 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 import yaml
 from jinja2 import DebugUndefined, Environment, FileSystemLoader
 from jinja2.filters import FILTERS
 from typing_extensions import Self
 
+from grizzly.events import events
 from grizzly.testdata import GrizzlyVariables
 from grizzly.types import MessageCallback, MessageDirection
 from grizzly.utils import MergeYamlTag, flatten, merge_dicts
@@ -21,6 +22,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from locust.dispatch import UsersDispatcher
 
     from grizzly.events import GrizzlyEvents
+    from grizzly.testdata.communication import TestdataProducer
     from grizzly.types.behave import Scenario
     from grizzly.types.locust import LocalRunner, MasterRunner, WorkerRunner
 
@@ -62,67 +64,6 @@ def load_configuration_file() -> dict[str, Any]:
         return configuration
 
 
-class GrizzlyContext:
-    __instance: Optional[GrizzlyContext] = None
-
-    _initialized: bool
-    _state: GrizzlyContextState
-    _setup: GrizzlyContextSetup
-    _scenarios: GrizzlyContextScenarios
-    _events: GrizzlyEvents
-
-
-    def __new__(cls, *_args: Any, **_kwargs: Any) -> GrizzlyContext:  # noqa: PYI034
-        """Class is a singleton, there should only be once instance of it."""
-        if cls.__instance is None:
-            cls.__instance = super().__new__(cls)
-            cls.__instance._initialized = False
-
-        return cls.__instance
-
-    @classmethod
-    def destroy(cls) -> None:
-        if cls.__instance is None:
-            message = f"'{cls.__name__}' is not instantiated"
-            raise ValueError(message)
-
-        cls.__instance = None
-
-    def __init__(self) -> None:
-        if not self._initialized:
-            from grizzly.events import events
-            self._setup = GrizzlyContextSetup()
-            self._scenarios = GrizzlyContextScenarios(self)
-            self._state = GrizzlyContextState()
-            self._events = events
-            self._initialized = True
-
-    @property
-    def setup(self) -> GrizzlyContextSetup:
-        return self._setup
-
-    @property
-    def state(self) -> GrizzlyContextState:
-        return self._state
-
-    @property
-    def scenario(self) -> GrizzlyContextScenario:
-        """Read-only scenario child instance. Shortcut to the current (latest) scenario in the context."""
-        if len(self._scenarios) < 1:
-            message = 'no scenarios created!'
-            raise ValueError(message)
-
-        return self._scenarios[self._scenarios._active]
-
-    @property
-    def scenarios(self) -> GrizzlyContextScenarios:
-        return self._scenarios
-
-    @property
-    def events(self) -> GrizzlyEvents:
-        return self._events
-
-
 class DebugChainableUndefined(DebugUndefined):
     _undefined_name: str | None
 
@@ -154,7 +95,9 @@ class GrizzlyContextState:
     background_done: bool = field(default=False)
     configuration: dict[str, Any] = field(init=False, default_factory=load_configuration_file)
     verbose: bool = field(default=False)
-    locust: Union[MasterRunner, WorkerRunner, LocalRunner] = field(init=False, repr=False)
+    locust: MasterRunner | WorkerRunner | LocalRunner = field(init=False, repr=False)
+    producer: TestdataProducer | None = field(init=False, repr=False, default=None)
+
 
 
 @dataclass
@@ -427,3 +370,35 @@ class GrizzlyContextScenarios(list[GrizzlyContextScenario]):
         self.deselect()
 
         return grizzly_scenario
+
+
+@dataclass
+class GrizzlyContext:
+    state: GrizzlyContextState = field(init=False, default_factory=GrizzlyContextState)
+    setup: GrizzlyContextSetup = field(init=False, default_factory=GrizzlyContextSetup)
+    _scenarios: GrizzlyContextScenarios = field(init=False)
+    _events: GrizzlyEvents = field(init=False)
+
+    def __post_init__(self) -> None:
+        self._scenarios = GrizzlyContextScenarios(self)
+        self._events = events
+
+    @property
+    def scenario(self) -> GrizzlyContextScenario:
+        """Read-only scenario child instance. Shortcut to the current (latest) scenario in the context."""
+        if len(self._scenarios) < 1:
+            message = 'no scenarios created!'
+            raise ValueError(message)
+
+        return self._scenarios[self._scenarios._active]
+
+    @property
+    def scenarios(self) -> GrizzlyContextScenarios:
+        return self._scenarios
+
+    @property
+    def events(self) -> GrizzlyEvents:
+        return self._events
+
+
+grizzly = GrizzlyContext()

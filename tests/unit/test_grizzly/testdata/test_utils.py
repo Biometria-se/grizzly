@@ -28,7 +28,7 @@ from grizzly_extras.transformer import TransformerContentType
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
 
-    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture, NoopZmqFixture, RequestTaskFixture
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture, RequestTaskFixture
 
 
 def test_initialize_testdata_no_tasks(grizzly_fixture: GrizzlyFixture) -> None:
@@ -137,9 +137,7 @@ def test_initialize_testdata_with_tasks(
         cleanup()
 
 
-def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
-    noop_zmq('grizzly.testdata.communication')
-
+def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:  # noqa: PLR0915
     try:
         grizzly = grizzly_fixture.grizzly
         parent = grizzly_fixture()

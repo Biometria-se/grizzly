@@ -148,6 +148,7 @@ def test_step_task_keystore_pop(behave_fixture: BehaveFixture) -> None:
     behave.scenario = grizzly.scenario.behave
 
     grizzly.scenario.tasks.clear()
+    grizzly.scenario.variables.clear()
 
     step_task_keystore_pop(behave, 'foobar', 1)
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='action context for "pop" must be a string')]}

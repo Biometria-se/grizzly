@@ -50,10 +50,11 @@ def before_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: A
 
     destroy_variables()
 
-    with suppress(ValueError):
-        GrizzlyContext.destroy()
+    from grizzly import context as grizzly_context
 
-    grizzly = GrizzlyContext()
+    grizzly_context.grizzly = GrizzlyContext()
+
+    grizzly = grizzly_context.grizzly
     grizzly.state.verbose = context.config.verbose
 
     persistent_file = Path(context.config.base_dir) / 'persistent' / f'{Path(feature.filename).stem}.json'

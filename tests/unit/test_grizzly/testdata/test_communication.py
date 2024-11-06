@@ -6,27 +6,26 @@ import logging
 from contextlib import suppress
 from os import environ, sep
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, cast
 
-import gevent
 import pytest
-import zmq.green as zmq
-from zmq.error import Again as ZMQAgain
-from zmq.error import ZMQError
+from gevent.event import AsyncResult
 
 from grizzly.tasks import LogMessageTask
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.testdata.variables import AtomicIntegerIncrementer
 from grizzly.testdata.variables.csv_writer import atomiccsvwriter_message_handler
-from grizzly.types.locust import StopUser
+from grizzly.types.locust import Environment, LocalRunner, Message, StopUser
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
+    from unittest.mock import MagicMock
+
     from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 
-    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture, NoopZmqFixture
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture
 
 
 def echo(value: dict[str, Any]) -> dict[str, Any]:
@@ -50,8 +49,6 @@ class TestTestdataProducer:
         caplog: LogCaptureFixture,
         mocker: MockerFixture,
     ) -> None:
-        producer: Optional[TestdataProducer] = None
-        context: Optional[zmq.Context] = None
         request = grizzly_fixture.request_task.request
 
         success = False
@@ -62,7 +59,6 @@ class TestTestdataProducer:
 
         try:
             parent = grizzly_fixture()
-            address = 'tcp://127.0.0.1:5555'
 
             (context_root / 'adirectory').mkdir()
 
@@ -133,211 +129,233 @@ value3,value4
             assert external_dependencies == set()
             assert message_handlers == {'atomiccsvwriter': atomiccsvwriter_message_handler}
 
-            producer = TestdataProducer(
-                grizzly=grizzly,
-                address=address,
+            grizzly.state.producer = TestdataProducer(
+                runner=cast(LocalRunner, grizzly.state.locust),
                 testdata=testdata,
             )
-            producer_thread = gevent.spawn(producer.run)
-            producer_thread.start()
 
-            assert producer.keystore == {}
+            assert grizzly.state.producer.keystore == {}
 
-            context = zmq.Context()
-            with context.socket(zmq.REQ) as socket:
-                socket.connect(address)
+            responses: dict[int, AsyncResult] = {}
 
-                def request_testdata() -> dict[str, Any]:
-                    socket.send_json({
-                        'message': 'testdata',
-                        'identifier': grizzly.scenario.class_name,
-                    })
+            def handle_consume_data(*, environment: Environment, msg: Message) -> None:  # noqa: ARG001
+                uid = msg.data['uid']
+                response = msg.data['response']
+                responses[uid].set(response)
 
-                    gevent.sleep(0.1)
+            grizzly.state.locust.register_message('consume_testdata', handle_consume_data)
+            grizzly.state.locust.register_message('produce_testdata', grizzly.state.producer.handle_request)
 
-                    return cast(dict[str, Any], socket.recv_json())
+            def request_testdata() -> dict[str, Any] | None:
+                uid = id(parent.user)
 
-                def request_keystore(action: str, key: str, value: Optional[Any] = None) -> dict[str, Any]:
-                    request = {
-                        'message': 'keystore',
-                        'identifier': grizzly.scenario.class_name,
-                        'action': action,
-                        'key': key,
-                    }
-
-                    if value is not None:
-                        request.update({'data': value})
-
-                    socket.send_json(request)
-
-                    gevent.sleep(0.1)
-
-                    return cast(dict[str, Any], socket.recv_json())
-
-                message: dict[str, Any] = request_testdata()
-                testdata_request_spy.assert_called_once_with(
-                    reverse=False,
-                    timestamp=ANY(str),
-                    tags={
-                        'action': 'consume',
-                        'type': 'producer',
-                        'identifier': grizzly.scenario.class_name,
-                    },
-                    measurement='request_testdata',
-                    metrics={
-                        'response_time': ANY(float),
-                        'error': None,
-                    },
+                responses[uid] = AsyncResult()
+                grizzly.state.locust.send_message(
+                    'produce_testdata',
+                    {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': {'message': 'testdata', 'identifier': grizzly.scenario.class_name}},
                 )
-                testdata_request_spy.reset_mock()
-                keystore_request_spy.assert_not_called()
-                assert message['action'] == 'consume'
-                data = message['data']
-                assert 'variables' in data
-                variables = data['variables']
-                assert variables == {
-                    'AtomicIntegerIncrementer.messageID': 456,
-                    'AtomicDate.now': ANY(str),
-                    'messageID': 123,
-                    'AtomicDirectoryContents.test': f'adirectory{sep}file1.txt',
-                    'AtomicDate.utc': ANY(str),
-                    'AtomicCsvReader.test.header1': 'value1',
-                    'AtomicCsvReader.test.header2': 'value2',
-                    'AtomicJsonReader.test.header1': 'value1',
-                    'AtomicJsonReader.test.header2': 'value2',
-                    'AtomicJsonReader.test2': {'header1': 'value1', 'header2': 'value2'},
-                    'AtomicIntegerIncrementer.value': 1,
-                    'tests.helpers.AtomicCustomVariable.foo': 'bar',
-                    'world': 'hello!',
-                }
-                assert data == {
-                    'variables': variables,
-                    'auth.user.username': 'value1',
-                    'auth.user.password': 'value2',
-                }
-                assert producer.keystore == {}
 
-                message = request_keystore('set', 'foobar', {'hello': 'world'})
-                testdata_request_spy.assert_not_called()
-                keystore_request_spy.assert_called_once_with(
-                    reverse=False,
-                    timestamp=ANY(str),
-                    tags={
-                        'identifier': grizzly.scenario.class_name,
-                        'action': 'set',
-                        'key': 'foobar',
-                        'type': 'producer',
-                    },
-                    measurement='request_keystore',
-                    metrics={
-                        'response_time': ANY(float),
-                        'error': None,
-                    },
-                )
-                assert message == {
+                response = cast(dict[str, Any] | None, responses[uid].get())
+
+                del responses[uid]
+
+                return response
+
+            def request_keystore(action: str, key: str, value: Any | None = None) -> dict[str, Any] | None:
+                uid = id(parent.user)
+
+                request = {
                     'message': 'keystore',
+                    'identifier': grizzly.scenario.class_name,
+                    'action': action,
+                    'key': key,
+                }
+
+                if value is not None:
+                    request.update({'data': value})
+
+                responses[uid] = AsyncResult()
+                grizzly.state.locust.send_message('produce_testdata', {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': request})
+
+                response = cast(dict[str, Any] | None, responses[uid].get())
+
+                del responses[uid]
+
+                return response
+
+            response = request_testdata()
+            assert response is not None
+            testdata_request_spy.assert_called_once_with(
+                reverse=False,
+                timestamp=ANY(str),
+                tags={
+                    'action': 'consume',
+                    'type': 'producer',
+                    'identifier': grizzly.scenario.class_name,
+                },
+                measurement='request_testdata',
+                metrics={
+                    'response_time': ANY(float),
+                    'error': None,
+                },
+            )
+            testdata_request_spy.reset_mock()
+            keystore_request_spy.assert_not_called()
+            assert response['action'] == 'consume'
+            data = response['data']
+            assert 'variables' in data
+            variables = data['variables']
+            assert variables == {
+                'AtomicIntegerIncrementer.messageID': 456,
+                'AtomicDate.now': ANY(str),
+                'messageID': 123,
+                'AtomicDirectoryContents.test': f'adirectory{sep}file1.txt',
+                'AtomicDate.utc': ANY(str),
+                'AtomicCsvReader.test.header1': 'value1',
+                'AtomicCsvReader.test.header2': 'value2',
+                'AtomicJsonReader.test.header1': 'value1',
+                'AtomicJsonReader.test.header2': 'value2',
+                'AtomicJsonReader.test2': {'header1': 'value1', 'header2': 'value2'},
+                'AtomicIntegerIncrementer.value': 1,
+                'tests.helpers.AtomicCustomVariable.foo': 'bar',
+                'world': 'hello!',
+            }
+            assert data == {
+                'variables': variables,
+                'auth.user.username': 'value1',
+                'auth.user.password': 'value2',
+            }
+            assert grizzly.state.producer is not None
+            assert grizzly.state.producer.keystore == {}
+
+
+            response = request_keystore('set', 'foobar', {'hello': 'world'})
+            assert response is not None
+            testdata_request_spy.assert_not_called()
+            keystore_request_spy.assert_called_once_with(
+                reverse=False,
+                timestamp=ANY(str),
+                tags={
+                    'identifier': grizzly.scenario.class_name,
                     'action': 'set',
-                    'identifier': grizzly.scenario.class_name,
                     'key': 'foobar',
-                    'data': {'hello': 'world'},
-                }
+                    'type': 'producer',
+                },
+                measurement='request_keystore',
+                metrics={
+                    'response_time': ANY(float),
+                    'error': None,
+                },
+            )
+            assert response == {
+                'message': 'keystore',
+                'action': 'set',
+                'identifier': grizzly.scenario.class_name,
+                'key': 'foobar',
+                'data': {'hello': 'world'},
+            }
 
-                message = request_testdata()
-                assert message['action'] == 'consume'
-                data = message['data']
-                assert 'variables' in data
-                variables = data['variables']
-                assert 'AtomicIntegerIncrementer.messageID' in variables
-                assert 'AtomicDate.now' in variables
-                assert 'messageID' in variables
-                assert variables['AtomicIntegerIncrementer.messageID'] == 457
-                assert variables['messageID'] == 123
-                assert variables['AtomicDirectoryContents.test'] == f'adirectory{sep}file2.txt'
-                assert variables['AtomicCsvReader.test.header1'] == 'value3'
-                assert variables['AtomicCsvReader.test.header2'] == 'value4'
-                assert variables['AtomicJsonReader.test.header1'] == 'value3'
-                assert variables['AtomicJsonReader.test.header2'] == 'value4'
-                assert variables['AtomicJsonReader.test2'] == {'header1': 'value3', 'header2': 'value4'}
-                assert variables['AtomicIntegerIncrementer.value'] == 6
-                assert data['auth.user.username'] == 'value3'
-                assert data['auth.user.password'] == 'value4'
+            response = request_testdata()
+            assert response is not None
+            assert response['action'] == 'consume'
+            data = response['data']
+            assert 'variables' in data
+            variables = data['variables']
+            assert 'AtomicIntegerIncrementer.messageID' in variables
+            assert 'AtomicDate.now' in variables
+            assert 'messageID' in variables
+            assert variables['AtomicIntegerIncrementer.messageID'] == 457
+            assert variables['messageID'] == 123
+            assert variables['AtomicDirectoryContents.test'] == f'adirectory{sep}file2.txt'
+            assert variables['AtomicCsvReader.test.header1'] == 'value3'
+            assert variables['AtomicCsvReader.test.header2'] == 'value4'
+            assert variables['AtomicJsonReader.test.header1'] == 'value3'
+            assert variables['AtomicJsonReader.test.header2'] == 'value4'
+            assert variables['AtomicJsonReader.test2'] == {'header1': 'value3', 'header2': 'value4'}
+            assert variables['AtomicIntegerIncrementer.value'] == 6
+            assert data['auth.user.username'] == 'value3'
+            assert data['auth.user.password'] == 'value4'
 
-                message = request_keystore('get', 'foobar')
-                assert message == {
-                    'message': 'keystore',
-                    'action': 'get',
-                    'identifier': grizzly.scenario.class_name,
-                    'key': 'foobar',
-                    'data': {'hello': 'world'},
-                }
+            response = request_keystore('get', 'foobar')
+            assert response == {
+                'message': 'keystore',
+                'action': 'get',
+                'identifier': grizzly.scenario.class_name,
+                'key': 'foobar',
+                'data': {'hello': 'world'},
+            }
 
-                caplog.clear()
+            caplog.clear()
 
-                with caplog.at_level(logging.ERROR):
-                    message = request_keystore('inc', 'counter', 1)
-                    assert message == {
-                        'message': 'keystore',
-                        'action': 'inc',
-                        'identifier': grizzly.scenario.class_name,
-                        'key': 'counter',
-                        'data': 1,
-                    }
+            with caplog.at_level(logging.ERROR):
+                response = request_keystore('inc', 'counter', 1)
 
-                assert caplog.messages == []
+            assert response == {
+                'message': 'keystore',
+                'action': 'inc',
+                'identifier': grizzly.scenario.class_name,
+                'key': 'counter',
+                'data': 1,
+            }
 
-                caplog.clear()
-                producer.keystore.update({'counter': 'asdf'})
+            assert caplog.messages == []
 
-                with caplog.at_level(logging.ERROR):
-                    message = request_keystore('inc', 'counter', 1)
-                    assert message == {
-                        'message': 'keystore',
-                        'action': 'inc',
-                        'identifier': grizzly.scenario.class_name,
-                        'key': 'counter',
-                        'data': None,
-                        'error': 'value asdf for key "counter" cannot be incremented',
-                    }
+            caplog.clear()
 
-                assert caplog.messages == ['value asdf for key "counter" cannot be incremented']
+            grizzly.state.producer.keystore.update({'counter': 'asdf'})
 
-                caplog.clear()
-                producer.keystore.update({'counter': 1})
+            with caplog.at_level(logging.ERROR):
+                response = request_keystore('inc', 'counter', 1)
 
-                with caplog.at_level(logging.ERROR):
-                    message = request_keystore('inc', 'counter', 1)
-                    assert message == {
-                        'message': 'keystore',
-                        'action': 'inc',
-                        'identifier': grizzly.scenario.class_name,
-                        'key': 'counter',
-                        'data': 2,
-                    }
+            assert response == {
+                'message': 'keystore',
+                'action': 'inc',
+                'identifier': grizzly.scenario.class_name,
+                'key': 'counter',
+                'data': None,
+                'error': 'value asdf for key "counter" cannot be incremented',
+            }
 
-                assert caplog.messages == []
+            assert caplog.messages == ['value asdf for key "counter" cannot be incremented']
 
-                with caplog.at_level(logging.ERROR):
-                    message = request_keystore('inc', 'counter', 10)
-                    assert message == {
-                        'message': 'keystore',
-                        'action': 'inc',
-                        'identifier': grizzly.scenario.class_name,
-                        'key': 'counter',
-                        'data': 12,
-                    }
+            caplog.clear()
+            grizzly.state.producer.keystore.update({'counter': 1})
 
-                assert caplog.messages == []
+            with caplog.at_level(logging.ERROR):
+                response = request_keystore('inc', 'counter', 1)
 
-                message = request_testdata()
-                assert message['action'] == 'stop'
-                assert 'data' not in message
+            assert response == {
+                'message': 'keystore',
+                'action': 'inc',
+                'identifier': grizzly.scenario.class_name,
+                'key': 'counter',
+                'data': 2,
+            }
 
-                producer_thread.join(timeout=1)
-                success = True
+            assert caplog.messages == []
+
+            with caplog.at_level(logging.ERROR):
+                response = request_keystore('inc', 'counter', 10)
+
+            assert response == {
+                'message': 'keystore',
+                'action': 'inc',
+                'identifier': grizzly.scenario.class_name,
+                'key': 'counter',
+                'data': 12,
+            }
+
+            assert caplog.messages == []
+
+            response = request_testdata()
+            assert response is not None
+            assert response['action'] == 'stop'
+            assert 'data' not in response
+
+            success = True
         finally:
-            if producer is not None:
-                producer.stop()
-                assert producer.context._instance is None
+            if grizzly.state.producer is not None:
+                grizzly.state.producer.stop()
 
                 persist_file = Path(context_root).parent / 'persistent' / 'test_run.json'
                 assert persist_file.exists()
@@ -350,26 +368,20 @@ value3,value4
                         },
                     }
 
-            if context is not None:
-                context.destroy()
-
             cleanup()
 
     def test_run_variable_none(
         self,
         grizzly_fixture: GrizzlyFixture,
         cleanup: AtomicVariableCleanupFixture,
+        caplog: LogCaptureFixture,
     ) -> None:
-        producer: Optional[TestdataProducer] = None
-        context: Optional[zmq.Context] = None
-
         try:
             grizzly = grizzly_fixture.grizzly
             parent = grizzly_fixture()
             context_root = grizzly_fixture.test_context / 'requests'
             context_root.mkdir(exist_ok=True)
             request = grizzly_fixture.request_task.request
-            address = 'tcp://127.0.0.1:5555'
             environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
 
             (context_root / 'adirectory').mkdir()
@@ -401,59 +413,63 @@ value3,value4
             assert external_dependencies == set()
             assert message_handlers == {}
 
-            producer = TestdataProducer(
-                grizzly=grizzly,
-                address=address,
+            grizzly.state.producer = TestdataProducer(
+                runner=cast(LocalRunner, grizzly.state.locust),
                 testdata=testdata,
             )
-            producer_thread = gevent.spawn(producer.run)
-            producer_thread.start()
 
-            context = zmq.Context()
-            with context.socket(zmq.REQ) as socket:
-                socket.connect(address)
+            responses: dict[int, AsyncResult] = {}
 
-                def get_message_from_producer() -> dict[str, Any]:
-                    socket.send_json({
-                        'message': 'testdata',
-                        'scenario': grizzly.scenario.class_name,
-                    })
+            def handle_consume_data(*, environment: Environment, msg: Message) -> None:  # noqa: ARG001
+                uid = msg.data['uid']
+                response = msg.data['response']
+                responses[uid].set(response)
 
-                    gevent.sleep(0.1)
+            grizzly.state.locust.register_message('consume_testdata', handle_consume_data)
+            grizzly.state.locust.register_message('produce_testdata', grizzly.state.producer.handle_request)
 
-                    return cast(dict[str, Any], socket.recv_json())
+            def request_testdata() -> dict[str, Any] | None:
+                uid = id(parent.user)
 
-                message: dict[str, Any] = get_message_from_producer()
-                assert message['action'] == 'stop'
+                responses[uid] = AsyncResult()
+                grizzly.state.locust.send_message(
+                    'produce_testdata',
+                    {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': {'message': 'testdata', 'identifier': grizzly.scenario.class_name}},
+                )
 
-                producer_thread.join(timeout=1)
+                response = cast(dict[str, Any] | None, responses[uid].get())
+
+                del responses[uid]
+
+                return response
+
+            with caplog.at_level(logging.DEBUG):
+                response = request_testdata()
+                assert response is not None
+                assert response['action'] == 'stop'
+
         finally:
-            if producer is not None:
-                producer.stop()
-                assert producer.context._instance is None
+            if grizzly.state.producer is not None:
+                grizzly.state.producer.stop()
 
                 persist_file = Path(context_root).parent / 'persistent' / 'test_run_with_none.json'
                 assert not persist_file.exists()
 
-            if context is not None:
-                context.destroy()
-
             cleanup()
 
-    def test_on_stop(self, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture) -> None:
-        noop_zmq('grizzly.testdata.communication')
-
+    def test_on_stop(self, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture) -> None:
         try:
+            grizzly = grizzly_fixture.grizzly
             environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
-            producer = TestdataProducer(grizzly_fixture.grizzly, {})
-            producer.scenarios_iteration = {
+            grizzly.state.producer = TestdataProducer(runner=cast(LocalRunner, grizzly.state.locust), testdata={})
+            grizzly.state.producer.scenarios_iteration = {
                 'test-scenario-1': 10,
                 'test-scenario-2': 5,
             }
 
-            producer.on_test_stop()
+            grizzly.state.producer.on_test_stop()
 
-            for scenario, count in producer.scenarios_iteration.items():
+            for scenario, count in grizzly.state.producer.scenarios_iteration.items():
                 assert count == 0, f'iteration count for {scenario} was not reset'
         finally:
             with suppress(KeyError):
@@ -462,11 +478,8 @@ value3,value4
             cleanup()
 
     def test_stop_exception(
-        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, noop_zmq: NoopZmqFixture,
+        self, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture,
     ) -> None:
-        noop_zmq('grizzly.testdata.communication')
-        mocker.patch('grizzly.testdata.communication.zmq.Context.destroy', side_effect=[RuntimeError('zmq.Context.destroy failed')] * 3)
-
         grizzly = grizzly_fixture.grizzly
         scenario1 = grizzly.scenario
         scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
@@ -480,8 +493,8 @@ value3,value4
 
         try:
             with caplog.at_level(logging.DEBUG):
-                TestdataProducer(grizzly_fixture.grizzly, {}).stop()
-            assert 'failed to stop' in caplog.messages[-1]
+                TestdataProducer(cast(LocalRunner, grizzly.state.locust), {}).stop()
+            assert caplog.messages == ['serving:\n{}']
             assert not persistent_file.exists()
 
             i = AtomicIntegerIncrementer(scenario=scenario1, variable='foobar', value='1 | step=1, persist=True')
@@ -494,15 +507,15 @@ value3,value4
             actual_keystore = {'foo': ['hello', 'world'], 'bar': {'hello': 'world', 'foo': 'bar'}, 'hello': 'world'}
 
             with caplog.at_level(logging.DEBUG):
-                producer = TestdataProducer(grizzly_fixture.grizzly, {
+                grizzly.state.producer = TestdataProducer(cast(LocalRunner, grizzly.state.locust), {
                     scenario1.class_name: {'AtomicIntegerIncrementer.foobar': i},
                     scenario2.class_name: {'AtomicIntegerIncrementer.foobar': j},
                 })
-                producer.keystore.update(actual_keystore)
-                producer.stop()
+                grizzly.state.producer.keystore.update(actual_keystore)
+                grizzly.state.producer.stop()
 
             assert caplog.messages[-1] == f'feature file data persisted in {persistent_file}'
-            assert caplog.messages[-2] == 'failed to stop'
+            caplog.clear()
 
             assert persistent_file.exists()
 
@@ -520,14 +533,14 @@ value3,value4
             j['foobar']
 
             with caplog.at_level(logging.DEBUG):
-                producer = TestdataProducer(grizzly_fixture.grizzly, {
+                grizzly.state.producer = TestdataProducer(cast(LocalRunner, grizzly.state.locust), {
                     scenario1.class_name: {'AtomicIntegerIncrementer.foobar': i},
                     scenario2.class_name: {'AtomicIntegerIncrementer.foobar': j},
                 })
-                producer.stop()
+                grizzly.state.producer.stop()
 
             assert caplog.messages[-1] == f'feature file data persisted in {persistent_file}'
-            assert caplog.messages[-2] == 'failed to stop'
+            caplog.clear()
 
             assert persistent_file.exists()
 
@@ -545,235 +558,150 @@ value3,value4
                 del environ['GRIZZLY_FEATURE_FILE']
             cleanup()
 
-    def test_run_type_error(
-        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture,
-    ) -> None:
-        noop_zmq('grizzly.testdata.communication')
-
-        mocker.patch('grizzly.testdata.communication.zmq.Socket.recv_json', return_value={
-            'message': 'testdata',
-            'identifier': 'test-consumer',
-            'scenario': 'test',
-        })
-        mocker.patch(
-            'grizzly.context.GrizzlyContextScenarios.find_by_class_name',
-            side_effect=[TypeError('TypeError raised'), ZMQError],
-        )
-
-        send_json_mock = noop_zmq.get_mock('send_json')
-        environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_run_type_error.feature'
-
-        try:
-            with caplog.at_level(logging.DEBUG):
-                TestdataProducer(grizzly_fixture.grizzly, {}).run()
-
-            assert caplog.messages[-3] == "producing {'action': 'stop'} for consumer test-consumer"
-            assert 'test data error, stop consumer test-consumer' in caplog.messages[-4]
-            send_json_mock.assert_called_once_with({'action': 'stop'})
-        finally:
-            with suppress(KeyError):
-                del environ['GRIZZLY_FEATURE_FILE']
-
-            cleanup()
-
-    def test_run_keystore(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
-        noop_zmq('grizzly.testdata.communication')
-
+    def test_run_keystore(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
+        parent = grizzly_fixture()
+        grizzly = grizzly_fixture.grizzly
         context_root = Path(grizzly_fixture.request_task.context_root).parent
 
         environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_keystore.feature'
         environ['GRIZZLY_CONTEXT_ROOT'] = context_root.as_posix()
 
-        send_json_mock = noop_zmq.get_mock('send_json')
-        send_json_mock.side_effect = ZMQError
-
-        recv_json_mock = noop_zmq.get_mock('recv_json')
-
         try:
-            producer = TestdataProducer(grizzly_fixture.grizzly, {})
-            producer._stopping = True  # to mask error used for breaking out of loop
-            producer.keystore.update({'hello': 'world'})
+            grizzly.state.producer = TestdataProducer(cast(LocalRunner, grizzly.state.locust), {})
+            grizzly.state.producer.keystore.update({'hello': 'world'})
 
-            recv_json_mock.return_value = {'message': 'keystore', 'action': 'get', 'key': 'hello'}
+            responses: dict[int, AsyncResult] = {}
+
+            def handle_consume_data(*, environment: Environment, msg: Message) -> None:  # noqa: ARG001
+                uid = msg.data['uid']
+                response = msg.data['response']
+                responses[uid].set(response)
+
+            grizzly.state.locust.register_message('consume_testdata', handle_consume_data)
+            grizzly.state.locust.register_message('produce_testdata', grizzly.state.producer.handle_request)
+
+            def request_keystore(action: str, key: str, value: Any | None = None, message: str = 'keystore') -> dict[str, Any] | None:
+                uid = id(parent.user)
+
+                request = {
+                    'message': message,
+                    'identifier': grizzly.scenario.class_name,
+                    'action': action,
+                    'key': key,
+                }
+
+                if value is not None:
+                    request.update({'data': value})
+
+                responses[uid] = AsyncResult()
+                grizzly.state.locust.send_message('produce_testdata', {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': request})
+
+                response = cast(dict[str, Any] | None, responses[uid].get())
+
+                del responses[uid]
+
+                return response
 
             with caplog.at_level(logging.ERROR):
-                producer.run()
+                response = request_keystore('get', 'hello', 'world')
+
+            assert response == {'message': 'keystore', 'action': 'get', 'data': 'world', 'identifier': grizzly.scenario.class_name, 'key': 'hello'}
             assert caplog.messages == []
 
-            send_json_mock.assert_called_once_with({
-                'message': 'keystore',
-                'action': 'get',
-                'key': 'hello',
-                'data': 'world',
-            })
-            send_json_mock.reset_mock()
-
-            producer.keystore.clear()
-
-            recv_json_mock.return_value = {'message': 'keystore', 'action': 'set', 'key': 'world', 'data': {'foo': 'bar'}}
+            grizzly.state.producer.keystore.clear()
 
             with caplog.at_level(logging.ERROR):
-                producer.run()
+                response = request_keystore('set', 'world', {'foo': 'bar'})
+
+            assert response == {'message': 'keystore', 'action': 'set', 'data': {'foo': 'bar'}, 'identifier': grizzly.scenario.class_name, 'key': 'world'}
             assert caplog.messages == []
-
-            assert producer.keystore == {'world': {'foo': 'bar'}}
-
-            send_json_mock.assert_called_once_with({
-                'message': 'keystore',
-                'action': 'set',
-                'key': 'world',
-                'data': {'foo': 'bar'},
-            })
-            send_json_mock.reset_mock()
+            assert grizzly.state.producer.keystore == {'world': {'foo': 'bar'}}
 
             # <!-- push
-            recv_json_mock.return_value = {'message': 'keystore', 'action': 'push', 'key': 'foobar', 'data': 'foobar'}
+            assert 'foobar' not in grizzly.state.producer.keystore
 
-            assert 'foobar' not in producer.keystore
-            producer.run()
+            response = request_keystore('push', 'foobar', 'foobar')
 
-            send_json_mock.assert_called_once_with({
-                'message': 'keystore',
-                'action': 'push',
-                'key': 'foobar',
-                'data': 'foobar',
-            })
-            send_json_mock.reset_mock()
+            assert response == {'message': 'keystore', 'action': 'push', 'data': 'foobar', 'identifier': grizzly.scenario.class_name, 'key': 'foobar'}
+            assert grizzly.state.producer.keystore['foobar'] == ['foobar']
 
-            assert producer.keystore['foobar'] == ['foobar']
+            response = request_keystore('push', 'foobar', 'foobaz')
 
-            recv_json_mock.return_value = {'message': 'keystore', 'action': 'push', 'key': 'foobar', 'data': 'foobaz'}
-
-            producer.run()
-
-            send_json_mock.assert_called_once_with({
-                'message': 'keystore',
-                'action': 'push',
-                'key': 'foobar',
-                'data': 'foobaz',
-            })
-            send_json_mock.reset_mock()
-
-            assert producer.keystore['foobar'] == ['foobar', 'foobaz']
+            assert response == {'message': 'keystore', 'action': 'push', 'data': 'foobaz', 'identifier': grizzly.scenario.class_name, 'key': 'foobar'}
+            assert grizzly.state.producer.keystore['foobar'] == ['foobar', 'foobaz']
             # // push -->
 
             # <!-- pop
-            recv_json_mock.return_value = {'message': 'keystore', 'action': 'pop', 'key': 'world', 'data': 'foobar'}
-            assert 'world' in producer.keystore
+            assert 'world' in grizzly.state.producer.keystore
 
-            producer.run()
+            response = request_keystore('pop', 'world', 'foobar')
 
-            send_json_mock.assert_called_once_with({
+            assert response == {
                 'message': 'keystore',
                 'action': 'pop',
+                'data': None,
+                'identifier': grizzly.scenario.class_name,
                 'key': 'world',
-                'data': None,
                 'error': 'key "world" is not a list, it has not been pushed to',
-            })
-            send_json_mock.reset_mock()
+            }
 
-            recv_json_mock.return_value = {'message': 'keystore', 'action': 'pop', 'key': 'foobaz', 'data': 'foobar'}
+            response = request_keystore('pop', 'foobaz', 'foobar')
 
-            producer.run()
+            assert response == {'message': 'keystore', 'action': 'pop', 'data': None, 'identifier': grizzly.scenario.class_name, 'key': 'foobaz'}
 
-            send_json_mock.assert_called_once_with({
-                'message': 'keystore',
-                'action': 'pop',
-                'key': 'foobaz',
-                'data': None,
-            })
-            send_json_mock.reset_mock()
+            response = request_keystore('pop', 'foobar')
 
-            recv_json_mock.return_value = {'message': 'keystore', 'action': 'pop', 'key': 'foobar'}
+            assert response == {'message': 'keystore', 'action': 'pop', 'data': 'foobar', 'identifier': grizzly.scenario.class_name, 'key': 'foobar'}
+            assert grizzly.state.producer.keystore['foobar'] == ['foobaz']
 
-            producer.run()
+            response = request_keystore('pop', 'foobar')
 
-            send_json_mock.assert_called_once_with({
-                'message': 'keystore',
-                'action': 'pop',
-                'key': 'foobar',
-                'data': 'foobar',
-            })
-            send_json_mock.reset_mock()
+            assert response == {'message': 'keystore', 'action': 'pop', 'data': 'foobaz', 'identifier': grizzly.scenario.class_name, 'key': 'foobar'}
+            assert grizzly.state.producer.keystore['foobar'] == []
 
-            assert producer.keystore['foobar'] == ['foobaz']
+            response = request_keystore('pop', 'foobar')
 
-            producer.run()
-
-            send_json_mock.assert_called_once_with({
-                'message': 'keystore',
-                'action': 'pop',
-                'key': 'foobar',
-                'data': 'foobaz',
-            })
-            send_json_mock.reset_mock()
-
-            assert producer.keystore['foobar'] == []
-
-            producer.run()
-
-            send_json_mock.assert_called_once_with({
-                'message': 'keystore',
-                'action': 'pop',
-                'key': 'foobar',
-                'data': None,
-            })
-            send_json_mock.reset_mock()
+            assert response == {'message': 'keystore', 'action': 'pop', 'data': None, 'identifier': grizzly.scenario.class_name, 'key': 'foobar'}
             # // pop -->
 
             # <!-- del
-            assert 'foobar' in producer.keystore
+            assert 'foobar' in grizzly.state.producer.keystore
 
-            recv_json_mock.return_value = {'message': 'keystore', 'action': 'del', 'key': 'foobar', 'data': 'dummy'}
+            response = request_keystore('del', 'foobar', 'dummy')
 
-            producer.run()
+            assert response == {'message': 'keystore', 'action': 'del', 'data': None, 'identifier': grizzly.scenario.class_name, 'key': 'foobar'}
+            assert 'foobar' not in grizzly.state.producer.keystore
 
-            assert 'foobar' not in producer.keystore
-
-            send_json_mock.assert_called_once_with({
+            response = request_keystore('del', 'foobar', 'dummy')
+            assert response == {
                 'message': 'keystore',
                 'action': 'del',
-                'key': 'foobar',
                 'data': None,
-            })
-            send_json_mock.reset_mock()
-
-            producer.run()
-
-            send_json_mock.assert_called_once_with({
-                'message': 'keystore',
-                'action': 'del',
+                'identifier': grizzly.scenario.class_name,
                 'key': 'foobar',
-                'data': None,
                 'error': 'failed to remove key "foobar"',
-            })
-            send_json_mock.reset_mock()
+            }
             # // del -->
 
             caplog.clear()
 
-            recv_json_mock.return_value = {'message': 'keystore', 'key': 'asdf', 'action': 'unknown'}
-
-            with caplog.at_level(logging.ERROR):
-                producer.run()
+            response = request_keystore('unknown', 'asdf')
+            assert response == {
+                'message': 'keystore',
+                'action': 'unknown',
+                'data': None,
+                'identifier': grizzly.scenario.class_name,
+                'key': 'asdf',
+                'error': 'received unknown keystore action "unknown"',
+            }
             assert caplog.messages == ['received unknown keystore action "unknown"']
             caplog.clear()
 
-            send_json_mock.assert_called_once_with({
-                'message': 'keystore',
-                'action': 'unknown',
-                'key': 'asdf',
-                'data': None,
-                'error': 'received unknown keystore action "unknown"',
-            })
-            send_json_mock.reset_mock()
-
-            recv_json_mock.return_value = {'message': 'unknown'}
-
             with caplog.at_level(logging.ERROR):
-                producer.run()
+                response = request_keystore('get', 'foobar', None, message='unknown')
+
+            assert response == {}
             assert caplog.messages == ['received unknown message "unknown"']
-            send_json_mock.assert_called_once_with({})
         finally:
             with suppress(KeyError):
                 del environ['GRIZZLY_FEATURE_FILE']
@@ -781,32 +709,9 @@ value3,value4
             with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
 
-    def test_run_zmq_error(
-        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture,
-    ) -> None:
-        noop_zmq('grizzly.testdata.communication')
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Socket.recv_json',
-            side_effect=[ZMQError],
-        )
-
-        environ['GRIZZLY_FEATURE_FILE'] = 'features/test_persist_data_edge_cases.feature'
-
-        try:
-            with caplog.at_level(logging.ERROR):
-                TestdataProducer(grizzly_fixture.grizzly, {}).run()
-            assert caplog.messages[-1] == 'failed when waiting for consumers'
-        finally:
-            with suppress(KeyError):
-                del environ['GRIZZLY_FEATURE_FILE']
-            cleanup()
-
     def test_persist_data_edge_cases(
-        self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture, cleanup: AtomicVariableCleanupFixture,
+        self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, cleanup: AtomicVariableCleanupFixture,
     ) -> None:
-        noop_zmq('grizzly.testdata.communication')
-
         context_root = grizzly_fixture.test_context / 'requests'
         context_root.mkdir(exist_ok=True)
         grizzly = grizzly_fixture.grizzly
@@ -819,22 +724,25 @@ value3,value4
             assert not persistent_file.exists()
             i = AtomicIntegerIncrementer(scenario=grizzly.scenario, variable='foobar', value='1 | step=1, persist=True')
 
-            producer = TestdataProducer(grizzly_fixture.grizzly, {grizzly.scenario.class_name: {'AtomicIntegerIncrementer.foobar': i}})
-            producer.has_persisted = True
+            grizzly.state.producer = TestdataProducer(
+                runner=cast(LocalRunner, grizzly.state.locust),
+                testdata={grizzly.scenario.class_name: {'AtomicIntegerIncrementer.foobar': i}},
+            )
+            grizzly.state.producer.has_persisted = True
 
             with caplog.at_level(logging.DEBUG):
-                producer.persist_data()
+                grizzly.state.producer.persist_data()
 
             assert caplog.messages == []
             assert not persistent_file.exists()
 
-            producer.has_persisted = False
-            producer.keystore = {'hello': 'world'}
+            grizzly.state.producer.has_persisted = False
+            grizzly.state.producer.keystore = {'hello': 'world'}
 
             mocker.patch('grizzly.testdata.communication.jsondumps', side_effect=[json.JSONDecodeError])
 
             with caplog.at_level(logging.ERROR):
-                producer.persist_data()
+                grizzly.state.producer.persist_data()
 
             assert caplog.messages == ['failed to persist feature file data']
             assert not persistent_file.exists()
@@ -847,184 +755,140 @@ value3,value4
 
 
 class TestTestdataConsumer:
-    def test_testdata(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
-        noop_zmq('grizzly.testdata.communication')
-
-        def mock_recv_json(data: dict[str, Any], action: Optional[str] = 'consume') -> None:
-            mocker.patch(
-                'grizzly.testdata.communication.zmq.Socket.recv_json',
-                side_effect=[
-                    {
-                        'action': action,
-                        'data': data,
-                    },
-                    {
-                        'success': True,
-                        'worker': 'asdf-asdf-asdf',
-                    },
-                    {
-                        'success': True,
-                        'payload': json.dumps({
-                            'document': {
-                                'id': 'DOCUMENT_1337-2',
-                                'name': 'Very important memo about the TPM report',
-                            },
-                        }),
-                    },
-                ],
-            )
-
+    def test_testdata(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
         parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
+
+        def mock_testdata(consumer: TestdataConsumer, data: dict[str, Any], action: str | None = 'consume') -> MagicMock:
+            def send_message_mock(*_args: Any, **_kwargs: Any) -> None:
+                message = Message(
+                    'consume_testdata',
+                    {
+                        'uid': id(parent.user),
+                        'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+                        'response': {'action': action, 'data': data},
+                    },
+                    node_id=None,
+                )
+                TestdataConsumer.handle_response(environment=consumer.runner.environment, msg=message)
+
+            return mocker.patch.object(grizzly.state.locust, 'send_message', side_effect=send_message_mock)
 
         testdata_request_spy = mocker.spy(grizzly.events.testdata_request, 'fire')
 
-        consumer = TestdataConsumer(parent)
+        consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
 
-        try:
-            mock_recv_json({})
+        send_message = mock_testdata(consumer, {
+            'auth.user.username': 'username',
+            'auth.user.password': 'password',
+            'variables': {
+                'AtomicIntegerIncrementer.messageID': 100,
+                'test': 1,
+            },
+        })
 
-            mock_recv_json({
-                'auth.user.username': 'username',
-                'auth.user.password': 'password',
-                'variables': {
-                    'AtomicIntegerIncrementer.messageID': 100,
-                    'test': 1,
+        assert consumer.testdata() == {
+            'auth': {
+                'user': {
+                    'username': 'username',
+                    'password': 'password',
                 },
-            })
+            },
+            'variables': transform(grizzly.scenario, {
+                'AtomicIntegerIncrementer.messageID': 100,
+                'test': 1,
+            }),
+        }
 
-            assert consumer.testdata() == {
-                'auth': {
-                    'user': {
-                        'username': 'username',
-                        'password': 'password',
-                    },
-                },
-                'variables': transform(grizzly.scenario, {
-                    'AtomicIntegerIncrementer.messageID': 100,
-                    'test': 1,
-                }),
-            }
+        send_message.assert_called_once_with('produce_testdata', {
+            'uid': id(parent.user),
+            'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+            'request': {'message': 'testdata', 'identifier': 'TestScenario_001'},
+        })
+        send_message.reset_mock()
 
-            testdata_request_spy.assert_called_once_with(
-                reverse=False,
-                timestamp=ANY(str),
-                tags={
-                    'type': 'consumer',
-                    'action': 'consume',
-                    'identifier': consumer.identifier,
-                },
-                measurement='request_testdata',
-                metrics={
-                    'error': None,
-                    'response_time': ANY(float),
-                },
-            )
-            testdata_request_spy.reset_mock()
-
-            mock_recv_json({
-                'variables': {
-                    'AtomicIntegerIncrementer.messageID': 100,
-                    'test': 1,
-                },
-            }, 'stop')
-
-            with caplog.at_level(logging.DEBUG):
-                assert consumer.testdata() is None
-            assert caplog.messages[-1] == 'received stop command'
-
-            caplog.clear()
-
-            mock_recv_json({
-                'variables': {
-                    'AtomicIntegerIncrementer.messageID': 100,
-                    'test': 1,
-                },
-            }, 'asdf')
-
-            with caplog.at_level(logging.DEBUG), pytest.raises(StopUser):
-                consumer.testdata()
-            assert 'unknown action "asdf" received, stopping user' in caplog.text
-
-            caplog.clear()
-
-            mock_recv_json({
-                'variables': {
-                    'AtomicIntegerIncrementer.messageID': 100,
-                    'test': None,
-                },
-            }, 'consume')
-
-            assert consumer.testdata() == {
-                'variables': transform(grizzly.scenario, {
-                    'AtomicIntegerIncrementer.messageID': 100,
-                    'test': None,
-                }),
-            }
-        finally:
-            consumer.stop()
-            assert consumer.context._instance is None
-
-    def test_stop_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        noop_zmq('grizzly.testdata.communication')
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Context.destroy',
-            side_effect=[RuntimeError('zmq.Context.destroy failed')],
+        testdata_request_spy.assert_called_once_with(
+            reverse=False,
+            timestamp=ANY(str),
+            tags={
+                'type': 'consumer',
+                'action': 'consume',
+                'identifier': consumer.identifier,
+            },
+            measurement='request_testdata',
+            metrics={
+                'error': None,
+                'response_time': ANY(float),
+            },
         )
+        testdata_request_spy.reset_mock()
 
-        parent = grizzly_fixture()
-
-        consumer = TestdataConsumer(parent)
+        send_message = mock_testdata(consumer, {
+            'variables': {
+                'AtomicIntegerIncrementer.messageID': 100,
+                'test': 1,
+            },
+        }, 'stop')
 
         with caplog.at_level(logging.DEBUG):
-            consumer.stop()
-        assert caplog.messages[-1] == 'failed to stop'
+            assert consumer.testdata() is None
+        assert caplog.messages[-1] == 'received stop command'
 
-        assert consumer.stopped
+        send_message.assert_called_once_with('produce_testdata', {
+            'uid': id(parent.user),
+            'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+            'request': {'message': 'testdata', 'identifier': 'TestScenario_001'},
+        })
+        send_message.reset_mock()
 
         caplog.clear()
 
-        with caplog.at_level(logging.DEBUG):
-            consumer.stop()
+        send_message = mock_testdata(consumer, {
+            'variables': {
+                'AtomicIntegerIncrementer.messageID': 100,
+                'test': 1,
+            },
+        }, 'asdf')
 
-        assert caplog.messages == []
-
-    def test_testdata_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
-        noop_zmq('grizzly.testdata.communication')
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Socket.recv_json',
-            side_effect=[ZMQAgain],
-        )
-
-        gsleep_mock = mocker.patch(
-            'grizzly.testdata.communication.gsleep',
-            side_effect=[ZMQAgain],
-        )
-
-        parent = grizzly_fixture()
-
-        consumer = TestdataConsumer(parent)
-
-        with pytest.raises(ZMQAgain):
+        with caplog.at_level(logging.DEBUG), pytest.raises(StopUser):
             consumer.testdata()
+        assert 'unknown action "asdf" received, stopping user' in caplog.text
 
-        gsleep_mock.assert_called_once_with(0.1)
+        send_message.assert_called_once_with('produce_testdata', {
+            'uid': id(parent.user),
+            'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+            'request': {'message': 'testdata', 'identifier': 'TestScenario_001'},
+        })
+        send_message.reset_mock()
 
-        mocker.patch.object(consumer, '_request', return_value=None)
+        caplog.clear()
 
-        with caplog.at_level(logging.ERROR):
-            assert consumer.testdata() is None
+        send_message = mock_testdata(consumer, {
+            'variables': {
+                'AtomicIntegerIncrementer.messageID': 100,
+                'test': None,
+            },
+        }, 'consume')
 
-        assert caplog.messages == ['no testdata received']
+        assert consumer.testdata() == {
+            'variables': transform(grizzly.scenario, {
+                'AtomicIntegerIncrementer.messageID': 100,
+                'test': None,
+            }),
+        }
 
-    def test_keystore_get(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        noop_zmq('grizzly.testdata.communication')
+        send_message.assert_called_once_with('produce_testdata', {
+            'uid': id(parent.user),
+            'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+            'request': {'message': 'testdata', 'identifier': 'TestScenario_001'},
+        })
+        send_message.reset_mock()
+
+    def test_keystore_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
 
-        consumer = TestdataConsumer(parent)
+        consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
 
         keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
 
@@ -1065,12 +929,11 @@ class TestTestdataConsumer:
             'identifier': consumer.identifier,
         })
 
-    def test_keystore_set(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        noop_zmq('grizzly.testdata.communication')
+    def test_keystore_set(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
 
-        consumer = TestdataConsumer(parent)
+        consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
         keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
@@ -1101,12 +964,11 @@ class TestTestdataConsumer:
         )
         keystore_request_spy.reset_mock()
 
-    def test_keystore_inc(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        noop_zmq('grizzly.testdata.communication')
+    def test_keystore_inc(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
 
-        consumer = TestdataConsumer(parent)
+        consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
         keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
@@ -1149,12 +1011,11 @@ class TestTestdataConsumer:
         )
         keystore_request_spy.reset_mock()
 
-    def test_keystore_push(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        noop_zmq('grizzly.testdata.communication')
+    def test_keystore_push(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
 
-        consumer = TestdataConsumer(parent)
+        consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
         keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
@@ -1185,12 +1046,11 @@ class TestTestdataConsumer:
             },
         )
 
-    def test_keystore_pop(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        noop_zmq('grizzly.testdata.communication')
+    def test_keystore_pop(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
 
-        consumer = TestdataConsumer(parent)
+        consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo_add_data([None, None, 'hello']))
         gsleep_mock = mocker.patch('grizzly.testdata.communication.gsleep', return_value=None)
@@ -1202,12 +1062,11 @@ class TestTestdataConsumer:
         assert request_spy.call_count == 3
         assert keystore_request_spy.call_count == 3
 
-    def test_keystore_del(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        noop_zmq('grizzly.testdata.communication')
+    def test_keystore_del(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
 
-        consumer = TestdataConsumer(parent)
+        consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
         keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')

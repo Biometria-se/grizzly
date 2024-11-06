@@ -107,8 +107,6 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
             'hello': 'world',
         }
 
-        GrizzlyContext.destroy()
-
         before_feature(context, feature)
 
         assert hasattr(context, 'started')
@@ -265,6 +263,7 @@ def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -
     assert len(behave.scenario.background.steps) == 5
 
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.clear()
 
     assert len(grizzly.scenarios()) == 0
 

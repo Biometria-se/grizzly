@@ -16,13 +16,13 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Optional, Ty
 
 from gevent.lock import DummySemaphore, Semaphore
 
-from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.types import bool_type
 
 T = TypeVar('T')
 
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext, GrizzlyContextScenario
     from grizzly.types.locust import MessageHandler
 
 
@@ -73,8 +73,10 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
         if cls._instances.get(cls, {}).get(scenario, None) is None:
             instance = super().__new__(cls)
             instance._initialized = False
-            instance.grizzly = GrizzlyContext()
             instance._scenario = scenario
+
+            from grizzly.context import grizzly
+            instance.grizzly = grizzly
 
             cls._instances[cls].update({scenario: instance})
 
