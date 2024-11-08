@@ -6,7 +6,7 @@ import logging
 from contextlib import suppress
 from os import environ, sep
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 import pytest
 from gevent.event import AsyncResult
@@ -155,7 +155,7 @@ value3,value4
                     {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': {'message': 'testdata', 'identifier': grizzly.scenario.class_name}},
                 )
 
-                response = cast(dict[str, Any] | None, responses[uid].get())
+                response = cast(Optional[dict[str, Any]], responses[uid].get())
 
                 del responses[uid]
 
@@ -177,7 +177,7 @@ value3,value4
                 responses[uid] = AsyncResult()
                 grizzly.state.locust.send_message('produce_testdata', {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': request})
 
-                response = cast(dict[str, Any] | None, responses[uid].get())
+                response = cast(Optional[dict[str, Any]], responses[uid].get())
 
                 del responses[uid]
 
@@ -437,7 +437,7 @@ value3,value4
                     {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': {'message': 'testdata', 'identifier': grizzly.scenario.class_name}},
                 )
 
-                response = cast(dict[str, Any] | None, responses[uid].get())
+                response = cast(Optional[dict[str, Any]], responses[uid].get())
 
                 del responses[uid]
 
@@ -596,7 +596,7 @@ value3,value4
                 responses[uid] = AsyncResult()
                 grizzly.state.locust.send_message('produce_testdata', {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': request})
 
-                response = cast(dict[str, Any] | None, responses[uid].get())
+                response = cast(Optional[dict[str, Any]], responses[uid].get())
 
                 del responses[uid]
 

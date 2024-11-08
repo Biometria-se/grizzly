@@ -7,7 +7,7 @@ from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, ClassVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 from gevent import sleep as gsleep
 from gevent.event import AsyncResult
@@ -251,7 +251,7 @@ class TestdataConsumer:
             self.runner.send_message('produce_testdata', {'uid': uid, 'cid': self.runner.client_id, 'request': request})
 
             # waits for async result
-            response = cast(dict[str, Any] | None, self._responses[uid].get())
+            response = cast(Optional[dict[str, Any]], self._responses[uid].get())
 
             # remove request as pending
             del self._responses[uid]

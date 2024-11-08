@@ -89,7 +89,7 @@ from grizzly.utils.protocols import zmq_disconnect
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
 
-from . import ClientTask, client, logger
+from . import ClientTask, client
 
 try:
     import pymqi
@@ -240,7 +240,7 @@ class MessageQueueClientTask(ClientTask):
         })
 
     @contextmanager
-    def create_client(self) -> Generator[ztypes.Socket, None, None]:
+    def create_client(self, parent: GrizzlyScenario) -> Generator[ztypes.Socket, None, None]:
         client: Optional[ztypes.Socket] = None
 
         try:
@@ -253,7 +253,7 @@ class MessageQueueClientTask(ClientTask):
 
             yield client
         except ZMQError:
-            logger.error('zmq error', exc_info=True)
+            parent.user.logger.exception('zmq error')
             raise
         finally:
             if client is not None:
@@ -283,14 +283,14 @@ class MessageQueueClientTask(ClientTask):
         context.update({'endpoint': endpoint})
         request.update({'context': context})
 
-        with self.create_client() as client:
+        with self.create_client(parent) as client:
             client_id = id(parent.user)
             worker = self._worker.get(client_id, None)
             if worker is None:
                 with self.action(parent, suppress=True) as meta:
                     self.connect(client_id, client, meta)
                     worker = self._worker.get(client_id, None)
-                    parent.logger.debug('connected to worker %s at %s', worker, hostname())
+                    parent.user.logger.debug('connected to worker %s at %s', worker, hostname())
 
             if worker is None:
                 message = f'{parent.__class__.__name__}/{client_id} was unable to get an worker assigned'
@@ -305,7 +305,7 @@ class MessageQueueClientTask(ClientTask):
 
                 try:
                     response = async_message_request(client, request)
-                    parent.logger.debug('got response from %s at %s', worker, hostname())
+                    parent.user.logger.debug('got response from %s at %s', worker, hostname())
                 finally:
                     response_length_source = ((response or {}).get('payload', None) or '').encode('utf-8')
 
