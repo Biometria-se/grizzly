@@ -65,18 +65,25 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
         init_function: Callable[..., None] = init(grizzly, {})
         assert callable(init_function)
 
+        assert not grizzly.state.spawning_complete.locked()
+
         init_function(runner)
 
+        assert grizzly.state.spawning_complete.locked()
         assert grizzly.state.producer is not None
         assert grizzly.state.locust.custom_messages == {'produce_testdata': (grizzly.state.producer.handle_request, True)}
 
         grizzly.state.locust.custom_messages.clear()
+        grizzly.state.spawning_complete.release()
 
         with caplog.at_level(logging.ERROR):
             init_function = init(grizzly, None)
             assert callable(init_function)
             init_function(runner)
+
+        assert grizzly.state.spawning_complete.locked()
         assert 'there is no test data' in caplog.text
+        grizzly.state.spawning_complete.release()
 
         def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
             pass
@@ -88,13 +95,14 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
         grizzly.setup.locust.messages.register(MessageDirection.SERVER_CLIENT, 'test_message_ack', callback_ack)
 
         init_function = init(grizzly, {})
-
         init_function(runner)
 
+        assert grizzly.state.spawning_complete.locked()
         assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'test_message': (callback, True),
             'produce_testdata': (grizzly.state.producer.handle_request, True),
         })
+        grizzly.state.spawning_complete.release()
     finally:
         if runner is not None:
             runner.quit()
@@ -115,13 +123,18 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
 
         grizzly.state.locust = runner
 
+        assert not grizzly.state.spawning_complete.locked()
+
         init_function(runner)
 
+        assert grizzly.state.spawning_complete.locked()
         assert environ.get('TESTDATA_PRODUCER_ADDRESS', None) is None
         assert runner.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'grizzly_worker_quit': (grizzly_worker_quit, False),
             'consume_testdata': (TestdataConsumer.handle_response, True),
         })
+
+        grizzly.state.spawning_complete.release()
 
         def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
             pass
@@ -136,11 +149,13 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
 
         init_function(runner)
 
+        assert grizzly.state.spawning_complete.locked()
         assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'grizzly_worker_quit': (grizzly_worker_quit, False),
             'consume_testdata': (TestdataConsumer.handle_response, True),
             'test_message_ack': (callback_ack, True),
         })
+        grizzly.state.spawning_complete.release()
     finally:
         if runner is not None:
             runner.quit()
@@ -155,15 +170,18 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
 
     init_function: Callable[..., None] = init(grizzly, {})
     assert callable(init_function)
+    assert not grizzly.state.spawning_complete.locked()
 
     init_function(grizzly.state.locust)
 
+    assert grizzly.state.spawning_complete.locked()
     assert grizzly.state.producer is not None
     assert grizzly.state.locust.custom_messages == {
         'consume_testdata': (TestdataConsumer.handle_response, True),
         'produce_testdata': (grizzly.state.producer.handle_request, True),
     }
 
+    grizzly.state.spawning_complete.release()
     grizzly.state.locust.custom_messages.clear()
 
     def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
@@ -177,12 +195,14 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
 
     init_function(grizzly.state.locust)
 
+    assert grizzly.state.spawning_complete.locked()
     assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
         'consume_testdata': (TestdataConsumer.handle_response, True),
         'produce_testdata': (grizzly.state.producer.handle_request, True),
         'test_message': (callback, True),
         'test_message_ack': (callback_ack, True),
     })
+    grizzly.state.spawning_complete.release()
 
 
 def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
@@ -292,12 +312,14 @@ def test_locust_test_stop(mocker: MockerFixture, grizzly_fixture: GrizzlyFixture
 def test_spawning_complete(grizzly_fixture: GrizzlyFixture) -> None:
     grizzly = grizzly_fixture.grizzly
 
-    assert not grizzly.state.spawning_complete
+    grizzly.state.spawning_complete.acquire()
+    assert grizzly.state.spawning_complete.locked()
+
     func = spawning_complete(grizzly)
 
-    func()
+    func(10)
 
-    assert grizzly.state.spawning_complete
+    assert not grizzly.state.spawning_complete.locked()
 
 
 @pytest.mark.usefixtures('_listener_test_mocker')

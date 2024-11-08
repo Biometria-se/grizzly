@@ -180,10 +180,10 @@ class TestIterationScenario:
             },
         })
 
+        # called from on_start
         parent.iterator(prefetch=True)
 
-        on_iteration_mock.assert_called_once_with()
-        on_iteration_mock.reset_mock()
+        on_iteration_mock.assert_not_called()
         assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1337
         assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value1'
         assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value2'
@@ -199,14 +199,14 @@ class TestIterationScenario:
             },
         })
 
+        # called from Iterator.run, first actual iteration
         parent.iterator()
 
         assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1337
         assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value1'
         assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value2'
         assert not getattr(parent, '_prefetch', True)
-        on_iteration_mock.assert_not_called()
-        on_iteration_mock.reset_mock()
+        on_iteration_mock.assert_not_called()  # on_iteration is not needed *before* first iteration
 
         parent.iterator()
 
@@ -477,11 +477,12 @@ class TestIterationScenario:
     def test_run(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         parent = grizzly_fixture(scenario_type=IteratorScenario)
 
+        grizzly = grizzly_fixture.grizzly
+
         assert isinstance(parent, IteratorScenario)
+        assert not grizzly.state.spawning_complete.locked()
 
         # always assume that spawning is complete in unit test
-        parent.grizzly.state.spawning_complete = True
-
         side_effects: list[Optional[InterruptTaskSet]] = [
             InterruptTaskSet(reschedule=False),
             InterruptTaskSet(reschedule=True),
@@ -804,10 +805,10 @@ class TestIterationScenario:
         parent = grizzly_fixture(scenario_type=IteratorScenario)
 
         assert isinstance(parent, IteratorScenario)
+        assert not parent.grizzly.state.spawning_complete.locked()
 
         mocker.patch('grizzly.scenarios.iterator.gsleep', return_value=None)
         mocker.patch('grizzly.scenarios.iterator.uniform', return_value=1.0)
-        parent.grizzly.state.spawning_complete = True
 
         # add tasks to IteratorScenario.tasks
         try:

@@ -104,6 +104,8 @@ class IteratorScenario(GrizzlyScenario):
             with suppress(Exception):
                 self.on_stop()
 
+            self.grizzly.state.spawning_complete.wait()
+
             raise StopUser from e
 
         while True:
@@ -200,7 +202,6 @@ class IteratorScenario(GrizzlyScenario):
                 if self.user._scenario_state != ScenarioState.STOPPING:
                     scenario_state = self.user._scenario_state.name if self.user._scenario_state is not None else 'UNKNOWN'
                     self.logger.debug('scenario_state=%s, user_state=%s, exception=%r', scenario_state, self.user._state, e)
-                    has_error = False
 
                     if isinstance(e, StopScenario):
                         self.start = None
@@ -208,9 +209,7 @@ class IteratorScenario(GrizzlyScenario):
                     exception = e.__class__
 
                     # unexpected exit of scenario, log as error
-                    if not isinstance(e, StopScenario) and self.user._state != LOCUST_STATE_STOPPING:
-                        has_error = True
-                    elif not isinstance(e, StopUser):
+                    if not isinstance(e, StopUser):
                         exception = StopUser
 
                     self.iteration_stop(error=e)
@@ -219,15 +218,7 @@ class IteratorScenario(GrizzlyScenario):
                     # to avoid spawning of a new user, we should wait until spawning is complete
                     # if we abort too soon, locust will see that there are too few users, and spawn
                     # another one
-                    if has_error:
-                        count = 0
-                        while not self.grizzly.state.spawning_complete:
-                            if count % 10 == 0:
-                                self.logger.debug('spawning not complete, wait')
-                                if count > 0:
-                                    count = 0
-                            gsleep(0.1)
-                            count += 1
+                    self.grizzly.state.spawning_complete.wait()
 
                     self.logger.debug('stopping scenario with %r', exception)
                     raise exception from e

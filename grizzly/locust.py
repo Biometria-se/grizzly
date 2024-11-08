@@ -777,9 +777,7 @@ def setup_environment_listeners(context: Context, *, testdata: Optional[Testdata
     environment.events.test_start.add_listener(locust_test_start(grizzly))
     environment.events.test_stop.add_listener(locust_test_stop(grizzly))
 
-    if not on_master(context):
-        environment.events.spawning_complete.add_listener(spawning_complete(grizzly))
-
+    environment.events.spawning_complete.add_listener(spawning_complete(grizzly))
     # And save statistics to "..."
     if grizzly.setup.statistics_url is not None:
         environment.events.init.add_listener(init_statistics_listener(grizzly.setup.statistics_url))
@@ -1153,9 +1151,9 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
             gevent.spawn(stats_csv_writer.stats_writer).link_exception(greenlet_exception_handler)
 
         if not isinstance(runner, WorkerRunner):
-            watch_running_users_greenlet: Optional[gevent.Greenlet] = None
+            running_test: Optional[gevent.Greenlet] = None
 
-            def watch_running_users() -> None:
+            def run_test() -> None:
                 count = 0
                 while runner.user_count > 0:
                     gevent.sleep(1.0)
@@ -1190,8 +1188,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 if stats_printer_greenlet is not None:
                     stats_printer_greenlet.kill(block=False)
 
-                if watch_running_users_greenlet is not None:
-                    watch_running_users_greenlet.kill(block=False)
+                if running_test is not None:
+                    running_test.kill(block=False)
 
                 grizzly_print_stats(runner.stats, current=False)
                 grizzly_print_percentile_stats(runner.stats)
@@ -1202,23 +1200,15 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 for handler in stats_logger.handlers:
                     handler.flush()
 
-            def spawning_complete() -> bool:
-                if isinstance(runner, MasterRunner):
-                    return runner.spawning_completed
-
-                return grizzly.state.spawning_complete
-
-            while not spawning_complete():
-                logger.debug('spawning not completed...')
-                gevent.sleep(1.0)
+            grizzly.state.spawning_complete.wait()
 
             logger.info('all users spawn, start watching user count')
 
-            watch_running_users_greenlet = gevent.spawn(watch_running_users)
-            watch_running_users_greenlet.link_exception(greenlet_exception_handler)
+            running_test = gevent.spawn(run_test)
+            running_test.link_exception(greenlet_exception_handler)
 
             # stop when user_count reaches 0
-            main_greenlet = watch_running_users_greenlet
+            main_greenlet = running_test
 
         def sig_handler(signum: int) -> Callable[[], None]:
             try:

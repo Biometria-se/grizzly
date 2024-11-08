@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 
 def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Callable[Concatenate[LocustRunner, P], None]:
     def ginit(runner: LocustRunner, **_kwargs: P.kwargs) -> None:
+        # acquire lock, that will be released when all users has spawned (on_spawning_complete)
+        grizzly.state.spawning_complete.acquire()
+
         if not isinstance(runner, WorkerRunner):
             if testdata is not None:
                 grizzly.state.producer = TestdataProducer(
@@ -102,9 +105,9 @@ def locust_test_stop(grizzly: GrizzlyContext) -> Callable[Concatenate[Environmen
 
 
 def spawning_complete(grizzly: GrizzlyContext) -> Callable[..., None]:
-    def gspawning_complete(**_kwargs: Any) -> None:
-        logger.debug('spawning complete!')
-        grizzly.state.spawning_complete = True
+    def gspawning_complete(user_count: int, **_kwargs: Any) -> None:
+        logger.debug('spawning of %d users completed', user_count)
+        grizzly.state.spawning_complete.release()
 
     return gspawning_complete
 

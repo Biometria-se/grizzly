@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 import yaml
+from gevent.lock import Semaphore
 from jinja2 import DebugUndefined, Environment, FileSystemLoader
 from jinja2.filters import FILTERS
 from typing_extensions import Self
@@ -91,7 +92,7 @@ def jinja2_environment_factory() -> Environment:
 
 @dataclass
 class GrizzlyContextState:
-    spawning_complete: bool = field(default=False)
+    spawning_complete: Semaphore = field(default_factory=Semaphore)
     background_done: bool = field(default=False)
     configuration: dict[str, Any] = field(init=False, default_factory=load_configuration_file)
     verbose: bool = field(default=False)
