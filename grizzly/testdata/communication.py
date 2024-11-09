@@ -218,7 +218,8 @@ class TestdataConsumer:
         start = perf_counter()
         while value is None:
             gsleep(self.poll_interval)
-            value = self._keystore_pop_poll(request)
+            with suppress(Exception):
+                value = self._keystore_pop_poll(request)
 
             if value is None and wait > -1 and (int(perf_counter() - start) > wait):
                 error_message = f'no message received within {wait} seconds'
@@ -251,12 +252,11 @@ class TestdataConsumer:
             self.runner.send_message('produce_testdata', {'uid': uid, 'cid': self.runner.client_id, 'request': request})
 
             # waits for async result
-            response = cast(Optional[dict[str, Any]], self._responses[uid].get())
-
-            # remove request as pending
-            del self._responses[uid]
-
-            return response
+            try:
+                return cast(Optional[dict[str, Any]], self._responses[uid].get(timeout=10.0))
+            finally:
+                # remove request as pending
+                del self._responses[uid]
 
 
 class TestdataProducer:
