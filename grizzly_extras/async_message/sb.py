@@ -659,7 +659,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                     empty_message_count += 1
 
                         empty_message_time = perf_counter() - empty_message_start
-                        msg = f'{client}::{cache_endpoint}: consumed {empty_message_count} messages which took {empty_message_time:.2f} seconds'
+                        msg = f'consumed {empty_message_count} messages from {cache_endpoint} which took {empty_message_time:.2f} seconds'
 
                         self.logger.info(msg)
 
@@ -681,7 +681,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         self.logger.debug('%d::%s: got message id %s', client, cache_endpoint, message.message_id)
 
                         if expression is None:
-                            self.logger.debug('%d::%s: completing message id %s', client, cache_endpoint, message.message_id)
+                            self.logger.debug('completing message id %s on %s', message.message_id, cache_endpoint)
                             receiver.complete_message(message)
                             break
 
@@ -707,10 +707,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             if len(values) > 0:
                                 wait_time = perf_counter() - wait_start
                                 self.logger.info(
-                                    '! %d::%s: completing message id %s, with expression "%s" after consuming %d messages (%.2fs)',
-                                    client,
-                                    cache_endpoint,
+                                    'completing message id %s on %s, with expression "%s" after consuming %d messages (%.2fs)',
                                     message.message_id,
+                                    cache_endpoint,
                                     expression,
                                     consume_message_ignore_count,
                                     wait_time,
@@ -728,7 +727,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                         receiver.abandon_message(message)
                                         message = None
                                     else:
-                                        self.logger.debug('%d::%s: consuming and ignoring message id %s', client, cache_endpoint, message.message_id)
+                                        self.logger.debug('consuming and ignoring message id %s on %s', message.message_id, cache_endpoint)
                                         receiver.complete_message(message)  # remove message from endpoint, but ignore contents
                                         message = payload = metadata = None
                                         consume_message_ignore_count += 1
@@ -746,7 +745,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     break
                 except MessageLockLostError as e:
                     if message is not None:
-                        self.logger.warning('message lock expired for message id %s', message.message_id)
+                        self.logger.warning('message lock expired for message id %s on %s', message.message_id, cache_endpoint)
 
                     if self._event.is_set():
                         break
