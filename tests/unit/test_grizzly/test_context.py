@@ -6,6 +6,7 @@ from os import environ
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 import pytest
+from gevent.lock import Semaphore
 
 from grizzly.context import (
     GrizzlyContext,
@@ -24,7 +25,7 @@ from grizzly.locust import FixedUsersDispatcher
 from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, ExplicitWaitTask, LogMessageTask, LoopTask, RequestTask
 from grizzly.types import MessageDirection, RequestMethod
 from grizzly.types.behave import Scenario
-from tests.helpers import TestTask, get_property_decorated_attributes, rm_rf
+from tests.helpers import ANY, TestTask, get_property_decorated_attributes, rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
@@ -206,7 +207,7 @@ class TestGrizzlyContextState:
         state = GrizzlyContextState()
 
         expected_properties = {
-            'spawning_complete': (False, True),
+            'spawning_complete': (ANY(Semaphore), None),
             'background_done': (False, True),
             'configuration': ({}, {'sut.host': 'http://example.com'}),
             'verbose': (False, True),
@@ -220,8 +221,10 @@ class TestGrizzlyContextState:
             assert test_attribute_name in actual_attributes
             assert hasattr(state, test_attribute_name)
             assert getattr(state, test_attribute_name) == default_value
-            setattr(state, test_attribute_name, test_value)
-            assert getattr(state, test_attribute_name) == test_value
+
+            if test_value is not None:
+                setattr(state, test_attribute_name, test_value)
+                assert getattr(state, test_attribute_name) == test_value
 
     def test_configuration(self, grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> None:
         grizzly = grizzly_fixture.grizzly
@@ -274,7 +277,7 @@ class TestGrizzlyContext:
         grizzly = cast(GrizzlyContext, behave.grizzly)
         assert isinstance(grizzly, GrizzlyContext)
 
-        second_grizzly = GrizzlyContext()
+        from grizzly.context import grizzly as second_grizzly
 
         assert grizzly is second_grizzly
 
@@ -289,7 +292,7 @@ class TestGrizzlyContext:
         ]
         expected_attributes.sort()
 
-        actual_attributes = list(get_property_decorated_attributes(grizzly.__class__))
+        actual_attributes = list(get_property_decorated_attributes(grizzly.__class__)) + list(filter(lambda d: not d.startswith('_'), grizzly.__dict__))
         actual_attributes.sort()
 
         for test_attribute in expected_attributes:
@@ -298,20 +301,6 @@ class TestGrizzlyContext:
         assert isinstance(grizzly.setup, GrizzlyContextSetup)
         assert callable(getattr(grizzly, 'scenarios', None))
         assert expected_attributes == actual_attributes
-
-    def test_destroy(self, behave_fixture: BehaveFixture) -> None:
-        behave = behave_fixture.context
-        grizzly = cast(GrizzlyContext, behave.grizzly)
-        assert grizzly is GrizzlyContext()
-
-        GrizzlyContext.destroy()
-
-        with pytest.raises(ValueError, match="'GrizzlyContext' is not instantiated"):
-            GrizzlyContext.destroy()
-
-        grizzly = GrizzlyContext()
-
-        assert grizzly is GrizzlyContext()
 
 
 class TestGrizzlyContextScenarios:
@@ -583,7 +572,7 @@ class TestGrizzlyContextTasks:
     def test___init__(self) -> None:
         tasks = GrizzlyContextTasks()
 
-        assert isinstance(tasks._tmp, GrizzlyContextTasksTmp)
+        assert isinstance(tasks.tmp, GrizzlyContextTasksTmp)
         assert tasks.tmp is tasks._tmp
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:

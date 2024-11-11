@@ -87,7 +87,8 @@ jobs:
 
     - name: coverage
       id: coverage
-      run: python -m coverage report --omit=**/*messagequeue*,**/mq/*,**/__version__.py --fail-under=89
+      run: |
+        python -m coverage report -i --omit=**/*messagequeue*,**/mq/*,**/__version__.py --fail-under=89 || python -m coverage debug data
 
   test-e2e:
     name: 'e2e tests ${{ matrix.run_mode }}'

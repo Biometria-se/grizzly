@@ -15,7 +15,6 @@ import gevent
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
-from grizzly.context import GrizzlyContext
 from grizzly.types.locust import CatchResponseError, Environment
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -152,7 +151,6 @@ class InfluxDbListener:
         self.run_events_greenlet = gevent.spawn(self.run_events)
         self.run_user_count_greenlet = gevent.spawn(self.run_user_count)
         self.connection = self.create_client().connect()
-        self.grizzly = GrizzlyContext()
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
         self.environment.events.heartbeat_sent.add_listener(self.heartbeat_sent)
@@ -160,6 +158,8 @@ class InfluxDbListener:
         self.environment.events.usage_monitor.add_listener(self.usage_monitor)
         self.environment.events.quit.add_listener(self.on_quit)
 
+        from grizzly.context import grizzly
+        self.grizzly = grizzly
         self.grizzly.events.keystore_request.add_listener(self.on_grizzly_event)
         self.grizzly.events.testdata_request.add_listener(self.on_grizzly_event)
         self.grizzly.events.user_event.add_listener(self.on_grizzly_event)

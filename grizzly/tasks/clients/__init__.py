@@ -16,7 +16,6 @@ performed.
 """
 from __future__ import annotations
 
-import logging
 import traceback
 from abc import abstractmethod
 from contextlib import contextmanager
@@ -312,7 +311,7 @@ class ClientTask(GrizzlyMetaRequestTask):
             failure_handler(exception, parent.user._scenario)
 
             if exception is not None:
-                parent.logger.warning('%s ignoring %s', self.__class__.__name__, exception)
+                parent.user.logger.warning('%s ignoring %s', self.__class__.__name__, exception)
 
 
 class client:
@@ -333,8 +332,6 @@ class client:
         return impl
 
 
-logger = logging.getLogger(__name__)
-
 from .blobstorage import BlobStorageClientTask
 from .http import HttpClientTask
 from .messagequeue import MessageQueueClientTask
@@ -345,5 +342,4 @@ __all__ = [
     'BlobStorageClientTask',
     'MessageQueueClientTask',
     'ServiceBusClientTask',
-    'logger',
 ]

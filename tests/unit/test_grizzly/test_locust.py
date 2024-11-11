@@ -426,7 +426,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
-        assert len(environment.events.quitting._handlers) == 1
+        assert len(environment.events.quitting._handlers) == 0
 
         AtomicIntegerIncrementer.destroy()
         grizzly.setup.statistics_url = 'influxdb://influx.example.com:1231/testdb'
@@ -437,7 +437,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
-        assert len(environment.events.quitting._handlers) == 1
+        assert len(environment.events.quitting._handlers) == 0
 
         grizzly.scenario.validation.fail_ratio = 0.1
         environment.events.spawning_complete._handlers = []
@@ -447,7 +447,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
-        assert len(environment.events.quitting._handlers) == 2
+        assert len(environment.events.quitting._handlers) == 1
 
         grizzly.setup.statistics_url = None
         environment.events.spawning_complete._handlers = []
@@ -556,7 +556,6 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     for method in [
         'locust.runners.WorkerRunner.start_worker',
         'gevent.sleep',
-        'grizzly.listeners._init_testdata_producer',
     ]:
         mocker.patch(
             method,
@@ -600,7 +599,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     # @TODO: test coverage further down in run is needed!
 
 
-def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocker: MockerFixture) -> None:
+def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
     behave = behave_fixture.context
 
     def mock_on_node(*, master: bool, worker: bool) -> None:
@@ -619,7 +618,6 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
         'locust.runners.MasterRunner.client_listener',
         'gevent.sleep',
         'locust.rpc.zmqrpc.Server.__init__',
-        'grizzly.listeners._init_testdata_producer',
     ]:
         mocker.patch(
             method,
@@ -631,6 +629,9 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
             f'grizzly.locust.{printer}',
             return_value=None,
         )
+
+    behave.grizzly.state.spawning_complete = mocker.MagicMock(spec=gevent.lock.Semaphore)
+    environ['GRIZZLY_FEATURE_FILE'] = 'test.feature'
 
     def mocked_popen___init__(*args: Any, **_kwargs: Any) -> None:
         setattr(args[0], 'returncode', -15)  # noqa: B010
@@ -649,56 +650,62 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
         'worker': 'true',
     }
 
-    assert run(behave) == 254
+    try:
+        assert run(behave) == 254
 
-    capture = capsys.readouterr()
-    assert 'cannot be both master and worker' in capture.err
+        capture = capsys.readouterr()
+        assert 'cannot be both master and worker' in capture.err
 
-    behave.config.userdata = {'master': 'true'}
+        behave.config.userdata = {'master': 'true'}
 
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly = cast(GrizzlyContext, behave.grizzly)
 
-    grizzly.setup.spawn_rate = None
-    assert run(behave) == 254
+        grizzly.setup.spawn_rate = None
+        assert run(behave) == 254
 
-    capture = capsys.readouterr()
-    assert 'spawn rate is not set' in capture.err
+        capture = capsys.readouterr()
+        assert 'spawn rate is not set' in capture.err
 
-    grizzly.setup.spawn_rate = 1
+        grizzly.setup.spawn_rate = 1
 
-    assert run(behave) == 254
+        assert run(behave) == 254
 
-    capture = capsys.readouterr()
-    assert 'step \'Given "user_count" users\' is not in the feature file' in capture.err
+        capture = capsys.readouterr()
+        assert 'step \'Given "user_count" users\' is not in the feature file' in capture.err
 
-    grizzly.setup.user_count = 2
-    grizzly.scenarios.create(behave_fixture.create_scenario('test'))
-    grizzly.scenario.user.class_name = 'RestApiUser'
-    grizzly.scenario.context['host'] = 'https://test.example.org'
-    grizzly.scenario.tasks.add(ExplicitWaitTask(time_expression='1.5'))
-    task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
-    grizzly.scenario.tasks.add(task)
-    grizzly.setup.spawn_rate = 1
+        grizzly.setup.user_count = 2
+        grizzly.scenarios.create(behave_fixture.create_scenario('test'))
+        grizzly.scenario.user.class_name = 'RestApiUser'
+        grizzly.scenario.context['host'] = 'https://test.example.org'
+        grizzly.scenario.tasks.add(ExplicitWaitTask(time_expression='1.5'))
+        task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
+        grizzly.scenario.tasks.add(task)
+        grizzly.setup.spawn_rate = 1
 
-    grizzly.setup.timespan = 'adsf'
-    assert run(behave) == 1
-    assert 'invalid timespan' in capsys.readouterr().err
-    assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
+        grizzly.setup.timespan = 'adsf'
+        assert run(behave) == 1
+        assert 'invalid timespan' in capsys.readouterr().err
+        assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
 
-    grizzly.setup.timespan = None
+        grizzly.setup.timespan = None
 
-    behave.config.userdata = {
-        'expected-workers': 3,
-    }
+        behave.config.userdata = {
+            'expected-workers': 3,
+        }
 
-    mock_on_node(master=True, worker=False)
+        mock_on_node(master=True, worker=False)
 
-    with pytest.raises(AssertionError, match=r'there are more workers \(3\) than users \(2\), which is not supported'):
-        run(behave)
+        with pytest.raises(AssertionError, match=r'there are more workers \(3\) than users \(2\), which is not supported'):
+            run(behave)
 
-    assert messagequeue_process_spy.call_count == 0
+        assert messagequeue_process_spy.call_count == 0
+    finally:
+        with suppress(KeyError):
+            del environ['GRIZZLY_FEATURE_FILE']
 
-    del behave.config.userdata['expected-workers']
+
+        with suppress(KeyError):
+            del behave.config.userdata['expected-workers']
 
     # @TODO: this is where it gets hard(er)...
 

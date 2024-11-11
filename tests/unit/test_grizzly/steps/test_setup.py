@@ -50,6 +50,9 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture, section: s
         behave.scenario = grizzly.scenario.behave
         behave_fixture.create_step('test step', in_background=in_background, context=behave)
 
+        for scenario in grizzly.scenarios:
+            scenario.variables.clear()
+
         name = 'AtomicIntegerIncrementer.messageID'
         assert f'TESTDATA_VARIABLE_{name}' not in environ
         behave.assert_variable_value(name, None)

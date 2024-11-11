@@ -270,8 +270,9 @@ class TestMessageQueueClientTask:
         connect_mock = noop_zmq.get_mock('zmq.Socket.connect')
         setsockopt_mock = noop_zmq.get_mock('zmq.Socket.setsockopt')
         close_mock = noop_zmq.get_mock('zmq.Socket.close')
-
         zmq_context: ztypes.Context | None = None
+
+        parent = grizzly_fixture()
         try:
             MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(
@@ -280,7 +281,7 @@ class TestMessageQueueClientTask:
             )
             zmq_context = task_factory._zmq_context
 
-            with task_factory.create_client() as client:
+            with task_factory.create_client(parent) as client:
                 assert connect_mock.call_count == 1
                 args, kwargs = connect_mock.call_args_list[-1]
                 assert args == (task_factory._zmq_url,)
@@ -302,8 +303,10 @@ class TestMessageQueueClientTask:
     def test_connect(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.tasks.clients.messagequeue')
         mocker.patch('grizzly_extras.async_message.utils.uuid4', return_value='foobar')
-
         zmq_context: ztypes.Context | None = None
+
+        parent = grizzly_fixture()
+
         try:
             MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(
@@ -312,7 +315,7 @@ class TestMessageQueueClientTask:
             )
             zmq_context = task_factory._zmq_context
 
-            with task_factory.create_client() as client:
+            with task_factory.create_client(parent) as client:
                 recv_json_mock = mocker.patch.object(client, 'recv_json')
                 send_json_mock = mocker.patch.object(client, 'send_json')
                 recv_json_mock.side_effect = [ZMQAgain, None]
@@ -382,7 +385,7 @@ class TestMessageQueueClientTask:
             )
             zmq_context = task_factory._zmq_context
 
-            with task_factory.create_client() as client:
+            with task_factory.create_client(parent) as client:
                 recv_json_mock = mocker.patch.object(client, 'recv_json')
                 send_json_mock = mocker.patch.object(client, 'send_json')
 

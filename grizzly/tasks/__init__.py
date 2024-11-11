@@ -60,10 +60,10 @@ from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, Union, cast, overload
 
-from grizzly.context import GrizzlyContext
 from grizzly.utils import has_template
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.types import GrizzlyResponse
     from grizzly_extras.transformer import TransformerContentType
@@ -172,13 +172,14 @@ class GrizzlyTask(ABC):
     _context_root: str
 
     timeout: float | None
-
     grizzly: GrizzlyContext
 
     def __init__(self, *, timeout: float | None = None) -> None:
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
-        self.grizzly = GrizzlyContext()
         self.timeout = timeout
+
+        from grizzly.context import grizzly
+        self.grizzly =  grizzly
 
     @abstractmethod
     def __call__(self) -> grizzlytask:

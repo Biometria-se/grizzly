@@ -30,7 +30,6 @@ from locust.event import EventHook
 from locust.user.task import LOCUST_STATE_RUNNING
 from locust.user.users import User, UserMeta
 
-from grizzly.context import GrizzlyContext
 from grizzly.events import GrizzlyEventHook, RequestLogger, ResponseHandler
 from grizzly.exceptions import RestartScenario, StopScenario, failure_handler
 from grizzly.testdata import GrizzlyVariables
@@ -42,7 +41,7 @@ from grizzly_extras.async_message import AsyncMessageError
 T = TypeVar('T', bound=UserMeta)
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContextScenario
+    from grizzly.context import GrizzlyContext, GrizzlyContextScenario
     from grizzly.tasks import RequestTask
     from grizzly.testdata.communication import TestdataConsumer
 
@@ -84,7 +83,7 @@ class GrizzlyUserEvents:
 })
 class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     __dependencies__: ClassVar[set[str]] = set()
-    __scenario__: GrizzlyContextScenario  # reference to grizzly scenario this user is part of
+    __scenario__: ClassVar[GrizzlyContextScenario]  # reference to grizzly scenario this user is part of
     __context__: ClassVar[dict[str, Any]] = {}
 
     _context: dict[str, Any]
@@ -98,7 +97,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     host: str
     abort: Event
     environment: Environment
-    grizzly = GrizzlyContext()
+    grizzly: GrizzlyContext
     sticky_tag: Optional[str] = None
     variables: GrizzlyVariables
     consumer: TestdataConsumer
@@ -127,6 +126,9 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         self.variables = GrizzlyVariables(**{key: None for key in self._scenario.variables})
 
         environment.events.quitting.add_listener(self.on_quitting)
+
+        from grizzly.context import grizzly
+        self.grizzly = grizzly
 
     def on_quitting(self, *_args: Any, **kwargs: Any) -> None:
         # if it already has been called with True, do not change it back to False

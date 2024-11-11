@@ -110,7 +110,7 @@ from grizzly.utils.protocols import async_message_request_wrapper, zmq_disconnec
 from grizzly_extras.arguments import parse_arguments
 from grizzly_extras.transformer import TransformerContentType
 
-from . import ClientTask, client, logger
+from . import ClientTask, client
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
@@ -318,7 +318,7 @@ class ServiceBusClientTask(ClientTask):
     def connect(self, parent: GrizzlyScenario) -> None:
         state = self.get_state(parent)
 
-        logger.debug(f'{state.parent_id}::sb connecting, {state.worker=}')
+        parent.user.logger.debug('%d::sb connecting, state.worker=%r', state.parent_id, state.worker)
 
         request: AsyncMessageRequest = {
             'worker': state.worker,
@@ -331,7 +331,7 @@ class ServiceBusClientTask(ClientTask):
         if state.first_response is None:
             state.first_response = response
 
-        logger.debug(f'{state.parent_id}::sb connected to worker {state.worker} at {hostname()}')
+        parent.user.logger.debug('%d::sb connected to worker %r at %s', state.parent_id, state.worker, hostname())
 
     def disconnect(self, parent: GrizzlyScenario) -> None:
         state = self.get_state(parent)
@@ -365,7 +365,7 @@ class ServiceBusClientTask(ClientTask):
         }
 
         response = async_message_request_wrapper(parent, state.client, request)
-        logger.info(response['message'])
+        parent.user.logger.info(response['message'])
 
         state.first_response = response
 
@@ -382,7 +382,7 @@ class ServiceBusClientTask(ClientTask):
         }
 
         response = async_message_request_wrapper(parent, state.client, request)
-        logger.info(response['message'])
+        parent.user.logger.info(response['message'])
 
     def empty(self, parent: GrizzlyScenario) -> None:
         state = self.get_state(parent)
@@ -401,7 +401,7 @@ class ServiceBusClientTask(ClientTask):
         message = response['message']
 
         if message is not None and len(message) > 0:
-            logger.info(response['message'])
+            parent.user.logger.info(response['message'])
 
     def on_start(self, parent: GrizzlyScenario) -> None:
         # create subscription before connecting to it

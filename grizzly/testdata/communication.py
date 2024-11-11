@@ -7,26 +7,26 @@ from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
-import zmq.green as zmq
 from gevent import sleep as gsleep
+from gevent.event import AsyncResult
 from gevent.lock import Semaphore
-from zmq.error import Again as ZMQAgain
-from zmq.error import ZMQError
 
-from grizzly.events import GrizzlyEventDecoder, event, events
-from grizzly.types.locust import Environment, StopUser
-from grizzly.utils.protocols import zmq_disconnect
+from grizzly.events import GrizzlyEventDecoder, GrizzlyEvents, event, events
+from grizzly.types.locust import LocalRunner, MasterRunner, StopUser, WorkerRunner
 
 from . import GrizzlyVariables
 from .utils import transform
 from .variables import AtomicVariablePersist
 
 if TYPE_CHECKING:  # pragma: no cover
+    from locust.rpc.protocol import Message
+
     from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.types import TestdataType
+    from grizzly.types.locust import Environment
 
 
 class KeystoreDecoder(GrizzlyEventDecoder):
@@ -84,41 +84,39 @@ class TestdataConsumer:
     # need so pytest doesn't raise PytestCollectionWarning
     __test__: bool = False
 
+    _responses: ClassVar[dict[int, AsyncResult]] = {}
+
     scenario: GrizzlyScenario
+    runner: LocalRunner | WorkerRunner
     identifier: str
     stopped: bool
     poll_interval: float
+    response: dict[str, Any]
+    events: GrizzlyEvents
 
     semaphore = Semaphore()
 
-    def __init__(self, scenario: GrizzlyScenario, address: str = 'tcp://127.0.0.1:5555', poll_interval: float = 1.0) -> None:
+    def __init__(self, runner: LocalRunner | WorkerRunner, scenario: GrizzlyScenario, poll_interval: float = 1.0) -> None:
+        self.runner = runner
         self.scenario = scenario
         self.identifier = scenario.__class__.__name__
 
-        self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.REQ)
-        self.socket.setsockopt(zmq.LINGER, 0)
-        self.socket.connect(address)
         self.stopped = False
         self.poll_interval = poll_interval
 
-        self.logger.debug('connected to producer at %s', address)
+        self.response = {}
+        self.logger.debug('started consumer')
+
+    @classmethod
+    def handle_response(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG003
+        uid = msg.data['uid']
+        response = msg.data['response']
+
+        cls._responses[uid].set(response)
 
     @property
     def logger(self) -> logging.Logger:
         return self.scenario.logger
-
-    def stop(self) -> None:
-        if self.stopped:
-            return
-
-        self.logger.debug('consumer stopping')
-        try:
-            zmq_disconnect(self.socket, destroy_context=True)
-        except:
-            self.logger.exception('failed to stop')
-        finally:
-            self.stopped = True
 
     @event(events.testdata_request, tags={'type': 'consumer'}, decoder=TestdataDecoder(arg='request'))
     def _testdata_request(self, *, request: dict[str, Any]) -> dict[str, Any] | None:
@@ -220,7 +218,8 @@ class TestdataConsumer:
         start = perf_counter()
         while value is None:
             gsleep(self.poll_interval)
-            value = self._keystore_pop_poll(request)
+            with suppress(Exception):
+                value = self._keystore_pop_poll(request)
 
             if value is None and wait > -1 and (int(perf_counter() - start) > wait):
                 error_message = f'no message received within {wait} seconds'
@@ -243,26 +242,21 @@ class TestdataConsumer:
         return self._request({'message': 'keystore', **request})
 
     def _request(self, request: dict[str, str]) -> dict[str, Any] | None:
-        with self.semaphore:  # one at a time
-            self.socket.send_json(request)
+        with self.semaphore:
+            uid = id(self.scenario.user)
 
-            self.logger.debug('waiting for response from producer')
-            message: dict[str, Any]
+            if uid in self._responses:
+                self.logger.warning('greenlet %d is already waiting for testdata', uid)
 
-            # loop and NOBLOCK needed when running in local mode, to let other gevent threads get time
-            while True:
-                try:
-                    message = cast(dict[str, Any], self.socket.recv_json(flags=zmq.NOBLOCK))
-                    break
-                except ZMQAgain:
-                    gsleep(0.1)  # let other greenlets execute
+            self._responses.update({uid: AsyncResult()})
+            self.runner.send_message('produce_testdata', {'uid': uid, 'cid': self.runner.client_id, 'request': request})
 
-            error = message.get('error', None)
-
-            if error is not None:
-                raise RuntimeError(error)
-
-            return message
+            # waits for async result
+            try:
+                return cast(Optional[dict[str, Any]], self._responses[uid].get(timeout=10.0))
+            finally:
+                # remove request as pending
+                del self._responses[uid]
 
 
 class TestdataProducer:
@@ -274,29 +268,21 @@ class TestdataProducer:
 
     logger: logging.Logger
     semaphore = Semaphore()
-    grizzly: GrizzlyContext
     scenarios_iteration: dict[str, int]
     testdata: TestdataType
-    environment: Environment
     has_persisted: bool
     keystore: dict[str, Any]
+    runner: MasterRunner | LocalRunner
+    grizzly: GrizzlyContext
 
-    def __init__(self, grizzly: GrizzlyContext, testdata: TestdataType, address: str = 'tcp://127.0.0.1:5555') -> None:
-        self.grizzly = grizzly
+    def __init__(self, runner: MasterRunner | LocalRunner, testdata: TestdataType) -> None:
         self.testdata = testdata
-        self.environment = self.grizzly.state.locust.environment
+        self.runner = runner
 
         self.logger = logging.getLogger(f'{__name__}/producer')
 
-        self.logger.debug('starting on %s', address)
-
-        self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.REP)
-        self.socket.setsockopt(zmq.LINGER, 0)
-        self.socket.bind(address)
         self.scenarios_iteration = {}
 
-        self._stopping = False
         self.has_persisted = False
 
         self.logger.debug('serving:\n%r', self.testdata)
@@ -310,6 +296,9 @@ class TestdataProducer:
         self._persist_file = persist_root / f'{Path(feature_file).stem}.json'
 
         self.keystore = {}
+
+        from grizzly.context import grizzly
+        self.grizzly = grizzly
 
     def on_test_stop(self) -> None:
         self.logger.debug('test stopping')
@@ -352,20 +341,7 @@ class TestdataProducer:
             self.logger.exception('failed to persist feature file data')
 
     def stop(self) -> None:
-        self._stopping = True
-        self.logger.debug('stopping producer')
-        try:
-            zmq_disconnect(self.socket, destroy_context=True)
-        except:
-            self.logger.exception('failed to stop')
-        finally:
-            # make sure that socket is properly released
-            try:
-                gsleep(0.1)
-            except:  # noqa: S110
-                pass
-            finally:
-                self.persist_data()
+        self.persist_data()
 
     @event(events.keystore_request, tags={'type': 'producer'}, decoder=KeystoreDecoder(arg='request'))
     def _handle_request_keystore(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912
@@ -522,32 +498,19 @@ class TestdataProducer:
 
         return response
 
-    def run(self) -> None:
-        self.logger.debug('start producing...')
-        try:
-            while True:
-                try:
-                    recv = cast(dict[str, Any], self.socket.recv_json(flags=zmq.NOBLOCK))
-                    consumer_identifier = recv.get('identifier', '')
-                    self.logger.debug('got request from consumer %s', consumer_identifier)
-                    response: dict[str, Any]
+    def handle_request(self, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG002
+        with self.semaphore:
+            self.logger.debug('handling message')
+            uid = msg.data['uid']
+            cid = msg.data['cid']
+            request = msg.data['request']
 
-                    with self.semaphore:
-                        if recv['message'] == 'keystore':
-                            response = self._handle_request_keystore(request=recv)
-                        elif recv['message'] == 'testdata':
-                            response = self._handle_request_testdata(request=recv)
-                        else:
-                            self.logger.error('received unknown message "%s"', recv['message'])
-                            response = {}
+            if request['message'] == 'keystore':
+                response = self._handle_request_keystore(request=request)
+            elif request['message'] == 'testdata':
+                response = self._handle_request_testdata(request=request)
+            else:
+                self.logger.error('received unknown message "%s"', request['message'])
+                response = {}
 
-                        self.logger.debug('producing %r for consumer %s', response, consumer_identifier)
-                        self.socket.send_json(response)
-
-                    gsleep(0)
-                except ZMQAgain:  # noqa: PERF203
-                    gsleep(0.1)
-        except ZMQError:
-            if not self._stopping:
-                self.logger.exception('failed when waiting for consumers')
-            self.environment.events.test_stop.fire(environment=self.environment)
+            self.runner.send_message('consume_testdata', {'uid': uid, 'response': response}, client_id=cid)
