@@ -252,6 +252,43 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
         ]}
 
 
+def test_step_setup_execute_python_script_with_args(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    execute_script_mock = mocker.patch('grizzly.steps.setup._execute_python_script', return_value=None)
+    context = grizzly_fixture.behave.context
+    grizzly = grizzly_fixture.grizzly
+
+    original_cwd = Path.cwd()
+
+    try:
+        chdir(grizzly_fixture.test_context)
+        script_file = grizzly_fixture.test_context / 'bin' / 'generate-testdata.py'
+        script_file.parent.mkdir(exist_ok=True, parents=True)
+        script_file.write_text("print('foobar')")
+
+        step_setup_execute_python_script_with_args(context, script_file.as_posix(), '--foo=bar --bar foo --baz')
+
+        execute_script_mock.assert_called_once_with(context, "print('foobar')", '--foo=bar --bar foo --baz')
+        execute_script_mock.reset_mock()
+
+        step_setup_execute_python_script_with_args(context, 'bin/generate-testdata.py', '--foo=bar --bar foo --baz')
+
+        execute_script_mock.assert_called_once_with(context, "print('foobar')", '--foo=bar --bar foo --baz')
+        execute_script_mock.reset_mock()
+
+        context.feature.location.filename = f'{grizzly_fixture.test_context}/features/test.feature'
+
+        grizzly.scenario.variables.update({'foo': 'bar'})
+        step_setup_execute_python_script_with_args(context, '../bin/generate-testdata.py', '--foo={{ foo }} --bar foo --baz')
+
+        execute_script_mock.assert_called_once_with(context, "print('foobar')", '--foo=bar --bar foo --baz')
+        execute_script_mock.reset_mock()
+    finally:
+        with suppress(Exception):
+            chdir(original_cwd)
+        script_file.unlink()
+        script_file.parent.rmdir()
+
+
 def test_step_setup_execute_python_script(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
     execute_script_mock = mocker.patch('grizzly.steps.setup._execute_python_script', return_value=None)
     context = grizzly_fixture.behave.context
@@ -266,19 +303,19 @@ def test_step_setup_execute_python_script(grizzly_fixture: GrizzlyFixture, mocke
 
         step_setup_execute_python_script(context, script_file.as_posix())
 
-        execute_script_mock.assert_called_once_with(context, "print('foobar')")
+        execute_script_mock.assert_called_once_with(context, "print('foobar')", None)
         execute_script_mock.reset_mock()
 
         step_setup_execute_python_script(context, 'bin/generate-testdata.py')
 
-        execute_script_mock.assert_called_once_with(context, "print('foobar')")
+        execute_script_mock.assert_called_once_with(context, "print('foobar')", None)
         execute_script_mock.reset_mock()
 
         context.feature.location.filename = f'{grizzly_fixture.test_context}/features/test.feature'
 
         step_setup_execute_python_script(context, '../bin/generate-testdata.py')
 
-        execute_script_mock.assert_called_once_with(context, "print('foobar')")
+        execute_script_mock.assert_called_once_with(context, "print('foobar')", None)
         execute_script_mock.reset_mock()
     finally:
         with suppress(Exception):
@@ -299,34 +336,45 @@ def test_step_setup_execute_python_script_inline(grizzly_fixture: GrizzlyFixture
 
         step_setup_execute_python_script_inline(context)
 
-        execute_script_mock.assert_called_once_with(context, "print('foobar')")
+        execute_script_mock.assert_called_once_with(context, "print('foobar')", None)
         execute_script_mock.reset_mock()
     finally:
         with suppress(Exception):
             chdir(original_cwd)
 
 
-def test__execute_python_script_mock(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
-    context = behave_fixture.context
+def test__execute_python_script_mock(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    grizzly = grizzly_fixture.grizzly
+    context = grizzly_fixture.behave.context
     on_worker_mock = mocker.patch('grizzly.steps.setup.on_worker', return_value=True)
     exec_mock = mocker.patch('builtins.exec')
 
     # do not execute, since we're on a worker
     on_worker_mock.return_value = True
 
-    _execute_python_script(context, "print('foobar')")
+    _execute_python_script(context, "print('foobar')", None)
 
     on_worker_mock.assert_called_once_with(context)
     exec_mock.assert_not_called()
     on_worker_mock.reset_mock()
 
-    # execute
+    # execute, no args
     on_worker_mock.return_value = False
 
-    _execute_python_script(context, "print('foobar')")
+    _execute_python_script(context, "print('foobar')", None)
 
     on_worker_mock.assert_called_once_with(context)
-    exec_mock.assert_called_once_with("print('foobar')", SOME(dict, context=context), SOME(dict, context=context))
+    exec_mock.assert_called_once_with("print('foobar')", SOME(dict, context=context, args=None), SOME(dict, context=context, args=None))
+    on_worker_mock.reset_mock()
+    exec_mock.reset_mock()
+
+    # execute, args
+    grizzly.scenario.variables.update({'foo': 'bar'})
+    _execute_python_script(context, "print('foobar')", '--foo=bar --bar foo --baz')
+
+    on_worker_mock.assert_called_once_with(context)
+    scope = SOME(dict, context=context, args=['--foo=bar', '--bar', 'foo', '--baz'])
+    exec_mock.assert_called_once_with("print('foobar')", scope, scope)
 
 def test__execute_python_script(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     context = behave_fixture.context
@@ -336,7 +384,7 @@ def test__execute_python_script(behave_fixture: BehaveFixture, mocker: MockerFix
     with pytest.raises(KeyError):
         hasattr(context, '__foobar__')
 
-    _execute_python_script(context, "from pathlib import Path\nfrom os import path\nsetattr(context, '__foobar__', 'foobar')")
+    _execute_python_script(context, "from pathlib import Path\nfrom os import path\nsetattr(context, '__foobar__', 'foobar')", None)
 
     assert context.__foobar__ == 'foobar'
     assert hasattr(context, '__foobar__')
