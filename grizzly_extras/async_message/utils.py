@@ -40,9 +40,11 @@ def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -
     logger.debug('async_message_request::send_json: sent %r', request)
 
     response: Optional[AsyncMessageResponse] = None
+    count = 0
 
     while True:
         start = perf_counter()
+        count += 1
         try:
             response = cast(Optional[AsyncMessageResponse], client.recv_json(flags=zmq.NOBLOCK))
             break
@@ -66,8 +68,7 @@ def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -
                 break
         finally:
             delta = perf_counter() - start
-            if delta > 1.0:
-                logger.debug('async_message_request::recv_json took %f seconds for request_id %s', delta, request['request_id'])
+            logger.debug('async_message_request::recv_json took %f seconds for request_id %s, after %d retries', delta, request['request_id'], count)
 
     if response is None:
         msg = 'no response'

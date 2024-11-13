@@ -381,6 +381,8 @@ class InfluxDbListener:
             else:
                 logger_method = self.logger.debug
 
+            message_to_log = f'{message_to_log} Timestamp: {datetime.now(timezone.utc).isoformat()}'
+
             logger_method(message_to_log)
             self._log_request(request_type, name, result, metrics, context, exception)
         except Exception:

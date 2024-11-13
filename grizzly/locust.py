@@ -104,8 +104,12 @@ class FixedUsersDispatcher(UsersDispatcher):
         self._user_classes = sorted(user_classes, key=attrgetter('__name__'))
         self._original_user_classes = self._user_classes.copy()
 
-        assert len(user_classes) > 0
-        assert len(set(self._user_classes)) == len(self._user_classes)
+        try:
+            assert len(user_classes) > 0
+            assert len(set(self._user_classes)) == len(self._user_classes)
+        except AssertionError:
+            logger.exception('sanity check of configuration failed')
+            raise
 
         self._initial_users_on_workers = {
             worker_node.id: {user_class.__name__: 0 for user_class in self._user_classes}
@@ -234,6 +238,7 @@ class FixedUsersDispatcher(UsersDispatcher):
         """
         self._worker_nodes = [w for w in self._worker_nodes if w.id != worker_node.id]
         if len(self._worker_nodes) == 0:
+            logger.warning('cannot remove worker %s, since there are no workers registrered', worker_node.id)
             return
         self._prepare_rebalance()
 
@@ -275,7 +280,11 @@ class FixedUsersDispatcher(UsersDispatcher):
         :param user_classes: The user classes to be used for the new dispatch
         """
         # this dispatcher does not care about target_user_count
-        assert target_user_count == -1
+        try:
+            assert target_user_count == -1
+        except AssertionError:
+            logger.exception('invalid value for `target_user_count`')
+            raise
 
         grizzly_user_classes = cast(Optional[list[type[GrizzlyUser]]], user_classes)
 
@@ -297,6 +306,8 @@ class FixedUsersDispatcher(UsersDispatcher):
             self.target_user_count = {**self._grizzly_target_user_count, **grizzly_target_user_count}
         else:
             self.target_user_count = {user_class.__name__: user_class.fixed_count for user_class in self._user_classes}
+
+        logger.debug('creating new dispatcher: %r', self.target_user_count)
 
         self._spawn_rate = spawn_rate
 
@@ -904,6 +915,12 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
     # And locust log level is
     setup_logging(log_level, None)
 
+    # @TODO: remove this after troubleshooting <!--
+    for logger_name in ['locust.runners', 'grizzly.locust', 'grizzly_extras.async_message.utils']:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.DEBUG)
+    # -->
+
     # make sure the user hasn't screwed up
     is_both_master_and_worker = on_master(context) and on_worker(context)
     is_spawn_rate_not_set = grizzly.setup.spawn_rate is None
@@ -1043,6 +1060,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                                 logger.error('%s is not running, stop', dependency)
                                 del processes[dependency]
 
+                        logger.debug('waiting 10 seconds for next external process check')
                         gevent.sleep(10.0)
 
                     logger.info('stop watching external processes')
