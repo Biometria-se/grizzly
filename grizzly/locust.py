@@ -8,6 +8,7 @@ import sys
 from collections import defaultdict
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from math import ceil, floor
 from operator import attrgetter, itemgetter
 from os import environ
@@ -1326,6 +1327,7 @@ def grizzly_print_stats(stats: lstats.RequestStats, *, current: bool = True, gri
         ("%-" + str(lstats.STATS_TYPE_WIDTH) + "s %-" + str(name_column_width) + "s %7s %12s |%7s %7s %7s%7s | %7s %11s")
         % ("Type", "Name", "# reqs", "# fails", "Avg", "Min", "Max", "Med", "req/s", "failures/s")
     )
+    stats_logger.info(datetime.now(timezone.utc).isoformat())
     stats_logger.info(row)
     separator = f'{"-" * lstats.STATS_TYPE_WIDTH}|{"-" * (name_column_width)}|{"-" * 7}|{"-" * 13}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 8}|{"-" * 11}'
     stats_logger.info(separator)
