@@ -88,7 +88,7 @@ class TestIterationScenario:
         parent.__class__.populate(LogMessageTask(message='hello {{ world }}'))
         assert len(parent.tasks) == 5
 
-        logger_spy = mocker.spy(parent.logger, 'info')
+        logger_spy = mocker.spy(parent.user.logger, 'info')
 
         task_method = parent.tasks[-2]
         assert callable(task_method)
