@@ -119,7 +119,7 @@ class ServiceBusUser(GrizzlyUser):
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
-    zmq_context = zmq.Context.instance()
+    zmq_context = zmq.Context()
     zmq_client: ztypes.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
     hellos: set[str]
@@ -193,8 +193,6 @@ class ServiceBusUser(GrizzlyUser):
         super().on_start()
 
         self.zmq_client = self.zmq_context.socket(zmq.REQ)
-        self.zmq_client.setsockopt(zmq.REQ_RELAXED, 1)
-        self.zmq_client.setsockopt(zmq.REQ_CORRELATE, 1)
         self.zmq_client.setsockopt(zmq.LINGER, 0)
         self.zmq_client.connect(self.zmq_url)
 

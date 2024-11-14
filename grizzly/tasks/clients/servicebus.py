@@ -273,7 +273,7 @@ class ServiceBusClientTask(ClientTask):
             self.context.update({'content_type': content_type})
 
         self._state = {}
-        self._zmq_context = zmq.Context.instance()
+        self._zmq_context = zmq.Context()
 
     def get_state(self, parent: GrizzlyScenario) -> State:
         state = self._state.get(parent, None)
@@ -298,15 +298,13 @@ class ServiceBusClientTask(ClientTask):
 
             # context might have been destroyed as all existing sockets has been closed
             if self._zmq_context.closed:
-                self._zmq_context = zmq.Context.instance()
+                self._zmq_context = zmq.Context()
 
             state = State(
                 parent=parent,
                 client=cast(ztypes.Socket, self._zmq_context.socket(zmq.REQ)),
                 context=context,
             )
-            state.client.setsockopt(zmq.REQ_RELAXED, 1)
-            state.client.setsockopt(zmq.REQ_CORRELATE, 1)
             state.client.setsockopt(zmq.LINGER, 0)
             state.client.connect(self._zmq_url)
             self._state.update({parent: state})

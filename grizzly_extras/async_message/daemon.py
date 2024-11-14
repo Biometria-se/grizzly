@@ -62,8 +62,6 @@ class Worker:
         self.integration = None
         self._event = Event() if event is None else event
         self.socket = self.context.socket(zmq.REQ)
-        self.socket.setsockopt(zmq.REQ_RELAXED, 1)
-        self.socket.setsockopt(zmq.REQ_CORRELATE, 1)
         self.socket.setsockopt_string(zmq.IDENTITY, self.identity)
         self.socket.connect('inproc://workers')
         self.socket.send_string(LRU_READY)

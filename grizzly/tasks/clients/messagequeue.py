@@ -146,7 +146,7 @@ class MessageQueueClientTask(ClientTask):
 
         self.create_context()
 
-        self._zmq_context = zmq.Context.instance()
+        self._zmq_context = zmq.Context()
         self._worker = {}
         self.max_message_size = None
 
@@ -248,8 +248,6 @@ class MessageQueueClientTask(ClientTask):
                 ztypes.Socket,
                 self._zmq_context.socket(zmq.REQ),
             )
-            client.setsockopt(zmq.REQ_RELAXED, 1)
-            client.setsockopt(zmq.REQ_CORRELATE, 1)
             client.setsockopt(zmq.LINGER, 0)
             client.connect(self._zmq_url)
 
