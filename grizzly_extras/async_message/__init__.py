@@ -41,7 +41,12 @@ def configure_logging() -> None:
     except ValueError:
         pass
 
-    level = logging.getLevelName(environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO'))
+    env_level = environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO')
+    try:
+        level = logging.getLevelNamesMapping()[env_level]
+    except KeyError:
+        level = logging.getLevelNamesMapping()['INFO']
+        logging.warning('level %s specified in environment variable GRIZZLY_EXTRAS_LOGLEVEL is not a valid logging level, defaulting to INFO', env_level)
 
     logging.basicConfig(
         level=level,
@@ -136,6 +141,7 @@ class AsyncMessageHandler(ABC):
     def handle(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         start_time = time()
         action = request.get('action', None)
+        request_id = request.get('request_id', None)
 
         try:
             if action is None:
@@ -143,7 +149,7 @@ class AsyncMessageHandler(ABC):
                 raise RuntimeError(message)
 
             request_handler = self.get_handler(action)
-            self.logger.debug('handling %s, request=\n%s', action, jsondumps(request, indent=2, cls=JsonBytesEncoder))
+            self.logger.debug('handling %s, request_id=%s, request=\n%s', action, request_id, jsondumps(request, indent=2, cls=JsonBytesEncoder))
 
             response: AsyncMessageResponse
 
@@ -160,7 +166,7 @@ class AsyncMessageHandler(ABC):
                 'success': False,
                 'message': f'{action or "UNKNOWN"}: {e.__class__.__name__}="{e!s}"',
             }
-            self.logger.exception('%s: %s="%s"', action or 'UNKNOWN', e.__class__.__name__, str(e))  # noqa: TRY401
+            self.logger.exception('%s: request_id=%s, %s="%s"', action or 'UNKNOWN', request_id, e.__class__.__name__, str(e))  # noqa: TRY401
         finally:
             total_time = int((time() - start_time) * 1000)
             response.update({
@@ -172,7 +178,7 @@ class AsyncMessageHandler(ABC):
                 response.update({'action': str(action)})
 
             if not self._event.is_set():
-                self.logger.debug('handled %s, response=\n%s', action, jsondumps(response, indent=2, cls=JsonBytesEncoder))
+                self.logger.debug('handled %s for, request_id=%s, response=\n%s', action, request_id, jsondumps(response, indent=2, cls=JsonBytesEncoder))
 
         return response
 

@@ -258,6 +258,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             msg = 'no endpoint specified'
             raise AsyncMessageError(msg)
 
+        request_id = request.get('request_id', None)
+
         try:
             arguments = parse_arguments(endpoint, separator=':')
             unsupported_arguments = get_unsupported_arguments(['queue', 'expression', 'max_message_size'], arguments)
@@ -305,7 +307,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             with self.queue_context(endpoint=queue_name) as queue:
                 do_retry: bool = False
 
-                self.logger.info('executing %s on %s', action, queue_name)
+                self.logger.info('executing %s on %s for request %s', action, queue_name, request_id)
                 start = time()
 
                 try:
@@ -387,7 +389,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     sleep(retries * retries * 0.5)
                 else:
                     delta = (time() - start) * 1000
-                    self.logger.info('%s on %s took %d ms, response_length=%d, retries=%d', action, queue_name, delta, response_length, retries)
+                    self.logger.info('%s on %s for request %s took %d ms, response_length=%d, retries=%d', action, queue_name, request_id, delta, response_length, retries)
                     return {
                         'payload': payload,
                         'metadata': self._get_safe_message_descriptor(md),

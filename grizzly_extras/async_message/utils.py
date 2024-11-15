@@ -42,8 +42,8 @@ def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -
     response: Optional[AsyncMessageResponse] = None
     count = 0
 
+    start = perf_counter()
     while True:
-        start = perf_counter()
         count += 1
         try:
             response = cast(Optional[AsyncMessageResponse], client.recv_json(flags=zmq.NOBLOCK))

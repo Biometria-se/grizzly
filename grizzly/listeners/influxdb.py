@@ -397,12 +397,12 @@ class InfluxDbListener:
         return metrics
 
     def heartbeat_sent(self, client_id: str, timestamp: float) -> None:
-        return self._heartbeat(client_id=client_id, direction='sent', timestamp=timestamp)
+        return self._heartbeat(client_id=client_id, direction='sent', timestamp=timestamp, response_time=None)
 
-    def heartbeat_received(self, client_id: str, timestamp: float) -> None:
-        return self._heartbeat(client_id=client_id, direction='received', timestamp=timestamp)
+    def heartbeat_received(self, client_id: str, timestamp: float, response_time: float | None) -> None:
+        return self._heartbeat(client_id=client_id, direction='received', timestamp=timestamp, response_time=response_time)
 
-    def _heartbeat(self, client_id: str, direction: Literal['sent', 'received'], timestamp: float) -> None:
+    def _heartbeat(self, client_id: str, direction: Literal['sent', 'received'], timestamp: float, response_time: float | None) -> None:
         _timestamp = datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
 
         tags: dict[str, str | None] = {
@@ -410,7 +410,7 @@ class InfluxDbListener:
             'direction': direction,
         }
 
-        metrics: dict[str, int] = {'value': 1}
+        metrics: dict[str, int | float | None] = {'value': 1, 'response_time': response_time}
 
         self._create_event(_timestamp, 'heartbeat', tags, metrics)
 

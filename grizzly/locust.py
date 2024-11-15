@@ -239,7 +239,7 @@ class FixedUsersDispatcher(UsersDispatcher):
         """
         self._worker_nodes = [w for w in self._worker_nodes if w.id != worker_node.id]
         if len(self._worker_nodes) == 0:
-            logger.warning('cannot remove worker %s, since there are no workers registrered', worker_node.id)
+            logger.warning('worker %s was the last worker', worker_node.id)
             return
         self._prepare_rebalance()
 
@@ -588,7 +588,8 @@ class FixedUsersDispatcher(UsersDispatcher):
         if target_user_count == {}:
             target_user_count = {**self._grizzly_target_user_count}
 
-        self._spread_sticky_tags_on_workers()
+        # _grizzly_distribute_users is only called from _prepare_rebalance, which already has called _spread_sticky_tags_on_workers
+        # self._spread_sticky_tags_on_workers()  # noqa: ERA001
 
         user_gen = self._create_user_generator()
 
@@ -616,7 +617,12 @@ class FixedUsersDispatcher(UsersDispatcher):
 
             sticky_tag = self._users_to_sticky_tag[next_user_class_name]
             worker_node = next(self._sticky_tag_to_workers[sticky_tag])
-            users_on_workers[worker_node.id][next_user_class_name] += 1
+            try:
+                users_on_workers[worker_node.id][next_user_class_name] += 1
+            except KeyError:
+                logger.error('worker %s is not available for tag %s', worker_node.id, sticky_tag)  # noqa: TRY400
+                continue
+
             user_count_total += 1
             current_user_count[next_user_class_name] += 1
             active_users.append((worker_node, next_user_class_name))
