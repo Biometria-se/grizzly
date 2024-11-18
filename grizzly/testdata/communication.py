@@ -244,14 +244,14 @@ class TestdataConsumer:
 
     def _request(self, request: dict[str, str]) -> dict[str, Any] | None:
         with self.semaphore:
-            uid = id(self.scenario.user)
-            request_id = str(uuid4())
+            uid = id(self.scenario.user)  # user id (unique instance)
+            rid = str(uuid4())  # request id
 
             if uid in self._responses:
                 self.logger.warning('greenlet %d is already waiting for testdata', uid)
 
             self._responses.update({uid: AsyncResult()})
-            self.runner.send_message('produce_testdata', {'uid': uid, 'cid': self.runner.client_id, 'id': request_id, 'request': request})
+            self.runner.send_message('produce_testdata', {'uid': uid, 'cid': self.runner.client_id, 'rid': rid, 'request': request})
 
             # waits for async result
             try:
@@ -269,7 +269,8 @@ class TestdataProducer:
     _persist_file: Path
 
     logger: logging.Logger
-    semaphore = Semaphore()
+    semaphore: ClassVar[Semaphore] = Semaphore()
+    semaphores: ClassVar[dict[str, Semaphore]] = {}
     scenarios_iteration: dict[str, int]
     testdata: TestdataType
     has_persisted: bool
@@ -501,19 +502,29 @@ class TestdataProducer:
         return response
 
     def handle_request(self, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG002
-        with self.semaphore:
-            self.logger.debug('handling message')
-            uid = msg.data['uid']
-            cid = msg.data['cid']
-            request = msg.data['request']
-            request_id = msg.data['id']
+        self.logger.debug('handling message')
 
-            if request['message'] == 'keystore':
+        cid = msg.data['cid']  # (worker) client id
+        uid = msg.data['uid']  # user id (user instance)
+        rid = msg.data['rid']  # request id
+        request = msg.data['request']
+
+        # only handle one request per worker at a time, but allow parallell requests between different scenarios
+        if request['message'] == 'keystore':
+            with self.semaphore:
                 response = self._handle_request_keystore(request=request)
-            elif request['message'] == 'testdata':
-                response = self._handle_request_testdata(request=request)
-            else:
-                self.logger.error('received unknown message "%s"', request['message'])
-                response = {}
+        elif request['message'] == 'testdata':
+            scenario_name = request.get('identifier', None)
 
-            self.runner.send_message('consume_testdata', {'uid': uid, 'id': request_id, 'response': response}, client_id=cid)
+            # create semaphore for client if it does not exist already
+            with self.semaphore:
+                if scenario_name is not None and scenario_name not in self.semaphores:
+                    self.semaphores.update({scenario_name: Semaphore()})
+
+            with self.semaphores[scenario_name]:
+                response = self._handle_request_testdata(request=request)
+        else:
+            self.logger.error('received unknown message "%s"', request['message'])
+            response = {}
+
+        self.runner.send_message('consume_testdata', {'uid': uid, 'rid': rid, 'response': response}, client_id=cid)

@@ -22,7 +22,7 @@ from grizzly.exceptions import RestartScenario, RetryTask, StopScenario
 from grizzly.types import RequestType, ScenarioState
 from grizzly.types.locust import StopUser
 
-from . import GrizzlyScenario, debug_logger
+from . import GrizzlyScenario
 
 if TYPE_CHECKING:  # pragma: no cover
     from locust.stats import StatsEntry
@@ -293,11 +293,8 @@ class IteratorScenario(GrizzlyScenario):
 
         # scenario timer
         self.start = perf_counter()
-        debug_logger.debug('scenario %s iteration %d of %d starting', self.logger.name, self.current_iteration, self.user._scenario.iterations)
 
         remote_context = self.consumer.testdata()
-
-        debug_logger.debug('scenario %s iteration %d of %d consumed testdata', self.logger.name, self.current_iteration, self.user._scenario.iterations)
 
         if remote_context is None:
             self.logger.debug('no iteration data available, stop scenario')
@@ -327,8 +324,6 @@ class IteratorScenario(GrizzlyScenario):
         """Last task in this scenario, if self.pace_time is set.
         This is ensured by `grizzly.scenarios.iterator.IteratorScenario.populate`.
         """
-        debug_logger.debug('scenario %s iteration %d of %d done', self.logger.name, self.current_iteration, self.user._scenario.iterations)
-
         if self.pace_time is None:
             return
 
@@ -349,7 +344,6 @@ class IteratorScenario(GrizzlyScenario):
                 if (pace_correction * 1000) < value:
                     self.logger.debug('keeping pace by sleeping %d milliseconds', pace_correction * 1000)
                     gsleep((value / 1000) - pace_correction)
-                    debug_logger.debug('scenario %s slept %d milliseconds to keep pace', self.logger.name, pace_correction * 1000)
                     response_length = 1
                 else:
                     self.logger.error('pace falling behind, currently at %d milliseconds expecting %.2f milliseconds', abs(pace_correction * 1000), value)

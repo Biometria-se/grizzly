@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 from time import perf_counter, sleep
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from uuid import uuid4
@@ -37,7 +38,12 @@ def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -
 
     client.send_json(request)
 
-    logger.debug('async_message_request::send_json: sent %r', request)
+    request_metadata = {**request}
+
+    with suppress(Exception):
+        del request_metadata['payload']
+
+    logger.debug('async_message_request::send_json: sent %r', request_metadata)
 
     response: Optional[AsyncMessageResponse] = None
     count = 0

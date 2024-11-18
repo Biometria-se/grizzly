@@ -24,9 +24,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.users import GrizzlyUser
 
 
-debug_logger = logging.getLogger('grizzly.scenarios')
-
-
 class GrizzlyScenario(SequentialTaskSet):
     consumer: TestdataConsumer
     logger: logging.Logger
@@ -101,7 +98,6 @@ class GrizzlyScenario(SequentialTaskSet):
         self.prefetch()
 
     def on_iteration(self) -> None:
-        debug_logger.debug('scenario %s calling on_iteration hook for iteration %d of %d', self.logger.name, self.current_iteration, self.user._scenario.iterations)
         self.user.on_iteration()
 
         for task in self.tasks:
@@ -145,8 +141,6 @@ class GrizzlyScenario(SequentialTaskSet):
             raise LocustError(message)
 
         task = self.tasks[self._task_index % len(self.tasks)]
-        if self._task_index % len(self.tasks) >= len(self.tasks) - 1:
-            debug_logger.debug('scenario %s starting from first task', self.logger.name)
         self._task_index += 1
 
         return task
