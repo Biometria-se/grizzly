@@ -8,6 +8,7 @@ from os import environ
 from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from uuid import uuid4
 
 from gevent import sleep as gsleep
 from gevent.event import AsyncResult
@@ -244,12 +245,13 @@ class TestdataConsumer:
     def _request(self, request: dict[str, str]) -> dict[str, Any] | None:
         with self.semaphore:
             uid = id(self.scenario.user)
+            request_id = str(uuid4())
 
             if uid in self._responses:
                 self.logger.warning('greenlet %d is already waiting for testdata', uid)
 
             self._responses.update({uid: AsyncResult()})
-            self.runner.send_message('produce_testdata', {'uid': uid, 'cid': self.runner.client_id, 'request': request})
+            self.runner.send_message('produce_testdata', {'uid': uid, 'cid': self.runner.client_id, 'id': request_id, 'request': request})
 
             # waits for async result
             try:
@@ -504,6 +506,7 @@ class TestdataProducer:
             uid = msg.data['uid']
             cid = msg.data['cid']
             request = msg.data['request']
+            request_id = msg.data['id']
 
             if request['message'] == 'keystore':
                 response = self._handle_request_keystore(request=request)
@@ -513,4 +516,4 @@ class TestdataProducer:
                 self.logger.error('received unknown message "%s"', request['message'])
                 response = {}
 
-            self.runner.send_message('consume_testdata', {'uid': uid, 'response': response}, client_id=cid)
+            self.runner.send_message('consume_testdata', {'uid': uid, 'id': request_id, 'response': response}, client_id=cid)

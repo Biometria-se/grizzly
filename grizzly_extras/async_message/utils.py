@@ -68,7 +68,7 @@ def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -
                 break
 
     delta = perf_counter() - start
-    logger.debug('async_message_request::recv_json took %f seconds for request_id %s, after %d retries', delta, request['request_id'], count)
+    logger.debug('async_message_request::recv_json: took %f seconds for request_id %s, after %d retries', delta, request['request_id'], count)
 
     if response is None:
         msg = 'no response'
