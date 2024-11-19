@@ -215,7 +215,7 @@ class IotHubUser(GrizzlyUser):
 
         self._startup_ignore = True
         self._startup_ignore_count = 0
-        self._unique = VolatileDeque(timeout=5.0)
+        self._unique = VolatileDeque(timeout=20.0)
         self._expression_unique = self._context.get('expression', {}).get('unique', None)
         self._expression_payload = self._context.get('expression', {}).get('payload', None)
         self._expression_metadata = self._context.get('expression', {}).get('metadata', None)

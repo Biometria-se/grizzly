@@ -309,8 +309,6 @@ class MessageQueueUser(GrizzlyUser):
 
     @contextmanager
     def _request_context(self, am_request: AsyncMessageRequest) -> Generator[dict[str, Any], None, None]:
-        self.logger.debug('%s request context: %r', inspect.stack()[1][3], am_request)
-
         response: Optional[AsyncMessageResponse] = None
         context: dict[str, Any] = {
             'metadata': None,

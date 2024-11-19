@@ -30,7 +30,7 @@ class TestKeystoreTask:
         assert task.action_context == 'foobar'
         assert task.default_value is None
 
-        task = KeystoreTask('foobar', 'get', 'foobar', ['hello', 'world'])
+        task = KeystoreTask('foobar', 'get', 'foobar', "['hello', 'world']")
 
         assert task.key == 'foobar'
         assert task.action == 'get'
@@ -40,7 +40,7 @@ class TestKeystoreTask:
         with pytest.raises(AssertionError, match='action context for "set" must be declared'):
             KeystoreTask('foobar', 'set', None)
 
-        task = KeystoreTask('foobar', 'set', {'hello': 'world'})
+        task = KeystoreTask('foobar', 'set', '{"hello": "world"}')
 
         assert task.key == 'foobar'
         assert task.action == 'set'
@@ -101,7 +101,7 @@ class TestKeystoreTask:
         # key does not exist in keystore, but has a default value
         consumer_mock.keystore_get.return_value = None
 
-        task_factory = KeystoreTask('foobar', 'get', 'foobar', {'hello': 'world'})
+        task_factory = KeystoreTask('foobar', 'get', 'foobar', '{"hello": "world"}')
         assert task_factory.default_value is not None
         task = task_factory()
 
@@ -119,7 +119,7 @@ class TestKeystoreTask:
         consumer_mock = mocker.MagicMock()
         parent.consumer = consumer_mock
 
-        task_factory = KeystoreTask('foobar', 'set', {'hello': '{{ world }}'})
+        task_factory = KeystoreTask('foobar', 'set', "{'hello': '{{ world }}'}")
         task = task_factory()
 
         task(parent)

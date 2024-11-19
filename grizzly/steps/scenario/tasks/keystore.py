@@ -4,7 +4,6 @@ This module contains step implementations for the {@pylink grizzly.tasks.keystor
 from __future__ import annotations
 
 from json import JSONDecodeError
-from json import loads as jsonloads
 from typing import cast
 
 from grizzly.context import GrizzlyContext
@@ -29,14 +28,7 @@ def step_task_keystore_get_default(context: Context, key: str, variable: str, de
 
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
-    if "'" in default_value:
-        default_value = default_value.replace("'", '"')
-
-    try:
-        grizzly.scenario.tasks.add(KeystoreTask(key, 'get', variable, jsonloads(default_value)))
-    except JSONDecodeError as e:
-        message = f'"{default_value}" is not valid JSON'
-        raise AssertionError(message) from e
+    grizzly.scenario.tasks.add(KeystoreTask(key, 'get', variable, default_value))
 
 
 @then('get "{key}" from keystore and save in variable "{variable}"')
@@ -67,7 +59,7 @@ def step_task_keystore_set(context: Context, key: str, value: str) -> None:
     Example:
     ```gherkin
     And value for variable "foobar" is "{'hello': 'world'}"
-    Then set "foobar_key" in keystore with value "{{ foobar }}"
+    Then set "foobar_key" in keystore with value "{{ foobar }} | render=True"
     ```
 
     """
@@ -76,7 +68,7 @@ def step_task_keystore_set(context: Context, key: str, value: str) -> None:
         value = value.replace("'", '"')
 
     try:
-        grizzly.scenario.tasks.add(KeystoreTask(key, 'set', jsonloads(value)))
+        grizzly.scenario.tasks.add(KeystoreTask(key, 'set', value))
     except JSONDecodeError as e:
         message = f'"{value}" is not valid JSON'
         raise AssertionError(message) from e
@@ -147,14 +139,7 @@ def step_task_keystore_push(context: Context, key: str, value: str) -> None:
 
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
-    if "'" in value:
-        value = value.replace("'", '"')
-
-    try:
-        grizzly.scenario.tasks.add(KeystoreTask(key, 'push', jsonloads(value)))
-    except JSONDecodeError as e:
-        message = f'"{value}" is not valid JSON'
-        raise AssertionError(message) from e
+    grizzly.scenario.tasks.add(KeystoreTask(key, 'push', value))
 
 
 @then('remove "{key}" from keystore')

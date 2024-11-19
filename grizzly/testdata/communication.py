@@ -144,7 +144,7 @@ class TestdataConsumer:
 
         data = response['data']
 
-        self.logger.debug('received: %r', data)
+        self.logger.debug('testdata received: %r', data)
 
         variables: dict[str, Any] | None = None
         if 'variables' in data:
@@ -502,12 +502,12 @@ class TestdataProducer:
         return response
 
     def handle_request(self, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG002
-        self.logger.debug('handling message')
-
         cid = msg.data['cid']  # (worker) client id
         uid = msg.data['uid']  # user id (user instance)
         rid = msg.data['rid']  # request id
         request = msg.data['request']
+
+        self.logger.debug('handling message from worker %s, user %s, request %s', cid, uid, rid)
 
         # only handle one request per worker at a time, but allow parallell requests between different scenarios
         if request['message'] == 'keystore':
