@@ -28,6 +28,7 @@ from csv import DictWriter
 from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from uuid import uuid4
 
 from gevent.fileobject import FileObjectThread
 
@@ -222,6 +223,7 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
 
         # values for all headers set, flush to file
         data = {
+            'rid': str(uuid4()),
             'destination': self._settings[variable]['destination'],
             'row': buffer,
         }
