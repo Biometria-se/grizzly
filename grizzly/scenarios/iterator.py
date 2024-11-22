@@ -91,7 +91,7 @@ class IteratorScenario(GrizzlyScenario):
             raise RescheduleTask(e.reschedule).with_traceback(e.__traceback__) from e
         except Exception as e:
             if not isinstance(e, StopScenario):
-                self.logger.exception('on_start failed')
+                self.logger.exception('scenario on_start failed')
                 response_time = int((perf_counter() - start) * 1000)
                 self.user.environment.events.request.fire(
                     request_type=RequestType.SCENARIO(),
@@ -342,11 +342,11 @@ class IteratorScenario(GrizzlyScenario):
                 pace_correction = (start - self.start)
 
                 if (pace_correction * 1000) < value:
-                    self.logger.debug('keeping pace by sleeping %d milliseconds', pace_correction * 1000)
+                    self.logger.debug('scenario keeping pace by sleeping %d milliseconds', pace_correction * 1000)
                     gsleep((value / 1000) - pace_correction)
                     response_length = 1
                 else:
-                    self.logger.error('pace falling behind, currently at %d milliseconds expecting %.2f milliseconds', abs(pace_correction * 1000), value)
+                    self.logger.error('scenario pace falling behind, currently at %d milliseconds expecting %.2f milliseconds', abs(pace_correction * 1000), value)
                     message = f'pace falling behind, iteration takes longer than {value} milliseconds'
                     raise RuntimeError(message)
         except Exception as e:
