@@ -25,6 +25,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.events import GrizzlyEvents
     from grizzly.testdata.communication import TestdataProducer
     from grizzly.types.behave import Scenario
+    from grizzly.types.locust import Environment as LocustEnvironment
     from grizzly.types.locust import LocalRunner, MasterRunner, WorkerRunner
 
     from .tasks import AsyncRequestGroupTask, ConditionalTask, GrizzlyTask, GrizzlyTaskWrapper, LoopTask, TimerTask
@@ -316,6 +317,7 @@ class GrizzlyContextSetup:
     dispatcher_class: Optional[type[UsersDispatcher]] = field(init=False, default=None)
     statistics_url: Optional[str] = field(init=False, default=None)
     locust: GrizzlyContextSetupLocust = field(init=False, default_factory=GrizzlyContextSetupLocust)
+    hooks: list[Callable[[LocustEnvironment], None]]  = field(init=False, default_factory=list)
 
 
 class GrizzlyContextScenarios(list[GrizzlyContextScenario]):

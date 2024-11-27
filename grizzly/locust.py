@@ -800,6 +800,9 @@ def setup_environment_listeners(context: Context, *, testdata: Optional[Testdata
     if grizzly.setup.statistics_url is not None:
         environment.events.init.add_listener(init_statistics_listener(grizzly.setup.statistics_url))
 
+    for hook in grizzly.setup.hooks:
+        hook(environment)
+
 
 def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     def create_separator(max_length_iterations: int, max_length_status: int, max_length_description: int) -> str:
