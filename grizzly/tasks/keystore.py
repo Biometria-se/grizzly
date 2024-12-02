@@ -45,7 +45,6 @@ from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 from grizzly.exceptions import failure_handler
 from grizzly.testdata import GrizzlyVariables
-from grizzly.utils import has_template
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
@@ -75,7 +74,7 @@ class KeystoreTask(GrizzlyTask):
         self.default_value = self.json_serialize(default_value)
         self.arguments = {}
 
-        if self.action_context is not None and has_separator('|', self.action_context):
+        if self.action_context is not None and isinstance(self.action_context, str) and has_separator('|', self.action_context):
             self.action_context, value_arguments = split_value(self.action_context)
             arguments = parse_arguments(value_arguments, unquote=True)
             for key, value in arguments.items():
@@ -89,27 +88,37 @@ class KeystoreTask(GrizzlyTask):
         elif self.action in ['set', 'push']:
             assert self.action_context is not None, f'action context for "{self.action}" must be declared'
             self.action_context = self.json_serialize(self.action_context)
+            print(f'{self.action_context=}')
         elif self.action in ['del']:
             assert self.action_context is None, f'action context for "{self.action}" cannot be declared'
         else:  # pragma: no cover
             pass
 
     @classmethod
-    def json_serialize(cls, value: str | None) -> str | None:
+    def json_serialize(cls, value: str | None) -> Any | None:
+        serialized_value: Any
+
         if value is None:
             return value
 
-        if not has_template(value):
-            if "'" in value:
-                value = value.replace("'", '"')
+        serialized_value = GrizzlyVariables.guess_datatype(value)
 
-            try:
-                value = jsonloads(value)
-            except JSONDecodeError as e:
-                message = f'"{value}" is not valid JSON'
-                raise AssertionError(message) from e
+        if not isinstance(serialized_value, str):
+            return serialized_value
 
-        return value
+        if "'" in serialized_value:
+            serialized_value = serialized_value.replace("'", '"')
+
+        if not any(quote in value for quote in ['"', "'"]):
+            serialized_value = f'"{serialized_value}"'
+
+        try:
+            serialized_value = jsonloads(serialized_value)
+        except JSONDecodeError as e:
+            message = f'"{value}" is not valid JSON'
+            raise AssertionError(message) from e
+        else:
+            return serialized_value
 
     def __call__(self) -> grizzlytask:
         @grizzlytask

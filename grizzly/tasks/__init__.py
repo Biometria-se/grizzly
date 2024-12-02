@@ -303,6 +303,7 @@ from .wait_explicit import ExplicitWaitTask
 from .write_file import WriteFileTask
 
 from .async_group import AsyncRequestGroupTask
+from .async_timer import AsyncTimerTask
 
 __all__ = [
     'RequestTaskHandlers',
@@ -314,6 +315,7 @@ __all__ = [
     'UntilRequestTask',
     'DateTask',
     'AsyncRequestGroupTask',
+    'AsyncTimerTask',
     'TimerTask',
     'WaitBetweenTask',
     'ConditionalTask',

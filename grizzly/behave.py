@@ -9,7 +9,7 @@ from os import environ
 from pathlib import Path
 from textwrap import indent
 from time import perf_counter as time
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 import setproctitle as proc
 from behave.reporter.summary import SummaryReporter
@@ -24,6 +24,9 @@ from .types import RequestType
 from .types.behave import Context, Feature, Scenario, Status, Step
 from .utils import fail_direct, in_correct_section
 from .utils.protocols import mq_client_logs
+
+if TYPE_CHECKING:
+    from grizzly.tasks.async_timer import AsyncTimer
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +115,7 @@ def after_feature_master(return_code: int, status: Optional[Status], context: Co
     return return_code
 
 
-def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: Any) -> None:  # noqa: PLR0912
+def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: Any) -> None:  # noqa: PLR0912, C901, PLR0915
     return_code: int
     cause: str
     has_exceptions = hasattr(context, 'exceptions') and len(context.exceptions) > 0
@@ -159,6 +162,26 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
     stopped = datetime.now().astimezone()
 
     reporter.stream.flush()
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    if grizzly.state.producer is not None and len(grizzly.state.producer.async_timers.active_timers) > 0:
+        feature.set_status('failed')
+        timer_group: dict[str, list[AsyncTimer]] = {}
+
+        for timer in grizzly.state.producer.async_timers.active_timers.values():
+            if timer.name not in timer_group:
+                timer_group.update({timer.name: []})
+
+            timer_group[timer.name].append(timer)
+
+        reporter.stream.write('\nThe following asynchronous timers has not been stopped:\n')
+
+        for name, timers in timer_group.items():
+            reporter.stream.write(f'- {name} ({len(timers)}):\n')
+
+            for timer in timers:
+                reporter.stream.write(f'\t* {timer.tid}: {timer.start.isoformat()}')
 
     if has_exceptions:
         buffer: list[str] = []

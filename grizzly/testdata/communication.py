@@ -15,6 +15,7 @@ from gevent.event import AsyncResult
 from gevent.lock import Semaphore
 
 from grizzly.events import GrizzlyEventDecoder, GrizzlyEvents, event, events
+from grizzly.tasks.async_timer import AsyncTimers
 from grizzly.types.locust import LocalRunner, MasterRunner, StopUser, WorkerRunner
 
 from . import GrizzlyVariables
@@ -80,7 +81,6 @@ class TestdataDecoder(GrizzlyEventDecoder):
 
         return metrics, tags
 
-
 class TestdataConsumer:
     # need so pytest doesn't raise PytestCollectionWarning
     __test__: bool = False
@@ -94,6 +94,7 @@ class TestdataConsumer:
     poll_interval: float
     response: dict[str, Any]
     events: GrizzlyEvents
+    async_timers: AsyncTimers
 
     semaphore = Semaphore()
 
@@ -108,6 +109,9 @@ class TestdataConsumer:
         self.response = {}
         self.logger.debug('started consumer')
 
+        self.async_timers = AsyncTimers(runner.environment, self.semaphore)
+        self.runner.environment.events.report_to_master.add_listener(self.async_timers.on_report_to_master)
+
     @classmethod
     def handle_response(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG003
         uid = msg.data['uid']
@@ -117,7 +121,7 @@ class TestdataConsumer:
 
     @property
     def logger(self) -> logging.Logger:
-        return self.scenario.logger
+        return self.scenario.user.logger
 
     @event(events.testdata_request, tags={'type': 'consumer'}, decoder=TestdataDecoder(arg='request'))
     def _testdata_request(self, *, request: dict[str, Any]) -> dict[str, Any] | None:
@@ -277,6 +281,7 @@ class TestdataProducer:
     keystore: dict[str, Any]
     runner: MasterRunner | LocalRunner
     grizzly: GrizzlyContext
+    async_timers: AsyncTimers
 
     def __init__(self, runner: MasterRunner | LocalRunner, testdata: TestdataType) -> None:
         self.testdata = testdata
@@ -302,6 +307,9 @@ class TestdataProducer:
 
         from grizzly.context import grizzly
         self.grizzly = grizzly
+
+        self.async_timers = AsyncTimers(runner.environment, self.semaphore)
+        self.runner.environment.events.worker_report.add_listener(self.async_timers.on_worker_report)
 
     def on_test_stop(self) -> None:
         self.logger.debug('test stopping')

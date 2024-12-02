@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from ast import literal_eval as ast_literal_eval
 from base64 import b64decode as base64_b64decode
 from base64 import b64encode as base64_b64encode
 from typing import Any, Callable, NamedTuple, Optional, Union
@@ -126,3 +127,18 @@ def b64decode(value: str) -> str:
 
     """
     return base64_b64decode(value).decode()
+
+
+@templatingfilter
+def literal_eval(value: str) -> Any:
+    """Evaluate python objects serialized as strings.
+
+    Returns the string as the actual python object.
+
+    Example:
+    ```gherkin
+    Given value of variable "value" is "{'hello': 'world'}"
+    ```
+
+    """
+    return ast_literal_eval(value)
