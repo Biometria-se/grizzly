@@ -7,6 +7,7 @@ from contextlib import suppress
 from os import environ, sep
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
+from uuid import uuid4
 
 import pytest
 from gevent.event import AsyncResult
@@ -17,7 +18,7 @@ from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.testdata.variables import AtomicIntegerIncrementer
 from grizzly.testdata.variables.csv_writer import atomiccsvwriter_message_handler
 from grizzly.types.locust import Environment, LocalRunner, Message, StopUser
-from tests.helpers import ANY
+from tests.helpers import ANY, ANYUUID
 
 if TYPE_CHECKING:  # pragma: no cover
     from unittest.mock import MagicMock
@@ -148,11 +149,17 @@ value3,value4
 
             def request_testdata() -> dict[str, Any] | None:
                 uid = id(parent.user)
+                rid = str(uuid4())
 
                 responses[uid] = AsyncResult()
                 grizzly.state.locust.send_message(
                     'produce_testdata',
-                    {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': {'message': 'testdata', 'identifier': grizzly.scenario.class_name}},
+                    {
+                        'uid': uid,
+                        'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+                        'rid': rid,
+                        'request': {'message': 'testdata', 'identifier': grizzly.scenario.class_name},
+                    },
                 )
 
                 response = cast(Optional[dict[str, Any]], responses[uid].get())
@@ -163,6 +170,7 @@ value3,value4
 
             def request_keystore(action: str, key: str, value: Any | None = None) -> dict[str, Any] | None:
                 uid = id(parent.user)
+                rid = str(uuid4())
 
                 request = {
                     'message': 'keystore',
@@ -175,7 +183,7 @@ value3,value4
                     request.update({'data': value})
 
                 responses[uid] = AsyncResult()
-                grizzly.state.locust.send_message('produce_testdata', {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': request})
+                grizzly.state.locust.send_message('produce_testdata', {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'rid': rid, 'request': request})
 
                 response = cast(Optional[dict[str, Any]], responses[uid].get())
 
@@ -430,11 +438,17 @@ value3,value4
 
             def request_testdata() -> dict[str, Any] | None:
                 uid = id(parent.user)
+                rid = str(uuid4())
 
                 responses[uid] = AsyncResult()
                 grizzly.state.locust.send_message(
                     'produce_testdata',
-                    {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': {'message': 'testdata', 'identifier': grizzly.scenario.class_name}},
+                    {
+                        'uid': uid,
+                        'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+                        'rid': rid,
+                        'request': {'message': 'testdata', 'identifier': grizzly.scenario.class_name},
+                    },
                 )
 
                 response = cast(Optional[dict[str, Any]], responses[uid].get())
@@ -582,6 +596,7 @@ value3,value4
 
             def request_keystore(action: str, key: str, value: Any | None = None, message: str = 'keystore') -> dict[str, Any] | None:
                 uid = id(parent.user)
+                rid = str(uuid4())
 
                 request = {
                     'message': message,
@@ -594,7 +609,12 @@ value3,value4
                     request.update({'data': value})
 
                 responses[uid] = AsyncResult()
-                grizzly.state.locust.send_message('produce_testdata', {'uid': uid, 'cid': cast(LocalRunner, grizzly.state.locust).client_id, 'request': request})
+                grizzly.state.locust.send_message('produce_testdata', {
+                    'uid': uid,
+                    'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+                    'rid': rid,
+                    'request': request,
+                })
 
                 response = cast(Optional[dict[str, Any]], responses[uid].get())
 
@@ -803,6 +823,7 @@ class TestTestdataConsumer:
         send_message.assert_called_once_with('produce_testdata', {
             'uid': id(parent.user),
             'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+            'rid': ANYUUID(version=4),
             'request': {'message': 'testdata', 'identifier': 'TestScenario_001'},
         })
         send_message.reset_mock()
@@ -837,6 +858,7 @@ class TestTestdataConsumer:
         send_message.assert_called_once_with('produce_testdata', {
             'uid': id(parent.user),
             'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+            'rid': ANYUUID(version=4),
             'request': {'message': 'testdata', 'identifier': 'TestScenario_001'},
         })
         send_message.reset_mock()
@@ -857,6 +879,7 @@ class TestTestdataConsumer:
         send_message.assert_called_once_with('produce_testdata', {
             'uid': id(parent.user),
             'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+            'rid': ANYUUID(version=4),
             'request': {'message': 'testdata', 'identifier': 'TestScenario_001'},
         })
         send_message.reset_mock()
@@ -880,6 +903,7 @@ class TestTestdataConsumer:
         send_message.assert_called_once_with('produce_testdata', {
             'uid': id(parent.user),
             'cid': cast(LocalRunner, grizzly.state.locust).client_id,
+            'rid': ANYUUID(version=4),
             'request': {'message': 'testdata', 'identifier': 'TestScenario_001'},
         })
         send_message.reset_mock()

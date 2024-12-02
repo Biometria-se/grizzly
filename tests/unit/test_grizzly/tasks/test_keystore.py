@@ -1,7 +1,7 @@
 """Unit tests of grizzly.tasks.keystore."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -146,7 +146,8 @@ class TestKeystoreTask:
         consumer_mock.keystore_inc.assert_called_once_with('foobar', step=1)
         consumer_mock.reset_mock()
 
-    def test___call__push(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    @pytest.mark.parametrize(('actual', 'expected'), [('hello', 'hello'), ('True', True), ('10', 10), ('13.7', 13.7)])
+    def test___call__push(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, actual: str, expected: Any) -> None:
         parent = grizzly_fixture()
         assert parent is not None
 
@@ -155,12 +156,12 @@ class TestKeystoreTask:
 
         consumer_mock.keystore_push.return_value = None
 
-        task_factory = KeystoreTask('foobar', 'push', 'hello')
+        task_factory = KeystoreTask('foobar', 'push', actual)
         task = task_factory()
 
         task(parent)
 
-        consumer_mock.keystore_push.assert_called_once_with('foobar', 'hello')
+        consumer_mock.keystore_push.assert_called_once_with('foobar', expected)
         consumer_mock.reset_mock()
 
 

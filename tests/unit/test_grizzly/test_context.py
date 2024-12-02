@@ -144,6 +144,7 @@ class TestGrizzlyContextSetup:
             'global_context': ({}, {'test': 'hello world'}),
             'locust': None,
             'dispatcher_class': (None, FixedUsersDispatcher),
+            'hooks': ([], []),
         }
 
         expected_attributes = list(expected_properties.keys())

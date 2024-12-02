@@ -642,7 +642,8 @@ class TestIterationScenario:
         assert isinstance(kwargs.get('exception', None), RuntimeError)
         assert kwargs.get('tb', None) is not None
         assert 'ERROR' in caplog.text
-        assert 'IteratorScenario' in caplog.text
+        assert 'IteratorScenario' not in caplog.text
+        assert 'TestUser_001' in caplog.text
         assert 'Traceback (most recent call last):' in caplog.text
 
         # problems in on_start
@@ -770,7 +771,7 @@ class TestIterationScenario:
             'not finished with scenario, currently at task 11 of 13, let me be!',
             'task 12 of 13 executed: test-task-10',
             'not finished with scenario, currently at task 12 of 13, let me be!',
-            r'^keeping pace by sleeping [0-9\.]+ milliseconds$',
+            r'^scenario keeping pace by sleeping [0-9\.]+ milliseconds$',
             'task 13 of 13 executed: pace',
             "okay, I'm done with my running tasks now",
             'scenario state=ScenarioState.STOPPING -> ScenarioState.STOPPED',
@@ -865,7 +866,7 @@ class TestIterationScenario:
                 'task 10 of 13 executed: test-task-8',
                 'task 11 of 13 executed: test-task-9',
                 'task 12 of 13 executed: test-task-10',
-                r'^keeping pace by sleeping [0-9\.]+ milliseconds$',
+                r'^scenario keeping pace by sleeping [0-9\.]+ milliseconds$',
                 'task 13 of 13 executed: pace',
                 'task 1 of 13 executed: iterator',  # IteratorScenario.iterator()
                 'task 2 of 13 executed: test-task-1',

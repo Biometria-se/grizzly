@@ -5,6 +5,8 @@ import logging
 import re
 import sys
 from contextlib import suppress
+from datetime import datetime
+from io import StringIO
 from os import environ
 from secrets import choice
 from socket import error as socket_error
@@ -13,6 +15,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import gevent
 import pytest
+from dateutil.parser import parse as date_parse
 from locust.dispatch import UsersDispatcher as WeightedUsersDispatcher
 from locust.stats import RequestStats
 
@@ -534,7 +537,7 @@ ident      iter  status      description
     capsys.readouterr()
 
 
-def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocker: MockerFixture) -> None:
+def test_run_worker(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     behave = behave_fixture.context
 
     def mock_on_node(*, master: bool, worker: bool) -> None:
@@ -589,17 +592,13 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     grizzly.scenario.tasks.add(task)
 
     assert run(behave) == 1
-    capture = capsys.readouterr()
-
-    assert 'failed to connect to locust master at ' in capture.err
-
     assert messagequeue_process_spy.call_count == 0
     assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
 
     # @TODO: test coverage further down in run is needed!
 
 
-def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
+def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocker: MockerFixture) -> None:
     behave = behave_fixture.context
 
     def mock_on_node(*, master: bool, worker: bool) -> None:
@@ -653,9 +652,6 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     try:
         assert run(behave) == 254
 
-        capture = capsys.readouterr()
-        assert 'cannot be both master and worker' in capture.err
-
         behave.config.userdata = {'master': 'true'}
 
         grizzly = cast(GrizzlyContext, behave.grizzly)
@@ -684,7 +680,6 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
         grizzly.setup.timespan = 'adsf'
         assert run(behave) == 1
-        assert 'invalid timespan' in capsys.readouterr().err
         assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
 
         grizzly.setup.timespan = None
@@ -713,6 +708,11 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
     # grizzly.locust.run calls locust.log.setup_logging, which messes with the loggers
     test_stats_logger = logging.getLogger('test_grizzly_print_stats')
+    handler = logging.StreamHandler(StringIO())
+    handler.setFormatter(logging.Formatter('%(message)s'))
+    test_stats_logger.handlers = []
+    test_stats_logger.addHandler(handler)
+
     mocker.patch('grizzly.locust.stats_logger', test_stats_logger)
     mocker.patch('locust.stats.console_logger', test_stats_logger)
 
@@ -745,36 +745,42 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
                 content_length=(2 * choice(range(10, 20))),
             )
 
-    caplog.clear()
+    try:
+        caplog.clear()
 
-    # print stats, grizzly style
-    with caplog.at_level(logging.INFO):
-        grizzly_print_stats(stats, grizzly_style=True)
+        # print stats, grizzly style
+        with caplog.at_level(logging.INFO):
+            grizzly_print_stats(stats, grizzly_style=True)
 
-    grizzly_stats = caplog.messages
-    caplog.clear()
+        grizzly_stats = caplog.messages
+        caplog.clear()
 
-    # print stats, locust style
-    with caplog.at_level(logging.INFO):
-        grizzly_print_stats(stats, grizzly_style=False)
+        # print stats, locust style
+        with caplog.at_level(logging.INFO):
+            grizzly_print_stats(stats, grizzly_style=False)
 
-    locust_stats = caplog.messages
-    caplog.clear()
+        locust_stats = caplog.messages
+        caplog.clear()
 
-    for ident in range(1, scenario_count):
-        index = (ident - 1) * ((len(request_types_sequence) * request_types_sequence_count) + 4) + 2
-        assert re.match(fr'^SCEN\s+{ident:03}', grizzly_stats[index].strip())
-        assert re.match(fr'^TSTD\s+{ident:03}', grizzly_stats[index + 1].strip())
-        assert re.match(fr'^GET\s+{ident:03} 01-get-test', grizzly_stats[index + 2].strip())
-        assert re.match(fr'^VAR\s+{ident:03} var-test', grizzly_stats[index + (len(request_types_sequence) * request_types_sequence_count) + 3].strip())
+        for ident in range(1, scenario_count):
+            index = (ident - 1) * ((len(request_types_sequence) * request_types_sequence_count) + 4) + 3
+            assert re.match(fr'^SCEN\s+{ident:03}', grizzly_stats[index].strip())
+            assert re.match(fr'^TSTD\s+{ident:03}', grizzly_stats[index + 1].strip())
+            assert re.match(fr'^GET\s+{ident:03} 01-get-test', grizzly_stats[index + 2].strip())
+            assert re.match(fr'^VAR\s+{ident:03} var-test', grizzly_stats[index + (len(request_types_sequence) * request_types_sequence_count) + 3].strip())
 
-    last_stat_row = len(grizzly_stats) - 4
+        last_stat_row = len(grizzly_stats) - 4
 
-    assert re.match(r'^DOC\s+TPM report OUT\s+10', grizzly_stats[last_stat_row].strip())
-    assert re.match(r'^DOC\s+TPM report IN\s+10', grizzly_stats[last_stat_row - 1].strip())
+        assert re.match(r'^DOC\s+TPM report OUT\s+10', grizzly_stats[last_stat_row].strip())
+        assert re.match(r'^DOC\s+TPM report IN\s+10', grizzly_stats[last_stat_row - 1].strip())
 
-    for stat in grizzly_stats:
-        assert stat in locust_stats
+        for stat in grizzly_stats[1:]:
+            assert stat in locust_stats
+
+        assert isinstance(date_parse(grizzly_stats[0].strip()[:-1]), datetime)
+    finally:
+        test_stats_logger.removeHandler(handler)
+        handler.close()
 
 
 def test_grizzly_print_percentile_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -> None:

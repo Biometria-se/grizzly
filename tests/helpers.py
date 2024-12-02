@@ -17,6 +17,7 @@ from shutil import rmtree
 from types import MethodType, TracebackType
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 from unittest.mock import MagicMock
+from uuid import UUID
 
 from geventhttpclient.response import HTTPSocketPoolResponse
 from locust import task
@@ -39,6 +40,24 @@ class AtomicCustomVariable(AtomicVariable[str]):
 
 
 message_callback_not_a_method = True
+
+def ANYUUID(version: int = 4) -> object:  # noqa: N802
+    class WrappedAnyUuid:
+        def __eq__(self, other: object) -> bool:
+            if not isinstance(other, str):
+                return False
+
+            uuid_obj = UUID(other, version=version)
+
+            return uuid_obj.hex == other.replace('-', '')
+
+        def __ne__(self, other: object) -> bool:
+            return not self.__eq__(other)
+
+        def __neq__(self, other: object) -> bool:
+            return self.__ne__(other)
+
+    return WrappedAnyUuid()
 
 
 def ANY(*cls: type, message: Optional[str] = None) -> object:  # noqa: N802
