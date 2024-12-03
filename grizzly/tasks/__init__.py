@@ -288,7 +288,8 @@ class template:
         return cls
 
 
-from .conditional import ConditionalTask  # noqa: I001
+from .async_timer import AsyncTimerTask  # noqa: I001
+from .conditional import ConditionalTask
 from .date import DateTask
 from .keystore import KeystoreTask
 from .log_message import LogMessageTask
@@ -303,7 +304,6 @@ from .wait_explicit import ExplicitWaitTask
 from .write_file import WriteFileTask
 
 from .async_group import AsyncRequestGroupTask
-from .async_timer import AsyncTimerTask
 
 __all__ = [
     'RequestTaskHandlers',

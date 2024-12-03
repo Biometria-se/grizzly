@@ -26,7 +26,7 @@ from .utils import fail_direct, in_correct_section
 from .utils.protocols import mq_client_logs
 
 if TYPE_CHECKING:
-    from grizzly.tasks.async_timer import AsyncTimer
+    from grizzly.testdata.communication import AsyncTimer
 
 logger = logging.getLogger(__name__)
 
@@ -161,8 +161,6 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
     # show start and stop date time
     stopped = datetime.now().astimezone()
 
-    reporter.stream.flush()
-
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     if grizzly.state.producer is not None and len(grizzly.state.producer.async_timers.active_timers) > 0:
@@ -181,7 +179,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
             reporter.stream.write(f'- {name} ({len(timers)}):\n')
 
             for timer in timers:
-                reporter.stream.write(f'\t* {timer.tid}: {timer.start.isoformat()}')
+                reporter.stream.write(f'  * {timer.tid} (version {timer.version}): {timer.start.isoformat()}\n')
 
     if has_exceptions:
         buffer: list[str] = []
@@ -200,6 +198,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
     end_text = 'Aborted' if return_code == ABORTED_RETURN_CODE else 'Finished'
 
     reporter.stream.write(f'\n{"Started":<{len(end_text)}}: {context.started}\n{end_text}: {stopped}\n\n')
+    reporter.stream.flush()
 
     # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
     with suppress(Exception):

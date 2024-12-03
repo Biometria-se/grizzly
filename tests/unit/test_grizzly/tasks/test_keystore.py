@@ -60,7 +60,7 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
 
         grizzly.scenario.variables.update({'foobar': 'none'})
         parent.user.variables.update({'foobar': 'none'})
@@ -117,7 +117,7 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
 
         task_factory = KeystoreTask('foobar', 'set', "{'hello': '{{ world }}'}")
         task = task_factory()
@@ -133,7 +133,7 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
 
         consumer_mock.keystore_inc.return_value = 1
 
@@ -152,7 +152,7 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
 
         consumer_mock.keystore_push.return_value = None
 
@@ -170,7 +170,7 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
 
         consumer_mock.keystore_pop.return_value = None
 
@@ -204,7 +204,7 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
         consumer_mock.keystore_del.return_value = None
 
         with pytest.raises(AssertionError, match='action context for "del" cannot be declared'):

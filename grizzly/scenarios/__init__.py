@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from math import floor
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, Union, cast
 
 from gevent.event import Event
 from locust.exception import LocustError
@@ -26,7 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class GrizzlyScenario(SequentialTaskSet):
-    consumer: TestdataConsumer
+    _consumer: ClassVar[TestdataConsumer | None] = None
     grizzly: GrizzlyContext
     task_greenlet: Optional[Greenlet]
     task_greenlet_factory: GreenletFactory
@@ -51,6 +51,14 @@ class GrizzlyScenario(SequentialTaskSet):
     @property
     def logger(self) -> logging.Logger:
         return self.user.logger
+
+    @property
+    def consumer(self) -> TestdataConsumer:
+        if self.__class__._consumer is None:
+            message = 'no consumer has been created'
+            raise ValueError(message)
+
+        return self.__class__._consumer
 
     @property
     def user(self) -> GrizzlyUser:
@@ -82,11 +90,13 @@ class GrizzlyScenario(SequentialTaskSet):
         has some prefetching todo it must also be one. There might be cases where an on_start method
         needs the first iteration of testdata.
         """
-        self.consumer = TestdataConsumer(
-            scenario=self,
-            runner=cast(Union[LocalRunner, WorkerRunner], self.grizzly.state.locust),
-        )
-        self.user.consumer = self.consumer
+        if self.__class__._consumer is None:
+            self.__class__._consumer = TestdataConsumer(
+                scenario=self,
+                runner=cast(Union[LocalRunner, WorkerRunner], self.grizzly.state.locust),
+            )
+
+        self.user.consumer = self.__class__._consumer
         self.user.scenario_state = ScenarioState.RUNNING
 
         for task in self.tasks:

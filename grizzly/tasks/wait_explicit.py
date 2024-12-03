@@ -43,9 +43,9 @@ class ExplicitWaitTask(GrizzlyTask):
                     raise RuntimeError(message)
 
                 time = float(time_rendered.strip())
-                parent.logger.debug('waiting for %f seconds', time)
+                parent.logger.debug('waiting for %.2f seconds', time)
                 gsleep(time)
-                parent.logger.debug('done waiting for %f seconds', time)
+                parent.logger.debug('done waiting for %.2f seconds', time)
             except Exception as exception:
                 parent.user.environment.events.request.fire(
                     request_type='WAIT',

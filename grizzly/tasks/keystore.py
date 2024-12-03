@@ -88,7 +88,6 @@ class KeystoreTask(GrizzlyTask):
         elif self.action in ['set', 'push']:
             assert self.action_context is not None, f'action context for "{self.action}" must be declared'
             self.action_context = self.json_serialize(self.action_context)
-            print(f'{self.action_context=}')
         elif self.action in ['del']:
             assert self.action_context is None, f'action context for "{self.action}" cannot be declared'
         else:  # pragma: no cover
@@ -109,7 +108,7 @@ class KeystoreTask(GrizzlyTask):
         if "'" in serialized_value:
             serialized_value = serialized_value.replace("'", '"')
 
-        if not any(quote in value for quote in ['"', "'"]):
+        if not any(quote in serialized_value for quote in ['"', "'"]):
             serialized_value = f'"{serialized_value}"'
 
         try:

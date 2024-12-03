@@ -80,7 +80,7 @@ def test_step_task_keystore_get_default(behave_fixture: BehaveFixture) -> None:
     assert task.default_value == 'hello'
 
     step_task_keystore_get_default(behave, 'barfoo', 'foobar', 'hello')
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='"hello" is not valid JSON')]}
+    assert behave.exceptions == {}
 
 def test_step_task_keystore_set(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
@@ -91,7 +91,7 @@ def test_step_task_keystore_set(behave_fixture: BehaveFixture) -> None:
     grizzly.scenario.tasks.clear()
 
     step_task_keystore_set(behave, 'foobar', 'hello')
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='"hello" is not valid JSON')]}
+    assert behave.exceptions == {}
     delattr(behave, 'exceptions')
 
     step_task_keystore_set(behave, 'foobar', "'hello'")
@@ -196,7 +196,7 @@ def test_step_task_keystore_push(behave_fixture: BehaveFixture) -> None:
     grizzly.scenario.tasks.clear()
 
     step_task_keystore_push(behave, 'foobar', 'hello')
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='"hello" is not valid JSON')]}
+    assert behave.exceptions == {}
     delattr(behave, 'exceptions')
 
     step_task_keystore_push(behave, 'foobar', "'hello'")

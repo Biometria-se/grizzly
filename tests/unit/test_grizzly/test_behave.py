@@ -4,7 +4,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from contextlib import suppress
-from datetime import datetime
+from datetime import datetime, timezone
 from json import dumps as jsondumps
 from os import environ
 from time import perf_counter
@@ -21,8 +21,10 @@ from grizzly.steps.background.setup import step_setup_save_statistics as step_ba
 from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
 from grizzly.steps.setup import step_setup_variable_value_ask as step_both
 from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, LogMessageTask, LoopTask, TimerTask
+from grizzly.testdata.communication import TestdataProducer
 from grizzly.types import RequestType
 from grizzly.types.behave import Context, Feature, Status, Step
+from grizzly.types.locust import LocalRunner
 from tests.helpers import rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -30,7 +32,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
     from pytest_mock import MockerFixture
 
-    from tests.fixtures import BehaveFixture, GrizzlyFixture
+    from tests.fixtures import BehaveFixture, EnvFixture, GrizzlyFixture
 
 
 @pytest.mark.skipif((sys.platform != 'win32' and 'GITHUB_RUN_ID' in environ), reason='this test hangs on linux when executed on a github runner!?')
@@ -210,6 +212,39 @@ def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, c
 
     assert feature.status == Status.failed
     assert feature.duration > 0.0
+    assert capture.err == ''
+
+@pytest.mark.skip(reason='unable to capture output from behave SummarReporter output')
+def test_after_feature_async_timers(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, capfd: CaptureFixture, env_fixture: EnvFixture) -> None:
+    behave = grizzly_fixture.behave.context
+    grizzly = grizzly_fixture.grizzly
+    feature = Feature(None, None, '', '', scenarios=[behave.scenario])
+    behave.scenario.steps = [Step(None, None, '', '', ''), Step(None, None, '', '', '')]
+    behave.started = datetime.now().astimezone()
+    grizzly.scenario.tasks().clear()
+
+    env_fixture('GRIZZLY_FEATURE_FILE', './test.feature')
+    env_fixture('GRIZZLY_CONTEXT_ROOT', '.')
+
+    grizzly.state.producer = TestdataProducer(cast(LocalRunner, grizzly.state.locust), {})
+
+    mocker.patch(
+        'grizzly.behave.locustrun',
+        return_value=0,
+    )
+
+    feature.set_status('passed')
+
+    grizzly.state.producer.async_timers.start({'name': 'timer-1', 'tid': 'foobar', 'version': '1', 'timestamp': datetime(2024, 12, 3, 10, 54, 59, tzinfo=timezone.utc).isoformat()})
+    grizzly.state.producer.async_timers.start({'name': 'timer-2', 'tid': 'barfoo', 'version': '1', 'timestamp': datetime(2024, 12, 3, 10, 56, 9, tzinfo=timezone.utc).isoformat()})
+
+    after_feature(behave, feature)
+
+    assert feature.status == Status.failed
+
+    capture = capfd.readouterr()
+
+    assert capture.out == ''  # <-- this should fail!
     assert capture.err == ''
 
 

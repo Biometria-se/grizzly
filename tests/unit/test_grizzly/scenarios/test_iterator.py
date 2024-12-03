@@ -133,7 +133,7 @@ class TestIterationScenario:
         assert isinstance(parent, IteratorScenario)
         assert not parent._prefetch
 
-        parent.consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
+        parent.__class__._consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
 
         on_iteration_mock = mocker.patch.object(parent, 'on_iteration', return_value=None)
 
@@ -719,7 +719,7 @@ class TestIterationScenario:
         scenario.on_start()  # create scenario.consumer, so we can patch request below
 
         # same as 1 iteration
-        mocker.patch.object(scenario.consumer, 'testdata', side_effect=[
+        mocker.patch.object(scenario._consumer, 'testdata', side_effect=[
             {'variables': {'hello': 'world'}},
             {'variables': {'hello': 'world'}},
             {'variables': {'foo': 'bar'}},
@@ -779,7 +779,7 @@ class TestIterationScenario:
             "stopping scenario with <class 'locust.exception.StopUser'>",
         ]
 
-        actual_messages = [message for message in caplog.messages if not any(ignore in message for ignore in ['instance variable=', 'CPU usage above'])]
+        actual_messages = [message for message in caplog.messages if not any(ignore in message for ignore in ['instance variable=', 'CPU usage above', 'checking if heartbeat'])]
 
         assert len(actual_messages) == len(expected_messages)
 
