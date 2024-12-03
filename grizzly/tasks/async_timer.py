@@ -46,11 +46,15 @@ class AsyncTimerTask(GrizzlyTask):
                     '%Y%m%d %H%M%S%f',
                 ).replace(tzinfo=timezone.utc)
 
+            name = parent.user.render(self.name) if self.name is not None else self.name
+            tid = parent.user.render(self.tid)
+            version = parent.user.render(self.version)
+
             try:
-                parent.consumer.async_timers.toggle(self.action, self.name, self.tid, self.version, timestamp)
+                parent.consumer.async_timers.toggle(self.action, name, tid, version, timestamp)
             except Exception as e:
-                message = f'failed to {self.action} timer "{self.name}" for id "{self.tid}" and version "{self.version}"'
+                message = f'failed to {self.action} timer "{name}" for id "{tid}" and version "{version}"'
                 parent.logger.exception(message)
-                parent.user.environment.stats.log_error('DOC', self.name or f'{self.tid}::{self.version}', e)
+                parent.user.environment.stats.log_error('DOC', name or f'{tid}::{version}', e)
 
         return implementation
