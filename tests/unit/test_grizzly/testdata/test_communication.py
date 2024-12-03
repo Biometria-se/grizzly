@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from os import environ, sep
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
+from unittest.mock import ANY as PYANY
 from uuid import uuid4
 
 import pytest
@@ -15,11 +16,11 @@ from gevent.event import AsyncResult
 from gevent.lock import Semaphore
 
 from grizzly.tasks import LogMessageTask
-from grizzly.testdata.communication import AsyncTimer, AsyncTimers, TestdataConsumer, TestdataProducer
+from grizzly.testdata.communication import AsyncTimer, AsyncTimersConsumer, AsyncTimersProducer, TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.testdata.variables import AtomicIntegerIncrementer
 from grizzly.testdata.variables.csv_writer import atomiccsvwriter_message_handler
-from grizzly.types.locust import Environment, LocalRunner, Message, StopUser
+from grizzly.types.locust import Environment, LocalRunner, MasterRunner, Message, StopUser, WorkerRunner
 from tests.helpers import ANY, ANYUUID, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -28,7 +29,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 
-    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture, LocustFixture
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture
 
 
 def echo(value: dict[str, Any]) -> dict[str, Any]:
@@ -46,7 +47,7 @@ def echo_add_data(return_value: Any | list[Any]) -> Callable[[dict[str, Any]], d
 
 @pytest.fixture()
 def static_date() -> datetime:
-    return datetime(2024, 12, 3, 8, 56, 55, 0, tzinfo=timezone.utc)
+    return datetime(2024, 12, 3, 8, 56, 55, 0).astimezone()
 
 
 class TestAsyncTimer:
@@ -58,7 +59,7 @@ class TestAsyncTimer:
     def test_duration_ms(self, static_date: datetime) -> None:
         timer = AsyncTimer('name', 'tid', 'version', static_date)
 
-        stop = datetime(2024, 12, 3, 8, 56, 59, 0, tzinfo=timezone.utc)
+        stop = datetime(2024, 12, 3, 8, 56, 59, 0).astimezone()
 
         assert timer.duration_ms(stop) == 4000
         assert timer.stop is stop
@@ -69,41 +70,66 @@ class TestAsyncTimer:
         assert timer.stop is stop
 
 
-class TestAsyncTimers:
-    def test___init__(self, locust_fixture: LocustFixture) -> None:
+class TestAsyncTimersConsumer:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
         semaphore = Semaphore()
 
-        timers = AsyncTimers(locust_fixture.environment, semaphore)
+        timers = AsyncTimersConsumer(grizzly, semaphore)
         assert timers.semaphore is semaphore
-        assert timers.environment is locust_fixture.environment
+        assert timers.grizzly is grizzly
         assert timers._start == []
         assert timers._stop == []
-        assert timers.active_timers == {}
 
     def test_parse_date(self) -> None:
-        assert AsyncTimers.parse_date('2024-12-03T09:02:29.000Z') == datetime(2024, 12, 3, 9, 2, 29, 0, tzinfo=timezone.utc)
-        assert AsyncTimers.parse_date('2024-12-03 09:02:29').isoformat() == datetime(2024, 12, 3, 9, 2, 29).astimezone().isoformat()
+        assert AsyncTimersConsumer.parse_date('2024-12-03T09:02:29.000Z') == datetime(2024, 12, 3, 9, 2, 29, 0, tzinfo=timezone.utc)
+        assert AsyncTimersConsumer.parse_date('2024-12-03 09:02:29').isoformat() == datetime(2024, 12, 3, 9, 2, 29).astimezone().isoformat()
 
-    def test_extract(self) -> None:
-        timestamp = datetime(2024, 12, 3, 9, 9, 17).astimezone()
+    def test_on_report_to_master(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        semaphore_mock = mocker.MagicMock(spec=Semaphore)
+        timers = AsyncTimersConsumer(grizzly, semaphore_mock)
 
         data = {
-            'name': 'timer-1',
-            'tid': 'foobar',
-            'version': '1',
-            'timestamp': timestamp.isoformat(),
+            'stats': {},
+            'errors': [],
+            'async_timers': {
+                'start': [{'n': 'd'}, {'n': 'e'}, {'n': 'f'}],
+                'stop': [{'n': 'd'}, {'n': 'e'}, {'n': 'f'}],
+            },
         }
 
-        assert AsyncTimers.extract(data) == ('timer-1', 'foobar', '1', timestamp)
+        timers._start = [{'n': 'd'}, {'n': 'e'}, {'n': 'f'}]
+        timers._stop = [{'n': 'd'}, {'n': 'e'}, {'n': 'f'}]
 
-    def test_toggle(self, mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
+        timers.on_report_to_master('local', data)
+
+        assert data == {
+            'stats': {},
+            'errors': [],
+            'async_timers': {
+                'start': [{'n': 'd'}, {'n': 'e'}, {'n': 'f'}, {'n': 'd'}, {'n': 'e'}, {'n': 'f'}],
+                'stop': [{'n': 'd'}, {'n': 'e'}, {'n': 'f'}, {'n': 'd'}, {'n': 'e'}, {'n': 'f'}],
+            },
+        }
+        semaphore_mock.__enter__.assert_called_once_with()
+        semaphore_mock.__exit__.assert_called_once_with(None, None, None)
+
+        assert timers._start == []
+        assert timers._stop == []
+
+    def test_toggle(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, static_date: datetime) -> None:
+        datetime_mock = mocker.patch('grizzly.testdata.communication.datetime', side_effect=lambda *args, **kwargs: datetime(*args, **kwargs))  # noqa: DTZ001
+        datetime_mock.now.return_value = static_date
+
+        grizzly = grizzly_fixture.grizzly
         semaphore_mock = mocker.MagicMock(spec=Semaphore)
-        timers = AsyncTimers(locust_fixture.environment, semaphore_mock)
+        timers = AsyncTimersConsumer(grizzly, semaphore_mock)
 
         start_mock = mocker.patch.object(timers, 'start', return_value=None)
         stop_mock = mocker.patch.object(timers, 'stop', return_value=None)
 
-        # <!-- start
+        # <!-- start, provided timestamp
         timers.toggle('start', 'timer-1', 'foobar', '1', '2024-12-03 09:36:45.1234+01:00')
 
         start_mock.assert_called_once_with({'name': 'timer-1', 'tid': 'foobar', 'version': '1', 'timestamp': '2024-12-03T09:36:45.123400+01:00'})
@@ -119,7 +145,23 @@ class TestAsyncTimers:
         semaphore_mock.assert_not_called()
         # // -->
 
-        # <!-- stop
+        # <!-- start, no timestamp
+        timers.toggle('start', 'timer-1', 'foobar', '1')
+
+        start_mock.assert_called_once_with({'name': 'timer-1', 'tid': 'foobar', 'version': '1', 'timestamp': static_date.isoformat()})
+        start_mock.reset_mock()
+        stop_mock.assert_not_called()
+        semaphore_mock.assert_not_called()
+
+        timers.toggle('start', 'timer-2', 'barfoo', '1')
+
+        start_mock.assert_called_once_with({'name': 'timer-2', 'tid': 'barfoo', 'version': '1', 'timestamp': static_date.isoformat()})
+        start_mock.reset_mock()
+        stop_mock.assert_not_called()
+        semaphore_mock.assert_not_called()
+        # // -->
+
+        # <!-- stop, provided timestamp
         timers.toggle('stop', None, 'foobar', '1', '2024-12-03 09:47:59')
 
         start_mock.assert_not_called()
@@ -131,9 +173,176 @@ class TestAsyncTimers:
 
         start_mock.assert_not_called()
         stop_mock.assert_called_once_with({'name': None, 'tid': 'barfoo', 'version': '1', 'timestamp': '2024-12-03T09:47:59+01:00'})
+        stop_mock.reset_mock()
         semaphore_mock.reset_mock()
         # // -->
 
+        # <!-- stop, no timestamp
+        timers.toggle('stop', None, 'foobar', '1')
+
+        start_mock.assert_not_called()
+        stop_mock.assert_called_once_with({'name': None, 'tid': 'foobar', 'version': '1', 'timestamp': static_date.isoformat()})
+        stop_mock.reset_mock()
+        semaphore_mock.assert_not_called()
+
+        timers.toggle('stop', None, 'barfoo', '1')
+
+        start_mock.assert_not_called()
+        stop_mock.assert_called_once_with({'name': None, 'tid': 'barfoo', 'version': '1', 'timestamp': static_date.isoformat()})
+        stop_mock.reset_mock()
+        semaphore_mock.reset_mock()
+        # // -->
+
+    @pytest.mark.parametrize('target', ['start', 'stop'])
+    def test_action(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, target: str) -> None:
+        other = 'stop' if target == 'start' else 'start'
+
+        grizzly = grizzly_fixture.grizzly
+        semaphore_mock = mocker.MagicMock(spec=Semaphore)
+        timers = AsyncTimersConsumer(grizzly, semaphore_mock)
+
+        async_timers_mock = mocker.MagicMock(spec=AsyncTimersProducer)
+        producer_mock = mocker.MagicMock(spec=TestdataProducer)
+        producer_mock.async_timers = async_timers_mock
+
+        grizzly.state.producer = producer_mock
+
+        # <!-- LocalRunner
+        getattr(timers, target)({'foo': 'bar'})
+        getattr(producer_mock.async_timers, target).assert_called_once_with({'foo': 'bar'})
+        getattr(producer_mock.async_timers, other).assert_not_called()
+        producer_mock.reset_mock()
+        assert getattr(timers, f'_{target}') == []
+        assert getattr(timers, f'_{other}') == []
+        # // -->
+
+        # <!-- not LocalRunner
+        runner_classes: list[type[WorkerRunner | MasterRunner | LocalRunner]] = [WorkerRunner, MasterRunner]
+        for runner_class in runner_classes:
+            grizzly.state.locust.__class__ = runner_class
+            getattr(timers, target)({'foo': 'bar'})
+            getattr(producer_mock.async_timers, target).assert_not_called()
+            getattr(producer_mock.async_timers, other).assert_not_called()
+            producer_mock.reset_mock()
+            assert getattr(timers, f'_{target}') == [{'foo': 'bar'}]
+            assert getattr(timers, f'_{other}') == []
+            getattr(timers, f'_{target}').clear()
+        # // -->
+
+
+class TestAsyncTimersProducer:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        semaphore = Semaphore()
+
+        timers = AsyncTimersProducer(grizzly, semaphore)
+        assert timers.semaphore is semaphore
+        assert timers.grizzly is grizzly
+        assert timers.active_timers == {}
+
+    def test_extract(self) -> None:
+        timestamp = datetime(2024, 12, 3, 9, 9, 17).astimezone()
+
+        data = {
+            'name': 'timer-1',
+            'tid': 'foobar',
+            'version': '1',
+            'timestamp': timestamp.isoformat(),
+        }
+
+        assert AsyncTimersProducer.extract(data) == ('timer-1', 'foobar', '1', timestamp)
+
+    def test_on_worker_report(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        semaphore_mock = mocker.MagicMock(spec=Semaphore)
+        timers = AsyncTimersProducer(grizzly, semaphore_mock)
+
+        start_mock = mocker.patch.object(timers, 'start', return_value=None)
+        stop_mock = mocker.patch.object(timers, 'stop', return_value=None)
+
+        timers.on_worker_report('local', {})
+
+        start_mock.assert_not_called()
+        stop_mock.assert_not_called()
+
+        data = {
+            'stats': {},
+            'errors': [],
+            'async_timers': {
+                'start': [{'n': 'd'}, {'n': 'e'}, {'n': 'f'}],
+                'stop': [{'n': 'd'}, {'n': 'e'}, {'n': 'f'}],
+            },
+        }
+
+        timers.on_worker_report('local', data)
+
+        assert start_mock.call_count == 3
+        assert start_mock.call_args_list[0] (({'n': 'd'},), {})
+        assert start_mock.call_args_list[1] (({'n': 'e'},), {})
+        assert start_mock.call_args_list[2] (({'n': 'f'},), {})
+
+        assert stop_mock.call_count == 3
+        assert stop_mock.call_args_list[0] (({'n': 'd'},), {})
+        assert stop_mock.call_args_list[1] (({'n': 'e'},), {})
+        assert stop_mock.call_args_list[2] (({'n': 'f'},), {})
+
+        semaphore_mock.assert_not_called()
+
+    def test_start_stop(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, static_date: datetime) -> None:
+        grizzly = grizzly_fixture.grizzly
+        semaphore_mock = mocker.MagicMock(spec=Semaphore)
+        timers = AsyncTimersProducer(grizzly, semaphore_mock)
+
+        fire_mock = mocker.spy(grizzly.state.locust.environment.events.request, 'fire')
+
+        # <!-- start
+        timers.active_timers.update({'foobar_a': AsyncTimer('a', 'b', 'c', static_date)})
+        with pytest.raises(KeyError, match='foobar_a has already been started'):
+            timers.start({'name': 'timer-1', 'tid': 'foobar', 'version': 'a', 'timestamp': static_date.isoformat()})
+        timers.active_timers.clear()
+
+        semaphore_mock.assert_not_called()
+
+        timers.start({'name': 'timer-1', 'tid': 'foobar', 'version': 'a', 'timestamp': static_date.isoformat()})
+        assert timers.active_timers == {'foobar_a': SOME(AsyncTimer, name='timer-1', tid='foobar', version='a', start=static_date)}
+        semaphore_mock.__enter__.assert_called_once_with()
+        semaphore_mock.__exit__.assert_called_once_with(None, None, None)
+        semaphore_mock.reset_mock()
+
+        fire_mock.assert_not_called()
+        # // -->
+
+        # <!-- stop
+        stop_date = static_date + timedelta(seconds=10)
+
+        with pytest.raises(KeyError, match='barfoo_a has not been started'):
+            timers.stop({'name': 'timer-1', 'tid': 'barfoo', 'version': 'a', 'timestamp': stop_date.isoformat()})
+
+        semaphore_mock.__enter__.assert_called_once_with()
+        semaphore_mock.__exit__.assert_called_once_with(KeyError, ANY(KeyError), PYANY)
+        semaphore_mock.reset_mock()
+
+        assert timers.active_timers == {'foobar_a': SOME(AsyncTimer, name='timer-1', tid='foobar', version='a', start=static_date)}
+
+        timers.stop({'name': None, 'tid': 'foobar', 'version': 'a', 'timestamp': stop_date.isoformat()})
+
+        semaphore_mock.__enter__.assert_called_once_with()
+        semaphore_mock.__exit__.assert_called_once_with(None, None, None)
+
+        assert timers.active_timers == {}
+        fire_mock.assert_called_once_with(
+            request_type='DOC',
+            name='timer-1',
+            response_time=10000,
+            response_length=0,
+            context={
+                '__time__': static_date.isoformat(),
+                '__fields_request_started__': static_date.isoformat(),
+                '__fields_request_finished__': stop_date.isoformat(),
+            },
+        )
+        fire_mock.reset_mock()
+        # // -->
 
 class TestTestdataProducer:
     def test_run(  # noqa: PLR0915
@@ -228,8 +437,7 @@ value3,value4
                 testdata=testdata,
             )
 
-            assert isinstance(grizzly.state.producer.async_timers, AsyncTimers)
-            assert grizzly.state.producer.async_timers.on_report_to_master not in grizzly.state.locust.environment.events.report_to_master._handlers
+            assert isinstance(grizzly.state.producer.async_timers, AsyncTimersProducer)
             assert grizzly.state.producer.async_timers.on_worker_report not in grizzly.state.locust.environment.events.worker_report._handlers
 
             assert grizzly.state.producer.keystore == {}
@@ -895,9 +1103,8 @@ class TestTestdataConsumer:
 
         consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
 
-        assert isinstance(consumer.async_timers, AsyncTimers)
+        assert isinstance(consumer.async_timers, AsyncTimersConsumer)
         assert consumer.async_timers.on_report_to_master not in grizzly.state.locust.environment.events.report_to_master._handlers
-        assert consumer.async_timers.on_worker_report not in grizzly.state.locust.environment.events.worker_report._handlers
 
         send_message = mock_testdata(consumer, {
             'auth.user.username': 'username',

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 from contextlib import suppress
+from dataclasses import dataclass, field
+from datetime import datetime
 from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
@@ -23,8 +25,6 @@ from .utils import transform
 from .variables import AtomicVariablePersist
 
 if TYPE_CHECKING:  # pragma: no cover
-    from datetime import datetime
-
     from locust.rpc.protocol import Message
 
     from grizzly.context import GrizzlyContext
@@ -36,48 +36,43 @@ if TYPE_CHECKING:  # pragma: no cover
 ActionType = Literal['start', 'stop']
 
 
+@dataclass
 class AsyncTimer:
     name: str
     tid: str
     version: str
     start: datetime
-    stop: datetime
+    _stop: datetime | None = field(init=False, default=None)
 
-    def __init__(self, name: str, tid: str, version: str, start: datetime) -> None:
-        self.name = name
-        self.tid = tid
-        self.version = version
-        self.start = start
+    @property
+    def stop(self) -> datetime:
+        if self._stop is None:
+            message = 'stop has no value'
+            raise ValueError(message)
+
+        return self._stop
 
     def duration_ms(self, stop: datetime) -> int:
-        self.stop = stop
+        self._stop = stop
 
-        return int((self.stop - self.start).total_seconds() * 1000)
+        return int((stop - self.start).total_seconds() * 1000)
 
+class AsyncTimersConsumer:
+    grizzly: GrizzlyContext
+    semaphore: Semaphore
 
-class AsyncTimers:
     _start: list[dict[str, str | None]]
     _stop: list[dict[str, str | None]]
 
-    environment: Environment
-    active_timers: ClassVar[dict[str, AsyncTimer]]
-    semaphore: Semaphore
-
-    def __init__(self, environment: Environment, semaphore: Semaphore) -> None:
+    def __init__(self, grizzly: GrizzlyContext, semaphore: Semaphore) -> None:
         self.semaphore = semaphore
-        self.environment = environment
+        self.grizzly = grizzly
 
         self._start = []
         self._stop = []
 
-        self.__class__.active_timers = {}
-
-        # setup listeners
-        if isinstance(self.environment.runner, WorkerRunner):
-            self.environment.events.report_to_master.add_listener(self.on_report_to_master)
-
-        if isinstance(self.environment.runner, MasterRunner):
-            self.environment.events.worker_report.add_listener(self.on_worker_report)
+        if isinstance(grizzly.state.locust, WorkerRunner):
+            grizzly.state.locust.environment.events.report_to_master.add_listener(self.on_report_to_master)
 
     @classmethod
     def parse_date(cls, value: str) -> datetime:
@@ -89,15 +84,21 @@ class AsyncTimers:
 
         return timestamp
 
-    @classmethod
-    def extract(cls, data: dict[str, Any]) -> tuple[str | None, str, str, datetime]:
-        timestamp = date_parser(data['timestamp'])
+    def on_report_to_master(self, client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG002
+        with self.semaphore:
+            # append this producers timers that should be started and stopped
+            data.update({'async_timers': {
+                'start': [*data.get('async_timers', {}).get('start', []), *self._start],
+                'stop': [*data.get('async_timers', {}).get('stop', []), *self._stop],
+            }})
 
-        return data.get('name'), data['tid'], data['version'], timestamp
+            self._start.clear()
+            self._stop.clear()
 
-    def toggle(self, action: ActionType, name: str | None, tid: str, version: str, timestamp: datetime | str) -> None:
-        """TestdataConsumer."""
-        if isinstance(timestamp, str):
+    def toggle(self, action: ActionType, name: str | None, tid: str, version: str, timestamp: datetime | str | None = None) -> None:
+        if timestamp is None:
+            timestamp = datetime.now().astimezone()
+        elif isinstance(timestamp, str):
             timestamp = self.parse_date(timestamp)
 
         data = {
@@ -107,28 +108,52 @@ class AsyncTimers:
             'timestamp': timestamp.isoformat(),
         }
 
-        if action == 'start':
-            self.start(data)
-        else:
-            self.stop(data)
-
-    def on_report_to_master(self, client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG002
-        """TestdataConsumer."""
-        with self.semaphore:
-            data.update({'async_timers': {
-                'start': [*data.get('async_timers', {}).get('start', []), *self._start],
-                'stop': [*data.get('async_timers', {}).get('stop', []), *self._stop],
-            }})
-
-            self._start.clear()
-            self._stop.clear()
+        getattr(self, action)(data)
 
     def start(self, data: dict[str, Any]) -> None:
-        if isinstance(self.environment.runner, WorkerRunner):
-            with self.semaphore:
-                self._start.append(data)
-                return
+        if isinstance(self.grizzly.state.locust, LocalRunner):
+            cast(TestdataProducer, self.grizzly.state.producer).async_timers.start(data)
+        else:
+            self._start.append(data)
 
+    def stop(self, data: dict[str, Any]) -> None:
+        if isinstance(self.grizzly.state.locust, LocalRunner):
+            cast(TestdataProducer, self.grizzly.state.producer).async_timers.stop(data)
+        else:
+            self._stop.append(data)
+
+
+class AsyncTimersProducer:
+    grizzly: GrizzlyContext
+    semaphore: Semaphore
+
+    active_timers: dict[str, AsyncTimer]
+
+    def __init__(self, grizzly: GrizzlyContext, semaphore: Semaphore) -> None:
+        self.semaphore = semaphore
+        self.grizzly = grizzly
+
+        self.active_timers = {}
+
+        if isinstance(grizzly.state.locust, MasterRunner):
+            grizzly.state.locust.environment.events.worker_report.add_listener(self.on_worker_report)
+
+    @classmethod
+    def extract(cls, data: dict[str, Any]) -> tuple[str | None, str, str, datetime]:
+        timestamp = date_parser(data['timestamp'])
+
+        return data.get('name'), data['tid'], data['version'], timestamp
+
+    def on_worker_report(self, client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG002
+        async_timers = data.get('async_timers', {})
+
+        for async_data in async_timers.get('start', []):
+            self.start(async_data)
+
+        for async_data in async_timers.get('stop', []):
+            self.stop(async_data)
+
+    def start(self, data: dict[str, str]) -> None:
         name, tid, version, timestamp = self.extract(data)
 
         assert name is not None
@@ -144,12 +169,7 @@ class AsyncTimers:
         with self.semaphore:
             self.active_timers.update({timer_id: timer})
 
-    def stop(self, data: dict[str, Any]) -> None:
-        if isinstance(self.environment.runner, WorkerRunner):
-            with self.semaphore:
-                self._stop.append(data)
-                return
-
+    def stop(self, data: dict[str, str | None]) -> None:
         name, tid, version, timestamp = self.extract(data)
 
         timer_id = f'{tid}_{version}'
@@ -159,7 +179,7 @@ class AsyncTimers:
 
             if timer is None:
                 message = f'{timer_id} has not been started'
-                raise ValueError(message)
+                raise KeyError(message)
 
             del self.active_timers[timer_id]
 
@@ -168,7 +188,7 @@ class AsyncTimers:
 
         duration = timer.duration_ms(timestamp)
 
-        self.environment.events.request.fire(
+        self.grizzly.state.locust.environment.events.request.fire(
             request_type='DOC',  # @TODO: should not this when merging to main
             name=name,
             response_time=duration,
@@ -179,16 +199,6 @@ class AsyncTimers:
                 '__fields_request_finished__': timer.stop.isoformat(),
             },
         )
-
-    def on_worker_report(self, client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG002
-        """TestdataProducer."""
-        async_timers = data.get('async_timers', {})
-
-        for async_data in async_timers.get('start', []):
-            self.start(async_data)
-
-        for async_data in async_timers.get('stop', []):
-            self.stop(async_data)
 
 
 class KeystoreDecoder(GrizzlyEventDecoder):
@@ -254,7 +264,7 @@ class TestdataConsumer:
     poll_interval: float
     response: dict[str, Any]
     events: GrizzlyEvents
-    async_timers: AsyncTimers
+    async_timers: AsyncTimersConsumer
 
     semaphore = Semaphore()
 
@@ -269,7 +279,7 @@ class TestdataConsumer:
         self.response = {}
         self.logger.debug('started consumer')
 
-        self.async_timers = AsyncTimers(runner.environment, self.semaphore)
+        self.async_timers = AsyncTimersConsumer(scenario.grizzly, self.semaphore)
 
     @classmethod
     def handle_response(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG003
@@ -440,7 +450,7 @@ class TestdataProducer:
     keystore: dict[str, Any]
     runner: MasterRunner | LocalRunner
     grizzly: GrizzlyContext
-    async_timers: AsyncTimers
+    async_timers: AsyncTimersProducer
 
     def __init__(self, runner: MasterRunner | LocalRunner, testdata: TestdataType) -> None:
         self.testdata = testdata
@@ -467,7 +477,7 @@ class TestdataProducer:
         from grizzly.context import grizzly
         self.grizzly = grizzly
 
-        self.async_timers = AsyncTimers(runner.environment, self.semaphore)
+        self.async_timers = AsyncTimersProducer(self.grizzly, self.semaphore)
 
     def on_test_stop(self) -> None:
         self.logger.debug('test stopping')
