@@ -1,5 +1,33 @@
 """@anchor pydoc:grizzly.tasks.async_timer Asynchronous Timer
 This timer can be started in one scenario, on one worker, and be stopped in another scenario on another worker.
+
+It is possible to stop a timer only based on `tid` and `version`, but in that case that combination can only be used for *one* timer.
+This is useful if a timers is started in many different scenarios, but are stopped in one scenario which does not have any other information
+than the id (which it might have received from a queue or topic), and hence the timer name is not know at the time it is being stopped.
+
+A name must **always** be provided when starting the timer.
+
+`name`, `tid` and `version` supports {@pylink framework.usage.variables.templating}.
+
+## Step implementations
+
+* {@pylink grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_start}
+
+* {@pylink grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_stop_name}
+
+* {@pylink grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_stop_tid}
+
+## Statistics
+
+When running distributed, the timer statistics piggyback with normal locust statistics which is sent from workers (default every 3 seconds) via
+the event `locust.event.report_to_master`, and is then handled on master with the `locust.event.worker_report` event. If running local, it will
+be started and stopped in "real-time".
+
+When the stop-part of this task is executed, a "request" with method `DOC` and name of the timer will be added to the request statistics. If
+anything goes wrong when executing the task, the error will also visible in the locust failure summary.
+
+Any timers that has not been stopped when the load test is finished, will be listed in the behave failure summary, and the test will be marked
+as failed.
 """
 from __future__ import annotations
 

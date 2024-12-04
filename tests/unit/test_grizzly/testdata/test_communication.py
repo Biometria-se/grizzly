@@ -72,12 +72,12 @@ class TestAsyncTimer:
 
 class TestAsyncTimersConsumer:
     def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
-        grizzly = grizzly_fixture.grizzly
+        parent = grizzly_fixture()
         semaphore = Semaphore()
 
-        timers = AsyncTimersConsumer(grizzly, semaphore)
+        timers = AsyncTimersConsumer(parent, semaphore)
         assert timers.semaphore is semaphore
-        assert timers.grizzly is grizzly
+        assert timers.scenario is parent
         assert timers._start == []
         assert timers._stop == []
 
@@ -86,9 +86,9 @@ class TestAsyncTimersConsumer:
         assert AsyncTimersConsumer.parse_date('2024-12-03 09:02:29').isoformat() == datetime(2024, 12, 3, 9, 2, 29).astimezone().isoformat()
 
     def test_on_report_to_master(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        grizzly = grizzly_fixture.grizzly
+        parent = grizzly_fixture()
         semaphore_mock = mocker.MagicMock(spec=Semaphore)
-        timers = AsyncTimersConsumer(grizzly, semaphore_mock)
+        timers = AsyncTimersConsumer(parent, semaphore_mock)
 
         data = {
             'stats': {},
@@ -122,9 +122,9 @@ class TestAsyncTimersConsumer:
         datetime_mock = mocker.patch('grizzly.testdata.communication.datetime', side_effect=lambda *args, **kwargs: datetime(*args, **kwargs))  # noqa: DTZ001
         datetime_mock.now.return_value = static_date
 
-        grizzly = grizzly_fixture.grizzly
+        parent = grizzly_fixture()
         semaphore_mock = mocker.MagicMock(spec=Semaphore)
-        timers = AsyncTimersConsumer(grizzly, semaphore_mock)
+        timers = AsyncTimersConsumer(parent, semaphore_mock)
 
         start_mock = mocker.patch.object(timers, 'start', return_value=None)
         stop_mock = mocker.patch.object(timers, 'stop', return_value=None)
@@ -197,9 +197,10 @@ class TestAsyncTimersConsumer:
     def test_action(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, target: str) -> None:
         other = 'stop' if target == 'start' else 'start'
 
+        parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
         semaphore_mock = mocker.MagicMock(spec=Semaphore)
-        timers = AsyncTimersConsumer(grizzly, semaphore_mock)
+        timers = AsyncTimersConsumer(parent, semaphore_mock)
 
         async_timers_mock = mocker.MagicMock(spec=AsyncTimersProducer)
         producer_mock = mocker.MagicMock(spec=TestdataProducer)
@@ -296,15 +297,34 @@ class TestAsyncTimersProducer:
         fire_mock = mocker.spy(grizzly.state.locust.environment.events.request, 'fire')
 
         # <!-- start
-        timers.active_timers.update({'foobar_a': AsyncTimer('a', 'b', 'c', static_date)})
-        with pytest.raises(KeyError, match='foobar_a has already been started'):
-            timers.start({'name': 'timer-1', 'tid': 'foobar', 'version': 'a', 'timestamp': static_date.isoformat()})
-        timers.active_timers.clear()
+        timers.start({'name': 'timer-2', 'tid': 'foobar', 'version': 'a', 'timestamp': static_date.isoformat()})
+        assert timers.map_timer_id_name == {'foobar::a': ('timer-2', [])}
+        timers.start({'name': 'timer-1', 'tid': 'foobar', 'version': 'a', 'timestamp': static_date.isoformat()})
 
-        semaphore_mock.assert_not_called()
+        assert timers.active_timers == {
+            'timer-1::foobar::a': SOME(AsyncTimer, name='timer-1', tid='foobar', version='a', start=static_date),
+            'timer-2::foobar::a': SOME(AsyncTimer, name='timer-2', tid='foobar', version='a', start=static_date),
+        }
+        assert timers.map_timer_id_name == {'foobar::a': ('timer-2', ['timer-1'])}
+
+        semaphore_mock.reset_mock()
+
+        with pytest.raises(KeyError, match='timer "timer-1" for id "foobar" with version "a" has already been started'):
+            timers.start({'name': 'timer-1', 'tid': 'foobar', 'version': 'a', 'timestamp': static_date.isoformat()})
+
+        assert timers.active_timers == {
+            'timer-1::foobar::a': SOME(AsyncTimer, name='timer-1', tid='foobar', version='a', start=static_date),
+            'timer-2::foobar::a': SOME(AsyncTimer, name='timer-2', tid='foobar', version='a', start=static_date),
+        }
+        assert timers.map_timer_id_name == {'foobar::a': ('timer-2', ['timer-1'])}
+
+        semaphore_mock.__enter__.assert_not_called()
+        semaphore_mock.__exit__.assert_not_called()
+
+        del timers.active_timers['timer-1::foobar::a']
 
         timers.start({'name': 'timer-1', 'tid': 'foobar', 'version': 'a', 'timestamp': static_date.isoformat()})
-        assert timers.active_timers == {'foobar_a': SOME(AsyncTimer, name='timer-1', tid='foobar', version='a', start=static_date)}
+        assert timers.map_timer_id_name == {'foobar::a': ('timer-2', ['timer-1'])}
         semaphore_mock.__enter__.assert_called_once_with()
         semaphore_mock.__exit__.assert_called_once_with(None, None, None)
         semaphore_mock.reset_mock()
@@ -315,26 +335,58 @@ class TestAsyncTimersProducer:
         # <!-- stop
         stop_date = static_date + timedelta(seconds=10)
 
-        with pytest.raises(KeyError, match='barfoo_a has not been started'):
+        with pytest.raises(KeyError, match='timer "timer-1" for id "barfoo" with version "a" has not been started'):
             timers.stop({'name': 'timer-1', 'tid': 'barfoo', 'version': 'a', 'timestamp': stop_date.isoformat()})
 
         semaphore_mock.__enter__.assert_called_once_with()
         semaphore_mock.__exit__.assert_called_once_with(KeyError, ANY(KeyError), PYANY)
         semaphore_mock.reset_mock()
 
-        assert timers.active_timers == {'foobar_a': SOME(AsyncTimer, name='timer-1', tid='foobar', version='a', start=static_date)}
+        assert timers.active_timers == {
+            'timer-1::foobar::a': SOME(AsyncTimer, name='timer-1', tid='foobar', version='a', start=static_date),
+            'timer-2::foobar::a': SOME(AsyncTimer, name='timer-2', tid='foobar', version='a', start=static_date),
+        }
 
         timers.stop({'name': None, 'tid': 'foobar', 'version': 'a', 'timestamp': stop_date.isoformat()})
 
         semaphore_mock.__enter__.assert_called_once_with()
         semaphore_mock.__exit__.assert_called_once_with(None, None, None)
+        semaphore_mock.reset_mock()
+
+        assert timers.active_timers == {
+            'timer-1::foobar::a': SOME(AsyncTimer, name='timer-1', tid='foobar', version='a', start=static_date),
+        }
+        assert timers.map_timer_id_name == {'foobar::a': ('timer-1', [])}
+
+        fire_mock.assert_called_once_with(
+            request_type='DOC',
+            name='timer-2',
+            response_time=10000,
+            response_length=0,
+            exception=ANY(RuntimeError, message='wrong timer might have been stopped, maybe it should have been one of "timer-1"'),
+            context={
+                '__time__': static_date.isoformat(),
+                '__fields_request_started__': static_date.isoformat(),
+                '__fields_request_finished__': stop_date.isoformat(),
+            },
+        )
+        fire_mock.reset_mock()
+
+        timers.stop({'name': 'timer-1', 'tid': 'foobar', 'version': 'a', 'timestamp': stop_date.isoformat()})
+
+        semaphore_mock.__enter__.assert_called_once_with()
+        semaphore_mock.__exit__.assert_called_once_with(None, None, None)
+        semaphore_mock.reset_mock()
 
         assert timers.active_timers == {}
+        assert timers.map_timer_id_name == {}
+
         fire_mock.assert_called_once_with(
             request_type='DOC',
             name='timer-1',
             response_time=10000,
             response_length=0,
+            exception=None,
             context={
                 '__time__': static_date.isoformat(),
                 '__fields_request_started__': static_date.isoformat(),

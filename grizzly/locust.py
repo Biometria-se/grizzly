@@ -926,7 +926,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
     setup_logging(log_level, None)
 
     # @TODO: remove this after troubleshooting <!--
-    for logger_name in ['locust.runners', 'grizzly.locust', 'grizzly_extras.async_message.utils']:
+    for logger_name in ['locust.runners', 'grizzly.locust', 'grizzly_extras.async_message.utils', 'grizzly.testdata.communication/producer/timers']:
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.DEBUG)
     # -->

@@ -58,21 +58,25 @@ class AsyncTimer:
         return int((stop - self.start).total_seconds() * 1000)
 
 class AsyncTimersConsumer:
-    grizzly: GrizzlyContext
+    scenario: GrizzlyScenario
     semaphore: Semaphore
 
     _start: list[dict[str, str | None]]
     _stop: list[dict[str, str | None]]
 
-    def __init__(self, grizzly: GrizzlyContext, semaphore: Semaphore) -> None:
+    def __init__(self, scenario: GrizzlyScenario, semaphore: Semaphore) -> None:
         self.semaphore = semaphore
-        self.grizzly = grizzly
+        self.scenario = scenario
 
         self._start = []
         self._stop = []
 
-        if isinstance(grizzly.state.locust, WorkerRunner):
-            grizzly.state.locust.environment.events.report_to_master.add_listener(self.on_report_to_master)
+        if isinstance(self.scenario.grizzly.state.locust, WorkerRunner):
+            self.scenario.grizzly.state.locust.environment.events.report_to_master.add_listener(self.on_report_to_master)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return self.scenario.user.logger
 
     @classmethod
     def parse_date(cls, value: str) -> datetime:
@@ -91,6 +95,9 @@ class AsyncTimersConsumer:
                 'start': [*data.get('async_timers', {}).get('start', []), *self._start],
                 'stop': [*data.get('async_timers', {}).get('stop', []), *self._stop],
             }})
+
+            # @TODO: should be DEBUG when merging to master
+            self.logger.info('reported start for %d timers and stop for %d timers to master', len(self._start), len(self._stop))
 
             self._start.clear()
             self._stop.clear()
@@ -111,14 +118,14 @@ class AsyncTimersConsumer:
         getattr(self, action)(data)
 
     def start(self, data: dict[str, Any]) -> None:
-        if isinstance(self.grizzly.state.locust, LocalRunner):
-            cast(TestdataProducer, self.grizzly.state.producer).async_timers.start(data)
+        if isinstance(self.scenario.grizzly.state.locust, LocalRunner):
+            cast(TestdataProducer, self.scenario.grizzly.state.producer).async_timers.start(data)
         else:
             self._start.append(data)
 
     def stop(self, data: dict[str, Any]) -> None:
-        if isinstance(self.grizzly.state.locust, LocalRunner):
-            cast(TestdataProducer, self.grizzly.state.producer).async_timers.stop(data)
+        if isinstance(self.scenario.grizzly.state.locust, LocalRunner):
+            cast(TestdataProducer, self.scenario.grizzly.state.producer).async_timers.stop(data)
         else:
             self._stop.append(data)
 
@@ -126,14 +133,19 @@ class AsyncTimersConsumer:
 class AsyncTimersProducer:
     grizzly: GrizzlyContext
     semaphore: Semaphore
+    logger: logging.Logger
 
     active_timers: dict[str, AsyncTimer]
+    map_timer_id_name: dict[str, tuple[str, list[str]]]
 
     def __init__(self, grizzly: GrizzlyContext, semaphore: Semaphore) -> None:
         self.semaphore = semaphore
         self.grizzly = grizzly
 
         self.active_timers = {}
+        self.map_timer_id_name = {}
+
+        self.logger = logging.getLogger(f'{__name__}/producer/timers')
 
         if isinstance(grizzly.state.locust, MasterRunner):
             grizzly.state.locust.environment.events.worker_report.add_listener(self.on_worker_report)
@@ -144,47 +156,86 @@ class AsyncTimersProducer:
 
         return data.get('name'), data['tid'], data['version'], timestamp
 
-    def on_worker_report(self, client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG002
+    def on_worker_report(self, client_id: str, data: dict[str, Any]) -> None:
         async_timers = data.get('async_timers', {})
 
-        for async_data in async_timers.get('start', []):
+        async_timers_start = async_timers.get('start', [])
+        async_timers_stop = async_timers.get('stop', [])
+
+        for async_data in async_timers_start:
             self.start(async_data)
 
-        for async_data in async_timers.get('stop', []):
+        for async_data in async_timers_stop:
             self.stop(async_data)
+
+        self.logger.debug('started %d timers and stopped %d timers from worker %s', len(async_timers_start), len(async_timers_stop), client_id)
 
     def start(self, data: dict[str, str]) -> None:
         name, tid, version, timestamp = self.extract(data)
 
         assert name is not None
 
-        timer_id = f'{tid}_{version}'
+        timer_id = f'{name}::{tid}::{version}'
 
         if timer_id in self.active_timers:
-            message = f'{timer_id} has already been started'
+            message = f'timer "{name}" for id "{tid}" with version "{version}" has already been started'
             raise KeyError(message)
 
         timer = AsyncTimer(name, tid, version, timestamp)
 
         with self.semaphore:
+            map_timer_id = f'{tid}::{version}'
+            duplicate_timer_name, duplicates = self.map_timer_id_name.get(map_timer_id, (None, []))
+
+            if duplicate_timer_name is not None and duplicate_timer_name != name:
+                # append the new timer name for the key as a duplicate, so it can be
+                # restored when the timer that the first key pointed to is stopped
+                if name not in duplicates:
+                    duplicates.append(name)
+
+                # restore mapping to the original timer
+                name = duplicate_timer_name
+
+            self.map_timer_id_name.update({map_timer_id: (name, duplicates)})
             self.active_timers.update({timer_id: timer})
 
     def stop(self, data: dict[str, str | None]) -> None:
         name, tid, version, timestamp = self.extract(data)
-
-        timer_id = f'{tid}_{version}'
+        duplicates = []
+        exception: Exception | None = None
 
         with self.semaphore:
+            timer_id = f'{tid}::{version}'
+            if name is None:
+                name, duplicates = self.map_timer_id_name.get(timer_id, (None, []))
+
+                if name is None:
+                    message = f'could not find a mapped name for id "{tid}" with version "{version}"'
+                    raise KeyError(message)
+
+            with suppress(Exception):
+                del self.map_timer_id_name[timer_id]
+
+            timer_id = f'{name}::{timer_id}'
             timer = self.active_timers.get(timer_id)
 
             if timer is None:
-                message = f'{timer_id} has not been started'
+                message = f'timer "{name}" for id "{tid}" with version "{version}" has not been started'
                 raise KeyError(message)
 
             del self.active_timers[timer_id]
 
-        if name is None:
-            name = timer.name
+            # this can only be True if stopping a timer without specifying the name
+            if len(duplicates) > 0:
+                duplicated_timers = ', '.join(duplicates)
+                duplicate_timer_name = duplicates.pop(0)
+
+                # restore oldest duplicate for the mapping, if more duplicates has been found
+                if f'{duplicate_timer_name}::{tid}::{version}' in self.active_timers:
+                    self.map_timer_id_name.update({f'{tid}::{version}': (duplicate_timer_name, duplicates)})
+
+                # create error
+                exception = RuntimeError(f'wrong timer might have been stopped, maybe it should have been one of "{duplicated_timers}"')
 
         duration = timer.duration_ms(timestamp)
 
@@ -193,6 +244,7 @@ class AsyncTimersProducer:
             name=name,
             response_time=duration,
             response_length=0,
+            exception=exception,
             context={
                 '__time__': timer.start.isoformat(),
                 '__fields_request_started__': timer.start.isoformat(),
@@ -279,7 +331,7 @@ class TestdataConsumer:
         self.response = {}
         self.logger.debug('started consumer')
 
-        self.async_timers = AsyncTimersConsumer(scenario.grizzly, self.semaphore)
+        self.async_timers = AsyncTimersConsumer(scenario, self.semaphore)
 
     @classmethod
     def handle_response(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG003
