@@ -8,7 +8,6 @@ from datetime import datetime, timedelta, timezone
 from os import environ, sep
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
-from unittest.mock import ANY as PYANY
 from uuid import uuid4
 
 import pytest
@@ -289,12 +288,13 @@ class TestAsyncTimersProducer:
 
         semaphore_mock.assert_not_called()
 
-    def test_start_stop(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, static_date: datetime) -> None:
+    def test_start_stop(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, static_date: datetime, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         grizzly = grizzly_fixture.grizzly
         semaphore_mock = mocker.MagicMock(spec=Semaphore)
         timers = AsyncTimersProducer(grizzly, semaphore_mock)
 
         fire_mock = mocker.spy(grizzly.state.locust.environment.events.request, 'fire')
+        log_error_mock = mocker.spy(grizzly.state.locust.stats, 'log_error')
 
         # <!-- start
         timers.start({'name': 'timer-2', 'tid': 'foobar', 'version': 'a', 'timestamp': static_date.isoformat()})
@@ -309,8 +309,13 @@ class TestAsyncTimersProducer:
 
         semaphore_mock.reset_mock()
 
-        with pytest.raises(KeyError, match='timer "timer-1" for id "foobar" with version "a" has already been started'):
+        with caplog.at_level(logging.ERROR):
             timers.start({'name': 'timer-1', 'tid': 'foobar', 'version': 'a', 'timestamp': static_date.isoformat()})
+
+        assert caplog.messages == ['timer "timer-1" for id "foobar" with version "a" has already been started']
+        caplog.clear()
+        log_error_mock.assert_called_once_with('DOC', 'Asynchronous Timers', 'timer "timer-1" for id "foobar" with version "a" has already been started')
+        log_error_mock.reset_mock()
 
         assert timers.active_timers == {
             'timer-1::foobar::a': SOME(AsyncTimer, name='timer-1', tid='foobar', version='a', start=static_date),
@@ -335,11 +340,16 @@ class TestAsyncTimersProducer:
         # <!-- stop
         stop_date = static_date + timedelta(seconds=10)
 
-        with pytest.raises(KeyError, match='timer "timer-1" for id "barfoo" with version "a" has not been started'):
+        with caplog.at_level(logging.ERROR):
             timers.stop({'name': 'timer-1', 'tid': 'barfoo', 'version': 'a', 'timestamp': stop_date.isoformat()})
 
+        assert caplog.messages == ['timer "timer-1" for id "barfoo" with version "a" has not been started']
+        caplog.clear()
+        log_error_mock.assert_called_once_with('DOC', 'Asynchronous Timers', 'timer "timer-1" for id "barfoo" with version "a" has not been started')
+        log_error_mock.reset_mock()
+
         semaphore_mock.__enter__.assert_called_once_with()
-        semaphore_mock.__exit__.assert_called_once_with(KeyError, ANY(KeyError), PYANY)
+        semaphore_mock.__exit__.assert_called_once_with(None, None, None)
         semaphore_mock.reset_mock()
 
         assert timers.active_timers == {
@@ -363,7 +373,7 @@ class TestAsyncTimersProducer:
             name='timer-2',
             response_time=10000,
             response_length=0,
-            exception=ANY(RuntimeError, message='wrong timer might have been stopped, maybe it should have been one of "timer-1"'),
+            exception='wrong timer might have been stopped, maybe it should have been one of "timer-1"',
             context={
                 '__time__': static_date.isoformat(),
                 '__fields_request_started__': static_date.isoformat(),
@@ -371,6 +381,8 @@ class TestAsyncTimersProducer:
             },
         )
         fire_mock.reset_mock()
+        log_error_mock.assert_called_once_with('DOC', 'timer-2', 'wrong timer might have been stopped, maybe it should have been one of "timer-1"')
+        log_error_mock.reset_mock()
 
         timers.stop({'name': 'timer-1', 'tid': 'foobar', 'version': 'a', 'timestamp': stop_date.isoformat()})
 
@@ -394,6 +406,14 @@ class TestAsyncTimersProducer:
             },
         )
         fire_mock.reset_mock()
+
+        with caplog.at_level(logging.ERROR):
+            timers.stop({'name': None, 'tid': 'hello', 'version': 'world', 'timestamp': stop_date.isoformat()})
+
+        assert caplog.messages == ['could not find a mapped timer name for id "hello" with version "world"']
+        caplog.clear()
+        log_error_mock.assert_called_once_with('DOC', 'Asynchronous Timers', 'could not find a mapped timer name for id "hello" with version "world"')
+        log_error_mock.reset_mock()
         # // -->
 
 class TestTestdataProducer:

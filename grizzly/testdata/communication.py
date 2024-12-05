@@ -131,6 +131,8 @@ class AsyncTimersConsumer:
 
 
 class AsyncTimersProducer:
+    __request_method__ = 'DOC'  # @TODO: should not this when merging to main
+
     grizzly: GrizzlyContext
     semaphore: Semaphore
     logger: logging.Logger
@@ -179,7 +181,9 @@ class AsyncTimersProducer:
 
         if timer_id in self.active_timers:
             message = f'timer "{name}" for id "{tid}" with version "{version}" has already been started'
-            raise KeyError(message)
+            self.logger.error(message)
+            self.grizzly.state.locust.stats.log_error(self.__request_method__, 'Asynchronous Timers', message)
+            return
 
         timer = AsyncTimer(name, tid, version, timestamp)
 
@@ -202,16 +206,19 @@ class AsyncTimersProducer:
     def stop(self, data: dict[str, str | None]) -> None:
         name, tid, version, timestamp = self.extract(data)
         duplicates = []
-        exception: Exception | None = None
+        error: str | None = None
 
         with self.semaphore:
             timer_id = f'{tid}::{version}'
+
             if name is None:
                 name, duplicates = self.map_timer_id_name.get(timer_id, (None, []))
 
                 if name is None:
-                    message = f'could not find a mapped name for id "{tid}" with version "{version}"'
-                    raise KeyError(message)
+                    message = f'could not find a mapped timer name for id "{tid}" with version "{version}"'
+                    self.logger.error(message)
+                    self.grizzly.state.locust.stats.log_error(self.__request_method__, 'Asynchronous Timers', message)
+                    return
 
             with suppress(Exception):
                 del self.map_timer_id_name[timer_id]
@@ -221,7 +228,9 @@ class AsyncTimersProducer:
 
             if timer is None:
                 message = f'timer "{name}" for id "{tid}" with version "{version}" has not been started'
-                raise KeyError(message)
+                self.logger.error(message)
+                self.grizzly.state.locust.stats.log_error(self.__request_method__, 'Asynchronous Timers', message)
+                return
 
             del self.active_timers[timer_id]
 
@@ -235,16 +244,16 @@ class AsyncTimersProducer:
                     self.map_timer_id_name.update({f'{tid}::{version}': (duplicate_timer_name, duplicates)})
 
                 # create error
-                exception = RuntimeError(f'wrong timer might have been stopped, maybe it should have been one of "{duplicated_timers}"')
+                error = f'wrong timer might have been stopped, maybe it should have been one of "{duplicated_timers}"'
 
         duration = timer.duration_ms(timestamp)
 
         self.grizzly.state.locust.environment.events.request.fire(
-            request_type='DOC',  # @TODO: should not this when merging to main
+            request_type=self.__request_method__,
             name=name,
             response_time=duration,
             response_length=0,
-            exception=exception,
+            exception=error,
             context={
                 '__time__': timer.start.isoformat(),
                 '__fields_request_started__': timer.start.isoformat(),
