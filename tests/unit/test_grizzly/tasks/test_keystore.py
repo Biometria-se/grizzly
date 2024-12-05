@@ -1,6 +1,7 @@
 """Unit tests of grizzly.tasks.keystore."""
 from __future__ import annotations
 
+from json import loads as jsonloads
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -157,6 +158,42 @@ class TestKeystoreTask:
         consumer_mock.keystore_push.return_value = None
 
         task_factory = KeystoreTask('foobar', 'push', actual)
+        task = task_factory()
+
+        task(parent)
+
+        consumer_mock.keystore_push.assert_called_once_with('foobar', expected)
+        consumer_mock.reset_mock()
+
+    def test___call__push_complex(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        parent = grizzly_fixture()
+        assert parent is not None
+
+        consumer_mock = mocker.MagicMock()
+        parent.__class__._consumer = consumer_mock
+
+        value = """{
+    'name': '{{ name }}',
+    'location': '{{ location }}',
+    'receiver': '{{ receiver }}',
+    'product': '{{ product }}',
+    'parcels': '{{ parcels }}'
+} | render=True"""
+
+        parent.user.variables.update({
+            'name': 'AMD RADEON 7900 XTX',
+            'location': 'Storage 2',
+            'receiver': 'Grizzly',
+            'product': 'GPU1337',
+            'parcels': 1,
+        })
+
+        expected, _ = value.replace("'", '"').split(' | ', 1)
+        expected = jsonloads(parent.user.render(expected))
+
+        consumer_mock.keystore_push.return_value = None
+
+        task_factory = KeystoreTask('foobar', 'push', value)
         task = task_factory()
 
         task(parent)

@@ -142,6 +142,37 @@ def step_task_keystore_push(context: Context, key: str, value: str) -> None:
     grizzly.scenario.tasks.add(KeystoreTask(key, 'push', value))
 
 
+@then('push "{key}" in keystore with value')
+def step_task_keystore_push_text(context: Context, key: str) -> None:
+    """Push a value for `key` using the {@pylink grizzly.tasks.keystore} task.
+
+    `value` is specified via step text, and must be JSON serializable (string values must be single-quoted).
+
+    See {@pylink grizzly.tasks.keystore} task documentation for more information.
+
+    Example:
+    ```gherkin
+    Scenario: push
+        And value for variable "foobar" is "none"
+        Then push "foobar_key" in keystore with value
+          \"\"\"
+          {
+            "id": 1,
+            "name": test
+          }
+          \"\"\"
+
+    Scenario: pop
+        And value for variable "foobar" is "none"
+        Then pop "foobar_key" from keystore and save in variable "foobar"
+    ```
+
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    assert context.text is not None, 'this step requires a value in the step text'
+    grizzly.scenario.tasks.add(KeystoreTask(key, 'push', context.text))
+
+
 @then('remove "{key}" from keystore')
 def step_task_keystore_del(context: Context, key: str) -> None:
     """Remove `key` using the {@pylink grizzly.tasks.keystore} task.

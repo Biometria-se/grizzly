@@ -114,7 +114,7 @@ class KeystoreTask(GrizzlyTask):
         try:
             serialized_value = jsonloads(serialized_value)
         except JSONDecodeError as e:
-            message = f'"{value}" is not valid JSON'
+            message = f'"{serialized_value}" is not valid JSON'
             raise AssertionError(message) from e
         else:
             return serialized_value
@@ -123,6 +123,13 @@ class KeystoreTask(GrizzlyTask):
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
             key = parent.user.render(self.key)
+
+            def render(value: Any) -> Any:
+                transform = not isinstance(value, str)
+                template = jsondumps(value) if transform else value
+                rendered_value = parent.user.render(template)
+
+                return jsonloads(rendered_value) if transform else rendered_value
 
             try:
                 if self.action == 'get':
@@ -146,15 +153,15 @@ class KeystoreTask(GrizzlyTask):
                         message = f'key {key} does not exist in keystore'
                         raise RuntimeError(message)
                 elif self.action == 'set':
-                    value = parent.user.render(cast(str, self.action_context)) if self.arguments.get('render', False) else self.action_context
+                    value = render(self.action_context) if self.arguments.get('render', False) else self.action_context
                     parent.consumer.keystore_set(key, value)
                 elif self.action == 'push':
-                    value = parent.user.render(cast(str, self.action_context)) if self.arguments.get('render', False) else self.action_context
+                    value = render(self.action_context) if self.arguments.get('render', False) else self.action_context
                     parent.consumer.keystore_push(key, value)
                 elif self.action == 'pop':
                     value = parent.consumer.keystore_pop(key)
                     if value is not None and self.action_context is not None:
-                        parent.user.set_variable(self.action_context, jsonloads(parent.user.render(jsondumps(value))))
+                        parent.user.set_variable(self.action_context, render(value))
                 elif self.action == 'del':
                     parent.consumer.keystore_del(key)
                 else:  # pragma: no cover

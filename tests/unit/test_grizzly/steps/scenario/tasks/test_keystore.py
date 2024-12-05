@@ -10,6 +10,7 @@ from grizzly.steps import (
     step_task_keystore_inc_default_step,
     step_task_keystore_pop,
     step_task_keystore_push,
+    step_task_keystore_push_text,
     step_task_keystore_set,
 )
 from grizzly.tasks import KeystoreTask
@@ -223,6 +224,59 @@ def test_step_task_keystore_push(behave_fixture: BehaveFixture) -> None:
 
     grizzly.scenario.variables.update({'hello': 'world'})
     step_task_keystore_push(behave, 'foobar', "{{ hello }} | render=True")
+
+    assert getattr(behave, 'exceptions', {}) == {}
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'foobar'
+    assert task.action == 'push'
+    assert task.action_context == '{{ hello }}'
+    assert task.arguments == {'render': True}
+
+
+def test_step_task_keystore_push_text(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = behave_fixture.grizzly
+
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
+
+    grizzly.scenario.tasks.clear()
+
+    behave.text = 'hello'
+    step_task_keystore_push_text(behave, 'foobar')
+    assert behave.exceptions == {}
+    delattr(behave, 'exceptions')
+
+    behave.text = "'hello'"
+    step_task_keystore_push_text(behave, 'foobar')
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert getattr(behave, 'exceptions', {}) == {}
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'foobar'
+    assert task.action == 'push'
+    assert task.action_context == 'hello'
+    assert task.arguments == {}
+
+    behave.text = "['hello', 'world']"
+    step_task_keystore_push_text(behave, 'foobar')
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert getattr(behave, 'exceptions', {}) == {}
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'foobar'
+    assert task.action == 'push'
+    assert task.action_context == ['hello', 'world']
+    assert task.arguments == {}
+
+    grizzly.scenario.variables.update({'hello': 'world'})
+    behave.text = "{{ hello }} | render=True"
+    step_task_keystore_push_text(behave, 'foobar')
 
     assert getattr(behave, 'exceptions', {}) == {}
 
