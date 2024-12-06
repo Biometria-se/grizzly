@@ -280,6 +280,10 @@ class KeystoreDecoder(GrizzlyEventDecoder):
             **(tags or {}),
         }
 
+        remove = request.get('remove', None)
+        if remove is not None:
+            tags.update({'remove': remove})
+
         metrics: dict[str, Any] = {'error': None}
 
         if exception is not None:
@@ -392,10 +396,11 @@ class TestdataConsumer:
 
         return cast(dict[str, Any], data)
 
-    def keystore_get(self, key: str) -> Any | None:
+    def keystore_get(self, key: str, *, remove: bool) -> Any | None:
         request = {
             'action': 'get',
             'key': key,
+            'remove': remove,
         }
 
         response = self._keystore_request(request=request)
@@ -583,6 +588,14 @@ class TestdataProducer:
     def stop(self) -> None:
         self.persist_data()
 
+    def _remove_key(self, key: str, response: dict[str, Any]) -> None:
+        try:
+            del self.keystore[key]
+        except:
+            message = f'failed to remove key "{key}"'
+            self.logger.exception(message)
+            response.update({'error': message})
+
     @event(events.keystore_request, tags={'type': 'producer'}, decoder=KeystoreDecoder(arg='request'))
     def _handle_request_keystore(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912
         response = request
@@ -598,6 +611,9 @@ class TestdataProducer:
 
         if action == 'get':
             response.update({'data': self.keystore.get(key, None)})
+            if request.get('remove', False):
+                self._remove_key(key, response)
+
         elif action == 'set':
             set_value: str | None = response.get('data', None)
 
@@ -649,12 +665,7 @@ class TestdataProducer:
             response.update({'data': pop_value})
         elif action == 'del':
             response.update({'data': None})
-            try:
-                del self.keystore[key]
-            except:
-                message = f'failed to remove key "{key}"'
-                self.logger.exception(message)
-                response.update({'error': message})
+            self._remove_key(key, response)
         else:
             message = f'received unknown keystore action "{action}"'
             self.logger.error(message)

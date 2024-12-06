@@ -3,7 +3,6 @@ This module contains step implementations for the {@pylink grizzly.tasks.keystor
 """
 from __future__ import annotations
 
-from json import JSONDecodeError
 from typing import cast
 
 from grizzly.context import GrizzlyContext
@@ -29,6 +28,23 @@ def step_task_keystore_get_default(context: Context, key: str, variable: str, de
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'get', variable, default_value))
+
+
+@then('get and remove "{key}" from keystore and save in variable "{variable}"')
+def step_task_keystore_get_remove(context: Context, key: str, variable: str) -> None:
+    """Get a value for `key` using the {@pylink grizzly.tasks.keystore} task, then remove entry.
+
+    See {@pylink grizzly.tasks.keystore} task documentation for more information.
+
+    Example:
+    ```gherkin
+    And value for variable "foobar" is "none"
+    Then get and remove "foobar_key" from keystore and save in variable "foobar"
+    ```
+
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.tasks.add(KeystoreTask(key, 'get_del', variable))
 
 
 @then('get "{key}" from keystore and save in variable "{variable}"')
@@ -64,14 +80,27 @@ def step_task_keystore_set(context: Context, key: str, value: str) -> None:
 
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
-    if "'" in value:
-        value = value.replace("'", '"')
+    grizzly.scenario.tasks.add(KeystoreTask(key, 'set', value))
 
-    try:
-        grizzly.scenario.tasks.add(KeystoreTask(key, 'set', value))
-    except JSONDecodeError as e:
-        message = f'"{value}" is not valid JSON'
-        raise AssertionError(message) from e
+
+@then('set "{key}" in keystore with value')
+def step_task_keystore_set_text(context: Context, key: str) -> None:
+    """Set a value for `key` using the {@pylink grizzly.tasks.keystore} task.
+
+    `value` is specified via step text, and must be JSON serializable.
+
+    See {@pylink grizzly.tasks.keystore} task documentation for more information.
+
+    Example:
+    ```gherkin
+    And value for variable "foobar" is "{'hello': 'world'}"
+    Then set "foobar_key" in keystore with value "{{ foobar }} | render=True"
+    ```
+
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    assert context.text is not None, 'this step requires a value in the step text'
+    grizzly.scenario.tasks.add(KeystoreTask(key, 'set', context.text))
 
 
 @then('increment "{key}" in keystore and save in variable "{variable}"')
@@ -122,7 +151,7 @@ def step_task_keystore_pop(context: Context, key: str, variable: str) -> None:
 def step_task_keystore_push(context: Context, key: str, value: str) -> None:
     """Push a value for `key` using the {@pylink grizzly.tasks.keystore} task.
 
-    `value` must be JSON serializable (string values must be single-quoted).
+    `value` must be JSON serializable.
 
     See {@pylink grizzly.tasks.keystore} task documentation for more information.
 
@@ -146,7 +175,7 @@ def step_task_keystore_push(context: Context, key: str, value: str) -> None:
 def step_task_keystore_push_text(context: Context, key: str) -> None:
     """Push a value for `key` using the {@pylink grizzly.tasks.keystore} task.
 
-    `value` is specified via step text, and must be JSON serializable (string values must be single-quoted).
+    `value` is specified via step text, and must be JSON serializable.
 
     See {@pylink grizzly.tasks.keystore} task documentation for more information.
 

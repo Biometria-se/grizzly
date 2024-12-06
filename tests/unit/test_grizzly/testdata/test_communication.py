@@ -975,12 +975,15 @@ value3,value4
                 uid = id(parent.user)
                 rid = str(uuid4())
 
-                request = {
+                request: dict[str, Any] = {
                     'message': message,
                     'identifier': grizzly.scenario.class_name,
                     'action': action,
                     'key': key,
                 }
+
+                if action.startswith('get'):
+                    request.update({'action': 'get', 'remove': (action == 'get_del')})
 
                 if value is not None:
                     request.update({'data': value})
@@ -1002,7 +1005,7 @@ value3,value4
             with caplog.at_level(logging.ERROR):
                 response = request_keystore('get', 'hello', 'world')
 
-            assert response == {'message': 'keystore', 'action': 'get', 'data': 'world', 'identifier': grizzly.scenario.class_name, 'key': 'hello'}
+            assert response == {'message': 'keystore', 'action': 'get', 'data': 'world', 'identifier': grizzly.scenario.class_name, 'key': 'hello', 'remove': False}
             assert caplog.messages == []
 
             grizzly.state.producer.keystore.clear()
@@ -1079,6 +1082,35 @@ value3,value4
                 'error': 'failed to remove key "foobar"',
             }
             # // del -->
+
+            # <!-- get_del
+            assert 'foobar' not in grizzly.state.producer.keystore
+            response = request_keystore('get_del', 'foobar')
+
+            assert response == {
+                'message': 'keystore',
+                'action': 'get',
+                'remove': True,
+                'data': None,
+                'identifier': grizzly.scenario.class_name,
+                'key': 'foobar',
+                'error': 'failed to remove key "foobar"',
+            }
+
+            grizzly.state.producer.keystore.update({'foobar': 'hello world'})
+
+            response = request_keystore('get_del', 'foobar')
+
+            assert 'foobar' not in grizzly.state.producer.keystore
+            assert response == {
+                'message': 'keystore',
+                'action': 'get',
+                'remove': True,
+                'data': 'hello world',
+                'identifier': grizzly.scenario.class_name,
+                'key': 'foobar',
+            }
+            # // get_del -->
 
             caplog.clear()
 
@@ -1288,7 +1320,8 @@ class TestTestdataConsumer:
         })
         send_message.reset_mock()
 
-    def test_keystore_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+    @pytest.mark.parametrize('remove', [False, True])
+    def test_keystore_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, remove: bool) -> None:  # noqa: FBT001
         parent = grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
 
@@ -1298,13 +1331,14 @@ class TestTestdataConsumer:
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
 
-        assert consumer.keystore_get('hello') is None
+        assert consumer.keystore_get('hello', remove=remove) is None
         keystore_request_spy.assert_called_once_with(
             reverse=False,
             timestamp=ANY(str),
             tags={
                 'action': 'get',
                 'key': 'hello',
+                'remove': remove,
                 'identifier': consumer.identifier,
                 'type': 'consumer',
             },
@@ -1319,16 +1353,18 @@ class TestTestdataConsumer:
         request_spy.assert_called_once_with({
             'action': 'get',
             'key': 'hello',
+            'remove': remove,
             'message': 'keystore',
             'identifier': consumer.identifier,
         })
 
         request_spy = mocker.patch.object(consumer, '_request', side_effect=echo_add_data({'hello': 'world'}))
 
-        assert consumer.keystore_get('hello') == {'hello': 'world'}
+        assert consumer.keystore_get('hello', remove=remove) == {'hello': 'world'}
         request_spy.assert_called_once_with({
             'action': 'get',
             'key': 'hello',
+            'remove': remove,
             'message': 'keystore',
             'identifier': consumer.identifier,
         })

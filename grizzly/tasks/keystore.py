@@ -53,7 +53,7 @@ from . import GrizzlyTask, grizzlytask, template
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
 
-Action = Literal['get', 'set', 'inc', 'push', 'pop', 'del']
+Action = Literal['get', 'get_del', 'set', 'inc', 'push', 'pop', 'del']
 
 
 @template('action_context', 'key')
@@ -82,7 +82,7 @@ class KeystoreTask(GrizzlyTask):
 
         assert self.action in get_args(Action), f'"{self.action}" is not a valid action'
 
-        if self.action in ['get', 'inc', 'pop']:
+        if self.action in ['get', 'get_del', 'inc', 'pop']:
             assert isinstance(self.action_context, str), f'action context for "{self.action}" must be a string'
             assert action_context in self.grizzly.scenario.variables, f'variable "{action_context}" has not been initialized'
         elif self.action in ['set', 'push']:
@@ -132,15 +132,15 @@ class KeystoreTask(GrizzlyTask):
                 return jsonloads(rendered_value) if transform else rendered_value
 
             try:
-                if self.action == 'get':
-                    value = parent.consumer.keystore_get(key)
+                if self.action in ['get', 'get_del']:
+                    value = parent.consumer.keystore_get(key, remove=(self.action == 'get_del'))
 
                     if value is None and self.default_value is not None:
                         parent.consumer.keystore_set(key, self.default_value)
                         value = cast(Any, self.default_value)
 
                     if value is not None and self.action_context is not None:
-                        parent.user.set_variable(self.action_context, jsonloads(parent.user.render(jsondumps(value))))
+                        parent.user.set_variable(self.action_context, render(value))
                     else:
                         message = f'key {key} does not exist in keystore'
                         raise RuntimeError(message)
@@ -148,7 +148,7 @@ class KeystoreTask(GrizzlyTask):
                     value = parent.consumer.keystore_inc(key, step=1)
 
                     if value is not None and self.action_context is not None:
-                        parent.user.set_variable(self.action_context, jsonloads(parent.user.render(jsondumps(value))))
+                        parent.user.set_variable(self.action_context, render(value))
                     else:
                         message = f'key {key} does not exist in keystore'
                         raise RuntimeError(message)

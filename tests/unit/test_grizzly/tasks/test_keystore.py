@@ -79,6 +79,8 @@ class TestKeystoreTask:
             task(parent)
 
         assert parent.user.variables.get('foobar', None) == 'none'
+        consumer_mock.keystore_get.assert_called_once_with('foobar', remove=False)
+        consumer_mock.reset_mock()
 
         request_spy.assert_called_once_with(
             request_type='KEYS',
@@ -96,6 +98,8 @@ class TestKeystoreTask:
         task(parent)
 
         request_spy.assert_not_called()
+        consumer_mock.keystore_get.assert_called_once_with('foobar', remove=False)
+        consumer_mock.reset_mock()
 
         assert parent.user.variables.get('foobar', None) == ['hello', 'world']
 
@@ -110,7 +114,24 @@ class TestKeystoreTask:
 
         request_spy.assert_not_called()
         consumer_mock.keystore_set.assert_called_with('foobar', {'hello': 'world'})
+        consumer_mock.reset_mock()
+
         assert parent.user.variables.get('foobar', None) == {'hello': 'world'}
+
+        # remove key entry from keystore after retreiving value
+        consumer_mock.keystore_get.return_value = 'foobar'
+
+        task_factory = KeystoreTask('foobar', 'get_del', 'foobar')
+        assert task_factory.default_value is None
+        task = task_factory()
+
+        task(parent)
+
+        request_spy.assert_not_called()
+        consumer_mock.keystore_get.assert_called_once_with('foobar', remove=True)
+        consumer_mock.reset_mock()
+
+        assert parent.user.variables.get('foobar', None) == 'foobar'
 
     def test___call___set(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()

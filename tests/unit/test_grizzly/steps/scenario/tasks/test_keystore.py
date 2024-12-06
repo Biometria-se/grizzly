@@ -7,11 +7,13 @@ from grizzly.steps import (
     step_task_keystore_del,
     step_task_keystore_get,
     step_task_keystore_get_default,
+    step_task_keystore_get_remove,
     step_task_keystore_inc_default_step,
     step_task_keystore_pop,
     step_task_keystore_push,
     step_task_keystore_push_text,
     step_task_keystore_set,
+    step_task_keystore_set_text,
 )
 from grizzly.tasks import KeystoreTask
 from tests.helpers import ANY
@@ -36,6 +38,26 @@ def test_step_task_keystore_get(behave_fixture: BehaveFixture) -> None:
     assert isinstance(task, KeystoreTask)
     assert task.key == 'foobar'
     assert task.action == 'get'
+    assert task.action_context == 'foobar'
+    assert task.default_value is None
+
+
+def test_step_task_keystore_get_remove(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
+    grizzly.scenario.tasks.clear()
+
+    grizzly.scenario.variables.update({'foobar': 'none'})
+
+    step_task_keystore_get_remove(behave, 'foobar', 'foobar')
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'foobar'
+    assert task.action == 'get_del'
     assert task.action_context == 'foobar'
     assert task.default_value is None
 
@@ -83,6 +105,7 @@ def test_step_task_keystore_get_default(behave_fixture: BehaveFixture) -> None:
     step_task_keystore_get_default(behave, 'barfoo', 'foobar', 'hello')
     assert behave.exceptions == {}
 
+
 def test_step_task_keystore_set(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
@@ -118,6 +141,56 @@ def test_step_task_keystore_set(behave_fixture: BehaveFixture) -> None:
     assert task.arguments == {}
 
     step_task_keystore_set(behave, 'foobar', "{{ foo }} | render=True")
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert getattr(behave, 'exceptions', {}) == {}
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'foobar'
+    assert task.action == 'set'
+    assert task.action_context == '{{ foo }}'
+    assert task.arguments == {'render': True}
+
+
+def test_step_task_keystore_set_text(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
+
+    grizzly.scenario.tasks.clear()
+
+    behave.text = 'hello'
+    step_task_keystore_set_text(behave, 'foobar')
+    assert behave.exceptions == {}
+    delattr(behave, 'exceptions')
+
+    behave.text = "'hello'"
+    step_task_keystore_set_text(behave, 'foobar')
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert getattr(behave, 'exceptions', {}) == {}
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'foobar'
+    assert task.action == 'set'
+    assert task.action_context == 'hello'
+    assert task.arguments == {}
+
+    behave.text = "['hello', 'world']"
+    step_task_keystore_set_text(behave, 'foobar')
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert getattr(behave, 'exceptions', {}) == {}
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'foobar'
+    assert task.action == 'set'
+    assert task.action_context == ['hello', 'world']
+    assert task.arguments == {}
+
+    behave.text = '{{ foo }} | render=True'
+    step_task_keystore_set_text(behave, 'foobar')
 
     task = grizzly.scenario.tasks()[-1]
 
