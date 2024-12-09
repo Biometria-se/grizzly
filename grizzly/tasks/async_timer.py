@@ -68,17 +68,17 @@ class AsyncTimerTask(GrizzlyTask):
             timestamp: datetime | str = datetime.now().astimezone()
 
             # @TODO: this should no look like this when merged in master
-            if self.action == 'stop' and all(var in parent.user.variables for var in ['PutDate', 'PutTime']):
-                timestamp = datetime.strptime(
-                    f'{parent.user.variables['PutDate']} {parent.user.variables['PutTime']}',
-                    '%Y%m%d %H%M%S%f',
-                ).replace(tzinfo=timezone.utc)
-
-            name = parent.user.render(self.name) if self.name is not None else self.name
-            tid = parent.user.render(self.tid)
-            version = parent.user.render(self.version)
-
             try:
+                if self.action == 'stop' and all(var in parent.user.variables for var in ['PutDate', 'PutTime']):
+                    timestamp = datetime.strptime(
+                        f'{parent.user.variables['PutDate']} {parent.user.variables['PutTime']}',
+                        '%Y%m%d %H%M%S%f',
+                    ).replace(tzinfo=timezone.utc)
+
+                name = parent.user.render(self.name) if self.name is not None else self.name
+                tid = parent.user.render(self.tid)
+                version = parent.user.render(self.version)
+
                 parent.consumer.async_timers.toggle(self.action, name, tid, version, timestamp)
             except Exception as e:
                 message = f'failed to {self.action} timer "{name}" for id "{tid}" and version "{version}"'

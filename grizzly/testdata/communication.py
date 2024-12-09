@@ -135,7 +135,6 @@ class AsyncTimersProducer:
 
     grizzly: GrizzlyContext
     semaphore: Semaphore
-    logger: logging.Logger
 
     active_timers: dict[str, AsyncTimer]
     map_timer_id_name: dict[str, tuple[str, list[str]]]
@@ -147,10 +146,13 @@ class AsyncTimersProducer:
         self.active_timers = {}
         self.map_timer_id_name = {}
 
-        self.logger = logging.getLogger(f'{__name__}/producer/timers')
-
         if isinstance(grizzly.state.locust, MasterRunner):
             grizzly.state.locust.environment.events.worker_report.add_listener(self.on_worker_report)
+
+    @property
+    def logger(self) -> logging.Logger:
+        assert self.grizzly.state.producer is not None
+        return self.grizzly.state.producer.logger
 
     @classmethod
     def extract(cls, data: dict[str, Any]) -> tuple[str | None, str, str, datetime]:
