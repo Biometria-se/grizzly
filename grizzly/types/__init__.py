@@ -107,6 +107,10 @@ class FailureAction(PermutationEnum):
         raise AssertionError(message)
 
     @classmethod
+    def get_failure_exceptions(cls) -> tuple[type[Exception], ...]:
+        return tuple([action.exception for action in cls if action.exception is not None])
+
+    @classmethod
     def from_step_expression(cls, value: str) -> FailureAction:
         return cls.from_string(value)
 

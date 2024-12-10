@@ -163,23 +163,34 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    if grizzly.state.producer is not None and len(grizzly.state.producer.async_timers.active_timers) > 0:
+    if grizzly.state.producer is not None and len(grizzly.state.producer.async_timers.timers) > 0:
         feature.set_status('failed')
-        timer_group: dict[str, list[AsyncTimer]] = {}
+        timer_group: dict[str, dict[str, list[AsyncTimer]]] = {'started': {}, 'stopped': {}}
 
-        for timer in grizzly.state.producer.async_timers.active_timers.values():
-            if timer.name not in timer_group:
-                timer_group.update({timer.name: []})
+        for timer in grizzly.state.producer.async_timers.timers.values():
+            group_name = 'started' if timer.stop is None else 'stopped'
+            if timer.name not in timer_group[group_name]:
+                timer_group[group_name].update({timer.name: []})
 
-            timer_group[timer.name].append(timer)
+            timer_group[group_name][timer.name].append(timer)
 
-        reporter.stream.write('\nThe following asynchronous timers has not been stopped:\n')
+        if len(timer_group['started']) > 0:
+            reporter.stream.write('\nThe following asynchronous timers has not been stopped:\n')
 
-        for name, timers in timer_group.items():
-            reporter.stream.write(f'- {name} ({len(timers)}):\n')
+            for name, timers in timer_group['started'].items():
+                reporter.stream.write(f'- {name} ({len(timers)}):\n')
 
-            for timer in timers:
-                reporter.stream.write(f'  * {timer.tid} (version {timer.version}): {timer.start.isoformat()}\n')
+                for timer in timers:
+                    reporter.stream.write(f'  * {timer.tid} (version {timer.version}): {cast(datetime, timer.start).isoformat()}\n')
+
+        if len(timer_group['stopped']) > 0:
+            reporter.stream.write('\nThe following asynchronous timers has not been started:\n')
+
+            for name, timers in timer_group['stopped'].items():
+                reporter.stream.write(f'- {name} ({len(timers)}):\n')
+
+                for timer in timers:
+                    reporter.stream.write(f'  * {timer.tid} (version {timer.version}): {cast(datetime, timer.stop).isoformat()}\n')
 
     if has_exceptions:
         buffer: list[str] = []

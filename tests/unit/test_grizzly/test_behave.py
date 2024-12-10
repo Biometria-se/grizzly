@@ -235,8 +235,14 @@ def test_after_feature_async_timers(grizzly_fixture: GrizzlyFixture, mocker: Moc
 
     feature.set_status('passed')
 
-    grizzly.state.producer.async_timers.start({'name': 'timer-1', 'tid': 'foobar', 'version': '1', 'timestamp': datetime(2024, 12, 3, 10, 54, 59, tzinfo=timezone.utc).isoformat()})
-    grizzly.state.producer.async_timers.start({'name': 'timer-2', 'tid': 'barfoo', 'version': '1', 'timestamp': datetime(2024, 12, 3, 10, 56, 9, tzinfo=timezone.utc).isoformat()})
+    grizzly.state.producer.async_timers.toggle(
+        'start',
+        {'name': 'timer-1', 'tid': 'foobar', 'version': '1', 'timestamp': datetime(2024, 12, 3, 10, 54, 59, tzinfo=timezone.utc).isoformat()},
+    )
+    grizzly.state.producer.async_timers.toggle(
+        'stop',
+        {'name': 'timer-2', 'tid': 'barfoo', 'version': '1', 'timestamp': datetime(2024, 12, 3, 10, 56, 9, tzinfo=timezone.utc).isoformat()},
+    )
 
     after_feature(behave, feature)
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-import pytest
 from dateutil.parser import parse as dateparser
 
 from grizzly.tasks import AsyncTimerTask
@@ -17,19 +16,11 @@ if TYPE_CHECKING:
 
 class TestAsyncTimerTask:
     def test___init__(self) -> None:
-        with pytest.raises(AssertionError, match='name must be set when starting a timer'):
-            AsyncTimerTask(None, 'foobar', '1', 'start')
-
-        try:
-            AsyncTimerTask(None, 'foobar', '1', 'stop')
-        except:
-            pytest.fail('name can be None when stopping a timer')
-
         task_factory = AsyncTimerTask('timer-1', 'foobar', '1', 'start')
         assert task_factory == SOME(AsyncTimerTask, name='timer-1', tid='foobar', version='1', action='start')
 
-        task_factory = AsyncTimerTask(None, 'foobar', '1', 'stop')
-        assert task_factory == SOME(AsyncTimerTask, name=None, tid='foobar', version='1', action='stop')
+        task_factory = AsyncTimerTask('timer-2', 'foobar', '1', 'stop')
+        assert task_factory == SOME(AsyncTimerTask, name='timer-2', tid='foobar', version='1', action='stop')
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
@@ -62,12 +53,12 @@ class TestAsyncTimerTask:
 
         assert not any(var in parent.user.variables for var in ['PutDate', 'PutTime'])
 
-        task_factory = AsyncTimerTask(None, 'foobar', '1', 'stop')
+        task_factory = AsyncTimerTask('timer-1', 'foobar', '1', 'stop')
         task = task_factory()
 
         task(parent)
 
-        toggle_mock.assert_called_once_with('stop', None, 'foobar', '1', expected_datetime)
+        toggle_mock.assert_called_once_with('stop', 'timer-1', 'foobar', '1', expected_datetime)
         toggle_mock.reset_mock()
         # // -->
 
@@ -79,12 +70,12 @@ class TestAsyncTimerTask:
             'PutTime': '101200123456',
         })
 
-        task_factory = AsyncTimerTask(None, 'foobar', '1', 'stop')
+        task_factory = AsyncTimerTask('timer-2', 'foobar', '1', 'stop')
         task = task_factory()
 
         task(parent)
 
-        toggle_mock.assert_called_once_with('stop', None, 'foobar', '1', expected_datetime)
+        toggle_mock.assert_called_once_with('stop', 'timer-2', 'foobar', '1', expected_datetime)
         toggle_mock.reset_mock()
         # // -->
 

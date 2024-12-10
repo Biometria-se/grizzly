@@ -25,6 +25,7 @@ from .utils import transform
 from .variables import AtomicVariablePersist
 
 if TYPE_CHECKING:  # pragma: no cover
+    from locust.event import EventHook
     from locust.rpc.protocol import Message
 
     from grizzly.context import GrizzlyContext
@@ -41,28 +42,58 @@ class AsyncTimer:
     name: str
     tid: str
     version: str
-    start: datetime
-    _stop: datetime | None = field(init=False, default=None)
+    start: datetime | None = field(init=True, default=None)
+    stop: datetime | None = field(init=True, default=None)
 
-    @property
-    def stop(self) -> datetime:
-        if self._stop is None:
-            message = 'stop has no value'
-            raise ValueError(message)
+    def is_complete(self) -> bool:
+        return self.start is not None and self.stop is not None
 
-        return self._stop
+    def complete(self, event: EventHook) -> None:
+        error: str | None = None
+        duration = 0
+        started: str | None = None
+        finished: str | None = None
 
-    def duration_ms(self, stop: datetime) -> int:
-        self._stop = stop
+        if not self.is_complete():
+            missing_timestamps: list[str] = []
 
-        return int((stop - self.start).total_seconds() * 1000)
+            if self.start is None:
+                missing_timestamps.append('start')
+            else:
+                started = self.start.isoformat()
+
+            if self.stop is None:
+                missing_timestamps.append('stop')
+            else:
+                finished = self.stop.isoformat()
+
+            missing_timestamp = ', '.join(missing_timestamps)
+
+            error = f'cannot complete timer for id "{self.tid}" and version "{self.version}", missing {missing_timestamp} timestamp'
+        else:
+            duration = int((cast(datetime, self.stop) - cast(datetime, self.start)).total_seconds() * 1000)
+            started = cast(datetime, self.start).isoformat()
+            finished = cast(datetime, self.stop).isoformat()
+
+        event.fire(
+            request_type=AsyncTimersProducer.__request_method__,
+            name=self.name,
+            response_time=duration,
+            response_length=0,
+            exception=error,
+            context={
+                '__time__': started,
+                '__fields_request_started__': started,
+                '__fields_request_finished__': finished,
+            },
+        )
 
 class AsyncTimersConsumer:
     scenario: GrizzlyScenario
     semaphore: Semaphore
 
-    _start: list[dict[str, str | None]]
-    _stop: list[dict[str, str | None]]
+    _start: list[dict[str, str]]
+    _stop: list[dict[str, str]]
 
     def __init__(self, scenario: GrizzlyScenario, semaphore: Semaphore) -> None:
         self.semaphore = semaphore
@@ -102,7 +133,7 @@ class AsyncTimersConsumer:
             self._start.clear()
             self._stop.clear()
 
-    def toggle(self, action: ActionType, name: str | None, tid: str, version: str, timestamp: datetime | str | None = None) -> None:
+    def toggle(self, action: ActionType, name: str, tid: str, version: str, timestamp: datetime | str | None = None) -> None:
         if timestamp is None:
             timestamp = datetime.now().astimezone()
         elif isinstance(timestamp, str):
@@ -117,15 +148,16 @@ class AsyncTimersConsumer:
 
         getattr(self, action)(data)
 
-    def start(self, data: dict[str, Any]) -> None:
+    def start(self, data: dict[str, str]) -> None:
         if isinstance(self.scenario.grizzly.state.locust, LocalRunner):
-            cast(TestdataProducer, self.scenario.grizzly.state.producer).async_timers.start(data)
+            cast(TestdataProducer, self.scenario.grizzly.state.producer).async_timers.toggle('start', data)
         else:
             self._start.append(data)
 
-    def stop(self, data: dict[str, Any]) -> None:
+    def stop(self, data: dict[str, str]) -> None:
         if isinstance(self.scenario.grizzly.state.locust, LocalRunner):
-            cast(TestdataProducer, self.scenario.grizzly.state.producer).async_timers.stop(data)
+            producer = cast(TestdataProducer, self.scenario.grizzly.state.producer)
+            producer.async_timers.toggle('stop', data)
         else:
             self._stop.append(data)
 
@@ -136,15 +168,13 @@ class AsyncTimersProducer:
     grizzly: GrizzlyContext
     semaphore: Semaphore
 
-    active_timers: dict[str, AsyncTimer]
-    map_timer_id_name: dict[str, tuple[str, list[str]]]
+    timers: dict[str, AsyncTimer]
 
     def __init__(self, grizzly: GrizzlyContext, semaphore: Semaphore) -> None:
         self.semaphore = semaphore
         self.grizzly = grizzly
 
-        self.active_timers = {}
-        self.map_timer_id_name = {}
+        self.timers = {}
 
         if isinstance(grizzly.state.locust, MasterRunner):
             grizzly.state.locust.environment.events.worker_report.add_listener(self.on_worker_report)
@@ -155,10 +185,10 @@ class AsyncTimersProducer:
         return self.grizzly.state.producer.logger
 
     @classmethod
-    def extract(cls, data: dict[str, Any]) -> tuple[str | None, str, str, datetime]:
+    def extract(cls, data: dict[str, str]) -> tuple[str, str, str, datetime]:
         timestamp = date_parser(data['timestamp'])
 
-        return data.get('name'), data['tid'], data['version'], timestamp
+        return data['name'], data['tid'], data['version'], timestamp
 
     def on_worker_report(self, client_id: str, data: dict[str, Any]) -> None:
         async_timers = data.get('async_timers', {})
@@ -167,101 +197,43 @@ class AsyncTimersProducer:
         async_timers_stop = async_timers.get('stop', [])
 
         for async_data in async_timers_start:
-            self.start(async_data)
+            self.toggle('start', async_data)
 
         for async_data in async_timers_stop:
-            self.stop(async_data)
+            self.toggle('stop', async_data)
 
-        self.logger.debug('started %d timers and stopped %d timers from worker %s', len(async_timers_start), len(async_timers_stop), client_id)
+        self.logger.debug(
+            'started %d timers and stopped %d timers from worker %s',
+            len(async_timers_start),
+            len(async_timers_stop),
+            client_id,
+        )
 
-    def start(self, data: dict[str, str]) -> None:
+    def toggle(self, action: ActionType, data: dict[str, str]) -> None:
         name, tid, version, timestamp = self.extract(data)
-
-        assert name is not None
-
         timer_id = f'{name}::{tid}::{version}'
 
-        if timer_id in self.active_timers:
-            message = f'timer "{name}" for id "{tid}" with version "{version}" has already been started'
-            self.logger.error(message)
-            self.grizzly.state.locust.stats.log_error(self.__request_method__, 'Asynchronous Timers', message)
-            return
+        timer = self.timers.get(timer_id)
 
-        timer = AsyncTimer(name, tid, version, timestamp)
-
-        with self.semaphore:
-            map_timer_id = f'{tid}::{version}'
-            duplicate_timer_name, duplicates = self.map_timer_id_name.get(map_timer_id, (None, []))
-
-            if duplicate_timer_name is not None and duplicate_timer_name != name:
-                # append the new timer name for the key as a duplicate, so it can be
-                # restored when the timer that the first key pointed to is stopped
-                if name not in duplicates:
-                    duplicates.append(name)
-
-                # restore mapping to the original timer
-                name = duplicate_timer_name
-
-            self.map_timer_id_name.update({map_timer_id: (name, duplicates)})
-            self.active_timers.update({timer_id: timer})
-
-    def stop(self, data: dict[str, str | None]) -> None:
-        name, tid, version, timestamp = self.extract(data)
-        duplicates = []
-        error: str | None = None
-
-        with self.semaphore:
-            timer_id = f'{tid}::{version}'
-
-            if name is None:
-                name, duplicates = self.map_timer_id_name.get(timer_id, (None, []))
-
-                if name is None:
-                    message = f'could not find a mapped timer name for id "{tid}" with version "{version}"'
-                    self.logger.error(message)
-                    self.grizzly.state.locust.stats.log_error(self.__request_method__, 'Asynchronous Timers', message)
-                    return
-
-            with suppress(Exception):
-                del self.map_timer_id_name[timer_id]
-
-            timer_id = f'{name}::{timer_id}'
-            timer = self.active_timers.get(timer_id)
-
-            if timer is None:
-                message = f'timer "{name}" for id "{tid}" with version "{version}" has not been started'
+        if timer is not None:
+            if getattr(timer, action) is not None:
+                toggle_action = 'started' if action == 'start' else 'stopped'
+                message = f'timer with name "{name}" for id "{tid}" with version "{version}" has already been {toggle_action}'
                 self.logger.error(message)
-                self.grizzly.state.locust.stats.log_error(self.__request_method__, 'Asynchronous Timers', message)
+                message = f'timer for id "{tid}" with version "{version}" has already been {toggle_action}'
+                self.grizzly.state.locust.stats.log_error(self.__request_method__, name, message)
                 return
+        else:
+            timer = AsyncTimer(name, tid, version)
 
-            del self.active_timers[timer_id]
+        setattr(timer, action, timestamp)
 
-            # this can only be True if stopping a timer without specifying the name
-            if len(duplicates) > 0:
-                duplicated_timers = ', '.join(duplicates)
-                duplicate_timer_name = duplicates.pop(0)
-
-                # restore oldest duplicate for the mapping, if more duplicates has been found
-                if f'{duplicate_timer_name}::{tid}::{version}' in self.active_timers:
-                    self.map_timer_id_name.update({f'{tid}::{version}': (duplicate_timer_name, duplicates)})
-
-                # create error
-                error = f'wrong timer might have been stopped, maybe it should have been one of "{duplicated_timers}"'
-
-        duration = timer.duration_ms(timestamp)
-
-        self.grizzly.state.locust.environment.events.request.fire(
-            request_type=self.__request_method__,
-            name=name,
-            response_time=duration,
-            response_length=0,
-            exception=error,
-            context={
-                '__time__': timer.start.isoformat(),
-                '__fields_request_started__': timer.start.isoformat(),
-                '__fields_request_finished__': timer.stop.isoformat(),
-            },
-        )
+        with self.semaphore:
+            if timer.is_complete():
+                del self.timers[timer_id]
+                timer.complete(self.grizzly.state.locust.environment.events.request)
+            else:
+                self.timers.update({timer_id: timer})
 
 
 class KeystoreDecoder(GrizzlyEventDecoder):

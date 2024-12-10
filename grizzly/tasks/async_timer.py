@@ -45,22 +45,18 @@ ActionType = Literal['start', 'stop']
 
 @template('name', 'tid', 'version')
 class AsyncTimerTask(GrizzlyTask):
-    name: str | None
+    name: str
     tid: str
     version: str
     action: ActionType
 
-    def __init__(self, name: str | None, tid: str, version: str, action: ActionType) -> None:
+    def __init__(self, name: str, tid: str, version: str, action: ActionType) -> None:
         super().__init__()
 
         self.name = name
         self.tid = tid
         self.version = version
         self.action = action
-
-        if action == 'start' and name is None:
-            message = 'name must be set when starting a timer'
-            raise AssertionError(message)
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
@@ -75,7 +71,7 @@ class AsyncTimerTask(GrizzlyTask):
                         '%Y%m%d %H%M%S%f',
                     ).replace(tzinfo=timezone.utc)
 
-                name = parent.user.render(self.name) if self.name is not None else self.name
+                name = parent.user.render(self.name)
                 tid = parent.user.render(self.tid)
                 version = parent.user.render(self.version)
 
