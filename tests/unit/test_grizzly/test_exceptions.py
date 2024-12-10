@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from grizzly.exceptions import RestartScenario, RetryTask, StopUser, failure_handler
+from grizzly.types import FailureAction
 
 if TYPE_CHECKING:
     from tests.fixtures import GrizzlyFixture
@@ -47,3 +48,7 @@ def test_failure_handler(grizzly_fixture: GrizzlyFixture) -> None:
 
     with pytest.raises(RestartScenario):
         failure_handler(MemoryError('0% free'), scenario)
+
+    for exception in FailureAction.get_failure_exceptions():
+        with pytest.raises(exception):
+            failure_handler(exception(), scenario)

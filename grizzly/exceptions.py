@@ -98,6 +98,11 @@ def failure_handler(exception: Exception | None, scenario: GrizzlyContextScenari
     if exception is None:
         return
 
+    # failure action has already been decided, let it through
+    from grizzly.types import FailureAction
+    if isinstance(exception, FailureAction.get_failure_exceptions()):
+        raise exception
+
     # always raise StopUser when these unhandled exceptions has occured
     if isinstance(exception, (NotImplementedError, KeyError, IndexError, AttributeError, TypeError, SyntaxError)):
         raise StopUser from exception
