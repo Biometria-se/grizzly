@@ -415,7 +415,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         grizzly.scenario.tasks.add(task)
 
         # this is a bit misplaced after a refactoring...
-        with pytest.raises(AssertionError, match='variables has been found in templates, but have not been declared:\ntest_id'):
+        with pytest.raises(AssertionError, match='variables have been found in templates, but have not been declared:\ntest_id'):
             testdata, _, _ = initialize_testdata(grizzly)
 
         grizzly.scenario.variables['test_id'] = 'test-1'

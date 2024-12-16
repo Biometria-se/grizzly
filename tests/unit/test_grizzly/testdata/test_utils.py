@@ -18,6 +18,7 @@ from grizzly.testdata.utils import (
     _objectify,
     create_context_variable,
     initialize_testdata,
+    resolve_template,
     resolve_variable,
     transform,
 )
@@ -332,7 +333,7 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR
 
     try:
         assert 'test' not in grizzly.scenario.variables
-        with pytest.raises(AssertionError, match='value contained variable "test" which has not been declared'):
+        with pytest.raises(AssertionError, match='variables have been found in templates, but have not been declared:\ntest'):
             resolve_variable(grizzly.scenario, '{{ test }}')
 
         grizzly.scenario.variables['test'] = 'some value'
@@ -608,3 +609,26 @@ def test_transform(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableClean
         caplog.clear()
     finally:
         cleanup()
+
+
+def test_resolve_template(grizzly_fixture: GrizzlyFixture) -> None:
+    parent = grizzly_fixture()
+
+    parent.user._scenario.variables.update({'hello': 'foo', 'foo': 100, 'baz': 0.25})
+
+    assert 'world' not in parent.user._scenario.variables
+    assert resolve_template(parent.user._scenario, '{{ hello if hello is defined else world }}') == 'foo'
+
+    assert 'bar' not in parent.user._scenario.variables
+    assert resolve_template(parent.user._scenario, '{{ (((foo | int) * (baz | float)) + 0.5) | int if foo is defined else bar }}') == '25'
+
+    parent.user._scenario.variables.clear()
+    parent.user._scenario.variables.update({'world': 'bar', 'bar': 100})
+    assert 'hello' not in parent.user._scenario.variables
+    assert resolve_template(parent.user._scenario, '{{ hello if hello is defined else world }}') == 'bar'
+
+    assert 'foo' not in parent.user._scenario.variables
+    assert resolve_template(parent.user._scenario, '{{ (((foo | int) * (baz | float)) + 0.5) | int if foo is defined else bar }}') == '100'
+
+    with pytest.raises(AssertionError, match='variables have been found in templates, but have not been declared:\nfoobaz'):
+        resolve_template(parent.user._scenario, '{{ foobaz }} yeah')

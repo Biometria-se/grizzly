@@ -103,7 +103,7 @@ def test_step_user_type(behave_fixture: BehaveFixture) -> None:
 
     step_user_type(behave, 'RestApi', '{{ host }}')
 
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='value contained variable "host" which has not been declared')]}
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nhost')]}
 
     grizzly.scenario.variables['host'] = 'http://example.io:1337'
     step_user_type(behave, 'RestApi', '{{ host }}')
@@ -162,7 +162,7 @@ def test_step_user_type_with_weight(behave_fixture: BehaveFixture) -> None:
     assert behave.exceptions == {behave.scenario.name: [
         ANY(AssertionError, message='weight value -1 resolved to -1, which is not valid'),
         ANY(AssertionError, message='weight value 0 resolved to 0, which is not valid'),
-        ANY(AssertionError, message='value contained variable "weight" which has not been declared'),
+        ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nweight'),
     ]}
 
     grizzly.scenario.variables['weight'] = 3
@@ -175,6 +175,6 @@ def test_step_user_type_with_weight(behave_fixture: BehaveFixture) -> None:
     assert behave.exceptions == {behave.scenario.name: [
         ANY(AssertionError, message='weight value -1 resolved to -1, which is not valid'),
         ANY(AssertionError, message='weight value 0 resolved to 0, which is not valid'),
-        ANY(AssertionError, message='value contained variable "weight" which has not been declared'),
+        ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nweight'),
         ANY(AssertionError, message='weight value {{ weight }} resolved to 0, which is not valid'),
     ]}

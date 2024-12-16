@@ -73,7 +73,7 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
 
     step_setup_iterations(behave, '{{ iterations }}', 'iteration')
 
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='value contained variable "iterations" which has not been declared')]}
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variables have been found in templates, but have not been declared:\niterations')]}
 
     grizzly.scenario.variables['iterations'] = 100
     step_setup_iterations(behave, '{{ iterations }}', 'iteration')

@@ -8,10 +8,8 @@ from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, cast
 
-from jinja2.meta import find_undeclared_variables
-
 from grizzly.exceptions import failure_handler
-from grizzly.testdata.ast import get_template_variables
+from grizzly.testdata.ast import get_template_variables, parse_templates
 from grizzly.utils import has_template, is_file, merge_dicts, unflatten
 
 from . import GrizzlyVariables
@@ -134,14 +132,9 @@ def create_context_variable(scenario: GrizzlyContextScenario, variable: str, val
 
 def resolve_template(scenario: GrizzlyContextScenario, value: str) -> str:
     template = scenario.jinja2.from_string(value)
-    template_parsed = template.environment.parse(value)
-    template_variables = find_undeclared_variables(template_parsed)
 
-    for template_variable in template_variables:
-        if f'{template_variable} is defined' in value or f'{template_variable} is not defined' in value:
-            continue
-
-        assert template_variable in scenario.variables, f'value contained variable "{template_variable}" which has not been declared'
+    # validate template
+    _ = parse_templates({scenario: {value}}, check_declared=False)
 
     return template.render(**scenario.variables)
 

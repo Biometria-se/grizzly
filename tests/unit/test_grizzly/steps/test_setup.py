@@ -143,7 +143,7 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     behave.assert_variable_value('AtomicDate.test', '2021-04-13')
 
     step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='value contained variable "value" which has not been declared')]}
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nvalue')]}
 
     grizzly.scenario.variables['value'] = 'hello world!'
     step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
@@ -153,7 +153,7 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     step_setup_variable_value(behave, 'incorrectly_quoted', '"error\'')
 
     assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='value contained variable "value" which has not been declared'),
+        ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nvalue'),
         ANY(AssertionError, message='"error\' is incorrectly quoted'),
     ]}
     behave.exceptions.clear()
