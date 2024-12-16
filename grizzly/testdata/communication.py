@@ -628,6 +628,11 @@ class TestdataProducer:
                     raise AttributeError
 
                 pop_value = self.keystore[key].pop(0)
+
+                # remove key if it was the last value
+                if len(self.keystore) < 1:
+                    response.update({'data': pop_value})
+                    self._remove_key(key, response)
             except AttributeError:
                 message = f'key "{key}" is not a list, it has not been pushed to'
                 self.logger.exception(message)
