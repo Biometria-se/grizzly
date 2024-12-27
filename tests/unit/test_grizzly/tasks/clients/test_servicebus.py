@@ -40,13 +40,14 @@ class TestServiceBusClientTask:
         }
         assert task._state == {}
         assert task.text is None
+        assert task.should_empty
         assert task.get_templates() == []
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
         # // -->
 
         # <!-- credential
-        task = task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com', 'test')
+        task = task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com&Empty=False', 'test')
 
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net'
         assert task.context == {
@@ -61,6 +62,7 @@ class TestServiceBusClientTask:
         }
         assert task._state == {}
         assert task.text is None
+        assert not task.should_empty
         assert task.get_templates() == []
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
@@ -664,6 +666,19 @@ class TestServiceBusClientTask:
         task.on_iteration(parent)
 
         empty_mock.assert_called_once_with(parent)
+
+        # do not empty
+        task = cls_task(
+            RequestDirection.FROM,
+            'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Empty=False',
+            'test',
+        )
+
+        empty_mock = mocker.patch.object(task, 'empty', return_value=None)
+        task._text = '1=1'
+
+        task.on_iteration(parent)
+        empty_mock.assert_not_called()
 
     def test_request(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         sha256_mock = mocker.patch('grizzly.tasks.clients.servicebus.sha256')

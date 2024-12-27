@@ -26,7 +26,7 @@ This task performs Azure SerciceBus operations to a specified endpoint.
 ### `endpoint`
 
 ```plain
-sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>]]
+sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>][&Empty=<empty>]]
 ```
 
 All variables in the endpoint have support for {@link framework.usage.variables.templating}.
@@ -66,6 +66,8 @@ Fragment:
 * `<content type>` _str_ - content type of response payload, should be used in combination with `<expression>`
 
 * `<tenant>` _str_ - when using credentials, tenant to authenticate with
+
+* `<empty>` _bool_ - if endpoint should be emptied before each iteration, default `True`
 
 Parts listed below are mutally exclusive, e.g. either ones should be used, but no combinations between the two.
 
@@ -152,6 +154,7 @@ class ServiceBusClientTask(ClientTask):
 
     _state: dict[GrizzlyScenario, State]
     context: AsyncMessageContext
+    should_empty: bool
 
     def __init__(  # noqa: PLR0915
         self,
@@ -210,6 +213,12 @@ class ServiceBusClientTask(ClientTask):
             raise AssertionError(message)
 
         consume = consume_fragment == 'True'
+
+        empty_fragment = parameters.get('Empty', ['True'])[0]
+        if empty_fragment not in ['True', 'False']:
+            message = 'Empty parameter in endpoint fragment is not a valid boolean'
+
+        self.should_empty = empty_fragment == 'True'
 
         tenant = parameters.get('Tenant', [None])[0]
 
@@ -424,7 +433,7 @@ class ServiceBusClientTask(ClientTask):
 
     def on_iteration(self, parent: GrizzlyScenario) -> None:
         try:
-            if self.text is not None:
+            if self.text is not None and self.should_empty:
                 self.empty(parent)
         except:
             parent.logger.exception('failed to empty')
