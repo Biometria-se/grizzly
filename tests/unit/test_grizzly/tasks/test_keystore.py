@@ -168,6 +168,25 @@ class TestKeystoreTask:
         consumer_mock.keystore_inc.assert_called_once_with('foobar', step=1)
         consumer_mock.reset_mock()
 
+    def test___call__dec(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        parent = grizzly_fixture()
+
+        assert parent is not None
+
+        consumer_mock = mocker.MagicMock()
+        parent.__class__._consumer = consumer_mock
+
+        consumer_mock.keystore_dec.return_value = 1
+
+        parent.user._scenario.variables.update({'counter': 'none'})
+        task_factory = KeystoreTask('foobar', 'dec', 'counter')
+        task = task_factory()
+
+        task(parent)
+        assert parent.user.variables.get('counter', None) == 1
+        consumer_mock.keystore_dec.assert_called_once_with('foobar', step=1)
+        consumer_mock.reset_mock()
+
     @pytest.mark.parametrize(('actual', 'expected'), [('hello', 'hello'), ('True', True), ('10', 10), ('13.7', 13.7)])
     def test___call__push(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, actual: str, expected: Any) -> None:
         parent = grizzly_fixture()

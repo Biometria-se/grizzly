@@ -53,7 +53,7 @@ from . import GrizzlyTask, grizzlytask, template
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
 
-Action = Literal['get', 'get_del', 'set', 'inc', 'push', 'pop', 'del']
+Action = Literal['get', 'get_del', 'set', 'inc', 'dec', 'push', 'pop', 'del']
 
 
 @template('action_context', 'key')
@@ -82,7 +82,7 @@ class KeystoreTask(GrizzlyTask):
 
         assert self.action in get_args(Action), f'"{self.action}" is not a valid action'
 
-        if self.action in ['get', 'get_del', 'inc', 'pop']:
+        if self.action in ['get', 'get_del', 'inc', 'dec', 'pop']:
             assert isinstance(self.action_context, str), f'action context for "{self.action}" must be a string'
             assert action_context in self.grizzly.scenario.variables, f'variable "{action_context}" has not been initialized'
         elif self.action in ['set', 'push']:
@@ -144,8 +144,8 @@ class KeystoreTask(GrizzlyTask):
                     else:
                         message = f'key {key} does not exist in keystore'
                         raise RuntimeError(message)
-                elif self.action == 'inc':
-                    value = parent.consumer.keystore_inc(key, step=1)
+                elif self.action in ['inc', 'dec']:
+                    value = parent.consumer.keystore_inc(key, step=1) if self.action == 'inc' else parent.consumer.keystore_dec(key, step=1)
 
                     if value is not None and self.action_context is not None:
                         parent.user.set_variable(self.action_context, render(value))

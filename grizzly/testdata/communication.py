@@ -406,6 +406,22 @@ class TestdataConsumer:
 
         return value
 
+    def keystore_dec(self, key: str, step: int = 1) -> int | None:
+        request = {
+            'action': 'dec',
+            'key': key,
+            'data': step,
+        }
+
+        response = self._keystore_request(request=request)
+
+        value = (response or {}).get('data', None)
+
+        if value is not None:
+            return int(value)
+
+        return value
+
     def keystore_push(self, key: str, value: Any) -> None:
         request = {
             'action': 'push',
@@ -571,7 +587,7 @@ class TestdataProducer:
             response.update({'error': message})
 
     @event(events.keystore_request, tags={'type': 'producer'}, decoder=KeystoreDecoder(arg='request'))
-    def _handle_request_keystore(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912
+    def _handle_request_keystore(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912, C901
         response = request
         key: str | None  = response.get('key', None)
 
@@ -593,18 +609,19 @@ class TestdataProducer:
 
             self.keystore.update({key: set_value})
             response.update({'data': set_value})
-        elif action == 'inc':
+        elif action in ['inc', 'dec']:
             step: int = response.get('data', 1)
             response.update({'data': None})
 
-            inc_value: Any = self.keystore.get(key, 0)
+            operation_value: Any = self.keystore.get(key, 0)
 
-            if isinstance(inc_value, int):
-                new_value = inc_value + step
-            elif isinstance(inc_value, str) and inc_value.isnumeric():
-                new_value = int(inc_value) + step
+            if isinstance(operation_value, int):
+                new_value = operation_value + step if action == 'inc' else operation_value - step
+            elif isinstance(operation_value, str) and operation_value.isnumeric():
+                new_value = int(operation_value) + step if action == 'inc' else int(operation_value) - step
             else:
-                message = f'value {inc_value} for key "{key}" cannot be incremented'
+                operation = 'incremented' if action == 'inc' else 'decremented'
+                message = f'value {operation_value} for key "{key}" cannot be {operation}'
                 self.logger.error(message)
                 response.update({'error': message})
                 return response

@@ -830,6 +830,17 @@ value3,value4
 
             assert caplog.messages == []
 
+            with caplog.at_level(logging.ERROR):
+                response = request_keystore('dec', 'counter', 2)
+
+            assert response == {
+                'message': 'keystore',
+                'action': 'dec',
+                'identifier': grizzly.scenario.class_name,
+                'key': 'counter',
+                'data': 10,
+            }
+
             response = request_testdata()
             assert response is not None
             assert response['action'] == 'stop'
@@ -1537,6 +1548,53 @@ class TestTestdataConsumer:
             timestamp=ANY(str),
             tags={
                 'action': 'inc',
+                'key': 'counter',
+                'identifier': consumer.identifier,
+                'type': 'consumer',
+            },
+            measurement='request_keystore',
+            metrics={
+                'response_time': ANY(float),
+                'error': None,
+            },
+        )
+        keystore_request_spy.reset_mock()
+
+    def test_keystore_dec(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        parent = grizzly_fixture()
+        grizzly = grizzly_fixture.grizzly
+
+        consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
+
+        request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
+        keystore_request_spy = mocker.spy(grizzly.events.keystore_request, 'fire')
+
+        assert consumer.keystore_dec('counter') == 1
+
+        request_spy.assert_called_once_with({
+            'action': 'dec',
+            'key': 'counter',
+            'message': 'keystore',
+            'identifier': consumer.identifier,
+            'data': 1,
+        })
+        request_spy.reset_mock()
+        keystore_request_spy.reset_mock()
+
+        assert consumer.keystore_dec('counter', step=10) == 10
+
+        request_spy.assert_called_once_with({
+            'action': 'dec',
+            'key': 'counter',
+            'message': 'keystore',
+            'identifier': consumer.identifier,
+            'data': 10,
+        })
+        keystore_request_spy.assert_called_once_with(
+            reverse=False,
+            timestamp=ANY(str),
+            tags={
+                'action': 'dec',
                 'key': 'counter',
                 'identifier': consumer.identifier,
                 'type': 'consumer',

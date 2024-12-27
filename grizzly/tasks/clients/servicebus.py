@@ -430,13 +430,24 @@ class ServiceBusClientTask(ClientTask):
         # create subscription before connecting to it
         if self.text is not None:
             self.subscribe(parent)
+            if not self.context.get('unique', True):
+                subscribers = parent.consumer.keystore_inc(self.context['endpoint'])
+                parent.logger.debug('endpoint "%s" has %d subscribers', self.context['endpoint'], subscribers)
 
         self.connect(parent)
 
     def on_stop(self, parent: GrizzlyScenario) -> None:
         try:
             if self.text is not None:
-                self.unsubscribe(parent)
+                subscribers: int | None = None
+                is_unique = self.context.get('unique', True)
+
+                if not is_unique:
+                    subscribers = parent.consumer.keystore_dec(self.context['endpoint'])
+                    parent.logger.debug('endpoint "%s" has %d subscribers', self.context['endpoint'], subscribers)
+
+                if subscribers is None or subscribers < 1:
+                    self.unsubscribe(parent)
         except:
             parent.logger.exception('failed to unsubscribe')
 
