@@ -295,7 +295,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         return response
 
     @register(handlers, 'SUBSCRIBE')
-    def subscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
+    def subscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: PLR0915
         context = request.get('context', None)
         if context is None:
             message = 'no context in request'
@@ -303,7 +303,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         endpoint = context['endpoint']
         instance_type = context['connection']
+        is_unique = context.get('unique', True)
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
+        was_created = False
 
         if arguments.get('endpoint_type', None) != 'topic':
             message = 'subscriptions is only allowed on topics'
@@ -339,6 +341,15 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             self.mgmt_client.get_subscription(topic_name=topic_name, subscription_name=subscription_name)
         except ResourceNotFoundError:
             self.mgmt_client.create_subscription(topic_name=topic_name, subscription_name=subscription_name)
+            was_created = True
+
+        if not is_unique and not was_created:
+            message = f'non-unique subscription "{subscription_name}" on topic "{topic_name}" already created'
+            self.logger.debug(message)
+
+            return {
+                'message': message,
+            }
 
         with suppress(ResourceNotFoundError):
             self.mgmt_client.delete_rule(
@@ -371,7 +382,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         self._subscriptions.append(request)
 
-        message = f'created subscription {subscription_name} on topic {topic_name}'
+        message = f'created subscription "{subscription_name}" on topic "{topic_name}"'
 
         self.logger.debug(message)
 
@@ -389,6 +400,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         endpoint = context['endpoint']
         instance_type = context['connection']
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
+
+        is_unique = context.get('unique', True)
 
         if arguments['endpoint_type'] != 'topic':
             message = 'subscriptions is only allowed on topics'
@@ -417,8 +430,16 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         try:
             self.mgmt_client.get_subscription(topic_name=topic_name, subscription_name=subscription_name)
         except ResourceNotFoundError as e:
-            message = f'subscription "{subscription_name}" does not exist on topic "{topic_name}"'
-            raise AsyncMessageError(message) from e
+            if is_unique:
+                message = f'subscription "{subscription_name}" does not exist on topic "{topic_name}"'
+                raise AsyncMessageError(message) from e
+
+            message = f'non-unique subscription "{subscription_name}" on topic "{topic_name}" already removed'
+            self.logger.debug(message)
+
+            return {
+                'message': message,
+            }
 
         try:
             topic_properties = self.mgmt_client.get_subscription_runtime_properties(
@@ -432,7 +453,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 f'transfer_message_count={topic_properties.transfer_message_count}'
             )
         except Exception:
-            self.logger.exception('failed to get topic statistics for %s@%s', subscription_name, topic_name)
+            self.logger.exception('failed to get topic statistics for subscription "%s" on topic "%s"', subscription_name, topic_name)
             topic_statistics = 'unknown'
 
         self.mgmt_client.delete_subscription(
@@ -441,7 +462,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         )
 
 
-        message = f'removed subscription {subscription_name} on topic {topic_name} (stats: {topic_statistics})'
+        message = f'removed subscription "{subscription_name}" on topic "{topic_name}" (stats: {topic_statistics})'
 
         self.logger.debug(message)
 

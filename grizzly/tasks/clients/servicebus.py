@@ -26,7 +26,7 @@ This task performs Azure SerciceBus operations to a specified endpoint.
 ### `endpoint`
 
 ```plain
-sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>][&Empty=<empty>]]
+sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>][&Empty=<empty>][Unique=<unique>]]
 ```
 
 All variables in the endpoint have support for {@link framework.usage.variables.templating}.
@@ -68,6 +68,10 @@ Fragment:
 * `<tenant>` _str_ - when using credentials, tenant to authenticate with
 
 * `<empty>` _bool_ - if endpoint should be emptied before each iteration, default `True`
+
+* `<unique>` _bool_ - if each instance should have their own endpoint, or if they should share (default `True`, have their own endpoint subscription)
+
+If `<unique>` is `False`, it will not empty the endpoint between each iteration.
 
 Parts listed below are mutally exclusive, e.g. either ones should be used, but no combinations between the two.
 
@@ -156,7 +160,7 @@ class ServiceBusClientTask(ClientTask):
     context: AsyncMessageContext
     should_empty: bool
 
-    def __init__(  # noqa: PLR0915
+    def __init__(  # noqa: PLR0915, PLR0912
         self,
         direction: RequestDirection,
         endpoint: str,
@@ -220,6 +224,15 @@ class ServiceBusClientTask(ClientTask):
 
         self.should_empty = empty_fragment == 'True'
 
+        unique_fragment = parameters.get('Unique', ['True'])[0]
+        if unique_fragment not in ['True', 'False']:
+            message = 'Unique parameter in endpoint fragment is not a valid boolean'
+
+        unique = unique_fragment == 'True'
+
+        if not unique:
+            self.should_empty = False
+
         tenant = parameters.get('Tenant', [None])[0]
 
         content_type_fragment = parameters.get('ContentType', None)
@@ -273,6 +286,7 @@ class ServiceBusClientTask(ClientTask):
             'endpoint': context_endpoint,
             'message_wait': message_wait,
             'consume': consume,
+            'unique': unique,
             'username': username,
             'password': password,
             'tenant': tenant,
@@ -294,7 +308,7 @@ class ServiceBusClientTask(ClientTask):
 
             # if text is not None, we should create an temporary unique subscription for this
             # specific task instance, this means we should change the subscription name
-            if 'subscription' in endpoint_arguments and self._text is not None:
+            if 'subscription' in endpoint_arguments and self._text is not None and self.context.get('unique', True):
                 subscription = endpoint_arguments['subscription']
                 quote = ''
                 if subscription[0] in ['"', "'"] and subscription[-1] == subscription[0]:

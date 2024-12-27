@@ -343,7 +343,7 @@ class TestAsyncServiceBusHandler:
         mgmt_client_mock.create_rule.side_effect = [ResourceExistsError]
         mgmt_client_mock.get_rule.return_value = rule_mock
 
-        assert handlers[request['action']](handler, request) == {'message': 'created subscription my-subscription on topic my-topic'}
+        assert handlers[request['action']](handler, request) == {'message': 'created subscription "my-subscription" on topic "my-topic"'}
 
         mgmt_client_mock.create_subscription.assert_not_called()
         mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
@@ -364,7 +364,7 @@ class TestAsyncServiceBusHandler:
         mgmt_client_mock.create_rule.side_effect = None
         mgmt_client_mock.get_subscription.side_effect = [ResourceNotFoundError]
 
-        assert handlers[request['action']](handler, request) == {'message': 'created subscription my-subscription on topic my-topic'}
+        assert handlers[request['action']](handler, request) == {'message': 'created subscription "my-subscription" on topic "my-topic"'}
 
         mgmt_client_mock.create_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
         mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
@@ -373,6 +373,16 @@ class TestAsyncServiceBusHandler:
         mgmt_client_mock.get_rule.assert_not_called()
         assert rule_mock.filter.sql_expression == 'foo=bar AND foo=baz'
         mgmt_client_mock.update_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule=rule_mock)
+        mgmt_client_mock.reset_mock()
+
+        # non-unique subscription, already exist
+        request['context']['unique'] = False
+        mgmt_client_mock.get_subscription.side_effect = None
+
+        assert handlers[request['action']](handler, request) == {'message': 'non-unique subscription "my-subscription" on topic "my-topic" already created'}
+
+        mgmt_client_mock.create_subscription.assert_not_called()
+        mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
 
     def test_unsubscribe(self, mocker: MockerFixture) -> None:
         from grizzly_extras.async_message.sb import handlers
@@ -441,12 +451,21 @@ class TestAsyncServiceBusHandler:
 
         actual_response = handlers[request['action']](handler, request)
         assert list(actual_response.keys()) == ['message']
-        assert (actual_response.get('message', None) or '').startswith('removed subscription my-subscription on topic my-topic (stats: active_message_count=')
+        assert (actual_response.get('message', None) or '').startswith('removed subscription "my-subscription" on topic "my-topic" (stats: active_message_count=')
 
         mgmt_client_mock.get_topic.assert_called_once_with(topic_name='my-topic')
         mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
         mgmt_client_mock.delete_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
         mgmt_client_mock.get_subscription_runtime_properties.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.reset_mock()
+
+        # non-unique subscription does not exist
+        request['context']['unique'] = False
+        mgmt_client_mock.get_subscription.side_effect = [ResourceNotFoundError]
+
+        assert handlers[request['action']](handler, request) == {'message': 'non-unique subscription "my-subscription" on topic "my-topic" already removed'}
+        mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.get_subscription_runtime_properties.assert_not_called()
 
     def test_from_message(self) -> None:
         assert AsyncServiceBusHandler.from_message(None) == (None, None)

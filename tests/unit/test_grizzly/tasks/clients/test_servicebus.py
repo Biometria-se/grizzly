@@ -37,6 +37,7 @@ class TestServiceBusClientTask:
             'username': None,
             'password': None,
             'tenant': None,
+            'unique': True,
         }
         assert task._state == {}
         assert task.text is None
@@ -47,7 +48,7 @@ class TestServiceBusClientTask:
         # // -->
 
         # <!-- credential
-        task = task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com&Empty=False', 'test')
+        task = task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com&Empty=False&Unique=False', 'test')
 
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net'
         assert task.context == {
@@ -59,6 +60,7 @@ class TestServiceBusClientTask:
             'username': 'bob@example.com',
             'password': 'secret',
             'tenant': 'example.com',
+            'unique': False,
         }
         assert task._state == {}
         assert task.text is None
@@ -85,6 +87,7 @@ class TestServiceBusClientTask:
             'username': None,
             'password': None,
             'tenant': None,
+            'unique': True,
         }
         assert task.text is None
         assert task.source == 'hello world!'
@@ -120,6 +123,7 @@ class TestServiceBusClientTask:
             'username': None,
             'password': None,
             'tenant': None,
+            'unique': True,
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -155,6 +159,7 @@ class TestServiceBusClientTask:
             'username': None,
             'password': None,
             'tenant': None,
+            'unique': True,
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -168,7 +173,7 @@ class TestServiceBusClientTask:
         task = task_type(
             RequestDirection.FROM, (
                 'sb://my-sbns/topic:my-topic/subscription:my-subscription/expression:$.name|=\'["hello", "world"]\''
-                ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
+                ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json&Unique=False'
             ),
             'test',
         )
@@ -184,6 +189,7 @@ class TestServiceBusClientTask:
             'username': None,
             'password': None,
             'tenant': None,
+            'unique': False,
         }
         assert task._state == {}
         context_mock.assert_called_once_with()
@@ -436,6 +442,7 @@ class TestServiceBusClientTask:
                 'username': None,
                 'password': None,
                 'tenant': None,
+                'unique': True,
             },
             'payload': '1=1',
         })
@@ -447,7 +454,7 @@ class TestServiceBusClientTask:
             RequestDirection.FROM,
             (
                 "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/"
-                "expression:'$.`this`[?bar='foo' & bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324="
+                "expression:'$.`this`[?bar='foo' & bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Unique=False"
             ),
             'test',
         )
@@ -465,6 +472,7 @@ class TestServiceBusClientTask:
             task.subscribe(parent)
 
         assert caplog.messages == ['foobar!']
+        print(async_message_request_mock.call_args_list)
         async_message_request_mock.assert_called_once_with(client_mock, {
             'worker': 'foo-bar-baz',
             'client': state.parent_id,
@@ -472,12 +480,13 @@ class TestServiceBusClientTask:
             'context': {
                 'url': expected_context['url'],
                 'connection': 'receiver',
-                'endpoint': "topic:my-topic, subscription:'my-subscription-baz-bar-foodeadbeef', expression:'$.`this`[?bar='foo' & bar='foo']'",
+                'endpoint': "topic:my-topic, subscription:'my-subscription-baz-bar-foo', expression:'$.`this`[?bar='foo' & bar='foo']'",
                 'message_wait': None,
                 'consume': False,
                 'username': None,
                 'password': None,
                 'tenant': None,
+                'unique': False,
             },
             'payload': '1=1',
         })
