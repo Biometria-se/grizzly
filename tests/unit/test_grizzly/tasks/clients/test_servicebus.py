@@ -38,6 +38,7 @@ class TestServiceBusClientTask:
             'password': None,
             'tenant': None,
             'unique': True,
+            'verbose': False,
         }
         assert task._state == {}
         assert task.text is None
@@ -48,7 +49,7 @@ class TestServiceBusClientTask:
         # // -->
 
         # <!-- credential
-        task = task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com&Empty=False&Unique=False', 'test')
+        task = task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com&Empty=False&Unique=False&Verbose=True', 'test')
 
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net'
         assert task.context == {
@@ -61,6 +62,7 @@ class TestServiceBusClientTask:
             'password': 'secret',
             'tenant': 'example.com',
             'unique': False,
+            'verbose': True,
         }
         assert task._state == {}
         assert task.text is None
@@ -88,6 +90,7 @@ class TestServiceBusClientTask:
             'password': None,
             'tenant': None,
             'unique': True,
+            'verbose': False,
         }
         assert task.text is None
         assert task.source == 'hello world!'
@@ -124,6 +127,7 @@ class TestServiceBusClientTask:
             'password': None,
             'tenant': None,
             'unique': True,
+            'verbose': False,
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -160,6 +164,7 @@ class TestServiceBusClientTask:
             'password': None,
             'tenant': None,
             'unique': True,
+            'verbose': False,
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -190,6 +195,7 @@ class TestServiceBusClientTask:
             'password': None,
             'tenant': None,
             'unique': False,
+            'verbose': False,
         }
         assert task._state == {}
         context_mock.assert_called_once_with()
@@ -203,7 +209,7 @@ class TestServiceBusClientTask:
             )
         context_mock.assert_not_called()
 
-        with pytest.raises(AssertionError, match='Consume parameter in endpoint fragment is not a valid boolean'):
+        with pytest.raises(AssertionError, match='foo is not a valid boolean'):
             task_type(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Consume=foo',
@@ -273,6 +279,16 @@ class TestServiceBusClientTask:
                 RequestDirection.FROM, (
                     'sb://my-sbns/topic:my-topic/subscription:my-subscriptionaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
                     ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
+                ),
+                'test',
+                text='rule text',
+            )
+
+        with pytest.raises(AssertionError, match='asdf is not a valid boolean'):
+            task_type(
+                RequestDirection.FROM, (
+                    'sb://my-sbns/topic:my-topic/subscription:my-subscription'
+                    ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json&Verbose=asdf'
                 ),
                 'test',
                 text='rule text',
@@ -443,6 +459,7 @@ class TestServiceBusClientTask:
                 'password': None,
                 'tenant': None,
                 'unique': True,
+                'verbose': False,
             },
             'payload': '1=1',
         })
@@ -454,7 +471,7 @@ class TestServiceBusClientTask:
             RequestDirection.FROM,
             (
                 "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/"
-                "expression:'$.`this`[?bar='foo' & bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Unique=False"
+                "expression:'$.`this`[?bar='foo' & bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Unique=False&Verbose=True"
             ),
             'test',
         )
@@ -487,6 +504,7 @@ class TestServiceBusClientTask:
                 'password': None,
                 'tenant': None,
                 'unique': False,
+                'verbose': True,
             },
             'payload': '1=1',
         })

@@ -26,7 +26,7 @@ This task performs Azure SerciceBus operations to a specified endpoint.
 ### `endpoint`
 
 ```plain
-sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>][&Empty=<empty>][Unique=<unique>]]
+sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>][&Empty=<empty>][&Unique=<unique>][&Verbose=<verbose>]]
 ```
 
 All variables in the endpoint have support for {@link framework.usage.variables.templating}.
@@ -71,6 +71,8 @@ Fragment:
 
 * `<unique>` _bool_ - if each instance should have their own endpoint, or if they should share (default `True`, have their own endpoint subscription)
 
+* `<verbose>` _bool_ - verbose logging for only these requests (default `False`)
+
 If `<unique>` is `False`, it will not empty the endpoint between each iteration.
 
 Parts listed below are mutally exclusive, e.g. either ones should be used, but no combinations between the two.
@@ -114,6 +116,7 @@ from grizzly.tasks import template
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
 from grizzly.utils.protocols import async_message_request_wrapper, zmq_disconnect
 from grizzly_extras.arguments import parse_arguments
+from grizzly_extras.text import bool_caster
 from grizzly_extras.transformer import TransformerContentType
 
 from . import ClientTask, client
@@ -160,7 +163,7 @@ class ServiceBusClientTask(ClientTask):
     context: AsyncMessageContext
     should_empty: bool
 
-    def __init__(  # noqa: PLR0915, PLR0912
+    def __init__(  # noqa: PLR0915
         self,
         direction: RequestDirection,
         endpoint: str,
@@ -211,24 +214,10 @@ class ServiceBusClientTask(ClientTask):
             message = 'MessageWait parameter in endpoint fragment is not a valid integer'
             raise AssertionError(message) from e
 
-        consume_fragment = parameters.get('Consume', ['False'])[0]
-        if consume_fragment not in ['True', 'False']:
-            message = 'Consume parameter in endpoint fragment is not a valid boolean'
-            raise AssertionError(message)
-
-        consume = consume_fragment == 'True'
-
-        empty_fragment = parameters.get('Empty', ['True'])[0]
-        if empty_fragment not in ['True', 'False']:
-            message = 'Empty parameter in endpoint fragment is not a valid boolean'
-
-        self.should_empty = empty_fragment == 'True'
-
-        unique_fragment = parameters.get('Unique', ['True'])[0]
-        if unique_fragment not in ['True', 'False']:
-            message = 'Unique parameter in endpoint fragment is not a valid boolean'
-
-        unique = unique_fragment == 'True'
+        self.should_empty = bool_caster(parameters.get('Empty', ['True'])[0])
+        consume = bool_caster(parameters.get('Consume', ['False'])[0])
+        unique = bool_caster(parameters.get('Unique', ['True'])[0])
+        verbose = bool_caster(parameters.get('Verbose', ['False'])[0])
 
         if not unique:
             self.should_empty = False
@@ -287,6 +276,7 @@ class ServiceBusClientTask(ClientTask):
             'message_wait': message_wait,
             'consume': consume,
             'unique': unique,
+            'verbose': verbose,
             'username': username,
             'password': password,
             'tenant': tenant,

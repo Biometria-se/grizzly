@@ -85,6 +85,7 @@ class AsyncMessageContext(TypedDict, total=False):
     metadata: Optional[dict[str, str]]
     consume: bool
     unique: bool
+    verbose: bool
 
 
 class AsyncMessageRequest(TypedDict, total=False):
