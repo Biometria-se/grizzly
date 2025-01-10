@@ -247,10 +247,20 @@ class KeystoreDecoder(GrizzlyEventDecoder):
     ) -> tuple[dict[str, Any], dict[str, str | None]]:
         request = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
 
+        key = request.get('key')
+
+        extra_tags = {}
+
+        if '::' in key:
+            """Last suffix (which is prefixed with '::') is considered a unique identifier"""
+            key, extra_tag = key.rsplit('::', 1)
+            extra_tags.update({'unique_id': extra_tag})
+
         tags = {
-            'key': request.get('key'),
+            'key': key,
             'action': request.get('action'),
             'identifier': request.get('identifier'),
+            **extra_tags,
             **(tags or {}),
         }
 
