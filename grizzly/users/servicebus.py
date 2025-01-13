@@ -366,7 +366,9 @@ class ServiceBusUser(GrizzlyUser):
 
         request_context = cast(AsyncMessageContext, dict(self.am_context))
         consume = (request.arguments or {}).get('consume', 'False').lower() == 'true'
-        request_context.update({'endpoint': request.endpoint, 'consume': consume})
+        verbose = (request.arguments or {}).get('verbose', 'False').lower() == 'true'
+
+        request_context.update({'endpoint': request.endpoint, 'consume': consume, 'verbose': verbose})
 
         am_request: AsyncMessageRequest = {
             'action': request.method.name,
