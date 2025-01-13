@@ -362,7 +362,18 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                                 latest_retry_exception = e
                             elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
                                 original_length = getattr(e, 'original_length', -1)
-                                self.logger.warning('got MQRC_TRUNCATED_MSG_FAILED while getting message, retries=%d, original_length=%d', retries, original_length)
+                                attributes = {}
+
+                                for attribute in dir(e):
+                                    if attribute.startswith('_'):
+                                        continue
+
+                                    attributes.update({attribute: getattr(e, attribute)})
+
+                                self.logger.warning(
+                                    'got MQRC_TRUNCATED_MSG_FAILED while getting message, retries=%d, original_length=%d, attributes=%r',
+                                    retries, original_length, attributes,
+                                )
                                 if max_message_size is None:
                                     # Concurrency issue, retry
                                     do_retry = True

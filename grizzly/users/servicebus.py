@@ -216,10 +216,6 @@ class ServiceBusUser(GrizzlyUser):
         super().on_stop()
 
     def get_description(self, task: RequestTask) -> str:
-        if has_template(task.endpoint) or has_parameter(task.endpoint):
-            self.logger.error('cannot say hello for %s when endpoint is a template', task.name)
-            raise StopUser
-
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
 
         try:
@@ -232,6 +228,11 @@ class ServiceBusUser(GrizzlyUser):
             del endpoint_arguments['expression']
 
         cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+
+        if has_template(cache_endpoint) or has_parameter(cache_endpoint):
+            self.environment.stats.log_error(RequestType.HELLO.name, task.name, 'cannot say helloa when endpoint is a templating string')
+            self.logger.error('cannot say hello for %s when endpoint is a template', task.name)
+            raise StopUser
 
         return f'{connection}={cache_endpoint}'
 

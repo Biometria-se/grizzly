@@ -1,6 +1,7 @@
 """Unit tests for grizzly_extras.transformer."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from json import dumps as jsondumps
 from json import loads as jsonloads
 from json.decoder import JSONDecodeError
@@ -124,6 +125,18 @@ class TestJsonTransformer:
         with pytest.raises(JSONDecodeError, match='Expecting property name enclosed in double quotes'):
             unwrapped('{')
 
+    def test__get_outer_op(self) -> None:
+        assert JsonTransformer._get_outer_op('$.`this`[?hello=="world"]', '==') is None
+        assert JsonTransformer._get_outer_op('$.`this`[?hello=="world"].id>=2000', '>=') == ('$.`this`[?hello=="world"].id', '2000')
+        assert JsonTransformer._get_outer_op('$.`this`[?hello=="world"].id>=2000', '==') is None
+        assert JsonTransformer._get_outer_op('$.`this`[?hello=="world" & version>=2].timestamp>="2025-01-13T13:38:27.000000Z"', '>=') == (
+            '$.`this`[?hello=="world" & version>=2].timestamp',
+            '"2025-01-13T13:38:27.000000Z"',
+        )
+        assert JsonTransformer._get_outer_op('$.glossary.title=="example glossary"', '==') == ('$.glossary.title', '"example glossary"')
+        assert JsonTransformer._get_outer_op('$.id|=[2, 3]', '|=') == ('$.id', '[2, 3]')
+        assert JsonTransformer._get_outer_op('$.`this`[?id>1].id|=[2, 3]', '|=') == ('$.`this`[?id>1].id', '[2, 3]')
+
     def test_validate(self) -> None:
         assert JsonTransformer.validate('$.test.something')
         assert JsonTransformer.validate('$.`this`[?status="ready"]')
@@ -223,6 +236,10 @@ class TestJsonTransformer:
         get_values = JsonTransformer.parser('$.id==1')
         actual = get_values(document)
         assert actual == ['1']
+
+        get_values = JsonTransformer.parser('$.`this`[?id==1 & name=="foobar"].id')
+        actual = get_values(document)
+        assert actual == ['1']
         # // -->
 
         # <!-- test or
@@ -254,6 +271,22 @@ class TestJsonTransformer:
         document.update({'id': 2})
         actual = get_values(document)
         assert actual == ['2']
+        # // -->
+
+        # <!-- greater than or equals, datetime
+        now = datetime.now(tz=timezone.utc)
+        actual_timestamp = now.isoformat().replace('+00:00', 'Z')
+        message = f"""{{
+  "externalId": "2fc91fbb-091a-4132-8d00-c84d2c8dd85b",
+  "internalId": "GRZ2FC91FBB091A4132",
+  "timestamp": "{actual_timestamp}",
+  "version": 2
+}}"""
+
+        expected_timestamp = (now - timedelta(minutes=3)).isoformat().replace('+00:00', 'Z')
+
+        parser = JsonTransformer.parser(f'$.`this`[?version==2].timestamp>="{expected_timestamp}"')
+        assert parser(JsonTransformer.transform(message)) == [actual_timestamp]
         # // -->
 
 

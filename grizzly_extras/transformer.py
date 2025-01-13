@@ -15,7 +15,7 @@ from typing import Any, Callable, ClassVar, Optional, Union, cast
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML  # noqa: N812
 
-from .text import PermutationEnum, caster, has_sequence
+from .text import PermutationEnum, caster
 
 
 class TransformerError(Exception):
@@ -153,6 +153,40 @@ class JsonTransformer(Transformer):
         return cast(bool, _actual >= _expected)
 
     @classmethod
+    def _get_outer_op(cls, expression: str, op: str) -> tuple[str, str] | None:
+        """Find `op` which is not inside of a "group" ([])."""
+        if op not in expression:
+            return None
+
+        no_groups = '[' not in expression and ']' not in expression
+
+        try:
+            if no_groups:
+                raise ValueError
+
+            start_group = expression.index('[')
+            assert start_group >= 0
+            if expression.index(op) < start_group:
+                jsonpath, expected_value = expression.split(op, 1)
+                return jsonpath, expected_value
+
+            end_group = expression[start_group:].index(']') + start_group
+            assert end_group > start_group
+            op_index = expression[end_group:].index(op) + end_group
+            assert op_index >= 0
+            op_length = len(op)
+
+            jsonpath = expression[:op_index]
+            expected_value = expression[op_index + op_length:]
+        except:
+            if no_groups:
+                jsonpath, expected_value = expression.split(op, 1)
+            else:
+                return None
+
+        return jsonpath, expected_value
+
+    @classmethod
     def parser(cls, expression: str) -> Callable[[Any], list[str]]:
         try:
             expected: str | list[str] | None = None
@@ -165,24 +199,23 @@ class JsonTransformer(Transformer):
                 ('<=', cls._op_le),
             ]
 
-            if not any(char in expression for char in ['?', '@']) and any(char in expression for char, _ in operators):
-                for op, func in operators:
-                    if has_sequence(op, expression):
-                        expression, expected_value = expression.split(op, 1)
-                        expected_value = expected_value.strip('"\'')
+            for op, func in operators:
+                if (outer_op := cls._get_outer_op(expression, op)) is not None:
+                    expression, expected_value = outer_op
+                    expected_value = expected_value.strip('"\'')
 
-                        if op == '|=':
-                            # make string that is json compatible
-                            if expected_value[0] in ['"', "'"] and expected_value[0] == expected_value[-1]:
-                                expected_value = expected_value[1:-1]
+                    if op == '|=':
+                        # make string that is json compatible
+                        if expected_value[0] in ['"', "'"] and expected_value[0] == expected_value[-1]:
+                            expected_value = expected_value[1:-1]
 
-                            expected_value = expected_value.replace("'", '"')
-                            expected = [str(ev) for ev in cast(list[str], jsonloads(expected_value))]
-                        else:
-                            expected = expected_value
+                        expected_value = expected_value.replace("'", '"')
+                        expected = [str(ev) for ev in cast(list[str], jsonloads(expected_value))]
+                    else:
+                        expected = expected_value
 
-                        assertion = func
-                        break
+                    assertion = func
+                    break
 
             if not cls.validate(expression):
                 message = 'not a valid expression'
