@@ -220,9 +220,10 @@ class InfluxDbListener:
                 # Buffer samples, so that a locust greenlet will write to the new list
                 # instead of the one that has been sent into postgres client
                 try:
-                    events_buffer = self._events
+                    events_buffer = [*self._events]
                     self._events = []
                     self.connection.write(events_buffer)
+                    self.logger.debug('wrote %d measurements', len(events_buffer))
                 except:
                     self.logger.exception('failed to write metrics')
 
