@@ -407,7 +407,6 @@ class TestInfluxDblistener:
             'environment': 'local',
             'description': 'unittesting',
             'user': id(listener),
-            'uuid': ANY(str),
         }
         assert event.get('fields', None) == {
             'exception': None,
@@ -456,7 +455,6 @@ class TestInfluxDblistener:
                     'TEST1': 'unittest-1',
                     'TEST2': 'unittest-2',
                     'user': id(listener),
-                    'uuid': ANY(str),
                 }
                 assert event.get('fields', None) == {
                     'exception': expected,
