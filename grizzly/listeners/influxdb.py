@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from platform import node as get_hostname
 from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, cast
 from urllib.parse import parse_qs, unquote, urlparse
+from uuid import uuid4
 
 import gevent
 from influxdb import InfluxDBClient
@@ -318,6 +319,7 @@ class InfluxDbListener:
             'profile': self._profile_name,
             'description': self._description,
             'user': context.get('user', id(self)),
+            'uuid': uuid4().hex,
         }
 
         try:
