@@ -407,7 +407,7 @@ class TestServiceBusUser:
             name=f'{parent.user._scenario.identifier} {task.name}',
             response_time=ANY(int),
             response_length=0,
-            context=parent.user._context,
+            context={'user': id(parent.user), **parent.user._context},
             exception=ANY(NotImplementedError, message='ServiceBusUser_002: no implementation for PUT requests'),
         )
         request_fire_spy.reset_mock()
@@ -448,7 +448,7 @@ class TestServiceBusUser:
             name=f'{parent.user._scenario.identifier} {task.name}',
             response_time=ANY(int),
             response_length=0,
-            context=parent.user._context,
+            context={'user': id(parent.user), **parent.user._context},
             exception=ANY(AsyncMessageError, message='unknown error'),
         )
         request_fire_spy.reset_mock()
@@ -488,7 +488,7 @@ class TestServiceBusUser:
             name=f'{parent.user._scenario.identifier} {task.name}',
             response_time=ANY(int),
             response_length=5,
-            context=parent.user._context,
+            context={'user': id(parent.user), **parent.user._context},
             exception=None,
         )
         request_fire_spy.reset_mock()
@@ -546,7 +546,7 @@ class TestServiceBusUser:
             name=f'{parent.user._scenario.identifier} {consume_task.name}',
             response_time=ANY(int),
             response_length=5,
-            context=parent.user._context,
+            context={'user': id(parent.user), **parent.user._context},
             exception=None,
         )
         request_fire_spy.reset_mock()

@@ -317,6 +317,7 @@ class InfluxDbListener:
             'environment': self._target_environment,
             'profile': self._profile_name,
             'description': self._description,
+            'user': context.get('user', id(self)),
         }
 
         try:

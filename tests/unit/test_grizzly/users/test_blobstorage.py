@@ -5,7 +5,6 @@ import json
 import logging
 from contextlib import suppress
 from typing import TYPE_CHECKING, cast
-from unittest.mock import ANY
 
 import pytest
 from azure.storage.blob._blob_client import BlobClient
@@ -18,7 +17,7 @@ from grizzly.types import RequestMethod
 from grizzly.types.locust import StopUser
 from grizzly.users import BlobStorageUser
 from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential
-from tests.helpers import SOME
+from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
@@ -183,7 +182,7 @@ class TestBlobStorageUser:
         metadata, payload = blob_storage_parent.user.request(request)
 
         assert payload is not None
-        upload_blob.assert_called_once_with(ANY, json.dumps(expected_payload, indent=4), overwrite=True)
+        upload_blob.assert_called_once_with(ANY(BlobClient), json.dumps(expected_payload, indent=4), overwrite=True)
         args, _ = upload_blob.call_args_list[-1]
 
         blob_client = cast(BlobClient, args[0])
@@ -296,17 +295,14 @@ class TestBlobStorageUser:
         with pytest.raises(StopUser):
             blob_storage_parent.user.request(request)
 
-        assert request_event.call_count == 1
-        _, kwargs = request_event.call_args_list[-1]
-
-        assert kwargs.get('request_type', None) == 'POST'
-        assert kwargs.get('name', None) == f'{blob_storage_parent.user._scenario.identifier} {request.name}'
-        assert kwargs.get('response_time', -1) > -1
-        assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) is blob_storage_parent.user._context
-        exception = kwargs.get('exception', None)
-        assert isinstance(exception, NotImplementedError)
-        assert 'has not implemented POST' in str(exception)
+        request_event.assert_called_once_with(
+            request_type='POST',
+            name=f'{blob_storage_parent.user._scenario.identifier} {request.name}',
+            response_time=ANY(int),
+            response_length=0,
+            context={'user': id(blob_storage_parent.user), **blob_storage_parent.user._context},
+            exception=ANY(NotImplementedError, message='BlobStorageUser_001 has not implemented POST'),
+        )
 
         with suppress(KeyError):
             del blob_storage_parent.user._scenario.failure_handling[None]

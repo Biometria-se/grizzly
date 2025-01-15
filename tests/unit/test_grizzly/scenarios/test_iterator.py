@@ -61,7 +61,7 @@ class TestIterationScenario:
             name='001 IteratorScenario',
             response_time=ANY,
             response_length=0,
-            context={'log_all_requests': False, 'host': '', 'metadata': None},
+            context={'log_all_requests': False, 'host': '', 'metadata': None, 'user': id(parent.user)},
             exception=ANY,
         )
         args, kwargs = request_spy.call_args_list[-1]

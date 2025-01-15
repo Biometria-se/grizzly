@@ -255,7 +255,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
                 name=request.name,
                 response_time=total_time,
                 response_length=response_length,
-                context=self._context,
+                context={'user': id(self), **self._context},
                 exception=exception,
             )
 

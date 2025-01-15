@@ -471,7 +471,7 @@ class TestMessageQueueUser:
             request_type='GET',
             exception=None,
             response_length=len(test_payload.encode()),
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
             name='001 TestScenario',
             response_time=ANY(int),
         )
@@ -513,7 +513,7 @@ class TestMessageQueueUser:
             request_type='GET',
             exception=ANY(ResponseHandlerError, message='failed to transform input as JSON:'),
             response_length=len(test_payload.encode()),
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
             name='001 TestScenario',
             response_time=ANY(int),
         )
@@ -554,7 +554,7 @@ class TestMessageQueueUser:
             request_type='GET',
             exception=None,
             response_length=len(test_payload.encode()),
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
             name='001 TestScenario',
             response_time=ANY(int),
         )
@@ -572,7 +572,7 @@ class TestMessageQueueUser:
             request_type='GET',
             exception=ANY(RuntimeError, message='generator raised StopIteration'),
             response_length=0,
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
             name='001 TestScenario',
             response_time=ANY(int),
         )
@@ -598,7 +598,7 @@ class TestMessageQueueUser:
             request_type='POST',
             exception=ANY(AsyncMessageError, message='no implementation for POST'),
             response_length=0,
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
             name='001 TestScenario',
             response_time=ANY(int),
         )
@@ -844,7 +844,7 @@ class TestMessageQueueUser:
             exception=None,
             response_time=ANY(int),
             response_length=len(request.source.encode()),
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
         )
         request_event_spy.reset_mock()
 
@@ -856,7 +856,7 @@ class TestMessageQueueUser:
             exception=ANY(RuntimeError, message='generator raised StopIteration'),
             response_time=ANY(int),
             response_length=0,
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
         )
         request_event_spy.reset_mock()
 
@@ -885,7 +885,7 @@ class TestMessageQueueUser:
             exception=ANY(AsyncMessageError, message='no implementation for POST'),
             response_time=ANY(int),
             response_length=0,
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
         )
         request_event_spy.reset_mock()
 
@@ -899,7 +899,7 @@ class TestMessageQueueUser:
             exception=ANY(AsyncMessageError, message='no implementation for POST'),
             response_time=ANY(int),
             response_length=0,
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
         )
         request_event_spy.reset_mock()
 
@@ -913,7 +913,7 @@ class TestMessageQueueUser:
             exception=ANY(AsyncMessageError, message='no implementation for POST'),
             response_time=ANY(int),
             response_length=0,
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
         )
         request_event_spy.reset_mock()
 
@@ -938,7 +938,7 @@ class TestMessageQueueUser:
             exception=ANY(RuntimeError, message='queue name must be prefixed with queue:'),
             response_time=ANY(int),
             response_length=0,
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
         )
         request_event_spy.reset_mock()
 
@@ -952,7 +952,7 @@ class TestMessageQueueUser:
             exception=ANY(RuntimeError, message='arguments argument is not supported'),
             response_time=ANY(int),
             response_length=0,
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
         )
         request_event_spy.reset_mock()
 
@@ -966,6 +966,6 @@ class TestMessageQueueUser:
             exception=ANY(RuntimeError, message='argument "expression" is not allowed when sending to an endpoint'),
             response_time=ANY(int),
             response_length=0,
-            context=mq_parent.user._context,
+            context={'user': id(mq_parent.user), **mq_parent.user._context},
         )
         request_event_spy.reset_mock()
