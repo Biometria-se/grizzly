@@ -300,7 +300,13 @@ class TestBlobStorageUser:
             name=f'{blob_storage_parent.user._scenario.identifier} {request.name}',
             response_time=ANY(int),
             response_length=0,
-            context={'user': id(blob_storage_parent.user), **blob_storage_parent.user._context},
+            context={
+                'user': id(blob_storage_parent.user),
+                **blob_storage_parent.user._context,
+                '__time__': ANY(str),
+                '__fields_request_started__': ANY(str),
+                '__fields_request_finished__': ANY(str),
+            },
             exception=ANY(NotImplementedError, message='BlobStorageUser_001 has not implemented POST'),
         )
 

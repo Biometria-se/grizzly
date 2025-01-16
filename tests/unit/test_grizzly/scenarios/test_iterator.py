@@ -6,7 +6,6 @@ from contextlib import suppress
 from os import environ
 from types import FunctionType
 from typing import TYPE_CHECKING, Any, Optional, cast
-from unittest.mock import ANY
 
 import pytest
 from locust.exception import InterruptTaskSet, RescheduleTask, RescheduleTaskImmediately, StopUser
@@ -20,7 +19,7 @@ from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
 from grizzly.types import ScenarioState
 from grizzly.types.locust import LocalRunner
-from tests.helpers import RequestCalled, TestTask, regex
+from tests.helpers import ANY, RequestCalled, TestTask, regex
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
@@ -59,14 +58,19 @@ class TestIterationScenario:
         request_spy.assert_called_once_with(
             request_type='POST',
             name='001 IteratorScenario',
-            response_time=ANY,
+            response_time=ANY(int),
             response_length=0,
-            context={'log_all_requests': False, 'host': '', 'metadata': None, 'user': id(parent.user)},
-            exception=ANY,
+            context={
+                'log_all_requests': False,
+                'host': '',
+                'metadata': None,
+                'user': id(parent.user),
+                '__time__': ANY(str),
+                '__fields_request_started__': ANY(str),
+                '__fields_request_finished__': ANY(str),
+            },
+            exception=ANY(RequestCalled),
         )
-        args, kwargs = request_spy.call_args_list[-1]
-        assert args == ()
-        assert isinstance(kwargs['exception'], RequestCalled)
 
         def generate_mocked_wait(sleep_time: float) -> None:
             def mocked_wait(time: float) -> None:

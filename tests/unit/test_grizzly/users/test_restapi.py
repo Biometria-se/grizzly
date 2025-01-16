@@ -302,7 +302,13 @@ class TestRestApiUser:
             name='001 TestScenario',
             response_time=ANY(int),
             response_length=0,
-            context={'user': id(parent.user), **parent.user._context},
+            context={
+                'user': id(parent.user),
+                **parent.user._context,
+                '__time__': ANY(str),
+                '__fields_request_started__': ANY(str),
+                '__fields_request_finished__': ANY(str),
+            },
             exception=ANY(NotImplementedError, message=f'SEND is not implemented for RestApiUser_{parent.user._scenario.identifier}'),
         )
         request_event_spy.reset_mock()

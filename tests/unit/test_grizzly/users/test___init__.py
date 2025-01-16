@@ -185,7 +185,15 @@ class TestGrizzlyUser:
             name='001 test',
             response_time=ANY(int),
             response_length=0,
-            context={'host': '', 'log_all_requests': False, 'metadata': None, 'user': id(parent.user)},
+            context={
+                'host': '',
+                'log_all_requests': False,
+                'metadata': None,
+                'user': id(parent.user),
+                '__time__': ANY(str),
+                '__fields_request_started__': ANY(str),
+                '__fields_request_finished__': ANY(str),
+            },
             exception=ANY(NotImplementedError, message='tests.unit.test_grizzly.users.test___init__.DummyGrizzlyUser_001 has not implemented request'),
         )
 
