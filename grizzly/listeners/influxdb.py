@@ -329,13 +329,6 @@ class InfluxDbListener:
         except ValueError:
             pass
 
-        for key in os.environ:
-            if not key.startswith('TESTDATA_VARIABLE_'):
-                continue
-
-            variable = key.replace('TESTDATA_VARIABLE_', '')
-            tags[variable] = os.environ[key]
-
         timestamp_finished = datetime.now(timezone.utc)
         timestamp_started = timestamp = timestamp_finished - timedelta(milliseconds=metrics['response_time'])
 
@@ -354,6 +347,8 @@ class InfluxDbListener:
         }
 
         self._override_event(event, context)
+
+        self.logger.debug('%s %s %s', request_type, name, event['time'])
 
         self._events.append(event)
 
@@ -379,13 +374,8 @@ class InfluxDbListener:
 
             if exception is not None:
                 message_to_log = f'{message_to_log} Exception: {exception!r}'
-                logger_method = self.logger.error
-            else:
-                logger_method = self.logger.debug
+                self.logger.error(message_to_log)
 
-            message_to_log = f'{message_to_log} Timestamp: {datetime.now(timezone.utc).isoformat()}'
-
-            logger_method(message_to_log)
             self._log_request(request_type, name, result, metrics, context, exception)
         except Exception:
             self.logger.exception('failed to write metric for "%s %s"', request_type, name)

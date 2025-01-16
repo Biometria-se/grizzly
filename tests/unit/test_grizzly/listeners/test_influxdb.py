@@ -452,8 +452,6 @@ class TestInfluxDblistener:
                     'description': 'unittesting',
                     'environment': 'local',
                     'profile': 'unittest-profile',
-                    'TEST1': 'unittest-1',
-                    'TEST2': 'unittest-2',
                     'user': id(listener),
                 }
                 assert event.get('fields', None) == {
