@@ -154,37 +154,49 @@ class JsonTransformer(Transformer):
 
     @classmethod
     def _get_outer_op(cls, expression: str, op: str) -> tuple[str, str] | None:
-        """Find `op` which is not inside of a "group" ([])."""
+        """Find `op` which is not inside of a "group" ([]).
+        `rindex` raises `ValueError` if `op` is not found in (sub)string.
+        """
         if op not in expression:
             return None
 
-        no_groups = '[' not in expression and ']' not in expression
+        # check if expression contains any (complete) groups (`[..]`)
+        if not ('[' in expression and ']' in expression):
+            jsonpath_expression, expected_value = expression.rsplit(op, 1)
+            return jsonpath_expression, expected_value
 
-        try:
-            if no_groups:
+        op_length = len(op)
+
+        try:  # check left side
+            op_index = expression.rindex(op)
+
+            start_group = expression[:op_index].rindex('[')
+            end_group = expression[:op_index].rindex(']')
+
+            if end_group < start_group:  # check right side
                 raise ValueError
 
-            start_group = expression.index('[')
-            assert start_group >= 0
-            if expression.index(op) < start_group:
-                jsonpath, expected_value = expression.split(op, 1)
-                return jsonpath, expected_value
-
-            end_group = expression[start_group:].index(']') + start_group
-            assert end_group > start_group
-            op_index = expression[end_group:].index(op) + end_group
-            assert op_index >= 0
-            op_length = len(op)
-
-            jsonpath = expression[:op_index]
-            expected_value = expression[op_index + op_length:]
-        except:
-            if no_groups:
-                jsonpath, expected_value = expression.split(op, 1)
-            else:
+            # op was found inline between [ and ]
+            if start_group < op_index and op_index < end_group:
                 return None
 
-        return jsonpath, expected_value
+            jsonpath_expression = expression[:op_index]
+            expected_value = expression[op_index + op_length:]
+        except ValueError:  # check right side
+            try:
+                end_group = expression[op_index:].index(']') + op_index
+                start_group = expression[op_index:].index('[') + op_index
+                if start_group < op_index and op_index < end_group:
+                    raise ValueError
+
+            except ValueError:
+                return None
+
+            jsonpath_expression, expected_value = expression.rsplit(op, 1)
+            jsonpath_expression = expression[:op_index]
+            expected_value = expression[op_index + op_length:]
+
+        return jsonpath_expression, expected_value
 
     @classmethod
     def parser(cls, expression: str) -> Callable[[Any], list[str]]:

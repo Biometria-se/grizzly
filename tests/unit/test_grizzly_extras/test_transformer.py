@@ -136,6 +136,14 @@ class TestJsonTransformer:
         assert JsonTransformer._get_outer_op('$.glossary.title=="example glossary"', '==') == ('$.glossary.title', '"example glossary"')
         assert JsonTransformer._get_outer_op('$.id|=[2, 3]', '|=') == ('$.id', '[2, 3]')
         assert JsonTransformer._get_outer_op('$.`this`[?id>1].id|=[2, 3]', '|=') == ('$.`this`[?id>1].id', '[2, 3]')
+        assert JsonTransformer._get_outer_op("$.result[0].recipients[?(@.uid=='1000')]", '==') is None
+        assert JsonTransformer._get_outer_op("$.result[0].recipients[?(@.uid=='1000')].username=='hello'", '==') == (
+            "$.result[0].recipients[?(@.uid=='1000')].username",
+            "'hello'",
+        )
+        assert JsonTransformer._get_outer_op('$.evil.edgecase=="]"', '==') == ('$.evil.edgecase', '"]"')
+        assert JsonTransformer._get_outer_op('$.evil.edgecase=="["', '==') == ('$.evil.edgecase', '"["')
+        assert JsonTransformer._get_outer_op('$.evil.edgecase==[]', '==') == ('$.evil.edgecase', '[]')
 
     def test_validate(self) -> None:
         assert JsonTransformer.validate('$.test.something')
