@@ -45,6 +45,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 from grizzly.exceptions import failure_handler
 from grizzly.testdata import GrizzlyVariables
+from grizzly.testdata.utils import resolve_variable
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
@@ -78,7 +79,15 @@ class KeystoreTask(GrizzlyTask):
             self.action_context, value_arguments = split_value(self.action_context)
             arguments = parse_arguments(value_arguments, unquote=True)
             for key, value in arguments.items():
-                self.arguments.update({key: GrizzlyVariables.guess_datatype(value)})
+                rendered_value = resolve_variable(self.grizzly.scenario, value)
+                self.arguments.update({key: rendered_value})
+
+        if has_separator('|', self.key):
+            self.key, key_arguments = split_value(self.key)
+            arguments = parse_arguments(key_arguments, unquote=True)
+            for key, value in arguments.items():
+                rendered_value = resolve_variable(self.grizzly.scenario, value)
+                self.arguments.update({key: rendered_value})
 
         assert self.action in get_args(Action), f'"{self.action}" is not a valid action'
 
@@ -159,7 +168,9 @@ class KeystoreTask(GrizzlyTask):
                     value = render(self.action_context) if self.arguments.get('render', False) else self.action_context
                     parent.consumer.keystore_push(key, value)
                 elif self.action == 'pop':
-                    value = parent.consumer.keystore_pop(key)
+                    wait = int(self.arguments.get('wait', '-1'))
+                    poll_interval = float(self.arguments.get('interval', '1.0'))
+                    value = parent.consumer.keystore_pop(key, wait=wait, poll_interval=poll_interval)
                     if value is not None and self.action_context is not None:
                         parent.user.set_variable(self.action_context, render(value))
                 elif self.action == 'del':

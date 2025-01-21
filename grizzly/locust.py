@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from math import ceil, floor
 from operator import attrgetter, itemgetter
 from os import environ
+from platform import node as gethostname
 from signal import SIGINT, SIGTERM, Signals
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Callable, NoReturn, Optional, SupportsIndex, TypeVar, cast
@@ -1204,6 +1205,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 if isinstance(runner, MasterRunner):
                     runner.send_message('grizzly_worker_quit', None)
                     runner.stop(send_stop_to_client=False)
+                    logger.info('stop all remaining workers')
 
                     # wait for all clients to quit
                     while len(runner.clients.all) > 0:
@@ -1211,6 +1213,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
                     runner.greenlet.kill(block=True)
                 else:
+                    logger.info('stopping worker on %s', gethostname())
                     runner.quit()
 
                 if stats_printer_greenlet is not None:
@@ -1219,8 +1222,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 if running_test is not None:
                     running_test.kill(block=False)
 
-                grizzly_print_stats(runner.stats, current=False)
                 grizzly_print_percentile_stats(runner.stats)
+                grizzly_print_stats(runner.stats, current=False)
                 lstats.print_error_report(runner.stats)
                 print_scenario_summary(grizzly)
 
@@ -1282,7 +1285,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         else:
             code = max(code, environment.process_exit_code or -1)
 
-        logger.debug('main greenlet finished, rc = %d', code)
+        logger.info('main greenlet finished, rc = %d', code)
 
         return code
     finally:

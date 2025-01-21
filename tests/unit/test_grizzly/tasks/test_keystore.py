@@ -30,6 +30,7 @@ class TestKeystoreTask:
         assert task.action == 'get'
         assert task.action_context == 'foobar'
         assert task.default_value is None
+        assert task.arguments == {}
 
         task = KeystoreTask('foobar', 'get', 'foobar', "['hello', 'world']")
 
@@ -37,16 +38,20 @@ class TestKeystoreTask:
         assert task.action == 'get'
         assert task.action_context == 'foobar'
         assert task.default_value == ['hello', 'world']
+        assert task.arguments == {}
 
         with pytest.raises(AssertionError, match='action context for "set" must be declared'):
             KeystoreTask('foobar', 'set', None)
 
-        task = KeystoreTask('foobar', 'set', '{"hello": "world"}')
+        grizzly = grizzly_fixture.grizzly
+        grizzly.state.configuration.update({'keystore.wait': 100, 'keystore.poll.interval': 1.0})
+        task = KeystoreTask('foobar | wait=$conf::keystore.wait$', 'set', '{"hello": "world"} | interval=$conf::keystore.poll.interval$')
 
         assert task.key == 'foobar'
         assert task.action == 'set'
         assert task.action_context == {'hello': 'world'}
         assert task.default_value is None
+        assert task.arguments == {'wait': 100, 'interval': 1.0}
 
         assert task.__template_attributes__ == {'action_context', 'key'}
 
@@ -266,14 +271,15 @@ class TestKeystoreTask:
         task(parent)
 
         assert parent.user.variables.get('foobar', None) == 'none'
-        consumer_mock.keystore_pop.assert_called_once_with('foobar::hello')
+        consumer_mock.keystore_pop.assert_called_once_with('foobar::hello', wait=-1, poll_interval=1.0)
         consumer_mock.reset_mock()
 
         consumer_mock.keystore_pop.return_value = 'hello'
+        task_factory.arguments.update({'wait': 2, 'interval': 0.5})
         task(parent)
 
         assert parent.user.variables.get('foobar', None) == 'hello'
-        consumer_mock.keystore_pop.assert_called_once_with('foobar::hello')
+        consumer_mock.keystore_pop.assert_called_once_with('foobar::hello', wait=2, poll_interval=0.5)
         consumer_mock.reset_mock()
 
     def test___call__del(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:

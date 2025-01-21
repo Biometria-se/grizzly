@@ -322,7 +322,11 @@ class IotHubUser(GrizzlyUser):
     def _request_receive(self, request: RequestTask) -> GrizzlyResponse:
         message_wait = int((request.arguments or {}).get('wait', '-1'))
 
-        return self._unserialize_message(self.consumer.keystore_pop(f'{request.endpoint}::{self.device_id}', wait=message_wait))
+        try:
+            return self._unserialize_message(self.consumer.keystore_pop(f'{request.endpoint}::{self.device_id}', wait=message_wait))
+        except RuntimeError:
+            message = f'no message received within {message_wait} seconds'
+            raise RuntimeError(message) from None
 
     def _request_send(self, request: RequestTask) -> GrizzlyResponse:
         source = cast(str, request.source)  # it hasn't come here if it was None

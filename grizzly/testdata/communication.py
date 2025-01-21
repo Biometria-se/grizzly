@@ -317,13 +317,12 @@ class TestdataConsumer:
 
     semaphore = Semaphore()
 
-    def __init__(self, runner: LocalRunner | WorkerRunner, scenario: GrizzlyScenario, poll_interval: float = 1.0) -> None:
+    def __init__(self, runner: LocalRunner | WorkerRunner, scenario: GrizzlyScenario) -> None:
         self.runner = runner
         self.scenario = scenario
         self.identifier = scenario.__class__.__name__
 
         self.stopped = False
-        self.poll_interval = poll_interval
 
         self.response = {}
         self.logger.debug('started consumer')
@@ -447,7 +446,7 @@ class TestdataConsumer:
 
         return value
 
-    def keystore_pop(self, key: str, wait: int = -1) -> str:
+    def keystore_pop(self, key: str, *, wait: int = -1, poll_interval: float = 1.0) -> str:
         request = {
             'action': 'pop',
             'key': key,
@@ -457,12 +456,13 @@ class TestdataConsumer:
 
         start = perf_counter()
         while value is None:
-            gsleep(self.poll_interval)
+            gsleep(poll_interval)
             with suppress(Exception):
                 value = self._keystore_pop_poll(request)
 
             if value is None and wait > -1 and (int(perf_counter() - start) > wait):
-                error_message = f'no message received within {wait} seconds'
+                error_message = f'no key available within {wait} seconds'
+                self.logger.error(error_message)
                 raise RuntimeError(error_message)
 
         return value

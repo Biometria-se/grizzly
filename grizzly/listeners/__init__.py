@@ -116,9 +116,9 @@ def worker_report(client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG001
     logger.debug('received worker_report from %s', client_id)
 
 def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) -> None:
-    logger.debug('received message grizzly_worker_quit: msg=%r', msg)
+    logger.info('received quit message from master: msg=%r', msg)
     runner = environment.runner
-    code: Optional[int] = None
+    code: int = 1
 
     if isinstance(runner, WorkerRunner):
         runner.stop()
@@ -135,9 +135,6 @@ def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) 
             code = 0
     else:
         logger.error('received grizzly_worker_quit message on a non WorkerRunner?!')
-
-    if code is None:
-        code = 1
 
     raise SystemExit(code)
 
