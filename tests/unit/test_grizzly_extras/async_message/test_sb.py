@@ -1002,7 +1002,7 @@ class TestAsyncServiceBusHandler:
             side_effect=[0.0, 5.0, 0.1, 0.5, 0, 11.0],
         )
 
-        with pytest.raises(AsyncMessageError, match=r'no messages on queue:test-queue, expression:"\$.`this`\[\?\(@.name="test"\)\]"'):
+        with pytest.raises(AsyncMessageError, match=r'no messages on "queue:test-queue" matching expression "\$.`this`\[\?\(@.name="test"\)\]"'):
             handlers[request['action']](handler, request)
 
         assert receiver_instance_mock.return_value.abandon_message.call_count == 2

@@ -806,10 +806,14 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                     if message_wait > 0:
                         if delta >= message_wait:
-                            error_message = f'no messages on {endpoint}'
+                            error_message = f'no messages on "{cache_endpoint}"'
                             message = None
+                            if expression is not None:
+                                error_message = f'{error_message} matching expression "{expression}"'
                             if message_wait > 0:
                                 error_message = f'{error_message} within {message_wait} seconds'
+                            if consume:
+                                error_message = f'{error_message}, consumed and ignored {consume_message_ignore_count} messages'
                         elif consume and expression is not None:
                             if self._event.is_set():
                                 break
