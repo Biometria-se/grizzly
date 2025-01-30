@@ -337,7 +337,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             try:
                 self.mgmt_client.create_queue(queue_name=subscription_name)
             except Exception as e:
-                message = f'failed to create queue "{subscription_name}" that subscription "{subscription_name}" should forward to'
+                message = f'failed to create forward queue for subscription "{subscription_name}"'
                 raise AsyncMessageError(message) from e
 
         try:
@@ -402,7 +402,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         self._subscriptions.append(request)
 
-        message = f'created subscription "{subscription_name}" on topic "{topic_name}"'
+        entity = 'forward queue and subscription' if should_offload else 'subscription'
+
+        message = f'created {entity} "{subscription_name}" on topic "{topic_name}"'
 
         self.logger.debug(message)
 
@@ -484,8 +486,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         if should_offload:
             self.mgmt_client.delete_queue(queue_name=subscription_name)
+            entity = 'forward queue and subscription'
+        else:
+            entity = 'subscription'
 
-        message = f'removed subscription "{subscription_name}" on topic "{topic_name}" (stats: {topic_statistics})'
+        message = f'removed {entity} "{subscription_name}" on topic "{topic_name}" (stats: {topic_statistics})'
 
         self.logger.debug(message)
 
@@ -545,6 +550,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         endpoint = context['endpoint']
         instance_type = context['connection']
         message_wait = context.get('message_wait', None)
+        should_offload = context.get('offload', False)
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
         endpoint_arguments = parse_arguments(endpoint, ':')
 
@@ -553,8 +559,16 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
-        if instance_type == 'receiver' and message_wait is not None:
-            arguments['wait'] = str(message_wait)
+        if instance_type == 'receiver':
+            subscription_name = arguments.get('subscription')
+            if should_offload and subscription_name is not None:
+                arguments = {
+                    'endpoint_type': 'queue',
+                    'endpoint': subscription_name,
+                }
+
+            if message_wait is not None:
+                arguments.update({'wait': str(message_wait)})
 
         cache: GenericCache
 
@@ -692,6 +706,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             for retry in range(1, 4):
                 if self._event.is_set():
                     break
+
+                error_message: str | None = None
 
                 try:
                     if action == 'EMPTY':
@@ -885,6 +901,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                     if self._event.is_set():
                         break
+
+                    if error_message is None:
+                        error_message = 'unknown error'
 
                     raise AsyncMessageError(error_message) from None
                 except:
