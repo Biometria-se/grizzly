@@ -845,7 +845,7 @@ class TestAsyncServiceBusHandler:
         received_message = ServiceBusMessage('grizzly >3 service bus')
         receiver_instance_mock.return_value.__iter__.side_effect = [StopIteration, iter([received_message])]
 
-        with pytest.raises(AsyncMessageError, match='no messages on topic:test-topic, subscription:test-subscription within 10 seconds'):
+        with pytest.raises(AsyncMessageError, match='no messages on "topic:test-topic, subscription:test-subscription" within 10 seconds'):
             handlers[request['action']](handler, request)
         receiver_instance_mock.return_value.__iter__.assert_called_once_with()
         receiver_instance_mock.return_value.complete_message.assert_not_called()

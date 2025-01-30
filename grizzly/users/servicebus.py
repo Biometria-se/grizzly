@@ -44,6 +44,20 @@ type. When receiving messages from a topic, the argument `subscription:` is mand
 Where `<expression>` can be a XPath or jsonpath expression, depending on the specified content type. This argument is only allowed when
 receiving messages. See example below.
 
+The `endpoint` also has support for the following arguments:
+
+* `verbose` (bool) - all request related to this request is logged with `DEBUG` log level (default `False`)
+
+* `consume` (bool) - if messages not matching `expression` should be consumed or abandoned, either way they are not not returned to test case (default `False`)
+
+* `offload` (bool) - if subscriptions should be configured to forward to a queue, and messages is consumed from the queue (default `False`)
+
+These arguments are specified in `endpoint` as such:
+
+```plain
+<endpoint> | <argument>=<value>[, <argument>=<value>]
+```
+
 ## Examples
 
 Example of how to use it in a scenario:
@@ -93,6 +107,7 @@ from grizzly.utils.protocols import zmq_disconnect
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
+from grizzly_extras.text import bool_caster
 
 from . import GrizzlyUser, grizzlycontext
 
@@ -365,10 +380,11 @@ class ServiceBusUser(GrizzlyUser):
         self.say_hello(request)
 
         request_context = cast(AsyncMessageContext, dict(self.am_context))
-        consume = (request.arguments or {}).get('consume', 'False').lower() == 'true'
-        verbose = (request.arguments or {}).get('verbose', 'False').lower() == 'true'
+        consume = bool_caster((request.arguments or {}).get('consume', 'False'))
+        verbose = bool_caster((request.arguments or {}).get('verbose', 'False'))
+        offload = bool_caster((request.arguments or {}).get('offload', 'False'))
 
-        request_context.update({'endpoint': request.endpoint, 'consume': consume, 'verbose': verbose})
+        request_context.update({'endpoint': request.endpoint, 'consume': consume, 'verbose': verbose, 'offload': offload})
 
         am_request: AsyncMessageRequest = {
             'action': request.method.name,

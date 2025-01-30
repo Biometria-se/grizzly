@@ -86,6 +86,7 @@ class AsyncMessageContext(TypedDict, total=False):
     consume: bool
     unique: bool
     verbose: bool
+    offload: bool
 
 
 class AsyncMessageRequest(TypedDict, total=False):

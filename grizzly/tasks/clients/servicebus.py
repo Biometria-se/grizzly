@@ -26,7 +26,7 @@ This task performs Azure SerciceBus operations to a specified endpoint.
 ### `endpoint`
 
 ```plain
-sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>][&Empty=<empty>][&Unique=<unique>][&Verbose=<verbose>]]
+sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>][&Empty=<empty>][&Unique=<unique>][&Verbose=<verbose>][&Offload=<offload>]]
 ```
 
 All variables in the endpoint have support for {@link framework.usage.variables.templating}.
@@ -72,6 +72,8 @@ Fragment:
 * `<unique>` _bool_ - if each instance should have their own endpoint, or if they should share (default `True`, have their own endpoint subscription)
 
 * `<verbose>` _bool_ - verbose logging for only these requests (default `False`)
+
+* `<offload>` _bool_ - if a queue should be created and the subscription should forward to it, and consuming messages from the queue (default `False`)
 
 If `<unique>` is `False`, it will not empty the endpoint between each iteration.
 
@@ -218,6 +220,7 @@ class ServiceBusClientTask(ClientTask):
         consume = bool_caster(parameters.get('Consume', ['False'])[0])
         unique = bool_caster(parameters.get('Unique', ['True'])[0])
         verbose = bool_caster(parameters.get('Verbose', ['False'])[0])
+        offload = bool_caster(parameters.get('Offload', ['False'])[0])
 
         if not unique:
             self.should_empty = False
@@ -280,6 +283,7 @@ class ServiceBusClientTask(ClientTask):
             'username': username,
             'password': password,
             'tenant': tenant,
+            'offload': offload,
         }
 
         if content_type is not None:
