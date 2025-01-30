@@ -389,8 +389,8 @@ class TestAsyncServiceBusHandler:
 
         del request['context']['unique']
 
-        # offloaded subscription, failed to create offload queue
-        request['context']['offload'] = True
+        # forwarded subscription, failed to create forward queue
+        request['context']['forward'] = True
         mgmt_client_mock.get_rule.return_value = None
         mgmt_client_mock.create_rule.return_value = rule_mock
         mgmt_client_mock.delete_rule.side_effect = None
@@ -405,7 +405,7 @@ class TestAsyncServiceBusHandler:
         mgmt_client_mock.create_queue.assert_called_once_with(queue_name='my-subscription')
         mgmt_client_mock.reset_mock()
 
-        # offloaded subscription
+        # forwarded subscription
         mgmt_client_mock.create_queue.side_effect = None
 
         assert handlers[request['action']](handler, request) == {'message': 'created forward queue and subscription "my-subscription" on topic "my-topic"'}
@@ -497,8 +497,8 @@ class TestAsyncServiceBusHandler:
         mgmt_client_mock.get_subscription_runtime_properties.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
         mgmt_client_mock.reset_mock()
 
-        # all good, offloaded subscription
-        request['context']['offload'] = True
+        # all good, forwarded subscription
+        request['context']['forward'] = True
 
         actual_response = handlers[request['action']](handler, request)
         assert list(actual_response.keys()) == ['message']
@@ -511,7 +511,7 @@ class TestAsyncServiceBusHandler:
         mgmt_client_mock.get_subscription_runtime_properties.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
         mgmt_client_mock.reset_mock()
 
-        del request['context']['offload']
+        del request['context']['forward']
 
         # non-unique subscription does not exist
         request['context']['unique'] = False
@@ -803,14 +803,14 @@ class TestAsyncServiceBusHandler:
         receiver_instance_spy.assert_called_with({'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'})
         receiver_instance_spy.reset_mock()
 
-        # offloaded subscription, create receiver instance
+        # forwarded subscription, create receiver instance
         handler._sender_cache.clear()
         handler._receiver_cache.clear()
         receiver_instance_spy.side_effect = None
         request['context'].update({
             'connection': 'receiver',
             'endpoint': 'topic:test-topic, subscription:test-subscription',
-            'offload': True,
+            'forward': True,
         })
 
         with caplog.at_level(logging.WARNING):
@@ -826,7 +826,7 @@ class TestAsyncServiceBusHandler:
         assert handler._sender_cache == {}
         assert handler._receiver_cache.get('topic:test-topic, subscription:test-subscription', None) is not None
 
-        # offloaded subscription, read from cache, not new instance needed
+        # forwarded subscription, read from cache, not new instance needed
         with caplog.at_level(logging.WARNING):
             assert handlers[request['action']](handler, request) == {
                 'message': 'there general kenobi',
@@ -964,8 +964,8 @@ class TestAsyncServiceBusHandler:
         assert actual_metadata == expected_metadata
         assert response.get('response_length', 0) == len(expected_payload)
 
-        # receive request, offloaded subscription
-        request['context']['offload'] = True
+        # receive request, forwarded subscription
+        request['context']['forward'] = True
         receiver_instance_mock.return_value.__iter__.side_effect = [iter([received_message])]
 
         response = handlers[request['action']](handler, request)
@@ -987,7 +987,7 @@ class TestAsyncServiceBusHandler:
         assert actual_metadata == expected_metadata
         assert response.get('response_length', 0) == len(expected_payload)
 
-        del request['context']['offload']
+        del request['context']['forward']
 
         _hello_mock = mocker.patch.object(handler, '_hello', return_value=None)
         receiver_instance_mock.return_value.__iter__.side_effect = [ServiceBusError('Connection to remote host was lost'), iter([received_message])]

@@ -39,7 +39,7 @@ class TestServiceBusClientTask:
             'tenant': None,
             'unique': True,
             'verbose': False,
-            'offload': False,
+            'forward': False,
         }
         assert task._state == {}
         assert task.text is None
@@ -50,7 +50,7 @@ class TestServiceBusClientTask:
         # // -->
 
         # <!-- credential
-        task = task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com&Empty=False&Unique=False&Verbose=True&Offload=True', 'test')
+        task = task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com&Empty=False&Unique=False&Verbose=True&Forward=True', 'test')
 
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net'
         assert task.context == {
@@ -64,7 +64,7 @@ class TestServiceBusClientTask:
             'tenant': 'example.com',
             'unique': False,
             'verbose': True,
-            'offload': True,
+            'forward': True,
         }
         assert task._state == {}
         assert task.text is None
@@ -93,7 +93,7 @@ class TestServiceBusClientTask:
             'tenant': None,
             'unique': True,
             'verbose': False,
-            'offload': False,
+            'forward': False,
         }
         assert task.text is None
         assert task.source == 'hello world!'
@@ -131,7 +131,7 @@ class TestServiceBusClientTask:
             'tenant': None,
             'unique': True,
             'verbose': False,
-            'offload': False,
+            'forward': False,
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -169,7 +169,7 @@ class TestServiceBusClientTask:
             'tenant': None,
             'unique': True,
             'verbose': False,
-            'offload': False,
+            'forward': False,
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -201,7 +201,7 @@ class TestServiceBusClientTask:
             'tenant': None,
             'unique': False,
             'verbose': False,
-            'offload': False,
+            'forward': False,
         }
         assert task._state == {}
         context_mock.assert_called_once_with()
@@ -466,7 +466,7 @@ class TestServiceBusClientTask:
                 'tenant': None,
                 'unique': True,
                 'verbose': False,
-                'offload': False,
+                'forward': False,
             },
             'payload': '1=1',
         })
@@ -478,7 +478,7 @@ class TestServiceBusClientTask:
             RequestDirection.FROM,
             (
                 "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/"
-                "expression:'$.`this`[?bar='foo' & bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Unique=False&Verbose=True&Offload=True"
+                "expression:'$.`this`[?bar='foo' & bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Unique=False&Verbose=True&Forward=True"
             ),
             'test',
         )
@@ -512,7 +512,7 @@ class TestServiceBusClientTask:
                 'tenant': None,
                 'unique': False,
                 'verbose': True,
-                'offload': True,
+                'forward': True,
             },
             'payload': '1=1',
         })

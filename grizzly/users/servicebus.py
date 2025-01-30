@@ -50,7 +50,7 @@ The `endpoint` also has support for the following arguments:
 
 * `consume` (bool) - if messages not matching `expression` should be consumed or abandoned, either way they are not not returned to test case (default `False`)
 
-* `offload` (bool) - if subscriptions should be configured to forward to a queue, and messages is consumed from the queue (default `False`)
+* `forward` (bool) - if subscriptions should be configured to forward to a queue, and messages is consumed from the queue (default `False`)
 
 These arguments are specified in `endpoint` as such:
 
@@ -382,9 +382,9 @@ class ServiceBusUser(GrizzlyUser):
         request_context = cast(AsyncMessageContext, dict(self.am_context))
         consume = bool_caster((request.arguments or {}).get('consume', 'False'))
         verbose = bool_caster((request.arguments or {}).get('verbose', 'False'))
-        offload = bool_caster((request.arguments or {}).get('offload', 'False'))
+        forward = bool_caster((request.arguments or {}).get('forward', 'False'))
 
-        request_context.update({'endpoint': request.endpoint, 'consume': consume, 'verbose': verbose, 'offload': offload})
+        request_context.update({'endpoint': request.endpoint, 'consume': consume, 'verbose': verbose, 'forward': forward})
 
         am_request: AsyncMessageRequest = {
             'action': request.method.name,

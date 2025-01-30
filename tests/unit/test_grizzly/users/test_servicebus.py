@@ -444,7 +444,7 @@ class TestServiceBusUser:
                 'password': None,
                 'tenant': None,
                 'verbose': False,
-                'offload': False,
+                'forward': False,
             },
             'request_id': 'foobar',
         })
@@ -470,7 +470,7 @@ class TestServiceBusUser:
         response_event_fire_spy.reset_mock()
 
         # successful request
-        task = RequestTask(RequestMethod.RECEIVE, name='test-send', endpoint='queue:test-queue | verbose=True, offload=True', source=None)
+        task = RequestTask(RequestMethod.RECEIVE, name='test-send', endpoint='queue:test-queue | verbose=True, forward=True', source=None)
 
         mock_recv_json({
             'worker': 'asdf-asdf-asdf',
@@ -528,7 +528,7 @@ class TestServiceBusUser:
                 'password': None,
                 'tenant': None,
                 'verbose': True,
-                'offload': True,
+                'forward': True,
             },
             'request_id': 'foobar',
         })
@@ -593,7 +593,7 @@ class TestServiceBusUser:
                 'password': None,
                 'tenant': None,
                 'verbose': False,
-                'offload': False,
+                'forward': False,
             },
             'request_id': 'foobar',
         })

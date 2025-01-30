@@ -304,7 +304,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         endpoint = context['endpoint']
         instance_type = context['connection']
         is_unique = context.get('unique', True)
-        should_offload = context.get('offload', False)
+        should_forward = context.get('forward', False)
 
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
         was_created = False
@@ -330,7 +330,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         topic: Optional[TopicProperties] = None
 
-        if should_offload:
+        if should_forward:
             with suppress(ResourceNotFoundError):
                 self.mgmt_client.delete_queue(queue_name=subscription_name)
 
@@ -357,7 +357,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 'subscription_name': subscription_name,
             }
 
-            if should_offload:
+            if should_forward:
                 subscription_args.update({'forward_to': subscription_name})
 
             self.mgmt_client.create_subscription(**subscription_args)
@@ -402,7 +402,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         self._subscriptions.append(request)
 
-        entity = 'forward queue and subscription' if should_offload else 'subscription'
+        entity = 'forward queue and subscription' if should_forward else 'subscription'
 
         message = f'created {entity} "{subscription_name}" on topic "{topic_name}"'
 
@@ -424,7 +424,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
 
         is_unique = context.get('unique', True)
-        should_offload = context.get('offload', False)
+        should_forward = context.get('forward', False)
 
         if arguments['endpoint_type'] != 'topic':
             message = 'subscriptions is only allowed on topics'
@@ -484,7 +484,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             subscription_name=subscription_name,
         )
 
-        if should_offload:
+        if should_forward:
             self.mgmt_client.delete_queue(queue_name=subscription_name)
             entity = 'forward queue and subscription'
         else:
@@ -550,7 +550,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         endpoint = context['endpoint']
         instance_type = context['connection']
         message_wait = context.get('message_wait', None)
-        should_offload = context.get('offload', False)
+        should_forward = context.get('forward', False)
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
         endpoint_arguments = parse_arguments(endpoint, ':')
 
@@ -561,7 +561,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         if instance_type == 'receiver':
             subscription_name = arguments.get('subscription')
-            if should_offload and subscription_name is not None:
+            if should_forward and subscription_name is not None:
                 arguments = {
                     'endpoint_type': 'queue',
                     'endpoint': subscription_name,
