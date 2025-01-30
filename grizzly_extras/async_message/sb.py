@@ -295,7 +295,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         return response
 
     @register(handlers, 'SUBSCRIBE')
-    def subscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: PLR0915
+    def subscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: PLR0915, PLR0912
         context = request.get('context', None)
         if context is None:
             message = 'no context in request'
@@ -304,6 +304,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         endpoint = context['endpoint']
         instance_type = context['connection']
         is_unique = context.get('unique', True)
+        should_offload = context.get('offload', False)
+
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
         was_created = False
 
@@ -328,6 +330,16 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         topic: Optional[TopicProperties] = None
 
+        if should_offload:
+            with suppress(ResourceNotFoundError):
+                self.mgmt_client.delete_queue(queue_name=subscription_name)
+
+            try:
+                self.mgmt_client.create_queue(queue_name=subscription_name)
+            except Exception as e:
+                message = f'failed to create queue "{subscription_name}" that subscription "{subscription_name}" should forward to'
+                raise AsyncMessageError(message) from e
+
         try:
             topic = self.mgmt_client.get_topic(topic_name=topic_name)
         except ResourceNotFoundError:
@@ -340,7 +352,15 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         try:
             self.mgmt_client.get_subscription(topic_name=topic_name, subscription_name=subscription_name)
         except ResourceNotFoundError:
-            self.mgmt_client.create_subscription(topic_name=topic_name, subscription_name=subscription_name)
+            subscription_args: dict[str, Any] = {
+                'topic_name': topic_name,
+                'subscription_name': subscription_name,
+            }
+
+            if should_offload:
+                subscription_args.update({'forward_to': subscription_name})
+
+            self.mgmt_client.create_subscription(**subscription_args)
             was_created = True
 
         if not is_unique and not was_created:
@@ -402,6 +422,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
 
         is_unique = context.get('unique', True)
+        should_offload = context.get('offload', False)
 
         if arguments['endpoint_type'] != 'topic':
             message = 'subscriptions is only allowed on topics'
@@ -461,6 +482,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             subscription_name=subscription_name,
         )
 
+        if should_offload:
+            self.mgmt_client.delete_queue(queue_name=subscription_name)
 
         message = f'removed subscription "{subscription_name}" on topic "{topic_name}" (stats: {topic_statistics})'
 
