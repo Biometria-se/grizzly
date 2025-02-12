@@ -208,7 +208,7 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
 def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
     # Influx -- short circuit
     mocker.patch(
-        'grizzly.listeners.influxdb.InfluxDb.connect',
+        'grizzly.listeners.influxdb.InfluxDbV1.connect',
         return_value=None,
     )
 
@@ -250,15 +250,27 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
     assert len(environment.events.quit._handlers) == 1
     assert len(environment.events.spawning_complete._handlers) == 0
 
+    mocker.patch(
+        'grizzly.listeners.influxdb.InfluxDbV2.connect',
+        return_value=None,
+    )
+
+    grizzly.setup.statistics_url = 'influxdb2://token@influxhost/org:bucket?Testplan=test'
+    init_statistics_listener(grizzly.setup.statistics_url)(environment)
+    assert len(environment.events.request._handlers) == 3
+    assert len(environment.events.quitting._handlers) == 0
+    assert len(environment.events.quit._handlers) == 2
+    assert len(environment.events.spawning_complete._handlers) == 0
+
     grizzly.setup.statistics_url = 'insights://?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
     with pytest.raises(AssertionError, match='IngestionEndpoint was neither set as the hostname or in the query string'):
         init_statistics_listener(grizzly.setup.statistics_url)(environment)
 
     grizzly.setup.statistics_url = 'insights://insights.example.se/?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
     init_statistics_listener(grizzly.setup.statistics_url)(environment)
-    assert len(environment.events.request._handlers) == 3
+    assert len(environment.events.request._handlers) == 4
     assert len(environment.events.quitting._handlers) == 0
-    assert len(environment.events.quit._handlers) == 1
+    assert len(environment.events.quit._handlers) == 2
     assert len(environment.events.spawning_complete._handlers) == 0
 
 

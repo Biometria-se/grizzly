@@ -62,7 +62,7 @@ def init_statistics_listener(url: str) -> Callable[Concatenate[Environment, P], 
     def gstatistics_listener(environment: Environment, *_args: P.args, **_kwargs: P.kwargs) -> None:
         parsed = urlparse(url)
 
-        if parsed.scheme == 'influxdb':
+        if parsed.scheme in ('influxdb', 'influxdb2'):
             from .influxdb import InfluxDbListener
             InfluxDbListener(
                 environment=environment,
