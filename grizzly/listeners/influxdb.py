@@ -255,8 +255,6 @@ class InfluxDbListener:
         self._profile_name = params['ProfileName'][0] if 'ProfileName' in params else ''
         self._description = params['Description'][0] if 'Description' in params else ''
 
-        self.run_events_greenlet = gevent.spawn(self.run_events)
-        self.run_user_count_greenlet = gevent.spawn(self.run_user_count)
         logger.debug('InfluxDbListener: creating client')
         self.connection = self.create_client().connect()
         logger.debug('InfluxDbListener: client created')
@@ -272,6 +270,8 @@ class InfluxDbListener:
         self.grizzly.events.keystore_request.add_listener(self.on_grizzly_event)
         self.grizzly.events.testdata_request.add_listener(self.on_grizzly_event)
         self.grizzly.events.user_event.add_listener(self.on_grizzly_event)
+        self.run_events_greenlet = gevent.spawn(self.run_events)
+        self.run_user_count_greenlet = gevent.spawn(self.run_user_count)
 
     def on_quit(self, *_args: Any, **_kwargs: Any) -> None:
         self._finished = True
