@@ -146,7 +146,7 @@ class InfluxDbV2(InfluxDb):
 
     def connect(self) -> Self:
         self.client = InfluxDBClientV2(
-            url=f"http://{self.host}:{self.port}",
+            url=f"https://{self.host}:{self.port}",
             token=cast(str, self.token),
             org=self.org,
             enable_gzip=True,
