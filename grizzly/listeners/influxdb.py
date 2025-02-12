@@ -217,6 +217,7 @@ class InfluxDbListener:
         path = parsed.path[1:] if parsed.path is not None else None
 
         if parsed.scheme == 'influxdb2':
+            logger.debug('InfluxDbListener: detected influxdb2 scheme')
             assert parsed.hostname is not None, f'hostname not found in {url}'
             assert path is not None, f'{url} contains no path'
             assert len(path) > 0, f'database was not found in {url}'
@@ -229,6 +230,7 @@ class InfluxDbListener:
 
             params = parse_qs(parsed.query)
         else:
+            logger.debug('InfluxDbListener: detected influxdb scheme')
             assert parsed.hostname is not None, f'hostname not found in {url}'
             assert path is not None, f'{url} contains no path'
             assert len(path) > 0, f'database was not found in {url}'
@@ -255,7 +257,9 @@ class InfluxDbListener:
 
         self.run_events_greenlet = gevent.spawn(self.run_events)
         self.run_user_count_greenlet = gevent.spawn(self.run_user_count)
+        logger.debug('InfluxDbListener: creating client')
         self.connection = self.create_client().connect()
+        logger.debug('InfluxDbListener: client created')
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
         self.environment.events.heartbeat_sent.add_listener(self.heartbeat_sent)
@@ -274,6 +278,7 @@ class InfluxDbListener:
 
     def create_client(self) -> InfluxDb:
         if self.influx_version == '1':
+            logger.debug('InfluxDbListener.create_client: creating V1 client')
             return InfluxDbV1(
                 host=self.influx_host,
                 port=self.influx_port,
@@ -281,6 +286,7 @@ class InfluxDbListener:
                 username=self.influx_username,
                 password=self.influx_password,
             )
+        logger.debug('InfluxDbListener.create_client: creating V2 client')
         return InfluxDbV2(
             host=self.influx_host,
             port=self.influx_port,
