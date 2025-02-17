@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from json import dumps as jsondumps
 from platform import node as get_hostname
 from typing import TYPE_CHECKING, Any, Callable, Optional
+from unittest.mock import patch
 
 import pytest
 from influxdb.exceptions import InfluxDBClientError
@@ -35,12 +36,19 @@ def patch_influxdblistener(mocker: MockerFixture) -> Callable[[], None]:
             return_value=None,
         )
 
-        def influxdbclient_connect(instance: InfluxDbV2, *_args: Any, **_kwargs: Any) -> InfluxDbV2:
+        def influxdbclient_v1_connect(instance: InfluxDbV1, *_args: Any, **_kwargs: Any) -> InfluxDbV1:
+            return instance
+
+        def influxdbclient_v2_connect(instance: InfluxDbV2, *_args: Any, **_kwargs: Any) -> InfluxDbV2:
             return instance
 
         mocker.patch(
-            'grizzly.listeners.influxdb.InfluxDb.connect',
-            influxdbclient_connect,
+            'grizzly.listeners.influxdb.InfluxDbV1.connect',
+            influxdbclient_v1_connect,
+        )
+        mocker.patch(
+            'grizzly.listeners.influxdb.InfluxDbV2.connect',
+            influxdbclient_v2_connect,
         )
 
     return wrapper
@@ -196,34 +204,31 @@ class TestInfluxDbV2:
         client = InfluxDbV2('https://influx.example.com', 1234, 'org', 'testdb')
 
         assert client.connect() is client
+        client.__exit__(None, None, None)
 
     def test___enter__(self) -> None:
         client = InfluxDbV2('https://influx.example.com', 1235, 'org', 'testdb')
 
         assert client.__enter__() is client
+        client.__exit__(None, None, None)
 
     def test___exit__(self, mocker: MockerFixture) -> None:
         influx = InfluxDbV2('https://influx.example.com', 1236, 'org', 'testdb').connect()
 
-        def noop___exit__(*_args: Any, **_kwargs: Any) -> None:
-            pass
+        with patch('grizzly.listeners.influxdb.InfluxDBClientV2.__exit__', return_value=None):
+            assert influx.__exit__(None, None, None)
 
-        mocker.patch(
-            'grizzly.listeners.influxdb.InfluxDBClientV2.__exit__',
-            noop___exit__,
-        )
+            with pytest.raises(InfluxDbError):
+                influx.__exit__(RuntimeError, RuntimeError('failure'), None)
 
-        assert influx.__exit__(None, None, None)
+            with pytest.raises(InfluxDbError):
+                influx.__exit__(InfluxDbError, InfluxDbError(), None)
 
-        with pytest.raises(InfluxDbError):
-            influx.__exit__(RuntimeError, RuntimeError('failure'), None)
+            exception = ApiException(400, 'madness')
+            with pytest.raises(InfluxDbError, match='400: madness'):
+                influx.__exit__(ApiException, exception, None)
 
-        with pytest.raises(InfluxDbError):
-            influx.__exit__(InfluxDbError, InfluxDbError(), None)
-
-        exception = ApiException(400, 'madness')
-        with pytest.raises(InfluxDbError, match='400: madness'):
-            influx.__exit__(ApiException, exception, None)
+        influx.__exit__(None, None, None)
 
     def test_read(self, mocker: MockerFixture) -> None:
         class ResultContainer:
@@ -260,6 +265,7 @@ class TestInfluxDbV2:
         assert "some_key" in result
 
         query_api_mock.query.assert_called_once_with(flux_query, org='org')
+        influx.__exit__(None, None, None)
 
 
     def test_write(self, mocker: MockerFixture) -> None:
@@ -300,6 +306,7 @@ class TestInfluxDbV2:
         with pytest.raises(InfluxDbError, match='404: not found'):
             influx.write([])
 
+        influx.__exit__(None, None, None)
 
 class TestInfluxDblistener:
     @pytest.mark.usefixtures('patch_influxdblistener')
