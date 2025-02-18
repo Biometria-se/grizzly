@@ -135,9 +135,9 @@ class InfluxDbV2(InfluxDb):
     port: int
     bucket: str
     org : str
-    token: str|None
+    token: str | None
 
-    def __init__(self, host: str, port: int, org: str, bucket: str, token: str|None = None) -> None:
+    def __init__(self, host: str, port: int, org: str, bucket: str, token: str | None = None) -> None:
         self.host = host
         self.port = port
         self.org = org
@@ -227,9 +227,7 @@ class InfluxDbListener:
             self.influx_port = parsed.port or 8086
             self.influx_org, self.influx_bucket = path.split(':')
             self.influx_token = parsed.username or ''
-            self.influx_version = '2'
-
-            params = parse_qs(parsed.query)
+            self.influx_version = 2
         else:
             assert parsed.hostname is not None, f'hostname not found in {url}'
             assert path is not None, f'{url} contains no path'
@@ -240,9 +238,9 @@ class InfluxDbListener:
             self.influx_database = path
             self.influx_username = parsed.username
             self.influx_password = parsed.password
-            self.influx_version = '1'
+            self.influx_version = 1
 
-            params = parse_qs(parsed.query)
+        params = parse_qs(parsed.query)
 
         assert 'Testplan' in params, f'Testplan was not found in {parsed.query}'
         self._testplan = unquote(params['Testplan'][0])
@@ -275,7 +273,7 @@ class InfluxDbListener:
         self._finished = True
 
     def create_client(self) -> InfluxDb:
-        if self.influx_version == '1':
+        if self.influx_version == 1:
             return InfluxDbV1(
                 host=self.influx_host,
                 port=self.influx_port,
