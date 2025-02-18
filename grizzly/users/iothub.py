@@ -105,10 +105,12 @@ from urllib.parse import parse_qs, urlparse
 from uuid import UUID, uuid4
 
 from azure.iot.device import IoTHubDeviceClient, Message
+from azure.iot.device.exceptions import ClientError
 from azure.storage.blob import BlobClient, ContentSettings
 from gevent import sleep as gsleep
 
 from grizzly.events import GrizzlyEventDecoder, event, events
+from grizzly.exceptions import retry
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.utils import has_template
 from grizzly_extras.queue import VolatileDeque
@@ -353,14 +355,18 @@ class IotHubUser(GrizzlyUser):
         storage_info: dict[str, Any] | None = None
 
         try:
-            storage_info = cast(dict[str, Any], self.iot_client.get_storage_info_for_blob(filename))
+            with retry(retries=3, exceptions=(ClientError,), backoff=1.0) as context:
+                storage_info = cast(dict[str, Any], context.execute(self.iot_client.get_storage_info_for_blob, filename))
 
-            sas_url = 'https://{}/{}/{}{}'.format(
-                storage_info['hostName'],
-                storage_info['containerName'],
-                storage_info['blobName'],
-                storage_info['sasToken'],
-            )
+                sas_url = 'https://{}/{}/{}{}'.format(
+                    storage_info['hostName'],
+                    storage_info['containerName'],
+                    storage_info['blobName'],
+                    storage_info['sasToken'],
+                )
+
+            if storage_info is None:
+                raise RuntimeError
 
             with BlobClient.from_blob_url(sas_url) as blob_client:
                 content_type: str | None = None
