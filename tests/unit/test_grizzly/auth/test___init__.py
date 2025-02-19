@@ -104,7 +104,9 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
     assert isinstance(parent.user, RestApiUser)
 
     decorator: refresh_token[DummyAuth] = refresh_token(DummyAuth)
-    get_token_mock = mocker.spy(DummyAuthCredential, 'get_token')
+    get_token_mock = mocker.patch('grizzly.auth.RefreshTokenDistributor.get_token', side_effect=[
+        (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
+    ])
 
     auth_context = parent.user.context()['auth']
 
@@ -155,7 +157,7 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
 
     assert parent.user.credential == SOME(AzureAadCredential, auth_method=AuthMethod.CLIENT)
     assert parent.user.credential._access_token is not None
-    get_token_mock.assert_called_once_with(parent.user.credential)
+    get_token_mock.assert_called_once_with(parent.user)
     get_token_mock.reset_mock()
     assert len(caplog.messages) == 1
     assert 'asdf claimed client token until' in caplog.messages[-1]
@@ -170,7 +172,7 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
     with caplog.at_level(logging.INFO):
         parent.user.request(request_task)
 
-    get_token_mock.assert_called_once_with(parent.user.credential)
+    get_token_mock.assert_not_called()
     get_token_mock.reset_mock()
 
     assert parent.user.metadata['Authorization'] == 'Bearer dummy'
@@ -178,13 +180,16 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
     assert caplog.messages == []
 
     # authorization is set, but it is time to refresh token
+    get_token_mock.side_effect=[
+        (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), True),
+    ]
     old_access_token = AccessToken('dummy', expires_on=int(datetime.now(tz=timezone.utc).timestamp() - 3600))
     parent.user.credential._access_token = old_access_token
 
     with caplog.at_level(logging.INFO):
         parent.user.request(request_task)
 
-    get_token_mock.assert_called_once_with(parent.user.credential)
+    get_token_mock.assert_called_once_with(parent.user)
     assert parent.user.metadata['Authorization'] == 'Bearer dummy'
     assert old_access_token is not parent.user.credential._access_token
     assert old_access_token.expires_on < parent.user.credential._access_token.expires_on
@@ -203,7 +208,9 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     refresh_token('AAD')
 
     decorator: refresh_token[DummyAuth] = refresh_token('tests.unit.test_grizzly.auth.test___init__.DummyAuth')
-    get_token_mock = mocker.spy(DummyAuthCredential, 'get_token')
+    get_token_mock = mocker.patch('grizzly.auth.RefreshTokenDistributor.get_token', side_effect=[
+        (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
+    ])
 
     auth_context = parent.user.context()['auth']
 
@@ -252,7 +259,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     # session is fresh, but no token set (first call)
     with caplog.at_level(logging.INFO):
         parent.user.request(request_task)
-    get_token_mock.assert_called_once_with(parent.user.credential)
+    get_token_mock.assert_called_once_with(parent.user)
     get_token_mock.reset_mock()
 
     assert parent.user.metadata['Authorization'] == 'Bearer dummy'
@@ -269,18 +276,21 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     with caplog.at_level(logging.INFO):
         parent.user.request(request_task)
 
-    get_token_mock.assert_called_once_with(parent.user.credential)
+    get_token_mock.assert_not_called()
     get_token_mock.reset_mock()
     assert caplog.messages == []
     assert old_access_token is parent.user.credential._access_token
 
     # authorization is set, but it is time to refresh token
+    get_token_mock.side_effect=[
+        (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), True),
+    ]
     old_access_token = AccessToken('dummy', expires_on=int(datetime.now(tz=timezone.utc).timestamp() - 3600))
     parent.user.credential._access_token = old_access_token
 
     with caplog.at_level(logging.INFO):
         parent.user.request(request_task)
-    get_token_mock.assert_called_once_with(parent.user.credential)
+    get_token_mock.assert_called_once_with(parent.user)
     get_token_mock.reset_mock()
 
     assert parent.user.metadata['Authorization'] == 'Bearer dummy'
@@ -290,6 +300,9 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     assert 'bob@example.com refreshed user token until' in caplog.messages[-1]
 
     # change user -> new credential/access token
+    get_token_mock.side_effect=[
+        (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), True),
+    ]
     old_access_token = parent.user.credential._access_token
     parent.user.add_context({'auth': {'user': {'username': 'alice@example.com', 'password': 'foobar'}}})
     assert 'Authorization' not in parent.user.metadata
@@ -305,8 +318,11 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     }
 
     # new user in context, needs to get a new token
+    get_token_mock.side_effect=[
+        (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), False),
+    ]
     parent.user.request(request_task)
-    get_token_mock.assert_called_once_with(parent.user.credential)
+    get_token_mock.assert_called_once_with(parent.user)
     assert parent.user.metadata.get('Authorization', None) == 'Bearer dummy'
     cached_auth_values = list(parent.user.__cached_auth__.values())
     assert len(cached_auth_values) == 1
@@ -319,7 +335,9 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
     assert isinstance(parent.user, RestApiUser)
 
     decorator: refresh_token[DummyAuth] = refresh_token(DummyAuth)
-    get_token_mock = mocker.spy(DummyAuthCredential, 'get_token')
+    get_token_mock = mocker.patch('grizzly.auth.RefreshTokenDistributor.get_token', side_effect=[
+        (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
+    ])
 
     def get(_: HttpClientTask, parent: GrizzlyScenario, *_args: Any, **_kwargs: Any) -> GrizzlyResponse:  # noqa: ARG001
         return None, None
@@ -375,7 +393,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
 
     client.request_from(parent)
 
-    get_token_mock.assert_called_once_with(client.credential)
+    get_token_mock.assert_called_once_with(client)
 
     actual_context = cast(dict, client._context.copy())
     safe_del(actual_context, rendered_host)

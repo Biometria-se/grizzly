@@ -11,14 +11,17 @@ from importlib import import_module
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, TypeVar, Union, cast
 from urllib.parse import urlparse
+from uuid import uuid4
 
 from azure.core.credentials import AccessToken
+from gevent.event import AsyncResult
+from gevent.lock import Semaphore
 
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.types import GrizzlyResponse
-from grizzly.types.locust import StopUser
+from grizzly.types.locust import MasterRunner, StopUser
 from grizzly.users import GrizzlyUser
-from grizzly.utils import merge_dicts
+from grizzly.utils import ModuleLoader, merge_dicts
 from grizzly_extras.azure.aad import AuthMethod, AuthType, AzureAadCredential
 
 try:
@@ -28,6 +31,8 @@ except:
 
 
 if TYPE_CHECKING:  # pragma: no cover
+    from locust.rpc.protocol import Message
+
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
     from grizzly.tasks import RequestTask
     from grizzly.testdata import GrizzlyVariables
@@ -114,9 +119,9 @@ class refresh_token(Generic[P]):
 
         self.impl = cast(type[RefreshToken], impl)
 
-    def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:
+    def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:  # noqa: PLR0915
         @wraps(func)
-        def refresh_token(client: GrizzlyHttpAuthClient, arg: Union[RequestTask, GrizzlyScenario], *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:
+        def refresh_token(client: GrizzlyHttpAuthClient, arg: Union[RequestTask, GrizzlyScenario], *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:  # noqa: PLR0915, PLR0912
             request: RequestTask | None = None
 
             # make sure the client has a credential instance, if it is needed
@@ -126,7 +131,6 @@ class refresh_token(Generic[P]):
             else:
                 request = arg
                 user = cast(GrizzlyUser, client)
-
 
             self.impl.initialize(client, user)
 
@@ -140,9 +144,20 @@ class refresh_token(Generic[P]):
                 action_for = (client.credential.username or '<unknown username>') if client.credential.auth_method == AuthMethod.USER else client.credential.client_id
 
                 try:
-                    access_token = client.credential.get_token()
-                    refreshed = client.credential.refreshed
+                    now = datetime.now(tz=timezone.utc).timestamp()
+
+                    if (authorization_token is None and client.cookies == {}) or client.credential._access_token is None or client.credential._access_token.expires_on <= now:
+                        access_token, refreshed = RefreshTokenDistributor.get_token(client)
+                        client.credential._access_token = access_token
+                    else:
+                        access_token = client.credential._access_token
+                        refreshed = False
+
+
                     action_triggered = refreshed or (authorization_token is None and client.cookies == {})
+                    client.credential._refreshed = refreshed
+
+                    logger.debug('%s refereshed=%r, action_triggered=%r', user.logger.name, refreshed, action_triggered)
 
                     if action_triggered:
                         if refreshed:
@@ -213,6 +228,109 @@ def render(client: GrizzlyHttpAuthClient, user: GrizzlyUser) -> None:
     # we have a host specific context that we should merge into current context
     if client_context is not None:
         client._context = merge_dicts(client._context, cast(dict, client_context))
+
+
+class RefreshTokenDistributor:
+    _responses: ClassVar[dict[int, AsyncResult]] = {}
+    _credentials: ClassVar[dict[int, AzureAadCredential]] = {}
+
+    semaphore: ClassVar[Semaphore] = Semaphore()
+    semaphores: ClassVar[dict[int, Semaphore]] = {}
+
+    @classmethod
+    def handle_response(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG003
+        logger.info('got consume_token: %r', msg.data)
+        uid = msg.data['uid']
+        response = msg.data['response']
+
+        cls._responses[uid].set(response)
+
+
+    @classmethod
+    def handle_request(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:
+        logger.info('got produce_token: %r', msg.data)
+        cid = msg.data['cid']  # (worker) client id
+        uid = msg.data['uid']  # user id (user instance)
+        rid = msg.data['rid']  # request id
+        request = msg.data['request']
+
+        with cls.semaphore:
+            key = hash(frozenset(request.items()))
+            if key not in cls.semaphores:
+                cls.semaphores.update({key: Semaphore()})
+
+        with cls.semaphores[key]:
+            if key not in cls._credentials:
+                auth_method = AuthMethod.from_string(request['auth_method'])
+
+                default_module_name, class_name = request['class_name'].rsplit('.', 1)
+                credentials_class_type = ModuleLoader[AzureAadCredential].load(default_module_name, class_name)
+                credentials = credentials_class_type(
+                    request['username'],
+                    request['password'],
+                    request['tenant'],
+                    auth_method,
+                    host=request['host'],
+                    client_id=request['client_id'],
+                    redirect=request['redirect'],
+                    initialize=request['initialize'],
+                    otp_secret=request['otp_secret'],
+                    scope=request['scope'],
+                )
+                cls._credentials.update({key: credentials})
+
+            access_token = cls._credentials[key].access_token
+            refreshed = cls._credentials[key]._refreshed
+
+        response: dict[str, Any] = {
+            'token': access_token.token,
+            'expires_on': access_token.expires_on,
+            'refreshed': refreshed,
+        }
+
+        assert environment.runner is not None
+
+        environment.runner.send_message('consume_token', {'uid': uid, 'rid': rid, 'response': response}, client_id=cid)
+
+
+    @classmethod
+    def get_token(cls, client: GrizzlyHttpAuthClient) -> tuple[AccessToken, bool]:
+        uid = id(client)
+        rid = str(uuid4())
+
+        if uid in cls._responses:
+            logger.warning('greenlet %d, user %s is already waiting for testdata', uid, client.logger.name)
+
+        assert client.credential is not None
+
+        module_name = client.credential.__class__.__module__
+        class_name = client.credential.__class__.__name__
+
+        request: dict[str, Any] = {
+            'class_name': f'{module_name}.{class_name}',
+            'username': client.credential.username,
+            'password': client.credential.password,
+            'tenant': client.credential.tenant,
+            'auth_method': client.credential.auth_method.name,
+            'host': client.credential.host,
+            'client_id': client.credential.client_id,
+            'redirect': client.credential.redirect,
+            'initialize': client.credential.initialize,
+            'otp_secret': client.credential.otp_secret,
+            'scope': client.credential.scope,
+        }
+
+        cls._responses.update({uid: AsyncResult()})
+
+        assert not isinstance(client.grizzly.state.locust, MasterRunner)
+
+        client.grizzly.state.locust.send_message('produce_token', {'uid': uid, 'cid': client.grizzly.state.locust.client_id, 'rid': rid, 'request': request})
+
+        try:
+            response = cast(dict[str, Any], cls._responses[uid].get(timeout=10.0))
+            return AccessToken(response['token'], response['expires_on']), cast(bool, response['refreshed'])
+        finally:
+            del cls._responses[uid]
 
 
 class RefreshToken(metaclass=ABCMeta):

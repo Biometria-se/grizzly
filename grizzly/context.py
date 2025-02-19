@@ -101,7 +101,6 @@ class GrizzlyContextState:
     producer: TestdataProducer | None = field(init=False, repr=False, default=None)
 
 
-
 @dataclass
 class GrizzlyContextScenarioResponseTimePercentile:
     response_time: int

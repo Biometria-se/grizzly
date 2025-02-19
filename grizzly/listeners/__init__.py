@@ -32,6 +32,9 @@ def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Ca
         # acquire lock, that will be released when all users has spawned (on_spawning_complete)
         grizzly.state.spawning_complete.acquire()
 
+        # to avoid cyclic imports
+        from grizzly.auth import RefreshTokenDistributor
+
         if not isinstance(runner, WorkerRunner):
             if testdata is not None:
                 grizzly.state.producer = TestdataProducer(
@@ -50,10 +53,13 @@ def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Ca
                 runner.register_message(message_type, callback, concurrent=True)
 
             runner.register_message('consume_testdata', TestdataConsumer.handle_response, concurrent=True)
+            runner.register_message('consume_token', RefreshTokenDistributor.handle_response, concurrent=True)
 
         if not isinstance(runner, WorkerRunner):
             for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.CLIENT_SERVER, {}).items():
                 runner.register_message(message_type, callback, concurrent=True)
+
+            runner.register_message('produce_token', RefreshTokenDistributor.handle_request, concurrent=True)
 
     return cast(Callable[Concatenate[LocustRunner, P], None], ginit)
 
