@@ -157,9 +157,7 @@ class retry:
 
             try:
                 result = func(*args, **kwargs)
-                print(f'{result=}')
             except self.exceptions:
-                print(f'{self.retry=}')
                 if self.retry >= self.retries:
                     raise
 

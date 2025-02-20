@@ -149,12 +149,12 @@ class refresh_token(Generic[P]):
                     if (authorization_token is None and client.cookies == {}) or client.credential._access_token is None or client.credential._access_token.expires_on <= now:
                         access_token, refreshed = RefreshTokenDistributor.get_token(client)
                         client.credential._access_token = access_token
+                        action_triggered = refreshed or (authorization_token is None and client.cookies == {})
                     else:
                         access_token = client.credential._access_token
                         refreshed = False
+                        action_triggered = False
 
-
-                    action_triggered = refreshed or (authorization_token is None and client.cookies == {})
                     client.credential._refreshed = refreshed
 
                     logger.debug('%s refereshed=%r, action_triggered=%r', user.logger.name, refreshed, action_triggered)
@@ -239,7 +239,7 @@ class RefreshTokenDistributor:
 
     @classmethod
     def handle_response(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG003
-        logger.info('got consume_token: %r', msg.data)
+        logger.debug('got consume_token: %r', msg.data)
         uid = msg.data['uid']
         response = msg.data['response']
 
@@ -248,45 +248,58 @@ class RefreshTokenDistributor:
 
     @classmethod
     def handle_request(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:
-        logger.info('got produce_token: %r', msg.data)
+        logger.debug('got produce_token: %r', msg.data)
         cid = msg.data['cid']  # (worker) client id
         uid = msg.data['uid']  # user id (user instance)
         rid = msg.data['rid']  # request id
         request = msg.data['request']
+        key = hash(frozenset(request.items()))
 
         with cls.semaphore:
-            key = hash(frozenset(request.items()))
             if key not in cls.semaphores:
                 cls.semaphores.update({key: Semaphore()})
 
         with cls.semaphores[key]:
-            if key not in cls._credentials:
-                auth_method = AuthMethod.from_string(request['auth_method'])
+            try:
+                response: dict[str, Any]
 
-                default_module_name, class_name = request['class_name'].rsplit('.', 1)
-                credentials_class_type = ModuleLoader[AzureAadCredential].load(default_module_name, class_name)
-                credentials = credentials_class_type(
-                    request['username'],
-                    request['password'],
-                    request['tenant'],
-                    auth_method,
-                    host=request['host'],
-                    client_id=request['client_id'],
-                    redirect=request['redirect'],
-                    initialize=request['initialize'],
-                    otp_secret=request['otp_secret'],
-                    scope=request['scope'],
-                )
-                cls._credentials.update({key: credentials})
+                if key not in cls._credentials:
+                    auth_method = AuthMethod.from_string(request['auth_method'])
 
-            access_token = cls._credentials[key].access_token
-            refreshed = cls._credentials[key]._refreshed
+                    default_module_name, class_name = request['class_name'].rsplit('.', 1)
+                    credentials_class_type = ModuleLoader[AzureAadCredential].load(default_module_name, class_name)
+                    credentials = credentials_class_type(
+                        request['username'],
+                        request['password'],
+                        request['tenant'],
+                        auth_method,
+                        host=request['host'],
+                        client_id=request['client_id'],
+                        redirect=request['redirect'],
+                        initialize=request['initialize'],
+                        otp_secret=request['otp_secret'],
+                        scope=request['scope'],
+                    )
+                    cls._credentials.update({key: credentials})
+                    logger.debug('created %s for %d', class_name, key)
 
-        response: dict[str, Any] = {
-            'token': access_token.token,
-            'expires_on': access_token.expires_on,
-            'refreshed': refreshed,
-        }
+                access_token = cls._credentials[key].access_token
+                refreshed = cls._credentials[key]._refreshed
+
+                action_name = 'refreshed' if refreshed else 'claimed'
+
+                logger.debug('%s token for %d', action_name, key)
+
+                response = {
+                    'token': access_token.token,
+                    'expires_on': access_token.expires_on,
+                    'refreshed': refreshed,
+                }
+            except Exception as e:
+                response = {
+                    'error': f'{e.__class__.__name__}: {e!s}',
+                }
+                logger.exception('failed to get token')
 
         assert environment.runner is not None
 
@@ -324,11 +337,18 @@ class RefreshTokenDistributor:
 
         assert not isinstance(client.grizzly.state.locust, MasterRunner)
 
+        logger.debug('%s is asking for a token', client.logger.name)
+
         client.grizzly.state.locust.send_message('produce_token', {'uid': uid, 'cid': client.grizzly.state.locust.client_id, 'rid': rid, 'request': request})
 
         try:
             response = cast(dict[str, Any], cls._responses[uid].get(timeout=10.0))
-            return AccessToken(response['token'], response['expires_on']), cast(bool, response['refreshed'])
+            error = response.get('error', None)
+
+            if error is None:
+                return AccessToken(response['token'], response['expires_on']), cast(bool, response['refreshed'])
+
+            raise RuntimeError(error)
         finally:
             del cls._responses[uid]
 

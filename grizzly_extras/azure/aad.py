@@ -323,6 +323,8 @@ class AzureAadCredential(TokenCredential):
             else:
                 self._access_token = self.get_oauth_token(tenant_id=tenant_id)
 
+            logger.info('requested token for %s', self.username)
+
         return cast(AccessToken, self._access_token)
 
     def get_expires_on(self, token: str) -> int:

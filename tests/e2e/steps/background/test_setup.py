@@ -16,10 +16,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @pytest.mark.parametrize('url', [
     'influxdb://grizzly:password@localhost/grizzly-statistics?Testplan=grizzly-statistics',
-    'influxdb2://token@localhost/org:bucket?Testplan=grizzly-statistics',
+    'influxdb2://token@localhost:31337/org:bucket?Testplan=grizzly-statistics',
     'insights://localhost/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf',
     'influxdb://$conf::statistics.username$:$conf::statistics.password$@localhost/$conf::statistics.database$?Testplan=grizzly-statistics',
-    'influxdb2://$conf::statistics.token$@localhost/$conf::statistics.org$:$conf::statistics.bucket$?Testplan=grizzly-statistics',
+    'influxdb2://$conf::statistics.token$@localhost:31337/$conf::statistics.org$:$conf::statistics.bucket$?Testplan=grizzly-statistics',
 ])
 def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -> None:
     env_conf: dict[str, Any] = {

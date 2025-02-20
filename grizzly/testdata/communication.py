@@ -128,7 +128,7 @@ class AsyncTimersConsumer:
             }})
 
             # @TODO: should be DEBUG when merging to master
-            self.logger.info('reported start for %d timers and stop for %d timers to master', len(self._start), len(self._stop))
+            self.logger.debug('reported start for %d timers and stop for %d timers to master', len(self._start), len(self._stop))
 
             self._start.clear()
             self._stop.clear()
