@@ -1318,7 +1318,7 @@ def grizzly_stats_printer(stats: lstats.RequestStats) -> Callable[[], NoReturn]:
     def _grizzly_stats_printer() -> NoReturn:
         while True:
             grizzly_print_stats(stats)
-            gevent.sleep(lstats.CONSOLE_STATS_INTERVAL_SEC)
+            gevent.sleep(5)
 
     return _grizzly_stats_printer
 
