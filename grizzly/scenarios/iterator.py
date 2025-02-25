@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from json import dumps as jsondumps
+from math import ceil
 from random import uniform
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, ClassVar, Optional
@@ -18,7 +19,7 @@ from locust import task
 from locust.exception import InterruptTaskSet, RescheduleTask, RescheduleTaskImmediately
 from locust.user.task import LOCUST_STATE_RUNNING, LOCUST_STATE_STOPPING
 
-from grizzly.exceptions import RestartScenario, RetryTask, StopScenario
+from grizzly.exceptions import RestartIteration, RestartScenario, RetryTask, StopScenario
 from grizzly.types import RequestType, ScenarioState
 from grizzly.types.locust import StopUser
 
@@ -101,12 +102,15 @@ class IteratorScenario(GrizzlyScenario):
                     context=self.user._context,
                     exception=StopUser(f'on_start failed for {self.user._scenario.locust_name}: {e}'),
                 )
+
             with suppress(Exception):
                 self.on_stop()
 
             self.grizzly.state.spawning_complete.wait()
 
             raise StopUser from e
+
+        iteration_restarted_count = 0
 
         while True:
             execute_task_logged = False
@@ -171,14 +175,36 @@ class IteratorScenario(GrizzlyScenario):
                     pass
                 except RescheduleTask:
                     self.wait()
-                except RestartScenario as e:
+                except (RestartIteration, RestartScenario) as e:
+                    if isinstance(e, RestartIteration):
+                        self._prefetch = True  # same as when prefetching testdata, just use what we have
+                        restart_type = 'iteration'
+
+                        iteration_restarted_count += 1
+                        _, total_iterations = self.user._context.get('__iteration__', (None, None))
+
+                        user_fixed_count = self.user._scenario.user.fixed_count
+                        allowed_scenario_restarts = max(1, ceil(total_iterations / user_fixed_count)) if user_fixed_count is not None else total_iterations
+
+                        # do not allow unlimited number of iteration restarts
+                        if total_iterations is not None and iteration_restarted_count >= allowed_scenario_restarts:
+                            self.user.logger.error(  # noqa: TRY400
+                                'iteration has been restarted %d times, and scenario should run for %d iterations by %r users, aborting',
+                                iteration_restarted_count,
+                                total_iterations,
+                                user_fixed_count,
+                            )
+                            raise StopUser from e
+                    else:
+                        restart_type = 'scenario'
+
                     # tasks will wrap the grizzly.exceptions.StopScenario thrown when aborting to what ever
                     # the scenario has specified todo when failing, we must force it to stop scenario
                     if self.abort.is_set():
                         self.on_stop()
                         raise StopUser from e
 
-                    self.logger.info('restarting scenario at task %d of %d', self.current_task_index+1, self.task_count)
+                    self.logger.info('restarting %s at task %d of %d', restart_type, self.current_task_index+1, self.task_count)
                     # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over
                     tasks_left = self.task_count - (self._task_index % self.task_count)
                     self._task_index += tasks_left

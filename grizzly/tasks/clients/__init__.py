@@ -259,6 +259,7 @@ class ClientTask(GrizzlyMetaRequestTask):
             yield meta
         except Exception as e:
             exception = e
+            parent.user.logger.exception('client action failed')
         finally:
             if isinstance(exception, StopScenario):
                 raise exception

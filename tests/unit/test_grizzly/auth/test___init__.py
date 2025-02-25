@@ -458,7 +458,7 @@ class TestRefreshTokenDistributor:
         send_message_mock = mocker.patch.object(environment.runner, 'send_message', return_value=None)
         module_loader_mock = mocker.patch('grizzly.auth.ModuleLoader.load', return_value=AzureAadCredential)
         access_token1 = AccessToken('dummy', expires_on)
-        access_token_mock = mocker.patch('grizzly_extras.azure.aad.AzureAadCredentiaVkl.access_token', new_callable=mocker.PropertyMock, return_value=access_token1)
+        access_token_mock = mocker.patch('grizzly_extras.azure.aad.AzureAadCredential.access_token', new_callable=mocker.PropertyMock, return_value=access_token1)
 
         uid = id(parent.user)
         cid = 'worker-1'

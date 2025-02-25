@@ -742,6 +742,8 @@ class TestdataProducer:
                         data_key = alias
                         data[data_key] = value
 
+                data['__iteration__'] = (self.scenarios_iteration[scenario_name], scenario.iterations)
+
                 response['data'] = data
 
                 if scenario_name in self.scenarios_iteration:

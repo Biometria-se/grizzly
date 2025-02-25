@@ -707,6 +707,7 @@ value3,value4
                 'variables': variables,
                 'auth.user.username': 'value1',
                 'auth.user.password': 'value2',
+                '__iteration__': (0, 2),
             }
             assert grizzly.state.producer is not None
             assert grizzly.state.producer.keystore == {}

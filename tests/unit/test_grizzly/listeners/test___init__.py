@@ -10,6 +10,7 @@ import pytest
 from locust.runners import STATE_RUNNING, WorkerNode
 from locust.stats import RequestStats, StatsError
 
+from grizzly.auth import RefreshTokenDistributor
 from grizzly.context import GrizzlyContextScenarioResponseTimePercentile
 from grizzly.listeners import (
     grizzly_worker_quit,
@@ -71,7 +72,10 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
 
         assert grizzly.state.spawning_complete.locked()
         assert grizzly.state.producer is not None
-        assert grizzly.state.locust.custom_messages == {'produce_testdata': (grizzly.state.producer.handle_request, True)}
+        assert grizzly.state.locust.custom_messages == {
+            'produce_testdata': (grizzly.state.producer.handle_request, True),
+            'produce_token': (RefreshTokenDistributor.handle_request, True),
+        }
 
         grizzly.state.locust.custom_messages.clear()
         grizzly.state.spawning_complete.release()
@@ -84,6 +88,8 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
         assert grizzly.state.spawning_complete.locked()
         assert 'there is no test data' in caplog.text
         grizzly.state.spawning_complete.release()
+
+        grizzly.state.locust.custom_messages.clear()
 
         def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
             pass
@@ -101,6 +107,7 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
         assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'test_message': (callback, True),
             'produce_testdata': (grizzly.state.producer.handle_request, True),
+            'produce_token': (RefreshTokenDistributor.handle_request, True),
         })
         grizzly.state.spawning_complete.release()
     finally:
@@ -132,6 +139,7 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
         assert runner.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'grizzly_worker_quit': (grizzly_worker_quit, False),
             'consume_testdata': (TestdataConsumer.handle_response, True),
+            'consume_token': (RefreshTokenDistributor.handle_response, True),
         })
 
         grizzly.state.spawning_complete.release()
@@ -153,6 +161,7 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
         assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'grizzly_worker_quit': (grizzly_worker_quit, False),
             'consume_testdata': (TestdataConsumer.handle_response, True),
+            'consume_token': (RefreshTokenDistributor.handle_response, True),
             'test_message_ack': (callback_ack, True),
         })
         grizzly.state.spawning_complete.release()
@@ -179,6 +188,8 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
     assert grizzly.state.locust.custom_messages == {
         'consume_testdata': (TestdataConsumer.handle_response, True),
         'produce_testdata': (grizzly.state.producer.handle_request, True),
+        'consume_token': (RefreshTokenDistributor.handle_response, True),
+        'produce_token': (RefreshTokenDistributor.handle_request, True),
     }
 
     grizzly.state.spawning_complete.release()
@@ -199,6 +210,8 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
     assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
         'consume_testdata': (TestdataConsumer.handle_response, True),
         'produce_testdata': (grizzly.state.producer.handle_request, True),
+        'consume_token': (RefreshTokenDistributor.handle_response, True),
+        'produce_token': (RefreshTokenDistributor.handle_request, True),
         'test_message': (callback, True),
         'test_message_ack': (callback_ack, True),
     })

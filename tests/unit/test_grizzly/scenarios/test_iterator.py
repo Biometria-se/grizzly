@@ -12,7 +12,7 @@ from locust.exception import InterruptTaskSet, RescheduleTask, RescheduleTaskImm
 from locust.user.sequential_taskset import SequentialTaskSet
 from locust.user.task import LOCUST_STATE_RUNNING, LOCUST_STATE_STOPPING
 
-from grizzly.exceptions import RestartScenario, RetryTask, StopScenario, TaskTimeoutError
+from grizzly.exceptions import RestartIteration, RestartScenario, RetryTask, StopScenario, TaskTimeoutError
 from grizzly.scenarios import IteratorScenario
 from grizzly.tasks import ExplicitWaitTask, LogMessageTask, grizzlytask
 from grizzly.testdata.communication import TestdataConsumer
@@ -493,8 +493,8 @@ class TestIterationScenario:
         ]
         side_effects.extend([None] * 10)
 
-        on_stop = mocker.patch.object(parent, 'on_stop', autospec=True)
-        on_start = mocker.patch.object(
+        on_stop_mock = mocker.patch.object(parent, 'on_stop')
+        on_start_mock = mocker.patch.object(
             parent,
             'on_start',
             side_effect=side_effects,
@@ -503,20 +503,22 @@ class TestIterationScenario:
         mocker.patch.object(parent, 'tasks', [f'task-{index}' for index in range(10)])
         parent.__class__.task_count = len(parent.tasks)
 
-        schedule_task = mocker.patch.object(parent, 'schedule_task', autospec=True)
-        get_next_task = mocker.patch.object(parent, 'get_next_task', autospec=True)
-        wait = mocker.patch.object(parent, 'wait', autospec=True)
-        user_error = mocker.spy(parent.user.environment.events.user_error, 'fire')
+        schedule_task_mock = mocker.patch.object(parent, 'schedule_task', autospec=True)
+        get_next_task_mock = mocker.patch.object(parent, 'get_next_task', autospec=True)
+        wait_mock = mocker.patch.object(parent, 'wait', autospec=True)
+        user_error_fire_mock = mocker.spy(parent.user.environment.events.user_error, 'fire')
 
         with pytest.raises(RescheduleTask):
             parent.run()
 
-        assert on_start.call_count == 1
+        on_start_mock.assert_called_once_with()
+        on_start_mock.reset_mock()
 
         with pytest.raises(RescheduleTaskImmediately):
             parent.run()
 
-        assert on_start.call_count == 2
+        on_start_mock.assert_called_once_with()
+        on_start_mock.reset_mock()
 
         parent.user._state = LOCUST_STATE_STOPPING
 
@@ -525,123 +527,138 @@ class TestIterationScenario:
 
         parent.user._state = LOCUST_STATE_RUNNING
 
-        assert on_start.call_count == 3
-        assert get_next_task.call_count == 1
-        assert schedule_task.call_count == 1
+        on_start_mock.assert_called_once_with()
+        get_next_task_mock.assert_called_once_with()
+        assert schedule_task_mock.call_count == 1
+
+        on_start_mock.reset_mock()
+        get_next_task_mock.reset_mock()
 
         parent.user.environment.catch_exceptions = False
 
-        get_next_task = mocker.patch.object(parent, 'get_next_task', side_effect=[None, RuntimeError])
-        execute_next_task = mocker.patch.object(parent, 'execute_next_task', side_effect=[RescheduleTaskImmediately])
+        get_next_task_mock = mocker.patch.object(parent, 'get_next_task', side_effect=[None, RuntimeError])
+        execute_next_task_mock = mocker.patch.object(parent, 'execute_next_task', side_effect=[RescheduleTaskImmediately])
 
         with pytest.raises(RuntimeError):
             parent.run()
 
-        assert on_start.call_count == 4
-        assert get_next_task.call_count == 2
-        assert schedule_task.call_count == 2
-        assert execute_next_task.call_count == 1
-        assert wait.call_count == 0
-        assert user_error.call_count == 1
-        _, kwargs = user_error.call_args_list[-1]
+        on_start_mock.assert_called_once_with()
+        wait_mock.assert_not_called()
+        assert get_next_task_mock.call_count == 2
+        assert schedule_task_mock.call_count == 2
+        execute_next_task_mock.assert_called_once_with(1, 10, 'unknown')
+        assert user_error_fire_mock.call_count == 1
+        _, kwargs = user_error_fire_mock.call_args_list[-1]
         assert kwargs.get('user_instance', None) is parent.user
         assert isinstance(kwargs.get('exception', None), RuntimeError)
         assert kwargs.get('tb', None) is not None
 
-        get_next_task = mocker.patch.object(parent, 'get_next_task', side_effect=[None, RuntimeError])
-        execute_next_task = mocker.patch.object(parent, 'execute_next_task', side_effect=[RescheduleTask])
+        on_start_mock.reset_mock()
+
+        get_next_task_mock = mocker.patch.object(parent, 'get_next_task', side_effect=[None, RuntimeError])
+        execute_next_task_mock = mocker.patch.object(parent, 'execute_next_task', side_effect=[RescheduleTask])
 
         with pytest.raises(RuntimeError):
             parent.run()
 
-        assert on_start.call_count == 5
-        assert get_next_task.call_count == 2
-        assert schedule_task.call_count == 3
-        assert execute_next_task.call_count == 1
-        assert wait.call_count == 1
-        assert user_error.call_count == 2
-        _, kwargs = user_error.call_args_list[-1]
+        on_start_mock.assert_called_once_with()
+        wait_mock.assert_called_once_with()
+        execute_next_task_mock.assert_called_once_with(1, 10, 'unknown')
+
+        assert get_next_task_mock.call_count == 2
+        assert schedule_task_mock.call_count == 3
+        assert user_error_fire_mock.call_count == 2
+        _, kwargs = user_error_fire_mock.call_args_list[-1]
         assert kwargs.get('user_instance', None) is parent.user
         assert isinstance(kwargs.get('exception', None), RuntimeError)
         assert kwargs.get('tb', None) is not None
 
-        get_next_task = mocker.patch.object(parent, 'get_next_task', side_effect=[None, RuntimeError])
-        execute_next_task = mocker.patch.object(parent, 'execute_next_task')
+        on_start_mock.reset_mock()
+
+        get_next_task_mock = mocker.patch.object(parent, 'get_next_task', side_effect=[None, RuntimeError])
+        execute_next_task_mock = mocker.patch.object(parent, 'execute_next_task')
 
         with pytest.raises(RuntimeError):
             parent.run()
 
-        assert on_start.call_count == 6
-        assert get_next_task.call_count == 2
-        assert schedule_task.call_count == 4
-        assert execute_next_task.call_count == 1
-        assert wait.call_count == 2
-        assert user_error.call_count == 3
-        _, kwargs = user_error.call_args_list[-1]
+        on_start_mock.assert_called_once_with()
+        execute_next_task_mock.assert_called_once_with(1, 10, 'unknown')
+        assert get_next_task_mock.call_count == 2
+        assert schedule_task_mock.call_count == 4
+        assert wait_mock.call_count == 2
+        assert user_error_fire_mock.call_count == 3
+        _, kwargs = user_error_fire_mock.call_args_list[-1]
         assert kwargs.get('user_instance', None) is parent.user
         assert isinstance(kwargs.get('exception', None), RuntimeError)
         assert kwargs.get('tb', None) is not None
 
-        on_stop.reset_mock()
-        wait.reset_mock()
-        schedule_task.reset_mock()
+        on_start_mock.reset_mock()
+        on_stop_mock.reset_mock()
+        wait_mock.reset_mock()
+        schedule_task_mock.reset_mock()
 
-        get_next_task = mocker.patch.object(parent, 'get_next_task', side_effect=[InterruptTaskSet(reschedule=False), InterruptTaskSet(reschedule=True)])
-        execute_next_task = mocker.patch.object(parent, 'execute_next_task')
+        get_next_task_mock = mocker.patch.object(parent, 'get_next_task', side_effect=[InterruptTaskSet(reschedule=False), InterruptTaskSet(reschedule=True)])
+        execute_next_task_mock = mocker.patch.object(parent, 'execute_next_task')
 
         with pytest.raises(RescheduleTask):
             parent.run()
 
-        assert on_start.call_count == 7
-        assert on_stop.call_count == 0
-        assert get_next_task.call_count == 1
-        assert schedule_task.call_count == 0
-        assert execute_next_task.call_count == 0
-        assert wait.call_count == 0
-        assert user_error.call_count == 3
+        on_start_mock.assert_called_once_with()
+        on_start_mock.reset_mock()
+        on_stop_mock.assert_not_called()
+        schedule_task_mock.assert_not_called()
+        execute_next_task_mock.assert_not_called()
+        wait_mock.assert_not_called()
+        get_next_task_mock.assert_called_once_with()
+        assert user_error_fire_mock.call_count == 3
 
         with pytest.raises(RescheduleTaskImmediately):
             parent.run()
 
-        assert on_start.call_count == 8
-        assert on_stop.call_count == 0
-        assert get_next_task.call_count == 2
-        assert schedule_task.call_count == 0
-        assert execute_next_task.call_count == 0
-        assert wait.call_count == 0
-        assert user_error.call_count == 3
+        on_start_mock.assert_called_once_with()
+        on_start_mock.reset_mock()
+        on_stop_mock.assert_not_called()
+        schedule_task_mock.assert_not_called()
+        execute_next_task_mock.assert_not_called()
+        wait_mock.assert_not_called()
+        assert get_next_task_mock.call_count == 2
+        assert user_error_fire_mock.call_count == 3
 
         parent._task_index = 10
-        get_next_task = mocker.patch.object(parent, 'get_next_task', side_effect=[None, RuntimeError])
-        execute_next_task = mocker.patch.object(parent, 'execute_next_task', side_effect=[RestartScenario])
+        get_next_task_mock = mocker.patch.object(parent, 'get_next_task', side_effect=[None, RuntimeError])
+        execute_next_task_mock = mocker.patch.object(parent, 'execute_next_task', side_effect=[RestartScenario])
 
         with pytest.raises(RuntimeError):
             parent.run()
 
         assert parent._task_index == 20
-        assert on_start.call_count == 9
-        assert on_stop.call_count == 1
-        assert get_next_task.call_count == 2
-        assert schedule_task.call_count == 1
-        assert execute_next_task.call_count == 1
-        assert wait.call_count == 1
-        assert user_error.call_count == 4
+        on_start_mock.assert_called_once_with()
+        on_stop_mock.assert_called_once_with()
+        assert get_next_task_mock.call_count == 2
+        assert schedule_task_mock.call_count == 1
+        assert execute_next_task_mock.call_count == 1
+        wait_mock.assert_called_once_with()
+        assert user_error_fire_mock.call_count == 4
 
-        user_error.reset_mock()
-        wait.reset_mock()
+        user_error_fire_mock.reset_mock()
+        wait_mock.reset_mock()
+        on_start_mock.reset_mock()
+        on_stop_mock.reset_mock()
         parent.user.environment.catch_exceptions = True
 
-        get_next_task = mocker.patch.object(parent, 'get_next_task', side_effect=[RuntimeError, StopUser])
+        get_next_task_mock = mocker.patch.object(parent, 'get_next_task', side_effect=[RuntimeError, StopUser])
 
         with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
             parent.run()
 
-        assert wait.call_count == 1
-        assert get_next_task.call_count == 2
-        assert schedule_task.call_count == 1
-        assert execute_next_task.call_count == 1
-        assert user_error.call_count == 1
-        _, kwargs = user_error.call_args_list[-1]
+        on_start_mock.assert_called_once_with()
+        on_stop_mock.assert_called_once_with()
+        wait_mock.assert_called_once_with()
+        assert get_next_task_mock.call_count == 2
+        assert schedule_task_mock.call_count == 1
+        assert execute_next_task_mock.call_count == 1
+        assert user_error_fire_mock.call_count == 1
+        _, kwargs = user_error_fire_mock.call_args_list[-1]
         assert kwargs.get('user_instance', None) is parent.user
         assert isinstance(kwargs.get('exception', None), RuntimeError)
         assert kwargs.get('tb', None) is not None
@@ -650,25 +667,62 @@ class TestIterationScenario:
         assert 'TestUser_001' in caplog.text
         assert 'Traceback (most recent call last):' in caplog.text
 
+        on_start_mock.reset_mock()
+        on_stop_mock.reset_mock()
+        schedule_task_mock.reset_mock()
+        wait_mock.reset_mock()
+        user_error_fire_mock.reset_mock()
+
+        print('=' * 200)
+        parent._task_index = 0
+        parent.user.environment.catch_exceptions = False
+        get_next_task_mock = mocker.patch.object(parent, 'get_next_task', side_effect=[None, RuntimeError])
+        execute_next_task_mock = mocker.patch.object(parent, 'execute_next_task', side_effect=[RestartIteration, None])
+
+        assert not getattr(parent, '_prefetch', True)
+
+        with pytest.raises(RuntimeError):
+            parent.run()
+
+        assert parent._prefetch
+
+        assert parent._task_index == 10
+        assert get_next_task_mock.call_count == 2
+        assert schedule_task_mock.call_count == 1
+        assert execute_next_task_mock.call_count == 1
+        wait_mock.assert_called_once_with()
+        on_start_mock.assert_called_once_with()
+        on_stop_mock.assert_called_once_with()
+        assert user_error_fire_mock.call_count == 1
+
+        user_error_fire_mock.reset_mock()
+        wait_mock.reset_mock()
+        on_start_mock.reset_mock()
+        on_stop_mock.reset_mock()
+
         # problems in on_start
-        on_start.side_effect = [StopScenario]
+        on_start_mock.side_effect = [StopScenario]
 
         with pytest.raises(StopUser):
             parent.run()
 
-        on_stop.reset_mock()
+        on_start_mock.assert_called_once_with()
+        on_start_mock.reset_mock()
+        on_stop_mock.reset_mock()
         caplog.clear()
 
         # problems in on_stop, in handling of StopScenario
         parent.user._scenario_state = ScenarioState.RUNNING
-        on_stop.side_effect = None
-        on_stop.return_value = None
-        get_next_task.side_effect = [StopScenario]
+        on_stop_mock.side_effect = None
+        on_stop_mock.return_value = None
+        get_next_task_mock.side_effect = [StopScenario]
 
         with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
             parent.run()
 
-        on_stop.assert_called_once_with()
+        on_start_mock.assert_called_once_with()
+        on_start_mock.reset_mock()
+        on_stop_mock.assert_called_once_with()
 
     def test_run_tasks(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
         class TestErrorTask(TestTask):
@@ -885,6 +939,119 @@ class TestIterationScenario:
                 'task 7 of 13 failed: test-error-task-1',
                 'task 7 of 13 failed after 3 retries: test-error-task-1',
                 'scenario_state=RUNNING, user_state=running, exception=StopUser()',
+                'scenario state=ScenarioState.RUNNING -> ScenarioState.STOPPED',
+                "stopping scenario with <class 'locust.exception.StopUser'>",
+            ]
+
+            actual_messages = [
+                message for message in caplog.messages
+                    if 'instance variable=' not in message
+            ]
+
+            for m in actual_messages:
+                print(f'{m=}')
+
+            assert len(actual_messages) == len(expected_messages)
+
+            for actual, _expected in zip(actual_messages, expected_messages):
+                expected = regex.possible(_expected)
+                assert actual == expected
+
+        finally:
+            with suppress(KeyError):
+                del environ['TESTDATA_PRODUCER_ADDRESS']
+
+    def test_run_restart_scenario(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
+        class TestErrorTask(TestTask):
+            def __call__(self) -> grizzlytask:
+                self.call_count += 1
+                self.task_call_count = 0
+
+                @grizzlytask
+                def task(parent: GrizzlyScenario) -> Any:  # noqa: ARG001
+                    self.task_call_count += 1
+
+                    # second time, always raise RetryTask
+                    if self.task_call_count < 2 or self.task_call_count > 2:
+                        raise RestartIteration
+
+                return task
+
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
+
+        assert isinstance(parent, IteratorScenario)
+        assert not parent.grizzly.state.spawning_complete.locked()
+
+        mocker.patch('grizzly.scenarios.iterator.gsleep', return_value=None)
+        mocker.patch('grizzly.scenarios.iterator.uniform', return_value=1.0)
+
+        # add tasks to IteratorScenario.tasks
+        try:
+            for i in range(1, 6):
+                name = f'test-task-{i}'
+                parent.user._scenario.tasks.behave_steps.update({i + 1: name})
+                parent.__class__.populate(TestTask(name=name))
+
+            parent.__class__.populate(TestErrorTask(name='test-error-task-1'))
+            parent.user._scenario.tasks.behave_steps.update({7: 'test-error-task-1'})
+
+            for i in range(6, 11):
+                name = f'test-task-{i}'
+                parent.user._scenario.tasks.behave_steps.update({i + 2: name})
+                parent.__class__.populate(TestTask(name=name))
+
+            scenario = parent.__class__(parent.user)
+            scenario.__class__.pace_time = '10000'
+            mocker.patch.object(scenario, 'prefetch', return_value=None)
+            parent.user._scenario.failure_handling.update({None: RestartIteration})
+
+            assert parent.task_count == 13
+            assert len(parent.tasks) == 13
+
+            mocker.patch('grizzly.scenarios.TestdataConsumer.__init__', return_value=None)
+
+            scenario.on_start()  # create scenario.consumer, so we can patch request below
+
+            # same as 1 iteration
+            testdata_mock = mocker.patch.object(scenario.consumer, 'testdata', side_effect=[
+                {'variables': {'hello': 'world'}},
+                None,
+            ])
+            mocker.patch.object(scenario, 'on_start', return_value=None)
+
+            with caplog.at_level(logging.DEBUG), pytest.raises(StopUser):
+                scenario.run()
+
+            # first iteration, and third iteration. second iteration fails with "RestartIteration", meaning run again with
+            # same testdata
+            assert testdata_mock.call_count == 2
+
+            expected_messages = [
+                'task 1 of 13 executed: iterator',  # IteratorScenario.iterator()
+                'task 2 of 13 executed: test-task-1',
+                'task 3 of 13 executed: test-task-2',
+                'task 4 of 13 executed: test-task-3',
+                'task 5 of 13 executed: test-task-4',
+                'task 6 of 13 executed: test-task-5',
+                'task 7 of 13 failed: test-error-task-1',
+                'restarting iteration at task 7 of 13',
+                '0 tasks in queue',
+                'task 1 of 13 executed: iterator',  # IteratorScenario.iterator()
+                'task 2 of 13 executed: test-task-1',
+                'task 3 of 13 executed: test-task-2',
+                'task 4 of 13 executed: test-task-3',
+                'task 5 of 13 executed: test-task-4',
+                'task 6 of 13 executed: test-task-5',
+                'task 7 of 13 executed: test-error-task-1',
+                'task 8 of 13 executed: test-task-6',
+                'task 9 of 13 executed: test-task-7',
+                'task 10 of 13 executed: test-task-8',
+                'task 11 of 13 executed: test-task-9',
+                'task 12 of 13 executed: test-task-10',
+                r'^scenario keeping pace by sleeping [0-9\.]+ milliseconds$',
+                'task 13 of 13 executed: pace',
+                'no iteration data available, stop scenario',
+                'scenario_state=RUNNING, user_state=running, exception=StopScenario()',
                 'scenario state=ScenarioState.RUNNING -> ScenarioState.STOPPED',
                 "stopping scenario with <class 'locust.exception.StopUser'>",
             ]

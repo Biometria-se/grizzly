@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from locust.rpc.protocol import Message
 from typing_extensions import Concatenate, ParamSpec
 
-from grizzly.exceptions import RestartScenario, RetryTask, StopUser
+from grizzly.exceptions import RestartIteration, RestartScenario, RetryTask, StopUser
 from grizzly_extras.text import PermutationEnum
 
 from .locust import Environment
@@ -80,6 +80,7 @@ class FailureAction(PermutationEnum):
 
     STOP_USER = (StopUser, 'stop user', True)
     RESTART_SCENARIO = (RestartScenario, 'restart scenario', True)
+    RESTART_ITERATION = (RestartIteration, 'restart iteration', True)
     RETRY_TASK = (RetryTask, 'retry task', False)
     CONTINUE = (None, 'continue', True)
 

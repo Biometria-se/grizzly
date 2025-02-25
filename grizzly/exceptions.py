@@ -34,6 +34,10 @@ class RestartScenario(Exception):  # noqa: N818
     pass
 
 
+class RestartIteration(Exception):  # noqa: N818
+    pass
+
+
 class RetryTask(Exception):  # noqa: N818
     pass
 
