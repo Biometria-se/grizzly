@@ -826,7 +826,7 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
     def create_response(cls, key: int, request: dict[str, Any]) -> dict[str, Any]: ...
 
     @classmethod
-    def send_request(cls, consumer: GrizzlyContextAware, request: dict[str, Any]) -> dict[str, Any]:
+    def send_request(cls, consumer: GrizzlyContextAware, request: dict[str, Any], *, timeout: float = 10.0) -> dict[str, Any]:
         assert not isinstance(consumer.grizzly.state.locust, MasterRunner)
 
         message_type = cls.__message_types__['request']
@@ -844,7 +844,7 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
         consumer.grizzly.state.locust.send_message(message_type, {'uid': uid, 'cid': consumer.grizzly.state.locust.client_id, 'rid': rid, 'request': request})
 
         try:
-            response = cast(dict[str, Any], cls._responses[uid].get(timeout=10.0))
+            response = cast(dict[str, Any], cls._responses[uid].get(timeout=timeout))
             error = response.get('error', None)
 
             if error is None:
