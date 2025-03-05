@@ -34,10 +34,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
 def test_initialize_testdata_no_tasks(grizzly_fixture: GrizzlyFixture) -> None:
     grizzly_fixture.grizzly.scenario.tasks.clear()
-    testdata, external_dependencies, message_handlers = initialize_testdata(grizzly_fixture.grizzly)
+    testdata, dependencies = initialize_testdata(grizzly_fixture.grizzly)
     assert testdata == {}
-    assert external_dependencies == set()
-    assert message_handlers == {}
+    assert dependencies == set()
 
 
 def test_initialize_testdata_with_tasks(
@@ -101,10 +100,9 @@ def test_initialize_testdata_with_tasks(
 
         grizzly.scenarios.deselect()
 
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
+        testdata, dependencies = initialize_testdata(grizzly)
 
-        assert external_dependencies == set()
-        assert message_handlers == {}
+        assert dependencies == set()
 
         for index, (scenario_name, variables) in enumerate(testdata.items(), start=1):
             assert scenario_name == f'IteratorScenario_00{index}'
@@ -189,13 +187,12 @@ value3,value4
 
         grizzly.scenario.tasks.add(request)
 
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
+        testdata, dependencies = initialize_testdata(grizzly)
 
         scenario_name = grizzly.scenario.class_name
 
         assert scenario_name in testdata
-        assert external_dependencies == set()
-        assert message_handlers == {'atomiccsvwriter': atomiccsvwriter_message_handler}
+        assert dependencies == {('atomiccsvwriter', atomiccsvwriter_message_handler)}
 
         data = testdata[scenario_name]
 

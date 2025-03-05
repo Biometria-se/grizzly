@@ -125,6 +125,7 @@ from . import ClientTask, client
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.testdata.communication import GrizzlyDependencies
     from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 
 
@@ -156,7 +157,7 @@ class State:
 @template('context')
 @client('sb')
 class ServiceBusClientTask(ClientTask):
-    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[GrizzlyDependencies] = {'async-messaged'}
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: ztypes.Context

@@ -44,7 +44,8 @@ T = TypeVar('T', bound=UserMeta)
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
     from grizzly.tasks import RequestTask
-    from grizzly.testdata.communication import TestdataConsumer
+    from grizzly.testdata.communication import GrizzlyDependencies, TestdataConsumer
+
 
 class AsyncRequests(metaclass=ABCMeta):
     @abstractmethod
@@ -83,7 +84,7 @@ class GrizzlyUserEvents:
     'metadata': None,
 })
 class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
-    __dependencies__: ClassVar[set[str]] = set()
+    __dependencies__: ClassVar[GrizzlyDependencies] = set()
     __scenario__: ClassVar[GrizzlyContextScenario]  # reference to grizzly scenario this user is part of
     __context__: ClassVar[dict[str, Any]] = {}
 

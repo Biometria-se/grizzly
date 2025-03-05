@@ -48,6 +48,7 @@ if TYPE_CHECKING:  # pragma: no cover
 @template('endpoint', 'destination', 'source', 'name', 'variable_template')
 class ClientTask(GrizzlyMetaRequestTask):
     __scenario__: ClassVar[GrizzlyContextScenario]
+
     _scenario: GrizzlyContextScenario
     _schemes: list[str]
     _scheme: str

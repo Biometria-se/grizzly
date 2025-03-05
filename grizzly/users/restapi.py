@@ -91,7 +91,7 @@ from locust.contrib.fasthttp import FastHttpSession
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 from locust.exception import ResponseError
 
-from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
+from grizzly.auth import AAD, GrizzlyHttpAuthClient, RefreshTokenDistributor, refresh_token
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 from grizzly.utils import merge_dicts, safe_del
 from grizzly.utils.protocols import http_populate_cookiejar
@@ -101,6 +101,7 @@ from . import AsyncRequests, GrizzlyUser, GrizzlyUserMeta, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
+    from grizzly.testdata.communication import GrizzlyDependencies
     from grizzly.types.locust import Environment
 
 
@@ -157,6 +158,8 @@ class HtmlTitleParser(HTMLParser):
     '__context_change_history__': set(),
 })
 class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
+    __dependencies__: ClassVar[GrizzlyDependencies] = {RefreshTokenDistributor}
+
     environment: Environment
     timeout: ClassVar[float] = 60.0
 

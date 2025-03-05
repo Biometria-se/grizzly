@@ -14,7 +14,7 @@ from locust.stats import (
 )
 from typing_extensions import Concatenate, ParamSpec
 
-from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
+from grizzly.testdata.communication import GrizzlyDependencies, TestdataConsumer, TestdataProducer
 from grizzly.types import MessageDirection, RequestType, TestdataType
 from grizzly.types.behave import Status
 from grizzly.types.locust import Environment, LocustRunner, MasterRunner, Message, WorkerRunner
@@ -27,13 +27,10 @@ P = ParamSpec('P')
 logger = logging.getLogger(__name__)
 
 
-def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Callable[Concatenate[LocustRunner, P], None]:
+def init(grizzly: GrizzlyContext, dependencies: GrizzlyDependencies, testdata: Optional[TestdataType] = None) -> Callable[Concatenate[LocustRunner, P], None]:
     def ginit(runner: LocustRunner, **_kwargs: P.kwargs) -> None:
         # acquire lock, that will be released when all users has spawned (on_spawning_complete)
         grizzly.state.spawning_complete.acquire()
-
-        # to avoid cyclic imports
-        from grizzly.auth import RefreshTokenDistributor
 
         if not isinstance(runner, WorkerRunner):
             if testdata is not None:
@@ -53,13 +50,22 @@ def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Ca
                 runner.register_message(message_type, callback, concurrent=True)
 
             runner.register_message('consume_testdata', TestdataConsumer.handle_response, concurrent=True)
-            runner.register_message('consume_token', RefreshTokenDistributor.handle_response, concurrent=True)
+            for dependency in dependencies:
+                if not isinstance(dependency, type):
+                    continue
+
+                runner.register_message(dependency.__message_types__['response'], dependency.handle_response, concurrent=True)
 
         if not isinstance(runner, WorkerRunner):
             for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.CLIENT_SERVER, {}).items():
                 runner.register_message(message_type, callback, concurrent=True)
 
-            runner.register_message('produce_token', RefreshTokenDistributor.handle_request, concurrent=True)
+
+            for dependency in dependencies:
+                if not isinstance(dependency, type):
+                    continue
+
+                runner.register_message(dependency.__message_types__['request'], dependency.handle_request, concurrent=True)
 
     return cast(Callable[Concatenate[LocustRunner, P], None], ginit)
 

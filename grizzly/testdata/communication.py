@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from abc import ABCMeta, abstractmethod
 from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -9,7 +10,7 @@ from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, Protocol, TypedDict, cast
 from uuid import uuid4
 
 from dateutil.parser import parse as date_parser
@@ -18,7 +19,7 @@ from gevent.event import AsyncResult
 from gevent.lock import Semaphore
 
 from grizzly.events import GrizzlyEventDecoder, GrizzlyEvents, event, events
-from grizzly.types.locust import LocalRunner, MasterRunner, StopUser, WorkerRunner
+from grizzly.types.locust import LocalRunner, MasterRunner, MessageHandler, StopUser, WorkerRunner
 
 from . import GrizzlyVariables
 from .utils import transform
@@ -35,6 +36,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 ActionType = Literal['start', 'stop']
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -784,3 +787,110 @@ class TestdataProducer:
             response = {}
 
         self.runner.send_message('consume_testdata', {'uid': uid, 'rid': rid, 'response': response}, client_id=cid)
+
+
+class GrizzlyMessage(TypedDict):
+    uid: int
+    rid: str
+
+
+class GrizzlyMessageResponse(GrizzlyMessage):
+    response: dict[str, Any]
+
+
+class GrizzlyMessageRequest(GrizzlyMessage):
+    cid: str
+    request: dict[str, Any]
+
+
+class GrizzlyMessageMapping(TypedDict):
+    request: str
+    response: str
+
+
+class GrizzlyContextAware(Protocol):
+    grizzly: GrizzlyContext
+    logger: logging.Logger
+
+
+class GrizzlyMessageHandler(metaclass=ABCMeta):
+    __message_types__: ClassVar[GrizzlyMessageMapping]
+
+    _responses: ClassVar[dict[int, AsyncResult]] = {}
+
+    semaphore: ClassVar[Semaphore] = Semaphore()
+    semaphores: ClassVar[dict[int, Semaphore]] = {}
+
+    @classmethod
+    @abstractmethod
+    def create_response(cls, key: int, request: dict[str, Any]) -> dict[str, Any]: ...
+
+    @classmethod
+    def send_request(cls, consumer: GrizzlyContextAware, request: dict[str, Any]) -> dict[str, Any]:
+        assert not isinstance(consumer.grizzly.state.locust, MasterRunner)
+
+        message_type = cls.__message_types__['request']
+
+        assert message_type is not None
+
+        uid = id(consumer)
+        rid = str(uuid4())
+
+        if uid in cls._responses:
+            consumer.logger.warning('greenlet %d is already waiting for testdata', uid)
+
+        cls._responses.update({uid: AsyncResult()})
+
+        consumer.grizzly.state.locust.send_message(message_type, {'uid': uid, 'cid': consumer.grizzly.state.locust.client_id, 'rid': rid, 'request': request})
+
+        try:
+            response = cast(dict[str, Any], cls._responses[uid].get(timeout=10.0))
+            error = response.get('error', None)
+
+            if error is None:
+                return response
+
+            raise RuntimeError(error)
+        finally:
+            del cls._responses[uid]
+
+    @classmethod
+    def handle_response(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG003
+        data = cast(GrizzlyMessageResponse, msg.data)
+        uid = data['uid']
+        response = data['response']
+
+        cls._responses[uid].set(response)
+
+    @classmethod
+    def handle_request(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:
+        message_type = cls.__message_types__['request']
+        logger.debug('got %s: %r', msg.data, message_type)
+        data = cast(GrizzlyMessageRequest, msg.data)
+        cid = data['cid']  # (worker) client id
+        uid = data['uid']  # user id (user instance)
+        rid = data['rid']  # request id
+        request = data['request']
+        key = hash(frozenset(request.items()))
+
+        with cls.semaphore:
+            if key not in cls.semaphores:
+                cls.semaphores.update({key: Semaphore()})
+
+        with cls.semaphores[key]:
+            try:
+                response = cls.create_response(key, request)
+            except Exception as e:
+                response = {
+                    'error': f'{e.__class__.__name__}: {e!s}',
+                }
+                logger.exception('failed to handle %s', message_type)
+
+        assert environment.runner is not None
+
+        message_type = cls.__message_types__['response']
+
+        environment.runner.send_message(message_type, {'uid': uid, 'rid': rid, 'response': response}, client_id=cid)
+
+
+GrizzlyDependencies = set[str | type[GrizzlyMessageHandler] | tuple[str, MessageHandler]]

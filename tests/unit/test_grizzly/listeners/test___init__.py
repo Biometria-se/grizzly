@@ -63,7 +63,7 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
         runner = MasterRunner(grizzly_fixture.behave.locust.environment, '0.0.0.0', 5555)
         grizzly.state.locust = runner
 
-        init_function: Callable[..., None] = init(grizzly, {})
+        init_function: Callable[..., None] = init(grizzly, {RefreshTokenDistributor}, {})
         assert callable(init_function)
 
         assert not grizzly.state.spawning_complete.locked()
@@ -81,7 +81,7 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
         grizzly.state.spawning_complete.release()
 
         with caplog.at_level(logging.ERROR):
-            init_function = init(grizzly, None)
+            init_function = init(grizzly, set(), None)
             assert callable(init_function)
             init_function(runner)
 
@@ -100,7 +100,7 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
         grizzly.setup.locust.messages.register(MessageDirection.CLIENT_SERVER, 'test_message', callback)
         grizzly.setup.locust.messages.register(MessageDirection.SERVER_CLIENT, 'test_message_ack', callback_ack)
 
-        init_function = init(grizzly, {})
+        init_function = init(grizzly, {RefreshTokenDistributor}, {})
         init_function(runner)
 
         assert grizzly.state.spawning_complete.locked()
@@ -123,7 +123,7 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
     try:
         grizzly = grizzly_fixture.grizzly
 
-        init_function: Callable[..., None] = init(grizzly)
+        init_function: Callable[..., None] = init(grizzly, {RefreshTokenDistributor})
         assert callable(init_function)
 
         runner = WorkerRunner(grizzly_fixture.behave.locust.environment, 'localhost', 5555)
@@ -177,7 +177,7 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
 
     grizzly = grizzly_fixture.grizzly
 
-    init_function: Callable[..., None] = init(grizzly, {})
+    init_function: Callable[..., None] = init(grizzly, {RefreshTokenDistributor}, {})
     assert callable(init_function)
     assert not grizzly.state.spawning_complete.locked()
 

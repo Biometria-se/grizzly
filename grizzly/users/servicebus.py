@@ -114,6 +114,8 @@ from . import GrizzlyUser, grizzlycontext
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Generator
 
+    from grizzly.testdata.communication import GrizzlyDependencies
+
 MAX_LENGTH = 65
 
 
@@ -130,7 +132,7 @@ MAX_LENGTH = 65
     },
 })
 class ServiceBusUser(GrizzlyUser):
-    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[GrizzlyDependencies] = {'async-messaged'}
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]

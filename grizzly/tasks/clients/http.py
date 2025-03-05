@@ -48,12 +48,12 @@ from __future__ import annotations
 import logging
 from json import dumps as jsondumps
 from time import time
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 from geventhttpclient import Session
 from locust.exception import CatchResponseError
 
-from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
+from grizzly.auth import AAD, GrizzlyHttpAuthClient, RefreshTokenDistributor, refresh_token
 from grizzly.tasks import RequestTaskResponse
 from grizzly.testdata.utils import read_file
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, bool_type
@@ -69,10 +69,13 @@ if TYPE_CHECKING:  # pragma: no cover
     from geventhttpclient.useragent import CompatResponse
 
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.testdata.communication import GrizzlyDependencies
 
 
 @client('http', 'https')
 class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
+    __dependencies__: ClassVar[GrizzlyDependencies] = {RefreshTokenDistributor}
+
     arguments: dict[str, Any]
     metadata: dict[str, Any]
     session_started: Optional[float]

@@ -12,8 +12,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario, RetryTask, StepError
 from grizzly.steps import *
 from grizzly.tasks.clients import HttpClientTask
-from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
-from grizzly.types import FailureAction, RequestDirection, RequestMethod
+from grizzly.types import FailureAction, GrizzlyVariableType, RequestDirection, RequestMethod
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover

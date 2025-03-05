@@ -19,6 +19,7 @@ from dateutil.parser import parse as date_parse
 from locust.dispatch import UsersDispatcher as WeightedUsersDispatcher
 from locust.stats import RequestStats
 
+from grizzly.auth import RefreshTokenDistributor
 from grizzly.context import GrizzlyContext
 from grizzly.locust import (
     greenlet_exception_logger,
@@ -175,9 +176,9 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
         setup_locust_scenarios(grizzly)
 
     grizzly.scenario.user.class_name = 'RestApiUser'
-    user_classes, external_dependencies = setup_locust_scenarios(grizzly)
+    user_classes, dependencies = setup_locust_scenarios(grizzly)
 
-    assert not external_dependencies
+    assert dependencies == {RefreshTokenDistributor}
     assert len(user_classes) == 1
 
     user_class = user_classes[-1]
@@ -201,9 +202,9 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
     if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
         grizzly.scenario.user.class_name = 'MessageQueueUser'
         grizzly.scenario.context['host'] = 'mq://test.example.org?QueueManager=QM01&Channel=TEST.CHANNEL'
-        user_classes, external_dependencies = setup_locust_scenarios(grizzly)
+        user_classes, dependencies = setup_locust_scenarios(grizzly)
 
-        assert external_dependencies == {'async-messaged'}
+        assert dependencies == {'async-messaged'}
         assert len(user_classes) == 1
 
         user_class = user_classes[-1]
@@ -222,9 +223,9 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
         grizzly.scenario.context['host'] = 'https://api.example.io'
         MessageQueueClientTask.__scenario__ = grizzly.scenario
         grizzly.scenario.tasks.add(MessageQueueClientTask(RequestDirection.FROM, 'mqs://username:password@mq.example.io/queue:INCOMING?QueueManager=QM01&Channel=TCP.IN'))
-        user_classes, external_dependencies = setup_locust_scenarios(grizzly)
+        user_classes, dependencies = setup_locust_scenarios(grizzly)
 
-        assert external_dependencies == {'async-messaged'}
+        assert dependencies == {'async-messaged', RefreshTokenDistributor}
         assert len(user_classes) == 1
 
 
@@ -381,7 +382,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
     try:
         # event listeners for worker node
         mock_on_worker(on_worker=True)
-        setup_environment_listeners(behave, testdata={})
+        setup_environment_listeners(behave, dependencies=set(), testdata={})
 
         assert len(environment.events.init._handlers) == 1
         assert len(environment.events.test_start._handlers) == 1
@@ -392,7 +393,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         environment.events.spawning_complete._handlers = []  # grizzly handler should only append
         grizzly.setup.statistics_url = 'influxdb://influx.example.com:1230/testdb'
 
-        setup_environment_listeners(behave, testdata={})
+        setup_environment_listeners(behave, dependencies=set(), testdata={})
 
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
@@ -416,14 +417,14 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         # this is a bit misplaced after a refactoring...
         with pytest.raises(AssertionError, match='variables have been found in templates, but have not been declared:\ntest_id'):
-            testdata, _, _ = initialize_testdata(grizzly)
+            testdata, _ = initialize_testdata(grizzly)
 
         grizzly.scenario.variables['test_id'] = 'test-1'
         environment.events.spawning_complete._handlers = []
 
-        testdata, _, _ = initialize_testdata(grizzly)
+        testdata, _ = initialize_testdata(grizzly)
 
-        setup_environment_listeners(behave, testdata=testdata)
+        setup_environment_listeners(behave, dependencies=set(), testdata=testdata)
         assert len(environment.events.init._handlers) == 1
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -434,7 +435,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         grizzly.setup.statistics_url = 'influxdb://influx.example.com:1231/testdb'
         environment.events.spawning_complete._handlers = []
 
-        setup_environment_listeners(behave, testdata=testdata)
+        setup_environment_listeners(behave, dependencies=set(), testdata=testdata)
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -444,7 +445,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         grizzly.scenario.validation.fail_ratio = 0.1
         environment.events.spawning_complete._handlers = []
 
-        setup_environment_listeners(behave, testdata=testdata)
+        setup_environment_listeners(behave, dependencies=set(), testdata=testdata)
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1

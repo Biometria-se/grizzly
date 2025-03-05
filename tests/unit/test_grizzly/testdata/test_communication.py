@@ -597,10 +597,9 @@ value3,value4
             grizzly.scenario.tasks.add(request)
             grizzly.scenario.tasks.add(LogMessageTask(message='hello {{ world }}'))
 
-            testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
+            testdata, dependencies = initialize_testdata(grizzly)
 
-            assert external_dependencies == set()
-            assert message_handlers == {'atomiccsvwriter': atomiccsvwriter_message_handler}
+            assert dependencies == {('atomiccsvwriter', atomiccsvwriter_message_handler)}
 
             grizzly.state.producer = TestdataProducer(
                 runner=cast(LocalRunner, grizzly.state.locust),
@@ -903,10 +902,9 @@ value3,value4
             grizzly.scenario.tasks.add(request)
             grizzly.scenario.tasks.add(LogMessageTask(message='are you {{ sure }}'))
 
-            testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
+            testdata, dependencies = initialize_testdata(grizzly)
 
-            assert external_dependencies == set()
-            assert message_handlers == {}
+            assert dependencies == set()
 
             grizzly.state.producer = TestdataProducer(
                 runner=cast(LocalRunner, grizzly.state.locust),

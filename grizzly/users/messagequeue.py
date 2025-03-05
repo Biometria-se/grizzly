@@ -125,7 +125,6 @@ And metadata "filename" is "my_filename"
 """
 from __future__ import annotations
 
-import inspect
 import logging
 from contextlib import contextmanager, suppress
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
@@ -148,6 +147,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Generator
 
     from grizzly.tasks import RequestTask
+    from grizzly.testdata.communication import GrizzlyDependencies
     from grizzly.types.locust import Environment
 
 # no used here, but needed for sanity check
@@ -173,7 +173,7 @@ except:
     },
 })
 class MessageQueueUser(GrizzlyUser):
-    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[GrizzlyDependencies] = {'async-messaged'}
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
