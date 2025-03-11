@@ -863,6 +863,16 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
         cls._responses[uid].set(response)
 
     @classmethod
+    def get_key(cls, value: dict[str, Any]) -> int:
+        key_value: dict[str, Any] = {}
+        for k, v in  value.items():
+            k_v = cls.get_key(v) if isinstance(v, dict) else v
+
+            key_value.update({k: k_v})
+
+        return hash(frozenset(key_value.items()))
+
+    @classmethod
     def handle_request(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:
         message_type = cls.__message_types__['request']
         logger.debug('got %s: %r', msg.data, message_type)
@@ -871,7 +881,11 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
         uid = data['uid']  # user id (user instance)
         rid = data['rid']  # request id
         request = data['request']
-        key = hash(frozenset(request.items()))
+        try:
+            key = cls.get_key(request)
+        except:
+            logger.exception('failed to hash request %r', request)
+            raise
 
         with cls.semaphore:
             if key not in cls.semaphores:
