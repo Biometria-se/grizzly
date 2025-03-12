@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from platform import node as get_hostname
 from typing import TYPE_CHECKING, Any, Literal, Optional, Protocol, TypedDict, cast
@@ -48,6 +49,8 @@ class InfluxDb(Protocol):
 
     def connect(self) -> Self: ...
 
+    def disconnect(self) -> None: ...
+
 
 class InfluxDbV1(InfluxDb):
     client: InfluxDBClientV1
@@ -76,6 +79,9 @@ class InfluxDbV1(InfluxDb):
         )
         return self
 
+    def disconnect(self) -> None:
+        self.__exit__(None, None, None)
+
     def __enter__(self) -> Self:
         return self.connect()
 
@@ -85,7 +91,8 @@ class InfluxDbV1(InfluxDb):
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        self.client.__exit__(exc_type, exc, traceback)
+        with suppress(Exception):
+            self.client.__exit__(exc_type, exc, traceback)
 
         if exc is not None:
             if isinstance(exc, InfluxDBClientError):
@@ -155,6 +162,9 @@ class InfluxDbV2(InfluxDb):
         self.write_api = self.client.write_api()
         return self
 
+    def disconnect(self) -> None:
+        self.__exit__(None, None, None)
+
     def __enter__(self) -> Self:
         return self.connect()
 
@@ -164,9 +174,12 @@ class InfluxDbV2(InfluxDb):
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        self.client.close()
-        self.write_api and self.write_api.close()
-        self.client.__exit__(exc_type, exc, traceback)
+        with suppress(Exception):
+            self.client.close()
+            self.client.__exit__(exc_type, exc, traceback)
+
+        if self.write_api:
+            self.write_api.close()
 
         if exc is not None:
             if isinstance(exc, ApiException):
@@ -253,7 +266,8 @@ class InfluxDbListener:
         self._profile_name = params['ProfileName'][0] if 'ProfileName' in params else ''
         self._description = params['Description'][0] if 'Description' in params else ''
 
-        self.connection = self.create_client().connect()
+        self.client = self.create_client()
+        self.connection = self.client.connect()
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
         self.environment.events.heartbeat_sent.add_listener(self.heartbeat_sent)
@@ -326,6 +340,9 @@ class InfluxDbListener:
             if not self.finished:
                 gevent.sleep(5.0)
 
+        with suppress(Exception):
+            self.client.disconnect()
+
     def run_events(self) -> None:
         while not self.finished:
             if self._events:
@@ -341,6 +358,9 @@ class InfluxDbListener:
 
             if not self.finished:
                 gevent.sleep(0.5)
+
+        with suppress(Exception):
+            self.client.disconnect()
 
     def _override_event(self, event: InfluxDbPoint, context: dict[str, Any]) -> None:
         # override values set in context

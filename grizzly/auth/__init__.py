@@ -232,7 +232,7 @@ class RefreshTokenDistributor(GrizzlyMessageHandler):
     _credentials: ClassVar[dict[int, AzureAadCredential]] = {}
 
     @classmethod
-    def create_response(cls, key: int, request: dict[str, Any]) -> dict[str, Any]:
+    def create_response(cls, environment: Environment, key: int, request: dict[str, Any]) -> dict[str, Any]:  # noqa: ARG003
         if key not in cls._credentials:
             auth_method = AuthMethod.from_string(request['auth_method'])
 

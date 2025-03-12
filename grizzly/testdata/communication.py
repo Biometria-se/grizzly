@@ -464,8 +464,7 @@ class TestdataConsumer:
                 value = self._keystore_pop_poll(request)
 
             if value is None and wait > -1 and (int(perf_counter() - start) > wait):
-                error_message = f'no key available within {wait} seconds'
-                self.logger.error(error_message)
+                error_message = f'no value for key "{key}" available within {wait} seconds'
                 raise RuntimeError(error_message)
 
         return value
@@ -823,7 +822,7 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def create_response(cls, key: int, request: dict[str, Any]) -> dict[str, Any]: ...
+    def create_response(cls, environment: Environment, key: int, request: dict[str, Any]) -> dict[str, Any]: ...
 
     @classmethod
     def send_request(cls, consumer: GrizzlyContextAware, request: dict[str, Any], *, timeout: float = 10.0) -> dict[str, Any]:
@@ -852,7 +851,8 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
 
             raise RuntimeError(error)
         finally:
-            del cls._responses[uid]
+            with suppress(KeyError):
+                del cls._responses[uid]
 
     @classmethod
     def handle_response(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG003
@@ -893,7 +893,7 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
 
         with cls.semaphores[key]:
             try:
-                response = cls.create_response(key, request)
+                response = cls.create_response(environment, key, request)
             except Exception as e:
                 response = {
                     'error': f'{e.__class__.__name__}: {e!s}',

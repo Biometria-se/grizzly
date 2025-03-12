@@ -367,7 +367,9 @@ class TestIotHubUser:
 
 
 class TestIotHubCloudToDeviceClient:
-    def test___init__(self, mocker: MockerFixture) -> None:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        environment = grizzly_fixture.grizzly.state.locust.environment
+
         client_mock = mocker.MagicMock(spec=IoTHubDeviceClient)
         mocker.patch('grizzly.users.iothub.IoTHubDeviceClient.create_from_connection_string', return_value=client_mock)
 
@@ -381,7 +383,7 @@ class TestIotHubCloudToDeviceClient:
             },
         }
 
-        device = IotHubCloudToDeviceClient(data)
+        device = IotHubCloudToDeviceClient(environment, data)
 
         assert device.device_id == 'device-1'
         assert device.expressions == data['expressions']

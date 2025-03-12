@@ -178,7 +178,8 @@ class KeystoreTask(GrizzlyTask):
                 else:  # pragma: no cover
                     pass
             except Exception as e:
-                parent.user.logger.exception('keystore action %s failed', self.action)
+                error_message = str(e)
+                parent.user.logger.exception('keystore action %s failed: %s', self.action, error_message)
                 parent.user.environment.events.request.fire(
                     request_type='KEYS',
                     name=f'{parent.user._scenario.identifier} {key}',

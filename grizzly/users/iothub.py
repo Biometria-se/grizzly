@@ -203,7 +203,7 @@ class IotHubCloudToDeviceClient:
 
     queue: Queue[Any]
 
-    def __init__(self, data: RegisterIotClient) -> None:
+    def __init__(self, environment: Environment, data: RegisterIotClient) -> None:
         self.device_id = data['id']
         self.expressions = data['expressions']
         self.host = data['host']
@@ -216,8 +216,12 @@ class IotHubCloudToDeviceClient:
         self.queue = Queue()
 
         # register message handler
+        environment.events.quit.add_listener(self.on_quit)
         self.client.on_message_received = self.message_handler
         self.logger.info('registered as C2D handler')
+
+    def on_quit(self, *_args: Any, **_kwargs: Any) -> None:
+        self.client.disconnect()
 
     @classmethod
     def _extract(cls, data: Any, expression: str) -> list[str]:
@@ -273,9 +277,9 @@ class IotHubRegisterCloudToDeviceHandler(GrizzlyMessageHandler):
     __message_types__: ClassVar[GrizzlyMessageMapping] = {'response': 'consume_register_iot_message', 'request': 'produce_register_iot_message'}
 
     @classmethod
-    def create_response(cls, key: int, request: dict[str, Any]) -> dict[str, Any]:  # noqa: ARG003
+    def create_response(cls, environment: Environment, key: int, request: dict[str, Any]) -> dict[str, Any]:  # noqa: ARG003
         return {
-            'created': IotHubCloudToDeviceHandler.register_client(cast(RegisterIotClient, request)),
+            'created': IotHubCloudToDeviceHandler.register_client(environment, cast(RegisterIotClient, request)),
         }
 
     @classmethod
@@ -301,8 +305,8 @@ class IotHubCloudToDeviceHandler(GrizzlyMessageHandler):
     _clients: ClassVar[dict[str, IotHubCloudToDeviceClient]] = {}
 
     @classmethod
-    def create_response(cls, key: int, request: dict[str, Any]) -> dict[str, Any]:  # noqa: ARG003
-        logger.error('! creating response for request=%r', request)
+    def create_response(cls, environment: Environment, key: int, request: dict[str, Any]) -> dict[str, Any]:  # noqa: ARG003
+        logger.debug('creating response for request=%r', request)
         device_id = request['id']
         timeout = float(request['timeout']) * 0.999
         client = cls._clients[device_id]
@@ -321,9 +325,9 @@ class IotHubCloudToDeviceHandler(GrizzlyMessageHandler):
                     message = f'no message within {timeout} seconds'
                     raise RuntimeError(message) from None
 
-                if count % 25 == 0:
+                if count % 50 == 0:
                     count = 0
-                    client.logger.error('! still no C2D message received within %f seconds', delta)  # noqa: TRY400
+                    client.logger.debug('still no C2D message received within %f seconds', delta)
 
                 gsleep(0.1)
             else:
@@ -332,14 +336,14 @@ class IotHubCloudToDeviceHandler(GrizzlyMessageHandler):
                 }
 
     @classmethod
-    def register_client(cls, data: RegisterIotClient) -> bool:
+    def register_client(cls, environment: Environment, data: RegisterIotClient) -> bool:
         device_id = data['id']
         created = False
 
         with cls.semaphore:
             if device_id not in cls._clients:
-                cls._clients.update({device_id: IotHubCloudToDeviceClient(data)})
-                logger.error('! created client for %s', device_id)
+                cls._clients.update({device_id: IotHubCloudToDeviceClient(environment, data)})
+                logger.info('created client for %s', device_id)
                 created = True
 
         return created
@@ -352,7 +356,7 @@ class IotHubCloudToDeviceHandler(GrizzlyMessageHandler):
             'timeout': timeout,
         }
 
-        logger.error('! get_message for %s, request=%r', client.__class__.__name__, request)
+        logger.debug('get_message for %s, request=%r', client.__class__.__name__, request)
 
         response = cls.send_request(client, request, timeout=timeout)
 
@@ -436,9 +440,9 @@ class IotHubUser(GrizzlyUser):
         super().on_start()
 
         if IotHubRegisterCloudToDeviceHandler.send_register(self):
-            self.logger.error('! created C2D client when registered')
+            self.logger.debug('created C2D client when registered')
         else:
-            self.logger.error('! C2D client exists')
+            self.logger.debug('C2D client exists')
 
         self.iot_client = IoTHubDeviceClient.create_from_connection_string(self.host, websockets=True)
 
