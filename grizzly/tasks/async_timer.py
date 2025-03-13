@@ -43,9 +43,9 @@ if TYPE_CHECKING:
 ActionType = Literal['start', 'stop']
 
 
-@template('name', 'tid', 'version')
+@template('tname', 'tid', 'version')
 class AsyncTimerTask(GrizzlyTask):
-    name: str
+    tname: str
     tid: str
     version: str
     action: ActionType
@@ -53,7 +53,7 @@ class AsyncTimerTask(GrizzlyTask):
     def __init__(self, name: str, tid: str, version: str, action: ActionType) -> None:
         super().__init__()
 
-        self.name = name
+        self.tname = name
         self.tid = tid
         self.version = version
         self.action = action
@@ -71,7 +71,7 @@ class AsyncTimerTask(GrizzlyTask):
                         '%Y%m%d %H%M%S%f',
                     ).replace(tzinfo=timezone.utc)
 
-                name = parent.user.render(self.name)
+                name = parent.user.render(self.tname)
                 tid = parent.user.render(self.tid)
                 version = parent.user.render(self.version)
 
