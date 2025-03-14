@@ -210,18 +210,20 @@ class IotHubCloudToDeviceClient:
 
         self.logger = logging.getLogger(f'{self.__class__.__name__}/{self.device_id}')
 
-        self.client = IoTHubDeviceClient.create_from_connection_string(self.host, websockets=True)
-
         self._unique = VolatileDeque(timeout=20.0)
         self.queue = Queue()
 
         # register message handler
         environment.events.quit.add_listener(self.on_quit)
+
+        self.client = IoTHubDeviceClient.create_from_connection_string(self.host, websockets=True)
+        self.client.connect()
         self.client.on_message_received = self.message_handler
-        self.logger.info('registered as C2D handler')
+        self.logger.info('started C2D handler')
 
     def on_quit(self, *_args: Any, **_kwargs: Any) -> None:
-        self.client.disconnect()
+        self.logger.info('disconnecting C2D handler')
+        self.client.shutdown()
 
     @classmethod
     def _extract(cls, data: Any, expression: str) -> list[str]:
@@ -235,42 +237,58 @@ class IotHubCloudToDeviceClient:
 
     @event(events.user_event, tags={'type': 'iot::cloud-to-device'}, decoder=IotMessageDecoder(arg=1))  # 0 = self...
     def message_handler(self, message: IotMessage) -> None:
-        serialized_message = IotHubUser._serialize_message(message)
+        serialized_message: Any = None
 
-        if any(expression is not None for expression in [self.expressions.values()]):
-            metadata, payload = IotHubUser._unserialize_message(serialized_message)
+        try:
+            try:
+                serialized_message = IotHubUser._serialize_message(message)
+                self.logger.error('! C2D message received serialized: %s', serialized_message)
+            except:
+                self.logger.exception('failed to serialize message %r', message)
+                raise
 
-            if self.expressions['metadata'] is not None:
-                values = self._extract(metadata, self.expressions['metadata'])
+            if any(expression is not None for expression in [self.expressions.values()]):
+                metadata, payload = IotHubUser._unserialize_message(serialized_message)
 
-                if len(values) < 1:
-                    self.logger.debug('message id %s metadata did not match "%s"', message.message_id, self.expressions['metadata'])
-                    return
+                if self.expressions['metadata'] is not None:
+                    values = self._extract(metadata, self.expressions['metadata'])
 
-            if self.expressions['payload'] is not None:
-                values = self._extract(payload, self.expressions['payload'])
+                    if len(values) < 1:
+                        self.logger.debug('message id %s metadata did not match "%s" in %s', message.message_id, self.expressions['metadata'], serialized_message)
+                        return
 
-                if len(values) < 1:
-                    self.logger.debug('message id %s payload did not match "%s"', message.message_id, self.expressions['payload'])
-                    return
+                if self.expressions['payload'] is not None:
+                    values = self._extract(payload, self.expressions['payload'])
 
-            if self.expressions['unique'] is not None:
-                values = self._extract(payload, self.expressions['unique'])
+                    if len(values) < 1:
+                        self.logger.debug('message id %s payload did not match "%s" in %s', message.message_id, self.expressions['payload'], serialized_message)
+                        return
 
-                if len(values) < 1:
-                    self.logger.debug('message id %s was an unknown message, no matches for "%s"', message.message_id, self.expressions['unique'])
-                    return
+                if self.expressions['unique'] is not None:
+                    values = self._extract(payload, self.expressions['unique'])
 
-                value = next(iter(values))
+                    if len(values) < 1:
+                        self.logger.error('! message id %s was an unknown message, no matches for "%s" in %s', message.message_id, self.expressions['unique'], serialized_message)
+                        return
 
-                if value in self._unique:
-                    self.logger.warning('message id %s contained "%s", which has already been received within %d seconds', message.message_id, value, self._unique.timeout)
-                    return
+                    value = next(iter(values))
 
-                self._unique.append(value)
+                    if value in self._unique:
+                        self.logger.warning(
+                            'message id %s contained "%s", which has already been received within %d seconds, %s',
+                            message.message_id,
+                            value,
+                            self._unique.timeout,
+                            serialized_message,
+                        )
+                        return
 
-        self.logger.info('C2D message received: %s', serialized_message)
-        self.queue.put_nowait(serialized_message)
+                    self._unique.append(value)
+
+            self.logger.info('C2D message received handled: %s', serialized_message)
+            self.queue.put_nowait(serialized_message)
+        except:
+            self.logger.exception('unable to handle C2D message: %s', serialized_message)
 
 
 class IotHubRegisterCloudToDeviceHandler(GrizzlyMessageHandler):
