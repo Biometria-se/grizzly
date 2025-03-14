@@ -183,17 +183,23 @@ class IteratorScenario(GrizzlyScenario):
                         iteration_restarted_count += 1
                         _, total_iterations = self.user._context.get('__iteration__', (None, None))
 
-                        user_fixed_count = self.user._scenario.user.fixed_count
-                        allowed_scenario_restarts = max(1, ceil(total_iterations / user_fixed_count)) if user_fixed_count is not None else total_iterations
+                        if e.max_retries is None and total_iterations is not None:
+                            user_fixed_count = self.user._scenario.user.fixed_count
+                            allowed_scenario_restarts = max(1, ceil(total_iterations / user_fixed_count)) if user_fixed_count is not None else total_iterations
+                            error_message = (
+                                f'iteration has been restarted {iteration_restarted_count} times, and scenario should run for {total_iterations} iterations by '
+                                f'{user_fixed_count} users, aborting'
+                            )
+                        else:
+                            allowed_scenario_restarts = e.max_retries or 3
+                            error_message = (
+                                f'iteration has been restarted {iteration_restarted_count} times, which is the maximum allowed of restart '
+                                f'({allowed_scenario_restarts}) for this scenario'
+                            )
 
                         # do not allow unlimited number of iteration restarts
-                        if total_iterations is not None and iteration_restarted_count >= allowed_scenario_restarts:
-                            self.user.logger.error(  # noqa: TRY400
-                                'iteration has been restarted %d times, and scenario should run for %d iterations by %r users, aborting',
-                                iteration_restarted_count,
-                                total_iterations,
-                                user_fixed_count,
-                            )
+                        if iteration_restarted_count >= allowed_scenario_restarts:
+                            self.user.logger.error(error_message)  # noqa: TRY400
                             raise StopUser from e
                     else:
                         restart_type = 'scenario'

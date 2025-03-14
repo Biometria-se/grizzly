@@ -35,7 +35,11 @@ class RestartScenario(Exception):  # noqa: N818
 
 
 class RestartIteration(Exception):  # noqa: N818
-    pass
+    max_retries: int | None
+
+    def __init__(self, *args: object, max_retries: int | None = None) -> None:
+        super().__init__(*args)
+        self.max_retries = max_retries
 
 
 class RetryTask(Exception):  # noqa: N818
