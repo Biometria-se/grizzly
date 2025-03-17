@@ -507,7 +507,7 @@ class InfluxDbListener:
 
             if exception is not None:
                 message_to_log = f'{message_to_log} Exception: {exception!r}'
-                self.logger.error(message_to_log)
+                self.logger.info(message_to_log)
 
             self._log_request(request_type, name, result, metrics, context, exception)
         except Exception:

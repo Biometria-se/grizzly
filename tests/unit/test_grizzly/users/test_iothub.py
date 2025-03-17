@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from queue import Queue
 from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
@@ -18,8 +17,7 @@ from grizzly.tasks import RequestTask
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
 from grizzly.types import RequestMethod, ScenarioState
-from grizzly.users.iothub import IotHubCloudToDeviceClient, IotHubUser, IotMessageDecoder, MessageJsonSerializer, RegisterIotClient
-from grizzly_extras.queue import VolatileDeque
+from grizzly.users.iothub import IotHubUser, IotMessageDecoder, MessageJsonSerializer
 from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY, SOME
 
@@ -365,54 +363,6 @@ class TestIotHubUser:
         parent_fixture.blob_client_mock.upload_blob.assert_not_called()
         parent_fixture.iot_device_mock.notify_blob_upload_status.assert_not_called()
 
-
-class TestIotHubCloudToDeviceClient:
-    def test___init__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        environment = grizzly_fixture.grizzly.state.locust.environment
-
-        client_mock = mocker.MagicMock(spec=IoTHubDeviceClient)
-        mocker.patch('grizzly.users.iothub.IoTHubDeviceClient.create_from_connection_string', return_value=client_mock)
-
-        data: RegisterIotClient = {
-            'id': 'device-1',
-            'host': 'HostName=grizzly.azure-devices.net;DeviceId=device-1;SharedAccessKey=ASDFghjk1234=',
-            'expressions': {
-                'metadata': None,
-                'payload': None,
-                'unique': None,
-            },
-        }
-
-        device = IotHubCloudToDeviceClient(environment, data)
-
-        assert device.device_id == 'device-1'
-        assert device.expressions == data['expressions']
-        assert device.client is client_mock
-        assert device.queue == ANY(Queue)
-        assert device._unique == ANY(VolatileDeque)
-        assert device._unique.timeout == 20.0
-
     def test__extract(self) -> None:
-        assert IotHubCloudToDeviceClient._extract({'foo': {'bar': 'baz'}}, '$.foo.bar') == ['baz']
-        assert IotHubCloudToDeviceClient._extract('{"foo": {"bar": "baz"}}', '$.foo.bar') == ['baz']
-
-    def test_message_handler(self) -> None:
-        pytest.fail('not implemented')
-
-
-class TestIotHubCloudToDeviceHandler:
-    def test_create_response(self) -> None:
-        pytest.fail('not implemented')
-
-    def test_handle_register(self) -> None:
-        pytest.fail('not implemented')
-
-    def test_send_register(self) -> None:
-        pytest.fail('not implemented')
-
-    def test_get_message(self) -> None:
-        pytest.fail('not implemented')
-
-
-
-
+        assert IotHubUser._extract({'foo': {'bar': 'baz'}}, '$.foo.bar') == ['baz']
+        assert IotHubUser._extract('{"foo": {"bar": "baz"}}', '$.foo.bar') == ['baz']

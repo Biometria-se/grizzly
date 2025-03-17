@@ -78,6 +78,9 @@ class AsyncTimer:
             started = cast(datetime, self.start).isoformat()
             finished = cast(datetime, self.stop).isoformat()
 
+        if duration < 0:
+            logger.warning('duration between stop %s and start %s was weird, %d ms', self.stop, self.start, duration)
+
         event.fire(
             request_type=AsyncTimersProducer.__request_method__,
             name=self.name,
