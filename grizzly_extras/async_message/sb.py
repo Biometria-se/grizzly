@@ -826,7 +826,10 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         continue
 
                     raise AsyncMessageError(str(e)) from e
-                except (ServiceBusError, AMQPLinkError, OperationTimeoutError) as e:
+                except (ServiceBusError, AMQPLinkError, OperationTimeoutError, ValueError) as e:
+                    if isinstance(e, ValueError) and 'Please use ServiceBusClient to create a new instance' not in str(e):
+                        raise
+
                     if retry < 3 and not self._event.is_set():
                         self.logger.warning('connection unexpectedly closed, reconnecting', exc_info=True)
                         self._hello(request, force=True)
