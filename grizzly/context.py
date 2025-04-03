@@ -17,7 +17,7 @@ from typing_extensions import Self
 from grizzly.events import events
 from grizzly.testdata import GrizzlyVariables
 from grizzly.types import MessageCallback, MessageDirection
-from grizzly.utils import MergeYamlTag, flatten, merge_dicts
+from grizzly.utils import flatten, merge_dicts
 
 if TYPE_CHECKING:  # pragma: no cover
     from locust.dispatch import UsersDispatcher
@@ -47,12 +47,9 @@ def load_configuration_file() -> dict[str, Any]:
             logger.error('configuration file must have file extension yml or yaml')
             raise SystemExit(1)
 
-        environment = Environment(autoescape=False, extensions=[MergeYamlTag])
-        environment.extend(source_file=file)
         loader = yaml.SafeLoader
 
-        yaml_template = environment.from_string(file.read_text())
-        yaml_content = yaml_template.render()
+        yaml_content = file.read_text()
 
         yaml_configurations = list(yaml.load_all(yaml_content, Loader=loader))
         yaml_configurations.reverse()

@@ -22,7 +22,7 @@ def test_step_task_async_timer_start(grizzly_fixture: GrizzlyFixture) -> None:
     task_factory = grizzly.scenario.tasks()[-1]
 
     assert isinstance(task_factory, AsyncTimerTask)
-    assert task_factory == SOME(AsyncTimerTask, name='timer-1', tid='foobar', version='1', action='start')
+    assert task_factory == SOME(AsyncTimerTask, tname='timer-1', tid='foobar', version='1', action='start')
 
 
 def test_step_task_async_timer_stop_name(grizzly_fixture: GrizzlyFixture) -> None:
@@ -36,4 +36,4 @@ def test_step_task_async_timer_stop_name(grizzly_fixture: GrizzlyFixture) -> Non
     task_factory = grizzly.scenario.tasks()[-1]
 
     assert isinstance(task_factory, AsyncTimerTask)
-    assert task_factory == SOME(AsyncTimerTask, name='timer-1', tid='foobar', version='1', action='stop')
+    assert task_factory == SOME(AsyncTimerTask, tname='timer-1', tid='foobar', version='1', action='stop')

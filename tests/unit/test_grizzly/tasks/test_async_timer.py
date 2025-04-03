@@ -17,10 +17,10 @@ if TYPE_CHECKING:
 class TestAsyncTimerTask:
     def test___init__(self) -> None:
         task_factory = AsyncTimerTask('timer-1', 'foobar', '1', 'start')
-        assert task_factory == SOME(AsyncTimerTask, name='timer-1', tid='foobar', version='1', action='start')
+        assert task_factory == SOME(AsyncTimerTask, tname='timer-1', tid='foobar', version='1', action='start')
 
         task_factory = AsyncTimerTask('timer-2', 'foobar', '1', 'stop')
-        assert task_factory == SOME(AsyncTimerTask, name='timer-2', tid='foobar', version='1', action='stop')
+        assert task_factory == SOME(AsyncTimerTask, tname='timer-2', tid='foobar', version='1', action='stop')
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
@@ -35,7 +35,6 @@ class TestAsyncTimerTask:
         expected_datetime = dateparser('2024-12-03 10:02:00.123456+0100')
         datetime_mock.now.return_value = expected_datetime
         datetime_mock.strptime.side_effect=lambda *args, **kwargs: datetime.strptime(*args, **kwargs)  # noqa: DTZ007
-
 
         # <!-- start
         task_factory = AsyncTimerTask('timer-1', 'foobar', '1', 'start')
