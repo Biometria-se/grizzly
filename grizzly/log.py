@@ -1,4 +1,7 @@
-"""Logic for how logs are handled in grizzly and locust."""
+"""Logic for how logs are handled in grizzly and locust.
+
+This is not used, but kept for reference.
+"""
 from __future__ import annotations
 
 import logging

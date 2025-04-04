@@ -133,7 +133,6 @@ class AsyncTimersConsumer:
                 'stop': [*data.get('async_timers', {}).get('stop', []), *self._stop],
             }})
 
-            # @TODO: should be DEBUG when merging to master
             self.logger.debug('reported start for %d timers and stop for %d timers to master', len(self._start), len(self._stop))
 
             self._start.clear()
