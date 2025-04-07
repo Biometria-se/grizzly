@@ -139,6 +139,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
                 'id': None,
                 'secret': None,
                 'resource': None,
+                'cert_file': None,
+                'key_file': None,
             },
             'user': {
                 'username': None,
@@ -170,6 +172,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
                 'id': None,
                 'secret': None,
                 'resource': None,
+                'cert_file': None,
+                'key_file': None,
             },
             'user': {
                 'username': None,
@@ -237,6 +241,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
                 'id': None,
                 'secret': None,
                 'resource': None,
+                'cert_file': None,
+                'key_file': None,
             },
             'user': {
                 'username': 'grizzly-user',
@@ -274,6 +280,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
                 'id': None,
                 'secret': None,
                 'resource': None,
+                'cert_file': None,
+                'key_file': None,
             },
             'user': {
                 'username': 'grizzly-user',
@@ -321,6 +329,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
                 'id': None,
                 'secret': None,
                 'resource': None,
+                'cert_file': None,
+                'key_file': None,
             },
             'user': {
                 'username': None,
@@ -363,6 +373,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
                 'id': None,
                 'secret': None,
                 'resource': None,
+                'cert_file': None,
+                'key_file': None,
             },
             'user': {
                 'username': None,

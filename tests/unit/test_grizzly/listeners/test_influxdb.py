@@ -212,7 +212,7 @@ class TestInfluxDbV2:
         assert client.__enter__() is client
         client.__exit__(None, None, None)
 
-    def test___exit__(self, mocker: MockerFixture) -> None:
+    def test___exit__(self) -> None:
         influx = InfluxDbV2('https://influx.example.com', 1236, 'org', 'testdb').connect()
 
         with patch('grizzly.listeners.influxdb.InfluxDBClientV2.__exit__', return_value=None):

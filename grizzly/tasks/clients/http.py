@@ -47,8 +47,9 @@ from __future__ import annotations
 
 import logging
 from json import dumps as jsondumps
+from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, cast
 
 from geventhttpclient import Session
 from locust.exception import CatchResponseError
@@ -58,9 +59,7 @@ from grizzly.tasks import RequestTaskResponse
 from grizzly.testdata.utils import read_file
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, bool_type
 from grizzly.utils import has_template, is_file, merge_dicts
-from grizzly.utils.protocols import http_populate_cookiejar
-from grizzly_extras.arguments import parse_arguments, split_value
-from grizzly_extras.text import has_separator
+from grizzly.utils.protocols import http_populate_cookiejar, ssl_context_factory
 from grizzly_extras.transformer import TransformerContentType
 
 from . import ClientTask, client
@@ -82,6 +81,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     host: str
     verify: bool
     response: RequestTaskResponse
+    ssl_context_factory: Callable | None
 
     def __init__(
         self,
@@ -98,17 +98,6 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     ) -> None:
         self.verify = True
 
-        if has_separator('|', endpoint):
-            endpoint, endpoint_arguments = split_value(endpoint)
-            arguments = parse_arguments(endpoint_arguments, unquote=False)
-
-            if 'verify' in arguments:
-                self.verify = bool_type(arguments['verify'])
-                del arguments['verify']
-
-            if len(arguments) > 0:
-                endpoint = f'{endpoint} | {", ".join([f"{key}={value}" for key, value in arguments.items()])}'
-
         if source is not None and is_file(source):
             source = read_file(source)
 
@@ -124,7 +113,37 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             method=method,
         )
 
-        self.arguments = {}
+        if 'timeout' in self.arguments:
+            self.timeout = float(self.arguments['timeout'])
+            del self.arguments['timeout']
+        else:
+            self.timeout = 10.0
+
+        if 'verify' in self.arguments:
+            self.verify = bool_type(self.arguments['verify'])
+            del self.arguments['verify']
+
+        if 'client_cert' in self.arguments:
+            client_cert = self.arguments['client_cert']
+            del self.arguments['client_cert']
+        else:
+            client_cert = None
+
+        if 'client_key' in self.arguments:
+            client_key = self.arguments['client_key']
+            del self.arguments['client_key']
+        else:
+            client_key = None
+
+        if client_cert is not None and client_key is not None:
+            if not Path(client_cert).exists() or not Path(client_key).exists():
+                message = f'either {client_cert} or {client_key} does not exist'
+                raise ValueError(message)
+
+            self.ssl_context_factory = ssl_context_factory(cert=(client_cert, client_key))
+        else:
+            self.ssl_context_factory = None
+
         self.cookies = {}
         self.metadata = {
             'x-grizzly-user': f'{self.__class__.__name__}::{id(self)}',
@@ -203,7 +222,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             }})
 
 
-            with Session(insecure=not self.verify) as client:
+            with Session(insecure=not self.verify, network_timeout=self.timeout, ssl_context_factory=self.ssl_context_factory) as client:
                 http_populate_cookiejar(client, self.cookies, url=url)
                 response = client.get(url, headers=self.metadata, **self.arguments)
 
@@ -225,7 +244,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
                 'payload': source,
             }})
 
-            with Session(insecure=not self.verify) as client:
+            with Session(insecure=not self.verify, network_timeout=self.timeout, ssl_context_factory=self.ssl_context_factory) as client:
                 http_populate_cookiejar(client, self.cookies, url=url)
                 response = client.request(self.method.name, url, data=source, headers=self.metadata, **self.arguments)
 

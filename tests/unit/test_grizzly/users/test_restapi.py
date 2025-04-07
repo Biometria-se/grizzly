@@ -49,6 +49,8 @@ class TestRestApiUser:
                     'id': None,
                     'secret': None,
                     'resource': None,
+                    'cert_file': None,
+                    'key_file': None,
                 },
                 'user': {
                     'username': None,

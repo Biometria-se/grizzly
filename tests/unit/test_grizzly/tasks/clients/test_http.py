@@ -30,6 +30,31 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class TestHttpClientTask:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.scenario.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
+
+        HttpClientTask.__scenario__ = grizzly.scenario
+        with pytest.raises(ValueError, match='either hello.crt or hello.key does not exist'):
+            HttpClientTask(
+                RequestDirection.FROM,
+                'http://example.org | timeout=1800, client_cert=hello.crt, client_key=hello.key',
+                payload_variable='test_payload',
+                metadata_variable='test_metadata',
+            )
+
+        task_factory = HttpClientTask(
+            RequestDirection.FROM,
+            'http://example.org | timeout=1800',
+            payload_variable='test_payload',
+            metadata_variable='test_metadata',
+        )
+
+        assert task_factory.endpoint == 'http://example.org'
+        assert task_factory.host == 'http://example.org'
+        assert task_factory.timeout == 1800
+        assert task_factory.ssl_context_factory is None
+
     def test_on_start(self, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture()
 

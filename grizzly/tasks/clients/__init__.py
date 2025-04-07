@@ -69,6 +69,7 @@ class ClientTask(GrizzlyMetaRequestTask):
     destination: Optional[str]
     _text: Optional[str]
     method: RequestMethod
+    arguments: dict[str, str]
 
     log_dir: Path
 
@@ -115,13 +116,15 @@ class ClientTask(GrizzlyMetaRequestTask):
 
         content_type: TransformerContentType = TransformerContentType.UNDEFINED
 
+        self.arguments = {}
+
         if has_separator('|', endpoint):
             value, value_arguments = split_value(endpoint)
-            arguments = parse_arguments(value_arguments, unquote=True)
+            self.arguments = parse_arguments(value_arguments, unquote=True)
 
-            if 'content_type' in arguments:
-                content_type = TransformerContentType.from_string(unquote(arguments['content_type']))
-                del arguments['content_type']
+            if 'content_type' in self.arguments:
+                content_type = TransformerContentType.from_string(unquote(self.arguments['content_type']))
+                del self.arguments['content_type']
 
             endpoint = value
 
