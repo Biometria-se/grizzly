@@ -41,12 +41,7 @@ def configure_logging() -> None:
     except ValueError:
         pass
 
-    env_level = environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO')
-    try:
-        level = logging.getLevelNamesMapping()[env_level]
-    except KeyError:
-        level = logging.getLevelNamesMapping()['INFO']
-        logging.warning('level %s specified in environment variable GRIZZLY_EXTRAS_LOGLEVEL is not a valid logging level, defaulting to INFO', env_level)
+    level = environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO')
 
     logging.basicConfig(
         level=level,
