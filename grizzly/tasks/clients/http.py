@@ -182,7 +182,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         text = response.text
         payload = text.decode() if isinstance(text, (bytearray, bytes)) else text
 
-        metadata = dict(response.headers)
+        metadata = {key: value for key, value in response.headers.items()}  # noqa: C416
 
         exception: Optional[Exception] = None
 
