@@ -63,9 +63,13 @@ class AsyncTimerTask(GrizzlyTask):
         def implementation(parent: GrizzlyScenario) -> Any:
             timestamp: datetime | str = datetime.now().astimezone()
 
-            # @TODO: this should no look like this when merged in master
+            name: str | None = None
+            tid: str | None = None
+            version: str | None = None
+
             try:
-                if self.action == 'stop' and all(var in parent.user.variables for var in ['PutDate', 'PutTime']):
+                # @TODO: this should no look like this when merged in master
+                if self.action == 'stop' and all(str(parent.user.variables.get(var, 'none')).lower() != 'none' for var in ['PutDate', 'PutTime']):
                     timestamp = datetime.strptime(
                         f'{parent.user.variables['PutDate']} {parent.user.variables['PutTime']}',
                         '%Y%m%d %H%M%S%f',
@@ -77,7 +81,7 @@ class AsyncTimerTask(GrizzlyTask):
 
                 parent.consumer.async_timers.toggle(self.action, name, tid, version, timestamp)
             except Exception as e:
-                message = f'failed to {self.action} timer "{name}" for id "{tid}" and version "{version}"'
+                message = f'failed to {self.action} timer "{name or self.tname}" for id "{tid or self.tid}" and version "{version or self.version}"'
                 parent.logger.exception(message)
                 parent.user.environment.stats.log_error('DOC', name or f'{tid}::{version}', e)
 
