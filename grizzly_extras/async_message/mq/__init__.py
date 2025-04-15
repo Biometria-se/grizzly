@@ -386,13 +386,20 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                                 self.logger.warning(', '.join(warning_message))
                                 do_retry = True
                                 latest_retry_exception = e
+                            elif e.reason == pymqi.CMQC.MQRC_RECONNECT_FAILED:
+                                warning_message = ['got MQRC_RECONNECT_FAILED while getting message', f'{retries=}']
+                                self.logger.warning(', '.join(warning_message))
+                                error_message = f'{e.reason} {e.comp} {action} operation failed'
+
+                                raise pymqi.PYIFError(error_message) from e
                             else:
                                 # Some other error condition.
                                 self.logger.exception('unknown MQMIError')
                                 raise AsyncMessageError(str(e)) from e
                 except pymqi.PYIFError as e:
-                    if e.error.strip() == 'not open':
-                        self.logger.warning('reconnecting to queue manager')
+                    if e.error.strip() == 'not open' or e.error.strip().endswith('operation failed'):
+                        warning_message = ['reconnecting to queue manager: ', e.error or 'unknown error']
+                        self.logger.warning(', '.join(warning_message))
                         self.disconnect({})
                         self.connect(request)
                         do_retry = True
