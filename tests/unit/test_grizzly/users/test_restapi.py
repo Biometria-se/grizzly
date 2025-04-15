@@ -41,6 +41,7 @@ class TestRestApiUser:
             'host': 'http://example.net',
             'log_all_requests': False,
             'verify_certificates': True,
+            'timeout': 60,
             'auth': {
                 'refresh_time': 3000,
                 'provider': None,
@@ -192,7 +193,6 @@ class TestRestApiUser:
                         HTTPClientPool,
                         client_args=SOME(
                             dict,
-                            connection_timeout=60.0,
                             network_timeout=60.0,
                             ssl_context_factory=gevent.ssl.create_default_context,
                         ),
@@ -220,7 +220,6 @@ class TestRestApiUser:
                         HTTPClientPool,
                         client_args=SOME(
                             dict,
-                            connection_timeout=60.0,
                             network_timeout=60.0,
                             ssl_context_factory=insecure_ssl_context_factory,
                         ),

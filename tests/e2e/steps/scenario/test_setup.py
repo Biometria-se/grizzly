@@ -39,6 +39,7 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
 
             expected = jsonloads(data['expected'])
             expected['hello'] = {'world': 'foobar'}
+            expected['timeout'] = 10
 
             if 'token' not in expected:
                 expected['token'] = {'client_secret': 'something'}
@@ -69,6 +70,7 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
             *scenario,
             'And set context variable "hello.world" to "foobar"',
             'And set context variable "token/client_secret" to "something"',
+            'And set context variable "timeout" to "10"',
         ],
         identifier=name,
     )

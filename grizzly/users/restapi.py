@@ -155,6 +155,7 @@ class HtmlTitleParser(HTMLParser):
 
 @grizzlycontext(context={
     'verify_certificates': True,
+    'timeout': 60,
     'auth': {
         'refresh_time': 3000,
         'provider': None,
@@ -181,7 +182,6 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
     __dependencies__: ClassVar[GrizzlyDependencies] = {RefreshTokenDistributor}
 
     environment: Environment
-    timeout: ClassVar[float] = 60.0
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -212,8 +212,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             user=self,
             insecure=not self._context.get('verify_certificates', True),
             max_retries=1,
-            connection_timeout=self.timeout,
-            network_timeout=self.timeout,
+            network_timeout=self._context.get('timeout', 60),
             ssl_context_factory=_ssl_context_factory,
         )
 
@@ -257,8 +256,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             user=self,
             insecure=not self._context.get('verify_certificates', True),
             max_retries=1,
-            connection_timeout=self.timeout,
-            network_timeout=self.timeout,
+            network_timeout=self._context.get('timeout', 60),
         )
 
         return cast(GrizzlyResponse, self._request(request, client))
