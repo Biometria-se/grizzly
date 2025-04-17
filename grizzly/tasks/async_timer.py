@@ -68,10 +68,13 @@ class AsyncTimerTask(GrizzlyTask):
             version: str | None = None
 
             try:
-                # @TODO: this should no look like this when merged in master
+                # short cut for using MQ properties date and time when a message was put on the queue
+                # and expressions for extracting these has been made in the scenario
                 if self.action == 'stop' and all(str(parent.user.variables.get(var, 'none')).lower() != 'none' for var in ['PutDate', 'PutTime']):
+                    timestamp_date = parent.user.variables['PutDate']
+                    timestamp_time = parent.user.variables['PutTime']
                     timestamp = datetime.strptime(
-                        f'{parent.user.variables['PutDate']} {parent.user.variables['PutTime']}',
+                        f'{timestamp_date} {timestamp_time}',
                         '%Y%m%d %H%M%S%f',
                     ).replace(tzinfo=timezone.utc)
 

@@ -131,6 +131,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     assert user_class_type_1.__context__ == {
         'log_all_requests': False,
         'verify_certificates': True,
+        'timeout': 60,
         'auth': {
             'refresh_time': 3000,
             'provider': None,
@@ -164,6 +165,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     assert user_type_1.context() == {
         'log_all_requests': False,
         'verify_certificates': True,
+        'timeout': 60,
         'auth': {
             'refresh_time': 3000,
             'provider': None,
@@ -233,6 +235,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
             'value': 1,
         },
         'verify_certificates': True,
+        'timeout': 60,
         'auth': {
             'refresh_time': 1337,
             'provider': 'https://auth.example.com',
@@ -272,6 +275,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
             'value': 1,
         },
         'verify_certificates': True,
+        'timeout': 60,
         'auth': {
             'refresh_time': 1337,
             'provider': 'https://auth.example.com',
@@ -321,6 +325,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
             'description': 'simple text',
         },
         'verify_certificates': True,
+        'timeout': 60,
         'auth': {
             'refresh_time': 3000,
             'provider': None,
@@ -365,6 +370,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
             'description': 'simple text',
         },
         'verify_certificates': True,
+        'timeout': 60,
         'auth': {
             'refresh_time': 3000,
             'provider': None,
