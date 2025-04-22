@@ -26,7 +26,7 @@ This task performs Azure SerciceBus operations to a specified endpoint.
 ### `endpoint`
 
 ```plain
-sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>]]
+sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>][&Empty=<empty>][&Unique=<unique>][&Verbose=<verbose>][&Forward=<forward>]]
 ```
 
 All variables in the endpoint have support for {@link framework.usage.variables.templating}.
@@ -66,6 +66,16 @@ Fragment:
 * `<content type>` _str_ - content type of response payload, should be used in combination with `<expression>`
 
 * `<tenant>` _str_ - when using credentials, tenant to authenticate with
+
+* `<empty>` _bool_ - if endpoint should be emptied before each iteration, default `True`
+
+* `<unique>` _bool_ - if each instance should have their own endpoint, or if they should share (default `True`, have their own endpoint subscription)
+
+* `<verbose>` _bool_ - verbose logging for only these requests (default `False`)
+
+* `<forward>` _bool_ - if a queue should be created and the subscription should forward to it, and consuming messages from the queue (default `False`)
+
+If `<unique>` is `False`, it will not empty the endpoint between each iteration.
 
 Parts listed below are mutally exclusive, e.g. either ones should be used, but no combinations between the two.
 
@@ -108,12 +118,14 @@ from grizzly.tasks import template
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
 from grizzly.utils.protocols import async_message_request_wrapper, zmq_disconnect
 from grizzly_extras.arguments import parse_arguments
+from grizzly_extras.text import bool_caster
 from grizzly_extras.transformer import TransformerContentType
 
 from . import ClientTask, client
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.testdata.communication import GrizzlyDependencies
     from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 
 
@@ -145,13 +157,14 @@ class State:
 @template('context')
 @client('sb')
 class ServiceBusClientTask(ClientTask):
-    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[GrizzlyDependencies] = {'async-messaged'}
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: ztypes.Context
 
     _state: dict[GrizzlyScenario, State]
     context: AsyncMessageContext
+    should_empty: bool
 
     def __init__(  # noqa: PLR0915
         self,
@@ -204,12 +217,14 @@ class ServiceBusClientTask(ClientTask):
             message = 'MessageWait parameter in endpoint fragment is not a valid integer'
             raise AssertionError(message) from e
 
-        consume_fragment = parameters.get('Consume', ['False'])[0]
-        if consume_fragment not in ['True', 'False']:
-            message = 'Consume parameter in endpoint fragment is not a valid boolean'
-            raise AssertionError(message)
+        self.should_empty = bool_caster(parameters.get('Empty', ['True'])[0])
+        consume = bool_caster(parameters.get('Consume', ['False'])[0])
+        unique = bool_caster(parameters.get('Unique', ['True'])[0])
+        verbose = bool_caster(parameters.get('Verbose', ['False'])[0])
+        forward = bool_caster(parameters.get('Forward', ['False'])[0])
 
-        consume = consume_fragment == 'True'
+        if not unique:
+            self.should_empty = False
 
         tenant = parameters.get('Tenant', [None])[0]
 
@@ -264,9 +279,12 @@ class ServiceBusClientTask(ClientTask):
             'endpoint': context_endpoint,
             'message_wait': message_wait,
             'consume': consume,
+            'unique': unique,
+            'verbose': verbose,
             'username': username,
             'password': password,
             'tenant': tenant,
+            'forward': forward,
         }
 
         if content_type is not None:
@@ -285,7 +303,7 @@ class ServiceBusClientTask(ClientTask):
 
             # if text is not None, we should create an temporary unique subscription for this
             # specific task instance, this means we should change the subscription name
-            if 'subscription' in endpoint_arguments and self._text is not None:
+            if 'subscription' in endpoint_arguments and self._text is not None and self.context.get('unique', True):
                 subscription = endpoint_arguments['subscription']
                 quote = ''
                 if subscription[0] in ['"', "'"] and subscription[-1] == subscription[0]:
@@ -407,13 +425,24 @@ class ServiceBusClientTask(ClientTask):
         # create subscription before connecting to it
         if self.text is not None:
             self.subscribe(parent)
+            if not self.context.get('unique', True):
+                subscribers = parent.consumer.keystore_inc(self.context['endpoint'])
+                parent.logger.debug('endpoint "%s" has %d subscribers', self.context['endpoint'], subscribers)
 
         self.connect(parent)
 
     def on_stop(self, parent: GrizzlyScenario) -> None:
         try:
             if self.text is not None:
-                self.unsubscribe(parent)
+                subscribers: int | None = None
+                is_unique = self.context.get('unique', True)
+
+                if not is_unique:
+                    subscribers = parent.consumer.keystore_dec(self.context['endpoint'])
+                    parent.logger.debug('endpoint "%s" has %d subscribers', self.context['endpoint'], subscribers)
+
+                if subscribers is None or subscribers < 1:
+                    self.unsubscribe(parent)
         except:
             parent.logger.exception('failed to unsubscribe')
 
@@ -424,7 +453,7 @@ class ServiceBusClientTask(ClientTask):
 
     def on_iteration(self, parent: GrizzlyScenario) -> None:
         try:
-            if self.text is not None:
+            if self.text is not None and self.should_empty:
                 self.empty(parent)
         except:
             parent.logger.exception('failed to empty')

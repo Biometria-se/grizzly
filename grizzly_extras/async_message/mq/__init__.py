@@ -258,6 +258,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             msg = 'no endpoint specified'
             raise AsyncMessageError(msg)
 
+        request_id = request.get('request_id', None)
+
         try:
             arguments = parse_arguments(endpoint, separator=':')
             unsupported_arguments = get_unsupported_arguments(['queue', 'expression', 'max_message_size'], arguments)
@@ -284,6 +286,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         metadata = request.get('context', {}).get('metadata', None)
 
         retries: int = 0
+        latest_retry_exception: Exception | None = None
+
         while retries < 5:
             msg_id_to_fetch: Optional[bytearray] = None
             if action == 'GET' and expression is not None:
@@ -305,7 +309,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             with self.queue_context(endpoint=queue_name) as queue:
                 do_retry: bool = False
 
-                self.logger.info('executing %s on %s', action, queue_name)
+                self.logger.info('executing %s on %s for request %s', action, queue_name, request_id)
                 start = time()
 
                 try:
@@ -355,12 +359,25 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                             if msg_id_to_fetch is not None and e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
                                 # Message disappeared, retry
                                 do_retry = True
+                                latest_retry_exception = e
                             elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
                                 original_length = getattr(e, 'original_length', -1)
-                                self.logger.warning('got MQRC_TRUNCATED_MSG_FAILED while getting message, retries=%d, original_length=%d', retries, original_length)
+                                attributes = {}
+
+                                for attribute in dir(e):
+                                    if attribute.startswith('_'):
+                                        continue
+
+                                    attributes.update({attribute: getattr(e, attribute)})
+
+                                self.logger.warning(
+                                    'got MQRC_TRUNCATED_MSG_FAILED while getting message, retries=%d, original_length=%d, attributes=%r',
+                                    retries, original_length, attributes,
+                                )
                                 if max_message_size is None:
                                     # Concurrency issue, retry
                                     do_retry = True
+                                    latest_retry_exception = e
                                 else:
                                     msg = f'message with size {original_length} bytes does not fit in message buffer of {max_message_size} bytes'
                                     raise AsyncMessageError(msg) from e
@@ -368,16 +385,25 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                                 warning_message = ['got MQRC_BACKED_OUT while getting message', f'{retries=}']
                                 self.logger.warning(', '.join(warning_message))
                                 do_retry = True
+                                latest_retry_exception = e
+                            elif e.reason == pymqi.CMQC.MQRC_RECONNECT_FAILED:
+                                warning_message = ['got MQRC_RECONNECT_FAILED while getting message', f'{retries=}']
+                                self.logger.warning(', '.join(warning_message))
+                                error_message = f'{e.reason} {e.comp} {action} operation failed'
+
+                                raise pymqi.PYIFError(error_message) from e
                             else:
                                 # Some other error condition.
                                 self.logger.exception('unknown MQMIError')
                                 raise AsyncMessageError(str(e)) from e
                 except pymqi.PYIFError as e:
-                    if e.error.strip() == 'not open':
-                        self.logger.warning('reconnecting to queue manager')
+                    if e.error.strip() == 'not open' or e.error.strip().endswith('operation failed'):
+                        warning_message = ['reconnecting to queue manager: ', e.error or 'unknown error']
+                        self.logger.warning(', '.join(warning_message))
                         self.disconnect({})
                         self.connect(request)
                         do_retry = True
+                        latest_retry_exception = e
                     else:
                         self.logger.exception('unhandled PYIFError')
                         raise AsyncMessageError(str(e)) from e
@@ -387,7 +413,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     sleep(retries * retries * 0.5)
                 else:
                     delta = (time() - start) * 1000
-                    self.logger.info('%s on %s took %d ms, response_length=%d, retries=%d', action, queue_name, delta, response_length, retries)
+                    self.logger.info('%s on %s for request %s took %d ms, response_length=%d, retries=%d', action, queue_name, request_id, delta, response_length, retries)
                     return {
                         'payload': payload,
                         'metadata': self._get_safe_message_descriptor(md),
@@ -395,6 +421,9 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     }
 
         msg = f'failed after {retries} retries'
+        if latest_retry_exception is not None:
+            msg = f'{msg}: {latest_retry_exception!s}'
+
         raise AsyncMessageError(msg)
 
     @register(handlers, 'PUT', 'SEND')

@@ -41,6 +41,7 @@ class TestRestApiUser:
             'host': 'http://example.net',
             'log_all_requests': False,
             'verify_certificates': True,
+            'timeout': 60,
             'auth': {
                 'refresh_time': 3000,
                 'provider': None,
@@ -49,6 +50,8 @@ class TestRestApiUser:
                     'id': None,
                     'secret': None,
                     'resource': None,
+                    'cert_file': None,
+                    'key_file': None,
                 },
                 'user': {
                     'username': None,
@@ -190,7 +193,6 @@ class TestRestApiUser:
                         HTTPClientPool,
                         client_args=SOME(
                             dict,
-                            connection_timeout=60.0,
                             network_timeout=60.0,
                             ssl_context_factory=gevent.ssl.create_default_context,
                         ),
@@ -218,7 +220,6 @@ class TestRestApiUser:
                         HTTPClientPool,
                         client_args=SOME(
                             dict,
-                            connection_timeout=60.0,
                             network_timeout=60.0,
                             ssl_context_factory=insecure_ssl_context_factory,
                         ),
@@ -302,7 +303,13 @@ class TestRestApiUser:
             name='001 TestScenario',
             response_time=ANY(int),
             response_length=0,
-            context=parent.user._context,
+            context={
+                'user': id(parent.user),
+                **parent.user._context,
+                '__time__': ANY(str),
+                '__fields_request_started__': ANY(str),
+                '__fields_request_finished__': ANY(str),
+            },
             exception=ANY(NotImplementedError, message=f'SEND is not implemented for RestApiUser_{parent.user._scenario.identifier}'),
         )
         request_event_spy.reset_mock()

@@ -28,6 +28,7 @@ from csv import DictWriter
 from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from uuid import uuid4
 
 from gevent.fileobject import FileObjectThread
 
@@ -40,7 +41,7 @@ from . import AtomicVariable, AtomicVariableSettable
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
-    from grizzly.types.locust import MessageHandler
+    from grizzly.testdata.communication import GrizzlyDependencies
 
 
 open_files: dict[str, FileObjectThread] = {}
@@ -147,8 +148,8 @@ def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **_k
 
 class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
     __base_type__ = atomiccsvwriter__base_type__
+    __dependencies__: ClassVar[GrizzlyDependencies] = {('atomiccsvwriter', atomiccsvwriter_message_handler)}
     __initialized: bool = False
-    __message_handlers__: ClassVar[dict[str, MessageHandler]] = {'atomiccsvwriter': atomiccsvwriter_message_handler}
 
     _settings: dict[str, dict[str, Any]]
     arguments: ClassVar[dict[str, Any]] = {'headers': list_type, 'overwrite': bool_type}
@@ -222,6 +223,7 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
 
         # values for all headers set, flush to file
         data = {
+            'rid': str(uuid4()),
             'destination': self._settings[variable]['destination'],
             'row': buffer,
         }

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 from time import perf_counter, sleep
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from uuid import uuid4
@@ -37,12 +38,19 @@ def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -
 
     client.send_json(request)
 
-    logger.debug('async_message_request::send_json: sent %r', request)
+    request_metadata = {**request}
+
+    with suppress(Exception):
+        del request_metadata['payload']
+
+    logger.debug('async_message_request::send_json: sent %r', request_metadata)
 
     response: Optional[AsyncMessageResponse] = None
+    count = 0
 
+    start = perf_counter()
     while True:
-        start = perf_counter()
+        count += 1
         try:
             response = cast(Optional[AsyncMessageResponse], client.recv_json(flags=zmq.NOBLOCK))
             break
@@ -64,10 +72,9 @@ def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -
 
                 response.update({'success': False, 'message': msg})
                 break
-        finally:
-            delta = perf_counter() - start
-            if delta > 1.0:
-                logger.debug('async_message_request::recv_json took %f seconds for request_id %s', delta, request['request_id'])
+
+    delta = perf_counter() - start
+    logger.debug('async_message_request::recv_json: took %f seconds for request_id %s, after %d retries', delta, request['request_id'], count)
 
     if response is None:
         msg = 'no response'

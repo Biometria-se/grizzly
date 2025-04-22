@@ -6,19 +6,25 @@ from __future__ import annotations
 import json
 import logging
 import os
+from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from platform import node as get_hostname
-from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, Protocol, TypedDict, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import gevent
-from influxdb import InfluxDBClient
+from influxdb import InfluxDBClient as InfluxDBClientV1
 from influxdb.exceptions import InfluxDBClientError
+from influxdb_client import InfluxDBClient as InfluxDBClientV2  # type: ignore[attr-defined]
+from influxdb_client.rest import ApiException
 
 from grizzly.types.locust import CatchResponseError, Environment
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import TracebackType
+
+    from influxdb_client.client.query_api import QueryApi
+    from influxdb_client.client.write_api import WriteApi
 
     from grizzly.types import Self
 
@@ -36,8 +42,18 @@ class InfluxDbPoint(TypedDict):
     fields: dict[str, Any]
 
 
-class InfluxDb:
-    client: InfluxDBClient
+class InfluxDb(Protocol):
+    def read(self, table: str, columns: list[str]) -> Any: ...
+
+    def write(self, values: list[InfluxDbPoint]) -> None: ...
+
+    def connect(self) -> Self: ...
+
+    def disconnect(self) -> None: ...
+
+
+class InfluxDbV1(InfluxDb):
+    client: InfluxDBClientV1
 
     host: str
     port: int
@@ -53,7 +69,7 @@ class InfluxDb:
         self.password = password
 
     def connect(self) -> Self:
-        self.client = InfluxDBClient(
+        self.client = InfluxDBClientV1(
             host=self.host,
             port=self.port,
             database=self.database,
@@ -62,6 +78,9 @@ class InfluxDb:
             gzip=True,
         )
         return self
+
+    def disconnect(self) -> None:
+        self.__exit__(None, None, None)
 
     def __enter__(self) -> Self:
         return self.connect()
@@ -72,7 +91,8 @@ class InfluxDb:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        self.client.__exit__(exc_type, exc, traceback)
+        with suppress(Exception):
+            self.client.__exit__(exc_type, exc, traceback)
 
         if exc is not None:
             if isinstance(exc, InfluxDBClientError):
@@ -86,7 +106,7 @@ class InfluxDb:
 
         return True
 
-    def read(self, table: str, columns: list[str]) -> list[dict[str, Any]]:
+    def read(self, table: str, columns: list[str]) -> Any:
         query = f'select {",".join(columns)} from "{table}";'  # noqa: S608
         logger.debug('query: %s', query)
         result = self.client.query(query)
@@ -113,6 +133,92 @@ class InfluxDb:
             raise InfluxDbError(message) from e
 
 
+class InfluxDbV2(InfluxDb):
+    client: InfluxDBClientV2
+    query_api: QueryApi
+    write_api: WriteApi
+
+    host: str
+    port: int
+    bucket: str
+    org : str
+    token: str | None
+
+    def __init__(self, host: str, port: int, org: str, bucket: str, token: str | None = None) -> None:
+        self.host = host
+        self.port = port
+        self.org = org
+        self.bucket = bucket
+        self.token = token
+
+    def connect(self) -> Self:
+        self.client = InfluxDBClientV2(
+            url=f"https://{self.host}:{self.port}",
+            token=cast(str, self.token),
+            org=self.org,
+            enable_gzip=True,
+        )
+        self.query_api = self.client.query_api()
+        self.write_api = self.client.write_api()
+        return self
+
+    def disconnect(self) -> None:
+        self.__exit__(None, None, None)
+
+    def __enter__(self) -> Self:
+        return self.connect()
+
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Literal[True]:
+        with suppress(Exception):
+            self.client.close()
+            self.client.__exit__(exc_type, exc, traceback)
+
+        if self.write_api:
+            self.write_api.close()
+
+        if exc is not None:
+            if isinstance(exc, ApiException):
+                message = f'{exc.status}: {exc.reason}'
+                raise InfluxDbError(message) from exc
+
+            if isinstance(exc, InfluxDbError):
+                raise exc
+
+            raise InfluxDbError(exc)
+
+        return True
+
+    def read(self, measurement: str, fields: list[str]) -> dict[str, Any]:
+        flux_query = f"""
+        from(bucket: "{self.bucket}")
+        |> range(start: -1h)
+        |> filter(fn: (r) => r._measurement == "{measurement}")
+        |> filter(fn: (r) => {" or ".join(f'r._field == "{field}"' for field in fields)})
+        """
+        logger.debug('Flux query: %s', flux_query)
+        result = self.query_api.query(flux_query, org=self.org)
+        # Convert FluxTable results to json, and to dict
+        return cast(dict[str, Any], json.loads(result.to_json()))
+
+    def write(self, values: list[InfluxDbPoint]) -> None:
+        try:
+            self.write_api.write(bucket=self.bucket, org=self.org, record=values)
+            logger.debug('successfully wrote %d points to bucket %s@%s:%d', len(values), self.bucket, self.host, self.port)
+        except ApiException as e:
+            code = e.status
+            message = e.reason if e.reason is not None else "<unknown>"
+
+            if e.status is not None:
+                message = f'{code}: {message}'
+
+            raise InfluxDbError(message) from e
+
+
 class InfluxDbListener:
     run_events_greenlet: gevent.Greenlet
     run_user_count_greenlet: gevent.Greenlet
@@ -125,15 +231,27 @@ class InfluxDbListener:
         parsed = urlparse(url)
         path = parsed.path[1:] if parsed.path is not None else None
 
-        assert parsed.hostname is not None, f'hostname not found in {url}'
-        assert path is not None, f'{url} contains no path'
-        assert len(path) > 0, f'database was not found in {url}'
+        if parsed.scheme == 'influxdb2':
+            assert parsed.hostname is not None, f'hostname not found in {url}'
+            assert path is not None, f'{url} contains no path'
+            assert len(path) > 0, f'database was not found in {url}'
 
-        self.influx_host = parsed.hostname
-        self.influx_port = parsed.port or 8086
-        self.influx_database = path
-        self.influx_username = parsed.username
-        self.influx_password = parsed.password
+            self.influx_host = parsed.hostname
+            self.influx_port = parsed.port or 8086
+            self.influx_org, self.influx_bucket = path.split(':')
+            self.influx_token = parsed.username or ''
+            self.influx_version = 2
+        else:
+            assert parsed.hostname is not None, f'hostname not found in {url}'
+            assert path is not None, f'{url} contains no path'
+            assert len(path) > 0, f'database was not found in {url}'
+
+            self.influx_host = parsed.hostname
+            self.influx_port = parsed.port or 8086
+            self.influx_database = path
+            self.influx_username = parsed.username
+            self.influx_password = parsed.password
+            self.influx_version = 1
 
         params = parse_qs(parsed.query)
 
@@ -148,9 +266,8 @@ class InfluxDbListener:
         self._profile_name = params['ProfileName'][0] if 'ProfileName' in params else ''
         self._description = params['Description'][0] if 'Description' in params else ''
 
-        self.run_events_greenlet = gevent.spawn(self.run_events)
-        self.run_user_count_greenlet = gevent.spawn(self.run_user_count)
-        self.connection = self.create_client().connect()
+        self.client = self.create_client()
+        self.connection = self.client.connect()
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
         self.environment.events.heartbeat_sent.add_listener(self.heartbeat_sent)
@@ -163,17 +280,27 @@ class InfluxDbListener:
         self.grizzly.events.keystore_request.add_listener(self.on_grizzly_event)
         self.grizzly.events.testdata_request.add_listener(self.on_grizzly_event)
         self.grizzly.events.user_event.add_listener(self.on_grizzly_event)
+        self.run_events_greenlet = gevent.spawn(self.run_events)
+        self.run_user_count_greenlet = gevent.spawn(self.run_user_count)
 
     def on_quit(self, *_args: Any, **_kwargs: Any) -> None:
         self._finished = True
 
     def create_client(self) -> InfluxDb:
-        return InfluxDb(
+        if self.influx_version == 1:
+            return InfluxDbV1(
+                host=self.influx_host,
+                port=self.influx_port,
+                database=self.influx_database,
+                username=self.influx_username,
+                password=self.influx_password,
+            )
+        return InfluxDbV2(
             host=self.influx_host,
             port=self.influx_port,
-            database=self.influx_database,
-            username=self.influx_username,
-            password=self.influx_password,
+            bucket=self.influx_bucket,
+            token=self.influx_token,
+            org=self.influx_org,
         )
 
     @property
@@ -213,20 +340,27 @@ class InfluxDbListener:
             if not self.finished:
                 gevent.sleep(5.0)
 
+        with suppress(Exception):
+            self.client.disconnect()
+
     def run_events(self) -> None:
         while not self.finished:
             if self._events:
                 # Buffer samples, so that a locust greenlet will write to the new list
                 # instead of the one that has been sent into postgres client
                 try:
-                    events_buffer = self._events
+                    events_buffer = [*self._events]
                     self._events = []
                     self.connection.write(events_buffer)
+                    self.logger.debug('wrote %d measurements', len(events_buffer))
                 except:
                     self.logger.exception('failed to write metrics')
 
             if not self.finished:
                 gevent.sleep(0.5)
+
+        with suppress(Exception):
+            self.client.disconnect()
 
     def _override_event(self, event: InfluxDbPoint, context: dict[str, Any]) -> None:
         # override values set in context
@@ -317,6 +451,7 @@ class InfluxDbListener:
             'environment': self._target_environment,
             'profile': self._profile_name,
             'description': self._description,
+            'user': context.get('user', id(self)),
         }
 
         try:
@@ -326,13 +461,6 @@ class InfluxDbListener:
             tags.update({'scenario': current_scenario.locust_name})
         except ValueError:
             pass
-
-        for key in os.environ:
-            if not key.startswith('TESTDATA_VARIABLE_'):
-                continue
-
-            variable = key.replace('TESTDATA_VARIABLE_', '')
-            tags[variable] = os.environ[key]
 
         timestamp_finished = datetime.now(timezone.utc)
         timestamp_started = timestamp = timestamp_finished - timedelta(milliseconds=metrics['response_time'])
@@ -352,6 +480,8 @@ class InfluxDbListener:
         }
 
         self._override_event(event, context)
+
+        self.logger.debug('%s %s %s', request_type, name, event['time'])
 
         self._events.append(event)
 
@@ -377,11 +507,8 @@ class InfluxDbListener:
 
             if exception is not None:
                 message_to_log = f'{message_to_log} Exception: {exception!r}'
-                logger_method = self.logger.error
-            else:
-                logger_method = self.logger.debug
+                self.logger.info(message_to_log)
 
-            logger_method(message_to_log)
             self._log_request(request_type, name, result, metrics, context, exception)
         except Exception:
             self.logger.exception('failed to write metric for "%s %s"', request_type, name)

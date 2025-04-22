@@ -1,8 +1,8 @@
 """Core for all grizzly scenarios."""
 from __future__ import annotations
 
-import logging
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
+from math import floor
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, Union, cast
 
 from gevent.event import Event
 from locust.exception import LocustError
@@ -16,6 +16,8 @@ from grizzly.types import ScenarioState
 from grizzly.types.locust import LocalRunner, StopUser, WorkerRunner
 
 if TYPE_CHECKING:  # pragma: no cover
+    import logging
+
     from gevent import Greenlet
     from locust.user.task import TaskSet
 
@@ -24,8 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class GrizzlyScenario(SequentialTaskSet):
-    consumer: TestdataConsumer
-    logger: logging.Logger
+    _consumer: ClassVar[TestdataConsumer | None] = None
     grizzly: GrizzlyContext
     task_greenlet: Optional[Greenlet]
     task_greenlet_factory: GreenletFactory
@@ -36,7 +37,6 @@ class GrizzlyScenario(SequentialTaskSet):
 
     def __init__(self, parent: GrizzlyUser) -> None:
         super().__init__(parent=parent)
-        self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
         self.user.scenario_state = ScenarioState.STOPPED
         self.task_greenlet = None
         self.task_greenlet_factory = GreenletFactory(logger=self.logger, ignore_exceptions=[StopScenario])
@@ -49,8 +49,24 @@ class GrizzlyScenario(SequentialTaskSet):
         self.grizzly = grizzly
 
     @property
+    def logger(self) -> logging.Logger:
+        return self.user.logger
+
+    @property
+    def consumer(self) -> TestdataConsumer:
+        if self.__class__._consumer is None:
+            message = 'no consumer has been created'
+            raise ValueError(message)
+
+        return self.__class__._consumer
+
+    @property
     def user(self) -> GrizzlyUser:
         return cast('GrizzlyUser', self._user)
+
+    @property
+    def current_iteration(self) -> int:
+        return floor(self._task_index / len(self.tasks)) + 1
 
     @classmethod
     def populate(cls, task_factory: GrizzlyTask) -> None:
@@ -74,11 +90,13 @@ class GrizzlyScenario(SequentialTaskSet):
         has some prefetching todo it must also be one. There might be cases where an on_start method
         needs the first iteration of testdata.
         """
-        self.consumer = TestdataConsumer(
-            scenario=self,
-            runner=cast(Union[LocalRunner, WorkerRunner], self.grizzly.state.locust),
-        )
-        self.user.consumer = self.consumer
+        if self.__class__._consumer is None:
+            self.__class__._consumer = TestdataConsumer(
+                scenario=self,
+                runner=cast(Union[LocalRunner, WorkerRunner], self.grizzly.state.locust),
+            )
+
+        self.user.consumer = self.__class__._consumer
         self.user.scenario_state = ScenarioState.RUNNING
 
         for task in self.tasks:
@@ -113,12 +131,12 @@ class GrizzlyScenario(SequentialTaskSet):
                 try:  # type: ignore[unreachable]
                     task.on_stop(self)
                 except Exception:
-                    self.logger.exception('on_stop failed')
+                    self.logger.exception('task on_stop failed')
 
         try:
             self.user.scenario_state = ScenarioState.STOPPED
         except:
-            self.logger.exception('on_stop failed')
+            self.logger.exception('scenario on_stop failed')
 
     def on_quitting(self, *_args: Any, **kwargs: Any) -> None:
         """When locust is quitting, with abort=True (signal received) we should force the
@@ -127,7 +145,7 @@ class GrizzlyScenario(SequentialTaskSet):
         if self.task_greenlet is not None and kwargs.get('abort', False) and not self.abort.is_set():
             self.abort.set()
             self.task_greenlet.kill(StopScenario, block=False)
-            self.logger.debug('killed task (greenlet)')
+            self.logger.debug('scenario killed task (greenlet)')
 
     def get_next_task(self) -> Union[TaskSet, Callable]:
         """Use old way of getting task, so we can reset which task to start from."""

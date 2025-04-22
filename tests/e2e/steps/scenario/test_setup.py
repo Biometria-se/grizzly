@@ -39,6 +39,7 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
 
             expected = jsonloads(data['expected'])
             expected['hello'] = {'world': 'foobar'}
+            expected['timeout'] = 10
 
             if 'token' not in expected:
                 expected['token'] = {'client_secret': 'something'}
@@ -69,6 +70,7 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
             *scenario,
             'And set context variable "hello.world" to "foobar"',
             'And set context variable "token/client_secret" to "something"',
+            'And set context variable "timeout" to "10"',
         ],
         identifier=name,
     )
@@ -293,7 +295,7 @@ def test_e2e_setup_metadata(e2e_fixture: End2EndFixture) -> None:
 
 def test_e2e_setup_failed_task(e2e_fixture: End2EndFixture) -> None:
     def validate_failure_handling(context: Context) -> None:
-        from grizzly.exceptions import RestartScenario, RetryTask, StopUser, TaskTimeoutError
+        from grizzly.exceptions import RestartIteration, RestartScenario, RetryTask, StopUser, TaskTimeoutError
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -302,6 +304,7 @@ def test_e2e_setup_failed_task(e2e_fixture: End2EndFixture) -> None:
             '504 gateway timeout': RetryTask,
             MemoryError: StopUser,
             TaskTimeoutError: None,
+            RuntimeError: RestartIteration,
         }
 
     e2e_fixture.add_validator(validate_failure_handling)
@@ -312,6 +315,7 @@ def test_e2e_setup_failed_task(e2e_fixture: End2EndFixture) -> None:
             'When a task fails with "504 gateway timeout" retry task',
             'When a task fails with "MemoryError" stop user',
             'When a task fails with "TaskTimeoutError" continue',
+            'When a task fails with "RuntimeError" restart iteration',
         ],
     )
 

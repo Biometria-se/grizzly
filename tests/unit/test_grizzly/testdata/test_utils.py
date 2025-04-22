@@ -18,6 +18,7 @@ from grizzly.testdata.utils import (
     _objectify,
     create_context_variable,
     initialize_testdata,
+    resolve_template,
     resolve_variable,
     transform,
 )
@@ -33,10 +34,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
 def test_initialize_testdata_no_tasks(grizzly_fixture: GrizzlyFixture) -> None:
     grizzly_fixture.grizzly.scenario.tasks.clear()
-    testdata, external_dependencies, message_handlers = initialize_testdata(grizzly_fixture.grizzly)
+    testdata, dependencies = initialize_testdata(grizzly_fixture.grizzly)
     assert testdata == {}
-    assert external_dependencies == set()
-    assert message_handlers == {}
+    assert dependencies == set()
 
 
 def test_initialize_testdata_with_tasks(
@@ -100,10 +100,9 @@ def test_initialize_testdata_with_tasks(
 
         grizzly.scenarios.deselect()
 
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
+        testdata, dependencies = initialize_testdata(grizzly)
 
-        assert external_dependencies == set()
-        assert message_handlers == {}
+        assert dependencies == set()
 
         for index, (scenario_name, variables) in enumerate(testdata.items(), start=1):
             assert scenario_name == f'IteratorScenario_00{index}'
@@ -188,13 +187,12 @@ value3,value4
 
         grizzly.scenario.tasks.add(request)
 
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
+        testdata, dependencies = initialize_testdata(grizzly)
 
         scenario_name = grizzly.scenario.class_name
 
         assert scenario_name in testdata
-        assert external_dependencies == set()
-        assert message_handlers == {'atomiccsvwriter': atomiccsvwriter_message_handler}
+        assert dependencies == {('atomiccsvwriter', atomiccsvwriter_message_handler)}
 
         data = testdata[scenario_name]
 
@@ -332,7 +330,7 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR
 
     try:
         assert 'test' not in grizzly.scenario.variables
-        with pytest.raises(AssertionError, match='value contained variable "test" which has not been declared'):
+        with pytest.raises(AssertionError, match='variables have been found in templates, but have not been declared:\ntest'):
             resolve_variable(grizzly.scenario, '{{ test }}')
 
         grizzly.scenario.variables['test'] = 'some value'
@@ -608,3 +606,26 @@ def test_transform(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableClean
         caplog.clear()
     finally:
         cleanup()
+
+
+def test_resolve_template(grizzly_fixture: GrizzlyFixture) -> None:
+    parent = grizzly_fixture()
+
+    parent.user._scenario.variables.update({'hello': 'foo', 'foo': 100, 'baz': 0.25})
+
+    assert 'world' not in parent.user._scenario.variables
+    assert resolve_template(parent.user._scenario, '{{ hello if hello is defined else world }}') == 'foo'
+
+    assert 'bar' not in parent.user._scenario.variables
+    assert resolve_template(parent.user._scenario, '{{ (((foo | int) * (baz | float)) + 0.5) | int if foo is defined else bar }}') == '25'
+
+    parent.user._scenario.variables.clear()
+    parent.user._scenario.variables.update({'world': 'bar', 'bar': 100})
+    assert 'hello' not in parent.user._scenario.variables
+    assert resolve_template(parent.user._scenario, '{{ hello if hello is defined else world }}') == 'bar'
+
+    assert 'foo' not in parent.user._scenario.variables
+    assert resolve_template(parent.user._scenario, '{{ (((foo | int) * (baz | float)) + 0.5) | int if foo is defined else bar }}') == '100'
+
+    with pytest.raises(AssertionError, match='variables have been found in templates, but have not been declared:\nfoobaz'):
+        resolve_template(parent.user._scenario, '{{ foobaz }} yeah')

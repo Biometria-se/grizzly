@@ -15,10 +15,11 @@ from urllib.parse import urlparse
 from azure.core.credentials import AccessToken
 
 from grizzly.scenarios import GrizzlyScenario
+from grizzly.testdata.communication import GrizzlyMessageHandler, GrizzlyMessageMapping
 from grizzly.types import GrizzlyResponse
 from grizzly.types.locust import StopUser
 from grizzly.users import GrizzlyUser
-from grizzly.utils import merge_dicts
+from grizzly.utils import ModuleLoader, merge_dicts
 from grizzly_extras.azure.aad import AuthMethod, AuthType, AzureAadCredential
 
 try:
@@ -114,9 +115,9 @@ class refresh_token(Generic[P]):
 
         self.impl = cast(type[RefreshToken], impl)
 
-    def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:
+    def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:  # noqa: PLR0915
         @wraps(func)
-        def refresh_token(client: GrizzlyHttpAuthClient, arg: Union[RequestTask, GrizzlyScenario], *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:
+        def refresh_token(client: GrizzlyHttpAuthClient, arg: Union[RequestTask, GrizzlyScenario], *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:  # noqa: PLR0915, PLR0912
             request: RequestTask | None = None
 
             # make sure the client has a credential instance, if it is needed
@@ -126,7 +127,6 @@ class refresh_token(Generic[P]):
             else:
                 request = arg
                 user = cast(GrizzlyUser, client)
-
 
             self.impl.initialize(client, user)
 
@@ -140,9 +140,20 @@ class refresh_token(Generic[P]):
                 action_for = (client.credential.username or '<unknown username>') if client.credential.auth_method == AuthMethod.USER else client.credential.client_id
 
                 try:
-                    access_token = client.credential.get_token()
-                    refreshed = client.credential.refreshed
-                    action_triggered = refreshed or (authorization_token is None and client.cookies == {})
+                    now = datetime.now(tz=timezone.utc).timestamp()
+
+                    if (authorization_token is None and client.cookies == {}) or client.credential._access_token is None or client.credential._access_token.expires_on <= now:
+                        access_token, refreshed = RefreshTokenDistributor.get_token(client)
+                        client.credential._access_token = access_token
+                        action_triggered = refreshed or (authorization_token is None and client.cookies == {})
+                    else:
+                        access_token = client.credential._access_token
+                        refreshed = False
+                        action_triggered = False
+
+                    client.credential._refreshed = refreshed
+
+                    logger.debug('%s refereshed=%r, action_triggered=%r', user.logger.name, refreshed, action_triggered)
 
                     if action_triggered:
                         if refreshed:
@@ -213,6 +224,74 @@ def render(client: GrizzlyHttpAuthClient, user: GrizzlyUser) -> None:
     # we have a host specific context that we should merge into current context
     if client_context is not None:
         client._context = merge_dicts(client._context, cast(dict, client_context))
+
+
+class RefreshTokenDistributor(GrizzlyMessageHandler):
+    __message_types__: ClassVar[GrizzlyMessageMapping] = {'response': 'consume_token', 'request': 'produce_token'}
+
+    _credentials: ClassVar[dict[int, AzureAadCredential]] = {}
+
+    @classmethod
+    def create_response(cls, environment: Environment, key: int, request: dict[str, Any]) -> dict[str, Any]:  # noqa: ARG003
+        if key not in cls._credentials:
+            auth_method = AuthMethod.from_string(request['auth_method'])
+
+            default_module_name, class_name = request['class_name'].rsplit('.', 1)
+            credentials_class_type = ModuleLoader[AzureAadCredential].load(default_module_name, class_name)
+            credentials = credentials_class_type(
+                request['username'],
+                request['password'],
+                request['tenant'],
+                auth_method,
+                host=request['host'],
+                client_id=request['client_id'],
+                redirect=request['redirect'],
+                initialize=request['initialize'],
+                otp_secret=request['otp_secret'],
+                scope=request['scope'],
+            )
+            cls._credentials.update({key: credentials})
+            logger.debug('created %s for %d', class_name, key)
+
+        access_token = cls._credentials[key].access_token
+        refreshed = cls._credentials[key]._refreshed
+
+        action_name = 'refreshed' if refreshed else 'claimed'
+
+        logger.debug('%s token for %d', action_name, key)
+
+        return {
+            'token': access_token.token,
+            'expires_on': access_token.expires_on,
+            'refreshed': refreshed,
+        }
+
+    @classmethod
+    def get_token(cls, client: GrizzlyHttpAuthClient) -> tuple[AccessToken, bool]:
+        assert client.credential is not None
+
+        module_name = client.credential.__class__.__module__
+        class_name = client.credential.__class__.__name__
+
+        request: dict[str, Any] = {
+            'class_name': f'{module_name}.{class_name}',
+            'username': client.credential.username,
+            'password': client.credential.password,
+            'tenant': client.credential.tenant,
+            'auth_method': client.credential.auth_method.name,
+            'host': client.credential.host,
+            'client_id': client.credential.client_id,
+            'redirect': client.credential.redirect,
+            'initialize': client.credential.initialize,
+            'otp_secret': client.credential.otp_secret,
+            'scope': client.credential.scope,
+        }
+
+        logger.debug('%s is asking for a token', client.logger.name)
+
+        response = cls.send_request(client, request)
+
+        return AccessToken(response['token'], response['expires_on']), cast(bool, response['refreshed'])
 
 
 class RefreshToken(metaclass=ABCMeta):

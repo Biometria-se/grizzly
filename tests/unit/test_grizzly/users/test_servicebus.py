@@ -407,7 +407,13 @@ class TestServiceBusUser:
             name=f'{parent.user._scenario.identifier} {task.name}',
             response_time=ANY(int),
             response_length=0,
-            context=parent.user._context,
+            context={
+                'user': id(parent.user),
+                **parent.user._context,
+                '__time__': ANY(str),
+                '__fields_request_started__': ANY(str),
+                '__fields_request_finished__': ANY(str),
+            },
             exception=ANY(NotImplementedError, message='ServiceBusUser_002: no implementation for PUT requests'),
         )
         request_fire_spy.reset_mock()
@@ -437,6 +443,8 @@ class TestServiceBusUser:
                 'username': None,
                 'password': None,
                 'tenant': None,
+                'verbose': False,
+                'forward': False,
             },
             'request_id': 'foobar',
         })
@@ -447,7 +455,13 @@ class TestServiceBusUser:
             name=f'{parent.user._scenario.identifier} {task.name}',
             response_time=ANY(int),
             response_length=0,
-            context=parent.user._context,
+            context={
+                'user': id(parent.user),
+                **parent.user._context,
+                '__time__': ANY(str),
+                '__fields_request_started__': ANY(str),
+                '__fields_request_finished__': ANY(str),
+            },
             exception=ANY(AsyncMessageError, message='unknown error'),
         )
         request_fire_spy.reset_mock()
@@ -456,8 +470,7 @@ class TestServiceBusUser:
         response_event_fire_spy.reset_mock()
 
         # successful request
-        task.method = RequestMethod.RECEIVE
-        task.source = None
+        task = RequestTask(RequestMethod.RECEIVE, name='test-send', endpoint='queue:test-queue | verbose=True, forward=True', source=None)
 
         mock_recv_json({
             'worker': 'asdf-asdf-asdf',
@@ -488,7 +501,13 @@ class TestServiceBusUser:
             name=f'{parent.user._scenario.identifier} {task.name}',
             response_time=ANY(int),
             response_length=5,
-            context=parent.user._context,
+            context={
+                'user': id(parent.user),
+                **parent.user._context,
+                '__time__': ANY(str),
+                '__fields_request_started__': ANY(str),
+                '__fields_request_finished__': ANY(str),
+            },
             exception=None,
         )
         request_fire_spy.reset_mock()
@@ -508,6 +527,8 @@ class TestServiceBusUser:
                 'username': None,
                 'password': None,
                 'tenant': None,
+                'verbose': True,
+                'forward': True,
             },
             'request_id': 'foobar',
         })
@@ -545,7 +566,13 @@ class TestServiceBusUser:
             name=f'{parent.user._scenario.identifier} {consume_task.name}',
             response_time=ANY(int),
             response_length=5,
-            context=parent.user._context,
+            context={
+                'user': id(parent.user),
+                **parent.user._context,
+                '__time__': ANY(str),
+                '__fields_request_started__': ANY(str),
+                '__fields_request_finished__': ANY(str),
+            },
             exception=None,
         )
         request_fire_spy.reset_mock()
@@ -565,6 +592,8 @@ class TestServiceBusUser:
                 'username': None,
                 'password': None,
                 'tenant': None,
+                'verbose': False,
+                'forward': False,
             },
             'request_id': 'foobar',
         })

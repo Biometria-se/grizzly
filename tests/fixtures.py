@@ -107,18 +107,16 @@ class LocustFixture:
 
 
 class EnvFixture:
-    key: str
-    value: str
+    env: dict[str, str]
 
-    def __call__(self, key: str, value: str) -> Self:
-        self.key = key
-        self.value = value
+    def __init__(self) -> None:
+        self.env = {}
 
-        return self
+    def __call__(self, key: str, value: str) -> None:
+        self.env.update({key: value})
+        environ.update(self.env)
 
     def __enter__(self) -> Self:
-        environ[self.key] = self.value
-
         return self
 
     def __exit__(
@@ -127,8 +125,9 @@ class EnvFixture:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        with suppress(KeyError):
-            del environ[self.key]
+        for key in self.env:
+            with suppress(KeyError):
+                del environ[key]
 
         return True
 
@@ -215,6 +214,9 @@ class BehaveFixture:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
+        if hasattr(grizzly_context.grizzly.state, 'locust') and grizzly_context.grizzly.state.locust is not None:
+            del grizzly_context.grizzly.state.locust
+
         grizzly_context.grizzly = GrizzlyContext()
 
         return True

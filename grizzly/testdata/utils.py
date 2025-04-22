@@ -8,18 +8,16 @@ from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, cast
 
-from jinja2.meta import find_undeclared_variables
-
 from grizzly.exceptions import failure_handler
-from grizzly.testdata.ast import get_template_variables
+from grizzly.testdata.ast import get_template_variables, parse_templates
 from grizzly.utils import has_template, is_file, merge_dicts, unflatten
 
 from . import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+    from grizzly.testdata.communication import GrizzlyDependencies
     from grizzly.types import GrizzlyVariableType, TestdataType
-    from grizzly.types.locust import MessageHandler
 
 
 logger = logging.getLogger(__name__)
@@ -27,15 +25,14 @@ logger = logging.getLogger(__name__)
 MAGIC_4 = 4
 
 
-def initialize_testdata(grizzly: GrizzlyContext) -> tuple[TestdataType, set[str], dict[str, MessageHandler]]:
+def initialize_testdata(grizzly: GrizzlyContext) -> tuple[TestdataType, GrizzlyDependencies]:
     """Create a structure of testdata per scenario."""
     testdata: TestdataType = {}
     template_variables = get_template_variables(grizzly)
 
     logger.debug('testdata: %r', template_variables)
 
-    external_dependencies: set[str] = set()
-    message_handlers: dict[str, MessageHandler] = {}
+    depedencies: GrizzlyDependencies = set()
 
     for scenario, variables in template_variables.items():
         testdata[scenario.class_name] = {}
@@ -51,14 +48,13 @@ def initialize_testdata(grizzly: GrizzlyContext) -> tuple[TestdataType, set[str]
                 variable_datatype = variable_name
 
             if variable_datatype not in initialized_datatypes:
-                initialized_datatype, dependencies, message_handler = GrizzlyVariables.initialize_variable(scenario, variable_datatype)
-                external_dependencies.update(dependencies)
-                message_handlers.update(message_handler)
+                initialized_datatype, variable_dependencies = GrizzlyVariables.initialize_variable(scenario, variable_datatype)
+                depedencies.update(variable_dependencies)
                 initialized_datatypes.update({variable_datatype: initialized_datatype})
 
             testdata[scenario.class_name][variable] = initialized_datatypes[variable_datatype]
 
-    return testdata, external_dependencies, message_handlers
+    return testdata, depedencies
 
 
 def transform(scenario: GrizzlyContextScenario, data: dict[str, Any], *, objectify: Optional[bool] = True) -> dict[str, Any]:
@@ -134,14 +130,9 @@ def create_context_variable(scenario: GrizzlyContextScenario, variable: str, val
 
 def resolve_template(scenario: GrizzlyContextScenario, value: str) -> str:
     template = scenario.jinja2.from_string(value)
-    template_parsed = template.environment.parse(value)
-    template_variables = find_undeclared_variables(template_parsed)
 
-    for template_variable in template_variables:
-        if f'{template_variable} is defined' in value or f'{template_variable} is not defined' in value:
-            continue
-
-        assert template_variable in scenario.variables, f'value contained variable "{template_variable}" which has not been declared'
+    # validate template
+    _ = parse_templates({scenario: {value}}, check_declared=False)
 
     return template.render(**scenario.variables)
 

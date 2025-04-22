@@ -8,9 +8,11 @@ import sys
 from collections import defaultdict
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from math import ceil, floor
 from operator import attrgetter, itemgetter
 from os import environ
+from platform import node as gethostname
 from signal import SIGINT, SIGTERM, Signals
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Callable, NoReturn, Optional, SupportsIndex, TypeVar, cast
@@ -47,6 +49,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from gevent.fileobject import FileObjectThread
     from locust.runners import WorkerNode
+
+    from .testdata.communication import GrizzlyDependencies
 
 
 unhandled_greenlet_exception: bool = False
@@ -104,8 +108,12 @@ class FixedUsersDispatcher(UsersDispatcher):
         self._user_classes = sorted(user_classes, key=attrgetter('__name__'))
         self._original_user_classes = self._user_classes.copy()
 
-        assert len(user_classes) > 0
-        assert len(set(self._user_classes)) == len(self._user_classes)
+        try:
+            assert len(user_classes) > 0
+            assert len(set(self._user_classes)) == len(self._user_classes)
+        except AssertionError:
+            logger.exception('sanity check of configuration failed')
+            raise
 
         self._initial_users_on_workers = {
             worker_node.id: {user_class.__name__: 0 for user_class in self._user_classes}
@@ -234,6 +242,7 @@ class FixedUsersDispatcher(UsersDispatcher):
         """
         self._worker_nodes = [w for w in self._worker_nodes if w.id != worker_node.id]
         if len(self._worker_nodes) == 0:
+            logger.warning('worker %s was the last worker', worker_node.id)
             return
         self._prepare_rebalance()
 
@@ -275,7 +284,11 @@ class FixedUsersDispatcher(UsersDispatcher):
         :param user_classes: The user classes to be used for the new dispatch
         """
         # this dispatcher does not care about target_user_count
-        assert target_user_count == -1
+        try:
+            assert target_user_count == -1
+        except AssertionError:
+            logger.exception('invalid value for `target_user_count`')
+            raise
 
         grizzly_user_classes = cast(Optional[list[type[GrizzlyUser]]], user_classes)
 
@@ -297,6 +310,8 @@ class FixedUsersDispatcher(UsersDispatcher):
             self.target_user_count = {**self._grizzly_target_user_count, **grizzly_target_user_count}
         else:
             self.target_user_count = {user_class.__name__: user_class.fixed_count for user_class in self._user_classes}
+
+        logger.debug('creating new dispatcher: %r', self.target_user_count)
 
         self._spawn_rate = spawn_rate
 
@@ -576,7 +591,8 @@ class FixedUsersDispatcher(UsersDispatcher):
         if target_user_count == {}:
             target_user_count = {**self._grizzly_target_user_count}
 
-        self._spread_sticky_tags_on_workers()
+        # _grizzly_distribute_users is only called from _prepare_rebalance, which already has called _spread_sticky_tags_on_workers
+        # self._spread_sticky_tags_on_workers()  # noqa: ERA001
 
         user_gen = self._create_user_generator()
 
@@ -604,7 +620,12 @@ class FixedUsersDispatcher(UsersDispatcher):
 
             sticky_tag = self._users_to_sticky_tag[next_user_class_name]
             worker_node = next(self._sticky_tag_to_workers[sticky_tag])
-            users_on_workers[worker_node.id][next_user_class_name] += 1
+            try:
+                users_on_workers[worker_node.id][next_user_class_name] += 1
+            except KeyError:
+                logger.error('worker %s is not available for tag %s', worker_node.id, sticky_tag)  # noqa: TRY400
+                continue
+
             user_count_total += 1
             current_user_count[next_user_class_name] += 1
             active_users.append((worker_node, next_user_class_name))
@@ -650,14 +671,14 @@ def on_local(context: Context) -> bool:
     return value
 
 
-def setup_locust_scenarios(grizzly: GrizzlyContext) -> tuple[list[type[GrizzlyUser]], set[str]]:
+def setup_locust_scenarios(grizzly: GrizzlyContext) -> tuple[list[type[GrizzlyUser]], GrizzlyDependencies]:
     user_classes: list[type[GrizzlyUser]] = []
 
     scenarios = grizzly.scenarios()
 
     assert len(scenarios) > 0, 'no scenarios in feature'
 
-    external_dependencies: set[str] = set()
+    dependencies: GrizzlyDependencies = set()
     distribution: dict[str, int] = {}
 
     if grizzly.setup.dispatcher_class in [UsersDispatcher, None]:
@@ -698,7 +719,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> tuple[list[type[GrizzlyUs
         user_class_type = create_user_class_type(scenario, grizzly.setup.global_context, fixed_count=fixed_count)
         user_class_type.host = scenario.context['host']
 
-        external_dependencies.update(user_class_type.__dependencies__)
+        dependencies.update(user_class_type.__dependencies__)
 
         # @TODO: how do we specify other type of grizzly.scenarios?
         scenario_type = create_scenario_class_type('IteratorScenario', scenario)
@@ -706,9 +727,9 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> tuple[list[type[GrizzlyUs
         for task in scenario.tasks:
             scenario_type.populate(task)
 
-            dependencies = getattr(task, '__dependencies__', None)
-            if dependencies is not None:
-                external_dependencies.update(dependencies)
+            task_dependencies = task.__dependencies__
+            if task_dependencies is not None:
+                dependencies.update(task_dependencies)
 
         logger.debug(
             '%s/%s: tasks=%d, weight=%d, fixed_count=%d, sticky_tag=%s',
@@ -723,7 +744,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> tuple[list[type[GrizzlyUs
         user_class_type.tasks = [scenario_type]
         user_classes.append(user_class_type)
 
-    return user_classes, external_dependencies
+    return user_classes, dependencies
 
 
 def setup_resource_limits(context: Context) -> None:
@@ -745,7 +766,7 @@ def setup_resource_limits(context: Context) -> None:
             )
 
 
-def setup_environment_listeners(context: Context, *, testdata: Optional[TestdataType]) -> None:
+def setup_environment_listeners(context: Context, *, dependencies: GrizzlyDependencies, testdata: Optional[TestdataType]) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     environment = grizzly.state.locust.environment
@@ -773,7 +794,7 @@ def setup_environment_listeners(context: Context, *, testdata: Optional[Testdata
 
         environment.events.worker_report.add_listener(worker_report)
 
-    environment.events.init.add_listener(init(grizzly, testdata))
+    environment.events.init.add_listener(init(grizzly, dependencies, testdata))
     environment.events.test_start.add_listener(locust_test_start(grizzly))
     environment.events.test_stop.add_listener(locust_test_stop(grizzly))
 
@@ -781,6 +802,9 @@ def setup_environment_listeners(context: Context, *, testdata: Optional[Testdata
     # And save statistics to "..."
     if grizzly.setup.statistics_url is not None:
         environment.events.init.add_listener(init_statistics_listener(grizzly.setup.statistics_url))
+
+    for hook in grizzly.setup.hooks:
+        hook(environment)
 
 
 def print_scenario_summary(grizzly: GrizzlyContext) -> None:
@@ -922,7 +946,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         return 254
 
     # initialize testdata
-    testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
+    testdata, dependencies = initialize_testdata(grizzly)
 
     greenlet_exception_handler = greenlet_exception_logger(logger)
 
@@ -930,8 +954,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
     external_processes: dict[str, subprocess.Popen] = {}
 
-    user_classes, variable_dependencies = setup_locust_scenarios(grizzly)
-    external_dependencies.update(variable_dependencies)
+    user_classes, scenario_dependencies = setup_locust_scenarios(grizzly)
+    dependencies.update(scenario_dependencies)
 
     assert len(user_classes) > 0, 'no users specified in feature'
 
@@ -982,7 +1006,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         grizzly.state.locust = runner
 
-        setup_environment_listeners(context, testdata=testdata)
+        setup_environment_listeners(context, dependencies=dependencies, testdata=testdata)
 
         if environ.get('GRIZZLY_DRY_RUN', 'false').lower() == 'true':
             if isinstance(runner, MasterRunner):
@@ -1002,7 +1026,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         environment.events.init.fire(environment=environment, runner=runner, web_ui=None)
 
-        if not on_master(context) and len(external_dependencies) > 0:
+        process_dependencies = list(filter(lambda dependency: isinstance(dependency, str), dependencies))
+        if not on_master(context) and len(process_dependencies) > 0:
             env = environ.copy()
             if grizzly.state.verbose:
                 env['GRIZZLY_EXTRAS_LOGLEVEL'] = 'DEBUG'
@@ -1017,10 +1042,13 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
                 parameters.update({'preexec_fn': preexec})
 
-            for external_dependency in external_dependencies:
-                logger.info('starting %s', external_dependency)
-                external_processes.update({external_dependency: subprocess.Popen(
-                    [external_dependency],
+            for dependency in process_dependencies:
+                if not isinstance(dependency, str):
+                    continue
+
+                logger.info('starting %s', dependency)
+                external_processes.update({dependency: subprocess.Popen(
+                    [dependency],
                     env=env,
                     shell=False,
                     stdout=subprocess.DEVNULL,
@@ -1043,6 +1071,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                                 logger.error('%s is not running, stop', dependency)
                                 del processes[dependency]
 
+                        logger.debug('waiting 10 seconds for next external process check')
                         gevent.sleep(10.0)
 
                     logger.info('stop watching external processes')
@@ -1056,7 +1085,11 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
             runner.environment.events.spawning_complete.add_listener(spawn_running_external_processes_check)
 
         if not isinstance(runner, WorkerRunner):
-            for message_type, callback in message_handlers.items():
+            for dependency in dependencies:
+                if not isinstance(dependency, tuple):
+                    continue
+
+                message_type, callback = dependency
                 grizzly.state.locust.register_message(message_type, callback, concurrent=True)
                 logger.info('registered callback for message type "%s"', message_type)
 
@@ -1176,6 +1209,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 if isinstance(runner, MasterRunner):
                     runner.send_message('grizzly_worker_quit', None)
                     runner.stop(send_stop_to_client=False)
+                    logger.info('stop all remaining workers')
 
                     # wait for all clients to quit
                     while len(runner.clients.all) > 0:
@@ -1183,6 +1217,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
                     runner.greenlet.kill(block=True)
                 else:
+                    logger.info('stopping worker on %s', gethostname())
                     runner.quit()
 
                 if stats_printer_greenlet is not None:
@@ -1191,8 +1226,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 if running_test is not None:
                     running_test.kill(block=False)
 
-                grizzly_print_stats(runner.stats, current=False)
                 grizzly_print_percentile_stats(runner.stats)
+                grizzly_print_stats(runner.stats, current=False)
                 lstats.print_error_report(runner.stats)
                 print_scenario_summary(grizzly)
 
@@ -1254,7 +1289,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         else:
             code = max(code, environment.process_exit_code or -1)
 
-        logger.debug('main greenlet finished, rc = %d', code)
+        logger.info('main greenlet finished, rc = %d', code)
 
         return code
     finally:
@@ -1293,7 +1328,7 @@ def grizzly_stats_printer(stats: lstats.RequestStats) -> Callable[[], NoReturn]:
     def _grizzly_stats_printer() -> NoReturn:
         while True:
             grizzly_print_stats(stats)
-            gevent.sleep(lstats.CONSOLE_STATS_INTERVAL_SEC)
+            gevent.sleep(5)
 
     return _grizzly_stats_printer
 
@@ -1308,6 +1343,7 @@ def grizzly_print_stats(stats: lstats.RequestStats, *, current: bool = True, gri
         ("%-" + str(lstats.STATS_TYPE_WIDTH) + "s %-" + str(name_column_width) + "s %7s %12s |%7s %7s %7s%7s | %7s %11s")
         % ("Type", "Name", "# reqs", "# fails", "Avg", "Min", "Max", "Med", "req/s", "failures/s")
     )
+    stats_logger.info(datetime.now(timezone.utc).isoformat())
     stats_logger.info(row)
     separator = f'{"-" * lstats.STATS_TYPE_WIDTH}|{"-" * (name_column_width)}|{"-" * 7}|{"-" * 13}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 8}|{"-" * 11}'
     stats_logger.info(separator)

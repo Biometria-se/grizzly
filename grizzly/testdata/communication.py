@@ -2,31 +2,243 @@
 from __future__ import annotations
 
 import logging
+from abc import ABCMeta, abstractmethod
 from contextlib import suppress
+from dataclasses import dataclass, field
+from datetime import datetime
 from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, Protocol, TypedDict, Union, cast
+from uuid import uuid4
 
+from dateutil.parser import parse as date_parser
 from gevent import sleep as gsleep
 from gevent.event import AsyncResult
 from gevent.lock import Semaphore
 
 from grizzly.events import GrizzlyEventDecoder, GrizzlyEvents, event, events
-from grizzly.types.locust import LocalRunner, MasterRunner, StopUser, WorkerRunner
+from grizzly.types.locust import LocalRunner, MasterRunner, MessageHandler, StopUser, WorkerRunner
 
 from . import GrizzlyVariables
 from .utils import transform
 from .variables import AtomicVariablePersist
 
 if TYPE_CHECKING:  # pragma: no cover
+    from locust.event import EventHook
     from locust.rpc.protocol import Message
 
     from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.types import TestdataType
     from grizzly.types.locust import Environment
+
+
+ActionType = Literal['start', 'stop']
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class AsyncTimer:
+    name: str
+    tid: str
+    version: str
+    start: datetime | None = field(init=True, default=None)
+    stop: datetime | None = field(init=True, default=None)
+
+    def is_complete(self) -> bool:
+        return self.start is not None and self.stop is not None
+
+    def complete(self, event: EventHook) -> None:
+        error: str | None = None
+        duration = 0
+        started: str | None = None
+        finished: str | None = None
+
+        if not self.is_complete():
+            missing_timestamps: list[str] = []
+
+            if self.start is None:
+                missing_timestamps.append('start')
+            else:
+                started = self.start.isoformat()
+
+            if self.stop is None:
+                missing_timestamps.append('stop')
+            else:
+                finished = self.stop.isoformat()
+
+            missing_timestamp = ', '.join(missing_timestamps)
+
+            error = f'cannot complete timer for id "{self.tid}" and version "{self.version}", missing {missing_timestamp} timestamp'
+        else:
+            duration = int((cast(datetime, self.stop) - cast(datetime, self.start)).total_seconds() * 1000)
+            started = cast(datetime, self.start).isoformat()
+            finished = cast(datetime, self.stop).isoformat()
+
+        if duration < 0:
+            logger.warning('duration between stop %s and start %s was weird, %d ms', self.stop, self.start, duration)
+
+        event.fire(
+            request_type=AsyncTimersProducer.__request_method__,
+            name=self.name,
+            response_time=duration,
+            response_length=0,
+            exception=error,
+            context={
+                '__time__': started,
+                '__fields_request_started__': started,
+                '__fields_request_finished__': finished,
+            },
+        )
+
+class AsyncTimersConsumer:
+    scenario: GrizzlyScenario
+    semaphore: Semaphore
+
+    _start: list[dict[str, str]]
+    _stop: list[dict[str, str]]
+
+    def __init__(self, scenario: GrizzlyScenario, semaphore: Semaphore) -> None:
+        self.semaphore = semaphore
+        self.scenario = scenario
+
+        self._start = []
+        self._stop = []
+
+        if isinstance(self.scenario.grizzly.state.locust, WorkerRunner):
+            self.scenario.grizzly.state.locust.environment.events.report_to_master.add_listener(self.on_report_to_master)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return self.scenario.user.logger
+
+    @classmethod
+    def parse_date(cls, value: str) -> datetime:
+        timestamp = date_parser(value)
+
+        # if timezone information wasn't included in the date string, assume localtime
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.astimezone()
+
+        return timestamp
+
+    def on_report_to_master(self, client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG002
+        with self.semaphore:
+            # append this producers timers that should be started and stopped
+            data.update({'async_timers': {
+                'start': [*data.get('async_timers', {}).get('start', []), *self._start],
+                'stop': [*data.get('async_timers', {}).get('stop', []), *self._stop],
+            }})
+
+            self.logger.debug('reported start for %d timers and stop for %d timers to master', len(self._start), len(self._stop))
+
+            self._start.clear()
+            self._stop.clear()
+
+    def toggle(self, action: ActionType, name: str, tid: str, version: str, timestamp: datetime | str | None = None) -> None:
+        if timestamp is None:
+            timestamp = datetime.now().astimezone()
+        elif isinstance(timestamp, str):
+            timestamp = self.parse_date(timestamp)
+
+        data = {
+            'name': name,
+            'tid': tid,
+            'version': version,
+            'timestamp': timestamp.isoformat(),
+        }
+
+        getattr(self, action)(data)
+
+    def start(self, data: dict[str, str]) -> None:
+        if isinstance(self.scenario.grizzly.state.locust, LocalRunner):
+            cast(TestdataProducer, self.scenario.grizzly.state.producer).async_timers.toggle('start', data)
+        else:
+            self._start.append(data)
+
+    def stop(self, data: dict[str, str]) -> None:
+        if isinstance(self.scenario.grizzly.state.locust, LocalRunner):
+            producer = cast(TestdataProducer, self.scenario.grizzly.state.producer)
+            producer.async_timers.toggle('stop', data)
+        else:
+            self._stop.append(data)
+
+
+class AsyncTimersProducer:
+    __request_method__ = 'DOC'  # @TODO: should not this when merging to main
+
+    grizzly: GrizzlyContext
+    semaphore: Semaphore
+
+    timers: dict[str, AsyncTimer]
+
+    def __init__(self, grizzly: GrizzlyContext, semaphore: Semaphore) -> None:
+        self.semaphore = semaphore
+        self.grizzly = grizzly
+
+        self.timers = {}
+
+        if isinstance(grizzly.state.locust, MasterRunner):
+            grizzly.state.locust.environment.events.worker_report.add_listener(self.on_worker_report)
+
+    @property
+    def logger(self) -> logging.Logger:
+        assert self.grizzly.state.producer is not None
+        return self.grizzly.state.producer.logger
+
+    @classmethod
+    def extract(cls, data: dict[str, str]) -> tuple[str, str, str, datetime]:
+        timestamp = date_parser(data['timestamp'])
+
+        return data['name'], data['tid'], data['version'], timestamp
+
+    def on_worker_report(self, client_id: str, data: dict[str, Any]) -> None:
+        async_timers = data.get('async_timers', {})
+
+        async_timers_start = async_timers.get('start', [])
+        async_timers_stop = async_timers.get('stop', [])
+
+        for async_data in async_timers_start:
+            self.toggle('start', async_data)
+
+        for async_data in async_timers_stop:
+            self.toggle('stop', async_data)
+
+        self.logger.debug(
+            'started %d timers and stopped %d timers from worker %s',
+            len(async_timers_start),
+            len(async_timers_stop),
+            client_id,
+        )
+
+    def toggle(self, action: ActionType, data: dict[str, str]) -> None:
+        name, tid, version, timestamp = self.extract(data)
+        timer_id = f'{name}::{tid}::{version}'
+
+        timer = self.timers.get(timer_id)
+
+        if timer is not None:
+            if getattr(timer, action) is not None:
+                toggle_action = 'started' if action == 'start' else 'stopped'
+                message = f'timer with name "{name}" for id "{tid}" with version "{version}" has already been {toggle_action}'
+                self.logger.error(message)
+                message = f'timer for id "{tid}" with version "{version}" has already been {toggle_action}'
+                self.grizzly.state.locust.stats.log_error(self.__request_method__, name, message)
+                return
+        else:
+            timer = AsyncTimer(name, tid, version)
+
+        setattr(timer, action, timestamp)
+
+        with self.semaphore:
+            if timer.is_complete():
+                del self.timers[timer_id]
+                timer.complete(self.grizzly.state.locust.environment.events.request)
+            else:
+                self.timers.update({timer_id: timer})
 
 
 class KeystoreDecoder(GrizzlyEventDecoder):
@@ -40,12 +252,26 @@ class KeystoreDecoder(GrizzlyEventDecoder):
     ) -> tuple[dict[str, Any], dict[str, str | None]]:
         request = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
 
+        key = request.get('key')
+
+        extra_tags = {}
+
+        if '::' in key:
+            """Last suffix (which is prefixed with '::') is considered a unique identifier"""
+            key, extra_tag = key.rsplit('::', 1)
+            extra_tags.update({'unique_id': extra_tag})
+
         tags = {
-            'key': request.get('key'),
+            'key': key,
             'action': request.get('action'),
             'identifier': request.get('identifier'),
+            **extra_tags,
             **(tags or {}),
         }
+
+        remove = request.get('remove', None)
+        if remove is not None:
+            tags.update({'remove': remove})
 
         metrics: dict[str, Any] = {'error': None}
 
@@ -79,7 +305,6 @@ class TestdataDecoder(GrizzlyEventDecoder):
 
         return metrics, tags
 
-
 class TestdataConsumer:
     # need so pytest doesn't raise PytestCollectionWarning
     __test__: bool = False
@@ -93,19 +318,21 @@ class TestdataConsumer:
     poll_interval: float
     response: dict[str, Any]
     events: GrizzlyEvents
+    async_timers: AsyncTimersConsumer
 
     semaphore = Semaphore()
 
-    def __init__(self, runner: LocalRunner | WorkerRunner, scenario: GrizzlyScenario, poll_interval: float = 1.0) -> None:
+    def __init__(self, runner: LocalRunner | WorkerRunner, scenario: GrizzlyScenario) -> None:
         self.runner = runner
         self.scenario = scenario
         self.identifier = scenario.__class__.__name__
 
         self.stopped = False
-        self.poll_interval = poll_interval
 
         self.response = {}
         self.logger.debug('started consumer')
+
+        self.async_timers = AsyncTimersConsumer(scenario, self.semaphore)
 
     @classmethod
     def handle_response(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG003
@@ -116,7 +343,7 @@ class TestdataConsumer:
 
     @property
     def logger(self) -> logging.Logger:
-        return self.scenario.logger
+        return self.scenario.user.logger
 
     @event(events.testdata_request, tags={'type': 'consumer'}, decoder=TestdataDecoder(arg='request'))
     def _testdata_request(self, *, request: dict[str, Any]) -> dict[str, Any] | None:
@@ -143,7 +370,7 @@ class TestdataConsumer:
 
         data = response['data']
 
-        self.logger.debug('received: %r', data)
+        self.logger.debug('testdata received: %r', data)
 
         variables: dict[str, Any] | None = None
         if 'variables' in data:
@@ -157,10 +384,11 @@ class TestdataConsumer:
 
         return cast(dict[str, Any], data)
 
-    def keystore_get(self, key: str) -> Any | None:
+    def keystore_get(self, key: str, *, remove: bool) -> Any | None:
         request = {
             'action': 'get',
             'key': key,
+            'remove': remove,
         }
 
         response = self._keystore_request(request=request)
@@ -192,6 +420,22 @@ class TestdataConsumer:
 
         return value
 
+    def keystore_dec(self, key: str, step: int = 1) -> int | None:
+        request = {
+            'action': 'dec',
+            'key': key,
+            'data': step,
+        }
+
+        response = self._keystore_request(request=request)
+
+        value = (response or {}).get('data', None)
+
+        if value is not None:
+            return int(value)
+
+        return value
+
     def keystore_push(self, key: str, value: Any) -> None:
         request = {
             'action': 'push',
@@ -207,7 +451,7 @@ class TestdataConsumer:
 
         return value
 
-    def keystore_pop(self, key: str, wait: int = -1) -> str:
+    def keystore_pop(self, key: str, *, wait: int = -1, poll_interval: float = 1.0) -> str:
         request = {
             'action': 'pop',
             'key': key,
@@ -217,12 +461,12 @@ class TestdataConsumer:
 
         start = perf_counter()
         while value is None:
-            gsleep(self.poll_interval)
+            gsleep(poll_interval)
             with suppress(Exception):
                 value = self._keystore_pop_poll(request)
 
             if value is None and wait > -1 and (int(perf_counter() - start) > wait):
-                error_message = f'no message received within {wait} seconds'
+                error_message = f'no value for key "{key}" available within {wait} seconds'
                 raise RuntimeError(error_message)
 
         return value
@@ -243,13 +487,14 @@ class TestdataConsumer:
 
     def _request(self, request: dict[str, str]) -> dict[str, Any] | None:
         with self.semaphore:
-            uid = id(self.scenario.user)
+            uid = id(self.scenario.user)  # user id (unique instance)
+            rid = str(uuid4())  # request id
 
             if uid in self._responses:
                 self.logger.warning('greenlet %d is already waiting for testdata', uid)
 
             self._responses.update({uid: AsyncResult()})
-            self.runner.send_message('produce_testdata', {'uid': uid, 'cid': self.runner.client_id, 'request': request})
+            self.runner.send_message('produce_testdata', {'uid': uid, 'cid': self.runner.client_id, 'rid': rid, 'request': request})
 
             # waits for async result
             try:
@@ -267,13 +512,15 @@ class TestdataProducer:
     _persist_file: Path
 
     logger: logging.Logger
-    semaphore = Semaphore()
+    semaphore: ClassVar[Semaphore] = Semaphore()
+    semaphores: ClassVar[dict[str, Semaphore]] = {}
     scenarios_iteration: dict[str, int]
     testdata: TestdataType
     has_persisted: bool
     keystore: dict[str, Any]
     runner: MasterRunner | LocalRunner
     grizzly: GrizzlyContext
+    async_timers: AsyncTimersProducer
 
     def __init__(self, runner: MasterRunner | LocalRunner, testdata: TestdataType) -> None:
         self.testdata = testdata
@@ -299,6 +546,8 @@ class TestdataProducer:
 
         from grizzly.context import grizzly
         self.grizzly = grizzly
+
+        self.async_timers = AsyncTimersProducer(self.grizzly, self.semaphore)
 
     def on_test_stop(self) -> None:
         self.logger.debug('test stopping')
@@ -343,8 +592,16 @@ class TestdataProducer:
     def stop(self) -> None:
         self.persist_data()
 
+    def _remove_key(self, key: str, response: dict[str, Any]) -> None:
+        try:
+            del self.keystore[key]
+        except:
+            message = f'failed to remove key "{key}"'
+            self.logger.exception(message)
+            response.update({'error': message})
+
     @event(events.keystore_request, tags={'type': 'producer'}, decoder=KeystoreDecoder(arg='request'))
-    def _handle_request_keystore(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912
+    def _handle_request_keystore(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912, C901
         response = request
         key: str | None  = response.get('key', None)
 
@@ -358,23 +615,27 @@ class TestdataProducer:
 
         if action == 'get':
             response.update({'data': self.keystore.get(key, None)})
+            if request.get('remove', False):
+                self._remove_key(key, response)
+
         elif action == 'set':
             set_value: str | None = response.get('data', None)
 
             self.keystore.update({key: set_value})
             response.update({'data': set_value})
-        elif action == 'inc':
+        elif action in ['inc', 'dec']:
             step: int = response.get('data', 1)
             response.update({'data': None})
 
-            inc_value: Any = self.keystore.get(key, 0)
+            operation_value: Any = self.keystore.get(key, 0)
 
-            if isinstance(inc_value, int):
-                new_value = inc_value + step
-            elif isinstance(inc_value, str) and inc_value.isnumeric():
-                new_value = int(inc_value) + step
+            if isinstance(operation_value, int):
+                new_value = operation_value + step if action == 'inc' else operation_value - step
+            elif isinstance(operation_value, str) and operation_value.isnumeric():
+                new_value = int(operation_value) + step if action == 'inc' else int(operation_value) - step
             else:
-                message = f'value {inc_value} for key "{key}" cannot be incremented'
+                operation = 'incremented' if action == 'inc' else 'decremented'
+                message = f'value {operation_value} for key "{key}" cannot be {operation}'
                 self.logger.error(message)
                 response.update({'error': message})
                 return response
@@ -398,6 +659,11 @@ class TestdataProducer:
                     raise AttributeError
 
                 pop_value = self.keystore[key].pop(0)
+
+                # remove key if it was the last value
+                if len(self.keystore) < 1:
+                    response.update({'data': pop_value})
+                    self._remove_key(key, response)
             except AttributeError:
                 message = f'key "{key}" is not a list, it has not been pushed to'
                 self.logger.exception(message)
@@ -409,12 +675,7 @@ class TestdataProducer:
             response.update({'data': pop_value})
         elif action == 'del':
             response.update({'data': None})
-            try:
-                del self.keystore[key]
-            except:
-                message = f'failed to remove key "{key}"'
-                self.logger.exception(message)
-                response.update({'error': message})
+            self._remove_key(key, response)
         else:
             message = f'received unknown keystore action "{action}"'
             self.logger.error(message)
@@ -485,6 +746,8 @@ class TestdataProducer:
                         data_key = alias
                         data[data_key] = value
 
+                data['__iteration__'] = (self.scenarios_iteration[scenario_name], scenario.iterations)
+
                 response['data'] = data
 
                 if scenario_name in self.scenarios_iteration:
@@ -499,18 +762,151 @@ class TestdataProducer:
         return response
 
     def handle_request(self, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG002
-        with self.semaphore:
-            self.logger.debug('handling message')
-            uid = msg.data['uid']
-            cid = msg.data['cid']
-            request = msg.data['request']
+        cid = msg.data['cid']  # (worker) client id
+        uid = msg.data['uid']  # user id (user instance)
+        rid = msg.data['rid']  # request id
+        request = msg.data['request']
 
-            if request['message'] == 'keystore':
+        self.logger.debug('handling message from worker %s, user %s, request %s', cid, uid, rid)
+
+        # only handle one request per worker at a time, but allow parallell requests between different scenarios
+        if request['message'] == 'keystore':
+            with self.semaphore:
                 response = self._handle_request_keystore(request=request)
-            elif request['message'] == 'testdata':
-                response = self._handle_request_testdata(request=request)
-            else:
-                self.logger.error('received unknown message "%s"', request['message'])
-                response = {}
+        elif request['message'] == 'testdata':
+            scenario_name = request.get('identifier', None)
 
-            self.runner.send_message('consume_testdata', {'uid': uid, 'response': response}, client_id=cid)
+            # create semaphore for client if it does not exist already
+            with self.semaphore:
+                if scenario_name is not None and scenario_name not in self.semaphores:
+                    self.semaphores.update({scenario_name: Semaphore()})
+
+            with self.semaphores[scenario_name]:
+                response = self._handle_request_testdata(request=request)
+        else:
+            self.logger.error('received unknown message "%s"', request['message'])
+            response = {}
+
+        self.runner.send_message('consume_testdata', {'uid': uid, 'rid': rid, 'response': response}, client_id=cid)
+
+
+class GrizzlyMessage(TypedDict):
+    uid: int
+    rid: str
+
+
+class GrizzlyMessageResponse(GrizzlyMessage):
+    response: dict[str, Any]
+
+
+class GrizzlyMessageRequest(GrizzlyMessage):
+    cid: str
+    request: dict[str, Any]
+
+
+class GrizzlyMessageMapping(TypedDict):
+    request: str
+    response: str
+
+
+class GrizzlyContextAware(Protocol):
+    grizzly: GrizzlyContext
+    logger: logging.Logger
+
+
+class GrizzlyMessageHandler(metaclass=ABCMeta):
+    __message_types__: ClassVar[GrizzlyMessageMapping]
+
+    _responses: ClassVar[dict[int, AsyncResult]] = {}
+
+    semaphore: ClassVar[Semaphore] = Semaphore()
+    semaphores: ClassVar[dict[int, Semaphore]] = {}
+
+    @classmethod
+    @abstractmethod
+    def create_response(cls, environment: Environment, key: int, request: dict[str, Any]) -> dict[str, Any]: ...
+
+    @classmethod
+    def send_request(cls, consumer: GrizzlyContextAware, request: dict[str, Any], *, timeout: float = 10.0) -> dict[str, Any]:
+        assert not isinstance(consumer.grizzly.state.locust, MasterRunner)
+
+        message_type = cls.__message_types__['request']
+
+        assert message_type is not None
+
+        uid = id(consumer)
+        rid = str(uuid4())
+
+        if uid in cls._responses:
+            consumer.logger.warning('greenlet %d is already waiting for testdata', uid)
+
+        cls._responses.update({uid: AsyncResult()})
+
+        consumer.grizzly.state.locust.send_message(message_type, {'uid': uid, 'cid': consumer.grizzly.state.locust.client_id, 'rid': rid, 'request': request})
+
+        try:
+            response = cast(dict[str, Any], cls._responses[uid].get(timeout=timeout))
+            error = response.get('error', None)
+
+            if error is None:
+                return response
+
+            raise RuntimeError(error)
+        finally:
+            with suppress(KeyError):
+                del cls._responses[uid]
+
+    @classmethod
+    def handle_response(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG003
+        data = cast(GrizzlyMessageResponse, msg.data)
+        uid = data['uid']
+        response = data['response']
+
+        cls._responses[uid].set(response)
+
+    @classmethod
+    def get_key(cls, value: dict[str, Any]) -> int:
+        key_value: dict[str, Any] = {}
+        for k, v in  value.items():
+            k_v = cls.get_key(v) if isinstance(v, dict) else v
+
+            key_value.update({k: k_v})
+
+        return hash(frozenset(key_value.items()))
+
+    @classmethod
+    def handle_request(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:
+        message_type = cls.__message_types__['request']
+        logger.debug('got %s: %r', msg.data, message_type)
+        data = cast(GrizzlyMessageRequest, msg.data)
+        cid = data['cid']  # (worker) client id
+        uid = data['uid']  # user id (user instance)
+        rid = data['rid']  # request id
+        request = data['request']
+        try:
+            key = cls.get_key(request)
+        except:
+            logger.exception('failed to hash request %r', request)
+            raise
+
+        with cls.semaphore:
+            if key not in cls.semaphores:
+                cls.semaphores.update({key: Semaphore()})
+
+        with cls.semaphores[key]:
+            try:
+                response = cls.create_response(environment, key, request)
+            except Exception as e:
+                response = {
+                    'error': f'{e.__class__.__name__}: {e!s}',
+                }
+                logger.exception('failed to handle %s', message_type)
+
+        assert environment.runner is not None
+
+        message_type = cls.__message_types__['response']
+
+        environment.runner.send_message(message_type, {'uid': uid, 'rid': rid, 'response': response}, client_id=cid)
+
+
+GrizzlyDependencies = set[Union[str, type[GrizzlyMessageHandler], tuple[str, MessageHandler]]]

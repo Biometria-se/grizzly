@@ -23,7 +23,7 @@ T = TypeVar('T')
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-    from grizzly.types.locust import MessageHandler
+    from grizzly.testdata.communication import GrizzlyDependencies
 
 
 class AbstractAtomicClass:
@@ -48,8 +48,7 @@ class AtomicVariableSettable(metaclass=ABCMeta):
 
 class AtomicVariable(Generic[T], AbstractAtomicClass):
     __base_type__: Optional[Callable] = None
-    __dependencies__: ClassVar[set[str]] = set()
-    __message_handlers__: ClassVar[dict[str, MessageHandler]] = {}
+    __dependencies__: ClassVar[GrizzlyDependencies] = set()
     __on_consumer__ = False
 
     _instances: ClassVar[dict[type[AtomicVariable], dict[GrizzlyContextScenario, AtomicVariable]]] = {}

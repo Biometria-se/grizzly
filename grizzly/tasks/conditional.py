@@ -38,6 +38,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from gevent import sleep as gsleep
 
 from grizzly.exceptions import RestartScenario, StopUser, failure_handler
+from grizzly.types import FailureAction
 
 from . import GrizzlyTask, GrizzlyTaskWrapper, grizzlytask, template
 
@@ -142,7 +143,8 @@ class ConditionalTask(GrizzlyTaskWrapper):
                     stats = parent.user.environment.stats.get(name, 'COND')
                     stats.log_error(None)
 
-                failure_handler(exception, parent.user._scenario)
+                if not isinstance(exception, FailureAction.get_failure_exceptions()):
+                    failure_handler(exception, parent.user._scenario)
 
         @task.on_start
         def on_start(parent: GrizzlyScenario) -> None:

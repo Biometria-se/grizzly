@@ -9,7 +9,7 @@ from os import environ
 from pathlib import Path
 from textwrap import indent
 from time import perf_counter as time
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 import setproctitle as proc
 from behave.reporter.summary import SummaryReporter
@@ -24,6 +24,9 @@ from .types import RequestType
 from .types.behave import Context, Feature, Scenario, Status, Step
 from .utils import fail_direct, in_correct_section
 from .utils.protocols import mq_client_logs
+
+if TYPE_CHECKING:
+    from grizzly.testdata.communication import AsyncTimer
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +115,7 @@ def after_feature_master(return_code: int, status: Optional[Status], context: Co
     return return_code
 
 
-def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: Any) -> None:  # noqa: PLR0912
+def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: Any) -> None:  # noqa: PLR0912, C901, PLR0915
     return_code: int
     cause: str
     has_exceptions = hasattr(context, 'exceptions') and len(context.exceptions) > 0
@@ -158,7 +161,36 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
     # show start and stop date time
     stopped = datetime.now().astimezone()
 
-    reporter.stream.flush()
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    if grizzly.state.producer is not None and len(grizzly.state.producer.async_timers.timers) > 0:
+        feature.set_status('failed')
+        timer_group: dict[str, dict[str, list[AsyncTimer]]] = {'started': {}, 'stopped': {}}
+
+        for timer in grizzly.state.producer.async_timers.timers.values():
+            group_name = 'started' if timer.stop is None else 'stopped'
+            if timer.name not in timer_group[group_name]:
+                timer_group[group_name].update({timer.name: []})
+
+            timer_group[group_name][timer.name].append(timer)
+
+        if len(timer_group['started']) > 0:
+            reporter.stream.write('\nThe following asynchronous timers has not been stopped:\n')
+
+            for name, timers in timer_group['started'].items():
+                reporter.stream.write(f'- {name} ({len(timers)}):\n')
+
+                for timer in timers:
+                    reporter.stream.write(f'  * {timer.tid} (version {timer.version}): {cast(datetime, timer.start).isoformat()}\n')
+
+        if len(timer_group['stopped']) > 0:
+            reporter.stream.write('\nThe following asynchronous timers has not been started:\n')
+
+            for name, timers in timer_group['stopped'].items():
+                reporter.stream.write(f'- {name} ({len(timers)}):\n')
+
+                for timer in timers:
+                    reporter.stream.write(f'  * {timer.tid} (version {timer.version}): {cast(datetime, timer.stop).isoformat()}\n')
 
     if has_exceptions:
         buffer: list[str] = []
@@ -177,6 +209,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
     end_text = 'Aborted' if return_code == ABORTED_RETURN_CODE else 'Finished'
 
     reporter.stream.write(f'\n{"Started":<{len(end_text)}}: {context.started}\n{end_text}: {stopped}\n\n')
+    reporter.stream.flush()
 
     # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
     with suppress(Exception):

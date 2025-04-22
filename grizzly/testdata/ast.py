@@ -138,7 +138,10 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[GrizzlyContextScenar
         if len(templates[_scenario]) == 0:
             del templates[_scenario]
 
-    # first find all variables in all templates grouped by scenario
+    return parse_templates(templates)
+
+
+def parse_templates(templates: dict[GrizzlyContextScenario, set[str]], *, check_declared: bool = True) -> dict[GrizzlyContextScenario, set[str]]:
     template_variables = _parse_templates(templates)
 
     for scenario, variables in template_variables.items():
@@ -148,15 +151,16 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[GrizzlyContextScenar
         declared_variables = AstVariableNameSet()
         declared_variables.update(scenario.variables)
 
-        # check except between declared variables and variables found in templates
-        missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - template_variables.__conditional__
-        missing_in_templates_message = '\n'.join(sorted(missing_in_templates))
-        assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates:\n{missing_in_templates_message}'
+        if check_declared:
+            # check except between declared variables and variables found in templates
+            missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - template_variables.__conditional__
+            missing_in_templates_message = '\n'.join(sorted(missing_in_templates))
+            assert len(missing_in_templates) == 0, f'variables have been declared, but cannot be found in templates:\n{missing_in_templates_message}'
 
         # check if any variable hasn't first been declared
         missing_declarations = {variable for variable in found_variables if variable not in declared_variables} - template_variables.__conditional__ - template_variables.__local__
         missing_declarations_message = '\n'.join(sorted(missing_declarations))
-        assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared:\n{missing_declarations_message}'
+        assert len(missing_declarations) == 0, f'variables have been found in templates, but have not been declared:\n{missing_declarations_message}'
 
     # only include variables that has been declared, filtering out conditional ones
     filtered_template_variables: dict[GrizzlyContextScenario, set[str]] = {}

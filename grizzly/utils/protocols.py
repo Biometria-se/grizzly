@@ -8,11 +8,12 @@ import re
 from datetime import datetime, timezone
 from http.cookiejar import Cookie
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Protocol, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, cast
 from urllib.parse import urlparse
 
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dateparser
+from gevent.ssl import SSLContext, create_default_context
 
 from grizzly.utils import _print_table
 from grizzly_extras.async_message.utils import async_message_request
@@ -25,6 +26,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.types.behave import Context
     from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
+
+
+ALPN_PROTOCOLS = ["http/1.1"]
 
 
 class HttpCookieHolder(Protocol):
@@ -149,3 +153,18 @@ def mq_client_logs(context: Context) -> None:
     # present entries created during run
     _print_table('AMQ error log entries', 'Message', amqerr_log_entries)
     _print_table('AMQ FDC files', 'File', amqerr_fdc_files)
+
+
+def ssl_context_factory(cert: tuple[str, str] | None = None) -> Callable[[str | None], SSLContext]:
+    def wrapper(*_args: Any, **_kwargs: Any) -> SSLContext:
+        context = create_default_context()
+
+        if cert is not None:
+            client_cert, client_key = cert
+            context.load_cert_chain(client_cert, client_key)
+
+        context.set_alpn_protocols(ALPN_PROTOCOLS)
+
+        return context
+
+    return wrapper

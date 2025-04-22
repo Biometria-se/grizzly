@@ -408,12 +408,12 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
         del grizzly.scenario.variables['foo']
         del grizzly.scenario.variables['env']
 
-        with pytest.raises(AssertionError, match='variables has been found in templates, but have not been declared:\nenv\nfoo'):
+        with pytest.raises(AssertionError, match='variables have been found in templates, but have not been declared:\nenv\nfoo'):
             get_template_variables(grizzly)
 
         grizzly.scenario.variables.update({'foo': 'bar', 'bar': 'foo', 'baz': 'zab'})
 
-        with pytest.raises(AssertionError, match='variables has been declared, but cannot be found in templates:\nbar\nbaz'):
+        with pytest.raises(AssertionError, match='variables have been declared, but cannot be found in templates:\nbar\nbaz'):
             get_template_variables(grizzly)
 
     assert caplog.messages == []

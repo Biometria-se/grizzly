@@ -1,7 +1,8 @@
 """Unit tests of grizzly.tasks.keystore."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from json import loads as jsonloads
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -29,23 +30,28 @@ class TestKeystoreTask:
         assert task.action == 'get'
         assert task.action_context == 'foobar'
         assert task.default_value is None
+        assert task.arguments == {}
 
-        task = KeystoreTask('foobar', 'get', 'foobar', ['hello', 'world'])
+        task = KeystoreTask('foobar', 'get', 'foobar', "['hello', 'world']")
 
         assert task.key == 'foobar'
         assert task.action == 'get'
         assert task.action_context == 'foobar'
         assert task.default_value == ['hello', 'world']
+        assert task.arguments == {}
 
         with pytest.raises(AssertionError, match='action context for "set" must be declared'):
             KeystoreTask('foobar', 'set', None)
 
-        task = KeystoreTask('foobar', 'set', {'hello': 'world'})
+        grizzly = grizzly_fixture.grizzly
+        grizzly.state.configuration.update({'keystore.wait': 100, 'keystore.poll.interval': 1.0})
+        task = KeystoreTask('foobar | wait=$conf::keystore.wait$', 'set', '{"hello": "world"} | interval=$conf::keystore.poll.interval$')
 
         assert task.key == 'foobar'
         assert task.action == 'set'
         assert task.action_context == {'hello': 'world'}
         assert task.default_value is None
+        assert task.arguments == {'wait': 100, 'interval': 1.0}
 
         assert task.__template_attributes__ == {'action_context', 'key'}
 
@@ -60,7 +66,7 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
 
         grizzly.scenario.variables.update({'foobar': 'none'})
         parent.user.variables.update({'foobar': 'none'})
@@ -78,6 +84,8 @@ class TestKeystoreTask:
             task(parent)
 
         assert parent.user.variables.get('foobar', None) == 'none'
+        consumer_mock.keystore_get.assert_called_once_with('foobar', remove=False)
+        consumer_mock.reset_mock()
 
         request_spy.assert_called_once_with(
             request_type='KEYS',
@@ -95,13 +103,15 @@ class TestKeystoreTask:
         task(parent)
 
         request_spy.assert_not_called()
+        consumer_mock.keystore_get.assert_called_once_with('foobar', remove=False)
+        consumer_mock.reset_mock()
 
         assert parent.user.variables.get('foobar', None) == ['hello', 'world']
 
         # key does not exist in keystore, but has a default value
         consumer_mock.keystore_get.return_value = None
 
-        task_factory = KeystoreTask('foobar', 'get', 'foobar', {'hello': 'world'})
+        task_factory = KeystoreTask('foobar', 'get', 'foobar', '{"hello": "world"}')
         assert task_factory.default_value is not None
         task = task_factory()
 
@@ -109,7 +119,24 @@ class TestKeystoreTask:
 
         request_spy.assert_not_called()
         consumer_mock.keystore_set.assert_called_with('foobar', {'hello': 'world'})
+        consumer_mock.reset_mock()
+
         assert parent.user.variables.get('foobar', None) == {'hello': 'world'}
+
+        # remove key entry from keystore after retreiving value
+        consumer_mock.keystore_get.return_value = 'foobar'
+
+        task_factory = KeystoreTask('foobar', 'get_del', 'foobar')
+        assert task_factory.default_value is None
+        task = task_factory()
+
+        task(parent)
+
+        request_spy.assert_not_called()
+        consumer_mock.keystore_get.assert_called_once_with('foobar', remove=True)
+        consumer_mock.reset_mock()
+
+        assert parent.user.variables.get('foobar', None) == 'foobar'
 
     def test___call___set(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
@@ -117,9 +144,9 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
 
-        task_factory = KeystoreTask('foobar', 'set', {'hello': '{{ world }}'})
+        task_factory = KeystoreTask('foobar', 'set', "{'hello': '{{ world }}'}")
         task = task_factory()
 
         task(parent)
@@ -133,7 +160,7 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
 
         consumer_mock.keystore_inc.return_value = 1
 
@@ -146,21 +173,77 @@ class TestKeystoreTask:
         consumer_mock.keystore_inc.assert_called_once_with('foobar', step=1)
         consumer_mock.reset_mock()
 
-    def test___call__push(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test___call__dec(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        parent = grizzly_fixture()
+
+        assert parent is not None
+
+        consumer_mock = mocker.MagicMock()
+        parent.__class__._consumer = consumer_mock
+
+        consumer_mock.keystore_dec.return_value = 1
+
+        parent.user._scenario.variables.update({'counter': 'none'})
+        task_factory = KeystoreTask('foobar', 'dec', 'counter')
+        task = task_factory()
+
+        task(parent)
+        assert parent.user.variables.get('counter', None) == 1
+        consumer_mock.keystore_dec.assert_called_once_with('foobar', step=1)
+        consumer_mock.reset_mock()
+
+    @pytest.mark.parametrize(('actual', 'expected'), [('hello', 'hello'), ('True', True), ('10', 10), ('13.7', 13.7)])
+    def test___call__push(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, actual: str, expected: Any) -> None:
         parent = grizzly_fixture()
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
 
         consumer_mock.keystore_push.return_value = None
 
-        task_factory = KeystoreTask('foobar', 'push', 'hello')
+        task_factory = KeystoreTask('foobar', 'push', actual)
         task = task_factory()
 
         task(parent)
 
-        consumer_mock.keystore_push.assert_called_once_with('foobar', 'hello')
+        consumer_mock.keystore_push.assert_called_once_with('foobar', expected)
+        consumer_mock.reset_mock()
+
+    def test___call__push_complex(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        parent = grizzly_fixture()
+        assert parent is not None
+
+        consumer_mock = mocker.MagicMock()
+        parent.__class__._consumer = consumer_mock
+
+        value = """{
+    'name': '{{ name }}',
+    'location': '{{ location }}',
+    'receiver': '{{ receiver }}',
+    'product': '{{ product }}',
+    'parcels': '{{ parcels }}'
+} | render=True"""
+
+        parent.user.variables.update({
+            'name': 'AMD RADEON 7900 XTX',
+            'location': 'Storage 2',
+            'receiver': 'Grizzly',
+            'product': 'GPU1337',
+            'parcels': 1,
+        })
+
+        expected, _ = value.replace("'", '"').split(' | ', 1)
+        expected = jsonloads(parent.user.render(expected))
+
+        consumer_mock.keystore_push.return_value = None
+
+        task_factory = KeystoreTask('foobar', 'push', value)
+        task = task_factory()
+
+        task(parent)
+
+        consumer_mock.keystore_push.assert_called_once_with('foobar', expected)
         consumer_mock.reset_mock()
 
 
@@ -169,7 +252,7 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
 
         consumer_mock.keystore_pop.return_value = None
 
@@ -188,14 +271,15 @@ class TestKeystoreTask:
         task(parent)
 
         assert parent.user.variables.get('foobar', None) == 'none'
-        consumer_mock.keystore_pop.assert_called_once_with('foobar::hello')
+        consumer_mock.keystore_pop.assert_called_once_with('foobar::hello', wait=-1, poll_interval=1.0)
         consumer_mock.reset_mock()
 
         consumer_mock.keystore_pop.return_value = 'hello'
+        task_factory.arguments.update({'wait': 2, 'interval': 0.5})
         task(parent)
 
         assert parent.user.variables.get('foobar', None) == 'hello'
-        consumer_mock.keystore_pop.assert_called_once_with('foobar::hello')
+        consumer_mock.keystore_pop.assert_called_once_with('foobar::hello', wait=2, poll_interval=0.5)
         consumer_mock.reset_mock()
 
     def test___call__del(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
@@ -203,7 +287,7 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        parent.consumer = consumer_mock
+        parent.__class__._consumer = consumer_mock
         consumer_mock.keystore_del.return_value = None
 
         with pytest.raises(AssertionError, match='action context for "del" cannot be declared'):

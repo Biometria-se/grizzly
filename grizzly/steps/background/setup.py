@@ -65,7 +65,7 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
     url = cast(str, resolve_variable(grizzly.scenario, url))
     parsed = urlparse(url)
 
-    assert parsed.scheme in ['influxdb', 'insights'], f'"{parsed.scheme}" is not a supported scheme'
+    assert parsed.scheme in ['influxdb', 'influxdb2', 'insights'], f'"{parsed.scheme}" is not a supported scheme'
 
     grizzly.setup.statistics_url = url
 

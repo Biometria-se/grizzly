@@ -16,8 +16,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @pytest.mark.parametrize('url', [
     'influxdb://grizzly:password@localhost/grizzly-statistics?Testplan=grizzly-statistics',
+    'influxdb2://token@localhost:31337/org:bucket?Testplan=grizzly-statistics',
     'insights://localhost/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf',
     'influxdb://$conf::statistics.username$:$conf::statistics.password$@localhost/$conf::statistics.database$?Testplan=grizzly-statistics',
+    'influxdb2://$conf::statistics.token$@localhost:31337/$conf::statistics.org$:$conf::statistics.bucket$?Testplan=grizzly-statistics',
 ])
 def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -> None:
     env_conf: dict[str, Any] = {
@@ -26,6 +28,9 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
                 'username': 'grizzly',
                 'password': 'password',
                 'database': 'grizzly-statistics',
+                'token': 'token',
+                'org': 'ifk',
+                'bucket': 'grizzly',
             },
         },
     }
@@ -49,6 +54,9 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
             'statistics.username': env_conf['configuration']['statistics']['username'],
             'statistics.password': env_conf['configuration']['statistics']['password'],
             'statistics.database': env_conf['configuration']['statistics']['database'],
+            'statistics.token': env_conf['configuration']['statistics']['token'],
+            'statistics.org': env_conf['configuration']['statistics']['org'],
+            'statistics.bucket': env_conf['configuration']['statistics']['bucket'],
         },
     ]
 

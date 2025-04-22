@@ -343,7 +343,7 @@ class TestAsyncServiceBusHandler:
         mgmt_client_mock.create_rule.side_effect = [ResourceExistsError]
         mgmt_client_mock.get_rule.return_value = rule_mock
 
-        assert handlers[request['action']](handler, request) == {'message': 'created subscription my-subscription on topic my-topic'}
+        assert handlers[request['action']](handler, request) == {'message': 'created subscription "my-subscription" on topic "my-topic"'}
 
         mgmt_client_mock.create_subscription.assert_not_called()
         mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
@@ -364,8 +364,10 @@ class TestAsyncServiceBusHandler:
         mgmt_client_mock.create_rule.side_effect = None
         mgmt_client_mock.get_subscription.side_effect = [ResourceNotFoundError]
 
-        assert handlers[request['action']](handler, request) == {'message': 'created subscription my-subscription on topic my-topic'}
+        assert handlers[request['action']](handler, request) == {'message': 'created subscription "my-subscription" on topic "my-topic"'}
 
+        mgmt_client_mock.delete_queue.assert_not_called()
+        mgmt_client_mock.create_queue.assert_not_called()
         mgmt_client_mock.create_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
         mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
         mgmt_client_mock.delete_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule_name='$Default')
@@ -373,8 +375,53 @@ class TestAsyncServiceBusHandler:
         mgmt_client_mock.get_rule.assert_not_called()
         assert rule_mock.filter.sql_expression == 'foo=bar AND foo=baz'
         mgmt_client_mock.update_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule=rule_mock)
+        mgmt_client_mock.reset_mock()
 
-    def test_unsubscribe(self, mocker: MockerFixture) -> None:
+        # non-unique subscription, already exist
+        request['context']['unique'] = False
+        mgmt_client_mock.get_subscription.side_effect = None
+
+        assert handlers[request['action']](handler, request) == {'message': 'non-unique subscription "my-subscription" on topic "my-topic" already created'}
+
+        mgmt_client_mock.create_subscription.assert_not_called()
+        mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.reset_mock()
+
+        del request['context']['unique']
+
+        # forwarded subscription, failed to create forward queue
+        request['context']['forward'] = True
+        mgmt_client_mock.get_rule.return_value = None
+        mgmt_client_mock.create_rule.return_value = rule_mock
+        mgmt_client_mock.delete_rule.side_effect = None
+        mgmt_client_mock.create_rule.side_effect = None
+        mgmt_client_mock.get_subscription.side_effect = [ResourceNotFoundError]
+        mgmt_client_mock.create_queue.side_effect = [ResourceExistsError]
+
+        with pytest.raises(AsyncMessageError, match='failed to create forward queue for subscription "my-subscription"'):
+            handlers[request['action']](handler, request)
+
+        mgmt_client_mock.delete_queue.assert_called_once_with(queue_name='my-subscription')
+        mgmt_client_mock.create_queue.assert_called_once_with(queue_name='my-subscription')
+        mgmt_client_mock.reset_mock()
+
+        # forwarded subscription
+        mgmt_client_mock.create_queue.side_effect = None
+
+        assert handlers[request['action']](handler, request) == {'message': 'created forward queue and subscription "my-subscription" on topic "my-topic"'}
+
+        mgmt_client_mock.delete_queue.assert_called_once_with(queue_name='my-subscription')
+        mgmt_client_mock.create_queue.assert_called_once_with(queue_name='my-subscription')
+        mgmt_client_mock.create_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', forward_to='my-subscription')
+        mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.delete_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule_name='$Default')
+        mgmt_client_mock.create_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule_name='grizzly')
+        mgmt_client_mock.get_rule.assert_not_called()
+        assert rule_mock.filter.sql_expression == 'foo=bar AND foo=baz'
+        mgmt_client_mock.update_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule=rule_mock)
+        mgmt_client_mock.reset_mock()
+
+    def test_unsubscribe(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
 
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
@@ -441,12 +488,38 @@ class TestAsyncServiceBusHandler:
 
         actual_response = handlers[request['action']](handler, request)
         assert list(actual_response.keys()) == ['message']
-        assert (actual_response.get('message', None) or '').startswith('removed subscription my-subscription on topic my-topic (stats: active_message_count=')
+        assert (actual_response.get('message', None) or '').startswith('removed subscription "my-subscription" on topic "my-topic" (stats: active_message_count=')
 
+        mgmt_client_mock.delete_queue.assert_not_called()
         mgmt_client_mock.get_topic.assert_called_once_with(topic_name='my-topic')
         mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
         mgmt_client_mock.delete_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
         mgmt_client_mock.get_subscription_runtime_properties.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.reset_mock()
+
+        # all good, forwarded subscription
+        request['context']['forward'] = True
+
+        actual_response = handlers[request['action']](handler, request)
+        assert list(actual_response.keys()) == ['message']
+        assert (actual_response.get('message', None) or '').startswith('removed forward queue and subscription "my-subscription" on topic "my-topic" (stats: active_message_count=')
+
+        mgmt_client_mock.delete_queue.assert_called_once_with(queue_name='my-subscription')
+        mgmt_client_mock.get_topic.assert_called_once_with(topic_name='my-topic')
+        mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.delete_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.get_subscription_runtime_properties.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.reset_mock()
+
+        del request['context']['forward']
+
+        # non-unique subscription does not exist
+        request['context']['unique'] = False
+        mgmt_client_mock.get_subscription.side_effect = [ResourceNotFoundError]
+
+        assert handlers[request['action']](handler, request) == {'message': 'non-unique subscription "my-subscription" on topic "my-topic" already removed'}
+        mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.get_subscription_runtime_properties.assert_not_called()
 
     def test_from_message(self) -> None:
         assert AsyncServiceBusHandler.from_message(None) == (None, None)
@@ -575,6 +648,7 @@ class TestAsyncServiceBusHandler:
 
         queue_spy.assert_not_called()
         topic_spy.assert_called_once_with(client_identifier='asdf-asdf-asdf', topic_name='test-topic', subscription_name='test-subscription', max_wait_time=100)
+        topic_spy.reset_mock()
 
     def test_hello(self, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
@@ -722,11 +796,50 @@ class TestAsyncServiceBusHandler:
             'hello failed: service bus connection timed out, retry 1 in 0.50 seconds',
             'hello failed: service bus connection timed out, retry 2 in 0.85 seconds',
         ]
+        caplog.clear()
         sender_instance_spy.assert_not_called()
         sender_instance_spy.return_value.__enter__.assert_not_called()
         assert receiver_instance_spy.call_count == 3
         receiver_instance_spy.assert_called_with({'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'})
         receiver_instance_spy.reset_mock()
+
+        # forwarded subscription, create receiver instance
+        handler._sender_cache.clear()
+        handler._receiver_cache.clear()
+        receiver_instance_spy.side_effect = None
+        request['context'].update({
+            'connection': 'receiver',
+            'endpoint': 'topic:test-topic, subscription:test-subscription',
+            'forward': True,
+        })
+
+        with caplog.at_level(logging.WARNING):
+            assert handlers[request['action']](handler, request) == {
+                'message': 'there general kenobi',
+            }
+
+        assert caplog.messages == []
+        sender_instance_spy.assert_not_called()
+        sender_instance_spy.return_value.__enter__.assert_not_called()
+        receiver_instance_spy.assert_called_once_with({'endpoint_type': 'queue', 'endpoint': 'test-subscription', 'wait': '10'})
+        receiver_instance_spy.reset_mock()
+        assert handler._sender_cache == {}
+        assert handler._receiver_cache.get('topic:test-topic, subscription:test-subscription', None) is not None
+
+        # forwarded subscription, read from cache, not new instance needed
+        with caplog.at_level(logging.WARNING):
+            assert handlers[request['action']](handler, request) == {
+                'message': 'there general kenobi',
+            }
+
+        assert caplog.messages == []
+        sender_instance_spy.assert_not_called()
+        sender_instance_spy.return_value.__enter__.assert_not_called()
+        receiver_instance_spy.assert_not_called()
+        receiver_instance_spy.return_value.__enter__.assert_not_called()
+
+        assert handler._sender_cache == {}
+        assert handler._receiver_cache.get('topic:test-topic, subscription:test-subscription', None) is not None
 
     def test_request(self, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
@@ -826,7 +939,7 @@ class TestAsyncServiceBusHandler:
         received_message = ServiceBusMessage('grizzly >3 service bus')
         receiver_instance_mock.return_value.__iter__.side_effect = [StopIteration, iter([received_message])]
 
-        with pytest.raises(AsyncMessageError, match='no messages on topic:test-topic, subscription:test-subscription within 10 seconds'):
+        with pytest.raises(AsyncMessageError, match='no messages on "topic:test-topic, subscription:test-subscription" within 10 seconds'):
             handlers[request['action']](handler, request)
         receiver_instance_mock.return_value.__iter__.assert_called_once_with()
         receiver_instance_mock.return_value.complete_message.assert_not_called()
@@ -851,7 +964,30 @@ class TestAsyncServiceBusHandler:
         assert actual_metadata == expected_metadata
         assert response.get('response_length', 0) == len(expected_payload)
 
-        handler.logger.error('-'* 100)
+        # receive request, forwarded subscription
+        request['context']['forward'] = True
+        receiver_instance_mock.return_value.__iter__.side_effect = [iter([received_message])]
+
+        response = handlers[request['action']](handler, request)
+
+        receiver_instance_mock.return_value.__iter__.assert_called_once_with()
+        receiver_instance_mock.return_value.complete_message.assert_called_once_with(received_message)
+        receiver_instance_mock.reset_mock()
+
+        assert len(response) == 3
+        expected_metadata, expected_payload = handler.from_message(received_message)
+        actual_metadata = response.get('metadata', None)
+        assert actual_metadata is not None
+        assert expected_metadata is not None
+        assert expected_payload is not None
+        actual_metadata['message_id'] = None
+        expected_metadata['message_id'] = None
+
+        assert response.get('payload', None) == expected_payload
+        assert actual_metadata == expected_metadata
+        assert response.get('response_length', 0) == len(expected_payload)
+
+        del request['context']['forward']
 
         _hello_mock = mocker.patch.object(handler, '_hello', return_value=None)
         receiver_instance_mock.return_value.__iter__.side_effect = [ServiceBusError('Connection to remote host was lost'), iter([received_message])]
@@ -983,7 +1119,7 @@ class TestAsyncServiceBusHandler:
             side_effect=[0.0, 5.0, 0.1, 0.5, 0, 11.0],
         )
 
-        with pytest.raises(AsyncMessageError, match=r'no messages on queue:test-queue, expression:"\$.`this`\[\?\(@.name="test"\)\]"'):
+        with pytest.raises(AsyncMessageError, match=r'no messages on "queue:test-queue" matching expression "\$.`this`\[\?\(@.name="test"\)\]"'):
             handlers[request['action']](handler, request)
 
         assert receiver_instance_mock.return_value.abandon_message.call_count == 2

@@ -187,3 +187,9 @@ def caster(value: Any) -> Any:
             value = date_parse(value)
 
     return value
+
+
+def bool_caster(value: str) -> bool:
+    assert value in ['True', 'False'], f'{value} is not a valid boolean'
+
+    return value == 'True'

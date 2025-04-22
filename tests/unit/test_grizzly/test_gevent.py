@@ -69,5 +69,5 @@ class TestGreenletFactory:
         with caplog.at_level(logging.DEBUG), factory.spawn_task(parent, ok, 3, 11, 'Then succeed'):
             pass
 
-        assert caplog.messages == ['task 3 of 11 executed: Then succeed']
+        assert [message for message in caplog.messages if not any(ignore in message for ignore in ['checking if heartbeat has been'])] == ['task 3 of 11 executed: Then succeed']
         caplog.clear()

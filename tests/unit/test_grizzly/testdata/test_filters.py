@@ -85,3 +85,11 @@ def test_b64decode() -> None:
     func = FILTERS.get('b64decode', None)
     assert func is not None
     assert func(base64_b64encode(b'foobar').decode()) == 'foobar'
+
+
+def test_literal_eval() -> None:
+    func = FILTERS.get('literal_eval', None)
+    assert func is not None
+    assert func("{'hello': 'world'}") == {'hello': 'world'}
+    assert func('True')
+    assert func('10.3') == 10.3

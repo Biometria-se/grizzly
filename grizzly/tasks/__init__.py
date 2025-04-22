@@ -65,6 +65,7 @@ from grizzly.utils import has_template
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.testdata.communication import GrizzlyDependencies
     from grizzly.types import GrizzlyResponse
     from grizzly_extras.transformer import TransformerContentType
 
@@ -168,6 +169,7 @@ class grizzlytask:
 
 class GrizzlyTask(ABC):
     __template_attributes__: ClassVar[set[str]] = set()
+    __dependencies__: ClassVar[GrizzlyDependencies] = set()
 
     _context_root: str
 
@@ -288,7 +290,8 @@ class template:
         return cls
 
 
-from .conditional import ConditionalTask  # noqa: I001
+from .async_timer import AsyncTimerTask  # noqa: I001
+from .conditional import ConditionalTask
 from .date import DateTask
 from .keystore import KeystoreTask
 from .log_message import LogMessageTask
@@ -314,6 +317,7 @@ __all__ = [
     'UntilRequestTask',
     'DateTask',
     'AsyncRequestGroupTask',
+    'AsyncTimerTask',
     'TimerTask',
     'WaitBetweenTask',
     'ConditionalTask',

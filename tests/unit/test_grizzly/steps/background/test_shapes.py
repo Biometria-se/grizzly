@@ -65,7 +65,7 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
     grizzly.setup.spawn_rate = 4
 
     step_impl(behave, '{{ user_count }}', grammar='user')
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='value contained variable "user_count" which has not been declared')]}
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nuser_count')]}
     delattr(behave, 'exceptions')
 
     grizzly.scenario.variables['user_count'] = 5
@@ -113,7 +113,7 @@ def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
     delattr(behave, 'exceptions')
 
     step_impl(behave, '{{ spawn_rate }}', grammar='users')
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='value contained variable "spawn_rate" which has not been declared')]}
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nspawn_rate')]}
     delattr(behave, 'exceptions')
 
     grizzly.setup.spawn_rate = None

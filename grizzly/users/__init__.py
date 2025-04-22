@@ -16,6 +16,7 @@ import logging
 from abc import ABCMeta, abstractmethod
 from contextlib import suppress
 from copy import copy, deepcopy
+from datetime import datetime, timezone
 from errno import ENAMETOOLONG
 from json import dumps as jsondumps
 from json import loads as jsonloads
@@ -43,7 +44,8 @@ T = TypeVar('T', bound=UserMeta)
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
     from grizzly.tasks import RequestTask
-    from grizzly.testdata.communication import TestdataConsumer
+    from grizzly.testdata.communication import GrizzlyDependencies, TestdataConsumer
+
 
 class AsyncRequests(metaclass=ABCMeta):
     @abstractmethod
@@ -82,7 +84,7 @@ class GrizzlyUserEvents:
     'metadata': None,
 })
 class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
-    __dependencies__: ClassVar[set[str]] = set()
+    __dependencies__: ClassVar[GrizzlyDependencies] = set()
     __scenario__: ClassVar[GrizzlyContextScenario]  # reference to grizzly scenario this user is part of
     __context__: ClassVar[dict[str, Any]] = {}
 
@@ -207,6 +209,8 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
         start_time = perf_counter()
 
+        timestamp_start = datetime.now(tz=timezone.utc).isoformat()
+
         try:
             if len(self.metadata or {}) > 0:
                 request.metadata = merge_dicts(self.metadata, request.metadata)
@@ -226,7 +230,8 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
                 message = f'{request.method.name} request "{request.name}" failed: {str(e) or e.__class__}'
                 self.logger.exception(message)
         finally:
-            total_time = int((perf_counter() - start_time) * 1000)
+            response_time = int((perf_counter() - start_time) * 1000)
+            timestamp_finished = datetime.now(tz=timezone.utc).isoformat()
             response_length = len((payload or '').encode())
 
             if isinstance(exception, StopScenario):
@@ -253,9 +258,15 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             self.environment.events.request.fire(
                 request_type=RequestType.from_method(request.method),
                 name=request.name,
-                response_time=total_time,
+                response_time=response_time,
                 response_length=response_length,
-                context=self._context,
+                context={
+                    'user': id(self),
+                    **self._context,
+                    '__time__': timestamp_start,
+                    '__fields_request_started__': timestamp_start,
+                    '__fields_request_finished__': timestamp_finished,
+                },
                 exception=exception,
             )
 

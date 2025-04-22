@@ -45,22 +45,39 @@ expires.
 ```gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
 And repeat for "2" iterations
-And set context variable "user.auth.username" to "bob"
-And set context variable "user.auth.password" to "foobar"
+And set context variable "auth.user.username" to "bob"
+And set context variable "auth.user.password" to "foobar"
 
 Then get request from endpoint "/api/test"
 
-Given set context variable "user.auth.username" to "alice"
-And set context variable "user.auth.password" to "hello world"
+Given set context variable "auth.user.username" to "alice"
+And set context variable "auth.user.password" to "hello world"
 
 Then get request from endpoint "/api/test"
 
-Given set context variable "user.auth.username" to "bob"
-And set context variable "user.auth.password" to "foobar"
+Given set context variable "auth.user.username" to "bob"
+And set context variable "auth.user.password" to "foobar"
 ```
 
 In the above, hypotetical scenario, there will 2 "AAD OAuth2 user token" requests, once for user "bob" and one for user "alice", both done in the first iteration. The second iteration
 the cached authentication tokens will be re-used.
+
+#### mTLS
+
+It is possible to use mTLS by specifying the client certificate and key with `auth.client.cert_file` and `auth.client.key_file`, this will then make it possible for the server to authenticate
+the user / client by the certificate.
+
+```gherkin
+Given a user of type "RestApi" load testing "https://api.example.com"
+And repeat for "2" iterations
+And set context variable "auth.client.cert_file" to "certificates/bob.crt"
+And set context variable "auth.client.key_file" to "certificates/bob.key"
+
+Then get request from endpoint "/api/test"
+```
+
+For now the key file can not be password protected. Path to the files needs to be relative to `GRIZZLY_CONTEXT_ROOT`, which in most cases means relative to the directory where `environment.py`
+resides.
 
 ### Multipart/form-data
 
@@ -84,6 +101,7 @@ from copy import copy
 from datetime import datetime, timezone
 from hashlib import sha256
 from html.parser import HTMLParser
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 import requests
@@ -91,16 +109,17 @@ from locust.contrib.fasthttp import FastHttpSession
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 from locust.exception import ResponseError
 
-from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
+from grizzly.auth import AAD, GrizzlyHttpAuthClient, RefreshTokenDistributor, refresh_token
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 from grizzly.utils import merge_dicts, safe_del
-from grizzly.utils.protocols import http_populate_cookiejar
+from grizzly.utils.protocols import http_populate_cookiejar, ssl_context_factory
 from grizzly_extras.transformer import TransformerContentType
 
 from . import AsyncRequests, GrizzlyUser, GrizzlyUserMeta, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
+    from grizzly.testdata.communication import GrizzlyDependencies
     from grizzly.types.locust import Environment
 
 
@@ -136,6 +155,7 @@ class HtmlTitleParser(HTMLParser):
 
 @grizzlycontext(context={
     'verify_certificates': True,
+    'timeout': 60,
     'auth': {
         'refresh_time': 3000,
         'provider': None,
@@ -144,6 +164,8 @@ class HtmlTitleParser(HTMLParser):
             'id': None,
             'secret': None,
             'resource': None,
+            'key_file': None,
+            'cert_file': None,
         },
         'user': {
             'username': None,
@@ -157,8 +179,9 @@ class HtmlTitleParser(HTMLParser):
     '__context_change_history__': set(),
 })
 class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
+    __dependencies__: ClassVar[GrizzlyDependencies] = {RefreshTokenDistributor}
+
     environment: Environment
-    timeout: ClassVar[float] = 60.0
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -168,14 +191,29 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             'x-grizzly-user': self.__class__.__name__,
         }, self.metadata)
 
+        cert_file = self._context.get('auth', {}).get('client', {}).get('cert_file', None)
+        key_file = self._context.get('auth', {}).get('client', {}).get('key_file', None)
+
+        if cert_file is not None and key_file is not None:
+            if not Path(cert_file).exists() or not Path(key_file).exists():
+                message = f'either {cert_file} or {key_file} does not exist'
+                raise ValueError(message)
+
+            _ssl_context_factory = ssl_context_factory(cert=(cert_file, key_file))
+        elif any(file is not None for file in [cert_file, key_file]):
+            message = f'both "auth.client.cert_file" ({cert_file}) and "auth.client.key_file" ({key_file}) has to be set'
+            raise ValueError(message)
+        else:
+            _ssl_context_factory = None
+
         self.client = FastHttpSession(
             environment=self.environment,
             base_url=self.host,
             user=self,
             insecure=not self._context.get('verify_certificates', True),
             max_retries=1,
-            connection_timeout=self.timeout,
-            network_timeout=self.timeout,
+            network_timeout=self._context.get('timeout', 60),
+            ssl_context_factory=_ssl_context_factory,
         )
 
         self.parent = None
@@ -218,8 +256,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             user=self,
             insecure=not self._context.get('verify_certificates', True),
             max_retries=1,
-            connection_timeout=self.timeout,
-            network_timeout=self.timeout,
+            network_timeout=self._context.get('timeout', 60),
         )
 
         return cast(GrizzlyResponse, self._request(request, client))

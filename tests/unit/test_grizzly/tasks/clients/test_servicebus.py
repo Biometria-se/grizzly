@@ -37,16 +37,20 @@ class TestServiceBusClientTask:
             'username': None,
             'password': None,
             'tenant': None,
+            'unique': True,
+            'verbose': False,
+            'forward': False,
         }
         assert task._state == {}
         assert task.text is None
+        assert task.should_empty
         assert task.get_templates() == []
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
         # // -->
 
         # <!-- credential
-        task = task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com', 'test')
+        task = task_type(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/#Tenant=example.com&Empty=False&Unique=False&Verbose=True&Forward=True', 'test')
 
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net'
         assert task.context == {
@@ -58,9 +62,13 @@ class TestServiceBusClientTask:
             'username': 'bob@example.com',
             'password': 'secret',
             'tenant': 'example.com',
+            'unique': False,
+            'verbose': True,
+            'forward': True,
         }
         assert task._state == {}
         assert task.text is None
+        assert not task.should_empty
         assert task.get_templates() == []
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
@@ -83,6 +91,9 @@ class TestServiceBusClientTask:
             'username': None,
             'password': None,
             'tenant': None,
+            'unique': True,
+            'verbose': False,
+            'forward': False,
         }
         assert task.text is None
         assert task.source == 'hello world!'
@@ -118,6 +129,9 @@ class TestServiceBusClientTask:
             'username': None,
             'password': None,
             'tenant': None,
+            'unique': True,
+            'verbose': False,
+            'forward': False,
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -153,6 +167,9 @@ class TestServiceBusClientTask:
             'username': None,
             'password': None,
             'tenant': None,
+            'unique': True,
+            'verbose': False,
+            'forward': False,
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -166,7 +183,7 @@ class TestServiceBusClientTask:
         task = task_type(
             RequestDirection.FROM, (
                 'sb://my-sbns/topic:my-topic/subscription:my-subscription/expression:$.name|=\'["hello", "world"]\''
-                ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
+                ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json&Unique=False'
             ),
             'test',
         )
@@ -182,6 +199,9 @@ class TestServiceBusClientTask:
             'username': None,
             'password': None,
             'tenant': None,
+            'unique': False,
+            'verbose': False,
+            'forward': False,
         }
         assert task._state == {}
         context_mock.assert_called_once_with()
@@ -195,7 +215,7 @@ class TestServiceBusClientTask:
             )
         context_mock.assert_not_called()
 
-        with pytest.raises(AssertionError, match='Consume parameter in endpoint fragment is not a valid boolean'):
+        with pytest.raises(AssertionError, match='foo is not a valid boolean'):
             task_type(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Consume=foo',
@@ -265,6 +285,16 @@ class TestServiceBusClientTask:
                 RequestDirection.FROM, (
                     'sb://my-sbns/topic:my-topic/subscription:my-subscriptionaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
                     ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
+                ),
+                'test',
+                text='rule text',
+            )
+
+        with pytest.raises(AssertionError, match='asdf is not a valid boolean'):
+            task_type(
+                RequestDirection.FROM, (
+                    'sb://my-sbns/topic:my-topic/subscription:my-subscription'
+                    ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json&Verbose=asdf'
                 ),
                 'test',
                 text='rule text',
@@ -434,6 +464,9 @@ class TestServiceBusClientTask:
                 'username': None,
                 'password': None,
                 'tenant': None,
+                'unique': True,
+                'verbose': False,
+                'forward': False,
             },
             'payload': '1=1',
         })
@@ -445,7 +478,7 @@ class TestServiceBusClientTask:
             RequestDirection.FROM,
             (
                 "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/"
-                "expression:'$.`this`[?bar='foo' & bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324="
+                "expression:'$.`this`[?bar='foo' & bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Unique=False&Verbose=True&Forward=True"
             ),
             'test',
         )
@@ -463,6 +496,7 @@ class TestServiceBusClientTask:
             task.subscribe(parent)
 
         assert caplog.messages == ['foobar!']
+        print(async_message_request_mock.call_args_list)
         async_message_request_mock.assert_called_once_with(client_mock, {
             'worker': 'foo-bar-baz',
             'client': state.parent_id,
@@ -470,12 +504,15 @@ class TestServiceBusClientTask:
             'context': {
                 'url': expected_context['url'],
                 'connection': 'receiver',
-                'endpoint': "topic:my-topic, subscription:'my-subscription-baz-bar-foodeadbeef', expression:'$.`this`[?bar='foo' & bar='foo']'",
+                'endpoint': "topic:my-topic, subscription:'my-subscription-baz-bar-foo', expression:'$.`this`[?bar='foo' & bar='foo']'",
                 'message_wait': None,
                 'consume': False,
                 'username': None,
                 'password': None,
                 'tenant': None,
+                'unique': False,
+                'verbose': True,
+                'forward': True,
             },
             'payload': '1=1',
         })
@@ -664,6 +701,19 @@ class TestServiceBusClientTask:
         task.on_iteration(parent)
 
         empty_mock.assert_called_once_with(parent)
+
+        # do not empty
+        task = cls_task(
+            RequestDirection.FROM,
+            'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Empty=False',
+            'test',
+        )
+
+        empty_mock = mocker.patch.object(task, 'empty', return_value=None)
+        task._text = '1=1'
+
+        task.on_iteration(parent)
+        empty_mock.assert_not_called()
 
     def test_request(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         sha256_mock = mocker.patch('grizzly.tasks.clients.servicebus.sha256')

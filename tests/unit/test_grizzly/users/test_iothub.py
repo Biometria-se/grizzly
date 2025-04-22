@@ -16,7 +16,7 @@ from grizzly.exceptions import RestartScenario
 from grizzly.tasks import RequestTask
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
-from grizzly.types import RequestMethod, ScenarioState
+from grizzly.types import RequestMethod
 from grizzly.users.iothub import IotHubUser, IotMessageDecoder, MessageJsonSerializer
 from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY, SOME
@@ -139,24 +139,11 @@ class TestIotHubUser:
         assert isinstance(user, IotHubUser)
 
         user.on_start()  # create `iot_device`
-        on_stop_spy = mocker.patch.object(user.iot_client, 'disconnect', return_value=None)
+        on_stop_spy = mocker.patch.object(user.iot_client, 'shutdown', return_value=None)
 
         user.on_stop()
 
         on_stop_spy.assert_called_once_with()
-
-    def test_on_state(self, parent_fixture: ParentFixture) -> None:
-        user = parent_fixture.user
-
-        user.on_start()
-
-        user.on_state(state=ScenarioState.STOPPING)
-
-        parent_fixture.consumer_mock.keystore_inc.assert_not_called()
-
-        user.on_state(state=ScenarioState.RUNNING)
-
-        parent_fixture.consumer_mock.keystore_inc.assert_called_once_with(f'clients::{user.device_id}')
 
     def test__init__(self, grizzly_fixture: GrizzlyFixture) -> None:
         test_cls = type('IotHubTestUser', (IotHubUser, ), {'__scenario__': grizzly_fixture.grizzly.scenario})
@@ -363,10 +350,6 @@ class TestIotHubUser:
         parent_fixture.blob_client_mock.upload_blob.assert_not_called()
         parent_fixture.iot_device_mock.notify_blob_upload_status.assert_not_called()
 
-    def test__extract(self, parent_fixture: ParentFixture) -> None:
-        assert isinstance(parent_fixture.user, IotHubUser)
-
-        assert parent_fixture.user._extract({'foo': {'bar': 'baz'}}, '$.foo.bar') == ['baz']
-
-        assert parent_fixture.user._extract('{"foo": {"bar": "baz"}}', '$.foo.bar') == ['baz']
-
+    def test__extract(self) -> None:
+        assert IotHubUser._extract({'foo': {'bar': 'baz'}}, '$.foo.bar') == ['baz']
+        assert IotHubUser._extract('{"foo": {"bar": "baz"}}', '$.foo.bar') == ['baz']

@@ -352,13 +352,13 @@ value1,value2
                     GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
 
                 grizzly.scenario.variables[variable_name] = 1337
-                assert GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name) == (1337, set(), {})
+                assert GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name) == (1337, set())
 
                 grizzly.scenario.variables[variable_name] = '1337'
-                assert GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name) == (1337, set(), {})
+                assert GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name) == (1337, set())
 
                 grizzly.scenario.variables[variable_name] = "'1337'"
-                assert GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name) == ('1337', set(), {})
+                assert GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name) == ('1337', set())
             finally:
                 cleanup()
 
@@ -371,17 +371,15 @@ value1,value2
                     GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
 
                 grizzly.scenario.variables[variable_name] = 1337
-                value, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
-                assert external_dependencies == set()
-                assert message_handlers == {}
+                value, dependencies = GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
+                assert dependencies == set()
                 assert value['test'] == 1337
                 assert value['test'] == 1338
                 AtomicIntegerIncrementer.destroy()
 
                 grizzly.scenario.variables[variable_name] = '1337'
-                value, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
-                assert external_dependencies == set()
-                assert message_handlers == {}
+                value, dependencies = GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
+                assert dependencies == set()
                 assert value['test'] == 1337
                 assert value['test'] == 1338
                 AtomicIntegerIncrementer.destroy()
@@ -395,18 +393,16 @@ value1,value2
                 variable_name = 'tests.helpers.AtomicCustomVariable.hello'
                 grizzly.scenario.variables[variable_name] = 'world'
 
-                value, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
-                assert external_dependencies == set()
-                assert message_handlers == {}
+                value, dependencies = GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
+                assert dependencies == set()
                 assert value['hello'] == 'world'
 
                 variable_name = 'tests.helpers.AtomicCustomVariable.foo'
                 grizzly.scenario.variables[variable_name] = 'bar'
 
-                _, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
+                _, dependencies = GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
                 assert value['foo'] == 'bar'
-                assert external_dependencies == set()
-                assert message_handlers == {}
+                assert dependencies == set()
             finally:
                 cleanup()
 
@@ -422,11 +418,10 @@ value3,value4
                 grizzly = grizzly_fixture.grizzly
                 variable_name = 'AtomicCsvReader.test'
                 grizzly.scenario.variables['AtomicCsvReader.test'] = 'test.csv'
-                value, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
+                value, dependencies = GrizzlyVariables.initialize_variable(grizzly.scenario, variable_name)
 
                 assert isinstance(value, AtomicCsvReader)
-                assert external_dependencies == set()
-                assert message_handlers == {}
+                assert dependencies == set()
                 assert 'test' in value._values
                 assert 'test' in value._rows
                 assert value['test'] == {'header1': 'value1', 'header2': 'value2'}

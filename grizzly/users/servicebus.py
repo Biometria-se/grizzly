@@ -44,6 +44,20 @@ type. When receiving messages from a topic, the argument `subscription:` is mand
 Where `<expression>` can be a XPath or jsonpath expression, depending on the specified content type. This argument is only allowed when
 receiving messages. See example below.
 
+The `endpoint` also has support for the following arguments:
+
+* `verbose` (bool) - all request related to this request is logged with `DEBUG` log level (default `False`)
+
+* `consume` (bool) - if messages not matching `expression` should be consumed or abandoned, either way they are not not returned to test case (default `False`)
+
+* `forward` (bool) - if subscriptions should be configured to forward to a queue, and messages is consumed from the queue (default `False`)
+
+These arguments are specified in `endpoint` as such:
+
+```plain
+<endpoint> | <argument>=<value>[, <argument>=<value>]
+```
+
 ## Examples
 
 Example of how to use it in a scenario:
@@ -93,11 +107,14 @@ from grizzly.utils.protocols import zmq_disconnect
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
+from grizzly_extras.text import bool_caster
 
 from . import GrizzlyUser, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Generator
+
+    from grizzly.testdata.communication import GrizzlyDependencies
 
 MAX_LENGTH = 65
 
@@ -115,7 +132,7 @@ MAX_LENGTH = 65
     },
 })
 class ServiceBusUser(GrizzlyUser):
-    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[GrizzlyDependencies] = {'async-messaged'}
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
@@ -216,10 +233,6 @@ class ServiceBusUser(GrizzlyUser):
         super().on_stop()
 
     def get_description(self, task: RequestTask) -> str:
-        if has_template(task.endpoint) or has_parameter(task.endpoint):
-            self.logger.error('cannot say hello for %s when endpoint is a template', task.name)
-            raise StopUser
-
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
 
         try:
@@ -232,6 +245,11 @@ class ServiceBusUser(GrizzlyUser):
             del endpoint_arguments['expression']
 
         cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+
+        if has_template(cache_endpoint) or has_parameter(cache_endpoint):
+            self.environment.stats.log_error(RequestType.HELLO.name, task.name, 'cannot say helloa when endpoint is a templating string')
+            self.logger.error('cannot say hello for %s when endpoint is a template', task.name)
+            raise StopUser
 
         return f'{connection}={cache_endpoint}'
 
@@ -364,8 +382,11 @@ class ServiceBusUser(GrizzlyUser):
         self.say_hello(request)
 
         request_context = cast(AsyncMessageContext, dict(self.am_context))
-        consume = (request.arguments or {}).get('consume', 'False').lower() == 'true'
-        request_context.update({'endpoint': request.endpoint, 'consume': consume})
+        consume = bool_caster((request.arguments or {}).get('consume', 'False'))
+        verbose = bool_caster((request.arguments or {}).get('verbose', 'False'))
+        forward = bool_caster((request.arguments or {}).get('forward', 'False'))
+
+        request_context.update({'endpoint': request.endpoint, 'consume': consume, 'verbose': verbose, 'forward': forward})
 
         am_request: AsyncMessageRequest = {
             'action': request.method.name,

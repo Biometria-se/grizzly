@@ -14,7 +14,7 @@ from locust.stats import (
 )
 from typing_extensions import Concatenate, ParamSpec
 
-from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
+from grizzly.testdata.communication import GrizzlyDependencies, TestdataConsumer, TestdataProducer
 from grizzly.types import MessageDirection, RequestType, TestdataType
 from grizzly.types.behave import Status
 from grizzly.types.locust import Environment, LocustRunner, MasterRunner, Message, WorkerRunner
@@ -27,7 +27,7 @@ P = ParamSpec('P')
 logger = logging.getLogger(__name__)
 
 
-def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Callable[Concatenate[LocustRunner, P], None]:
+def init(grizzly: GrizzlyContext, dependencies: GrizzlyDependencies, testdata: Optional[TestdataType] = None) -> Callable[Concatenate[LocustRunner, P], None]:
     def ginit(runner: LocustRunner, **_kwargs: P.kwargs) -> None:
         # acquire lock, that will be released when all users has spawned (on_spawning_complete)
         grizzly.state.spawning_complete.acquire()
@@ -50,10 +50,22 @@ def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Ca
                 runner.register_message(message_type, callback, concurrent=True)
 
             runner.register_message('consume_testdata', TestdataConsumer.handle_response, concurrent=True)
+            for dependency in dependencies:
+                if not isinstance(dependency, type):
+                    continue
+
+                runner.register_message(dependency.__message_types__['response'], dependency.handle_response, concurrent=True)
 
         if not isinstance(runner, WorkerRunner):
             for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.CLIENT_SERVER, {}).items():
                 runner.register_message(message_type, callback, concurrent=True)
+
+
+            for dependency in dependencies:
+                if not isinstance(dependency, type):
+                    continue
+
+                runner.register_message(dependency.__message_types__['request'], dependency.handle_request, concurrent=True)
 
     return cast(Callable[Concatenate[LocustRunner, P], None], ginit)
 
@@ -62,7 +74,7 @@ def init_statistics_listener(url: str) -> Callable[Concatenate[Environment, P], 
     def gstatistics_listener(environment: Environment, *_args: P.args, **_kwargs: P.kwargs) -> None:
         parsed = urlparse(url)
 
-        if parsed.scheme == 'influxdb':
+        if parsed.scheme in ('influxdb', 'influxdb2'):
             from .influxdb import InfluxDbListener
             InfluxDbListener(
                 environment=environment,
@@ -116,9 +128,9 @@ def worker_report(client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG001
     logger.debug('received worker_report from %s', client_id)
 
 def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) -> None:
-    logger.debug('received message grizzly_worker_quit: msg=%r', msg)
+    logger.info('received quit message from master: msg=%r', msg)
     runner = environment.runner
-    code: Optional[int] = None
+    code: int = 1
 
     if isinstance(runner, WorkerRunner):
         runner.stop()
@@ -135,9 +147,6 @@ def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) 
             code = 0
     else:
         logger.error('received grizzly_worker_quit message on a non WorkerRunner?!')
-
-    if code is None:
-        code = 1
 
     raise SystemExit(code)
 

@@ -4,18 +4,12 @@ from __future__ import annotations
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
-from grizzly.types import GrizzlyVariableType
-
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
-    from grizzly.types.locust import MessageHandler
+    from grizzly.testdata.communication import GrizzlyDependencies
+    from grizzly.types import GrizzlyVariableType
 
     from .variables import AtomicVariable
-
-
-__all__ = [
-    'GrizzlyVariableType',
-]
 
 
 class GrizzlyVariables(dict):
@@ -88,9 +82,8 @@ class GrizzlyVariables(dict):
         return name
 
     @classmethod
-    def initialize_variable(cls, scenario: GrizzlyContextScenario, name: str) -> tuple[Any, set[str], dict[str, MessageHandler]]:
-        external_dependencies: set[str] = set()
-        message_handler: dict[str, MessageHandler] = {}
+    def initialize_variable(cls, scenario: GrizzlyContextScenario, name: str) -> tuple[Any, GrizzlyDependencies]:
+        dependencies: GrizzlyDependencies = set()
 
         default_value = scenario.variables.get(name, None)
         if default_value is None:
@@ -101,8 +94,7 @@ class GrizzlyVariables(dict):
 
         if module_name is not None and variable_type is not None:
             variable = cls.load_variable(module_name, variable_type)
-            external_dependencies = variable.__dependencies__
-            message_handler = variable.__message_handlers__
+            dependencies = variable.__dependencies__
 
             if getattr(variable, '__on_consumer__', False):
                 value = cast(Any, '__on_consumer__')
@@ -115,7 +107,7 @@ class GrizzlyVariables(dict):
         else:
             value = default_value
 
-        return value, external_dependencies, message_handler
+        return value, dependencies
 
     @classmethod
     def guess_datatype(cls, value: Any) -> GrizzlyVariableType:

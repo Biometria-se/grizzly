@@ -8,6 +8,7 @@ import pytest
 
 from grizzly.testdata.variables.csv_writer import AtomicCsvWriter, atomiccsvwriter__base_type__, atomiccsvwriter_message_handler, open_files
 from grizzly.types.locust import Message
+from tests.helpers import ANYUUID
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture, MockerFixture
@@ -169,6 +170,7 @@ class TestAtomicCsvWriter:
             t['output'] = 'hello, world'
 
             send_message_mock.assert_called_once_with('atomiccsvwriter', {
+                'rid': ANYUUID(version=4),
                 'destination': 'output.csv',
                 'row': {'foo': 'hello', 'bar': 'world'},
             })
@@ -183,6 +185,7 @@ class TestAtomicCsvWriter:
             t['output'] = 'world, hello'
 
             send_message_mock.assert_called_once_with('atomiccsvwriter', {
+                'rid': ANYUUID(version=4),
                 'destination': 'output.csv',
                 'row': {'foo': 'world', 'bar': 'hello'},
             })

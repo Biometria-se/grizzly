@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from locust.rpc.protocol import Message
 from typing_extensions import Concatenate, ParamSpec
 
-from grizzly.exceptions import RestartScenario, RetryTask, StopUser
+from grizzly.exceptions import RestartIteration, RestartScenario, RetryTask, StopUser
 from grizzly_extras.text import PermutationEnum
 
 from .locust import Environment
@@ -80,6 +80,7 @@ class FailureAction(PermutationEnum):
 
     STOP_USER = (StopUser, 'stop user', True)
     RESTART_SCENARIO = (RestartScenario, 'restart scenario', True)
+    RESTART_ITERATION = (RestartIteration, 'restart iteration', True)
     RETRY_TASK = (RetryTask, 'retry task', False)
     CONTINUE = (None, 'continue', True)
 
@@ -105,6 +106,10 @@ class FailureAction(PermutationEnum):
 
         message = f'"{value}" is not a mapped step expression'
         raise AssertionError(message)
+
+    @classmethod
+    def get_failure_exceptions(cls) -> tuple[type[Exception], ...]:
+        return tuple([action.exception for action in cls if action.exception is not None])
 
     @classmethod
     def from_step_expression(cls, value: str) -> FailureAction:

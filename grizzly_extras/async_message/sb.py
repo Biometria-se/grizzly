@@ -295,7 +295,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         return response
 
     @register(handlers, 'SUBSCRIBE')
-    def subscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
+    def subscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: PLR0915, PLR0912
         context = request.get('context', None)
         if context is None:
             message = 'no context in request'
@@ -303,7 +303,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         endpoint = context['endpoint']
         instance_type = context['connection']
+        is_unique = context.get('unique', True)
+        should_forward = context.get('forward', False)
+
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
+        was_created = False
 
         if arguments.get('endpoint_type', None) != 'topic':
             message = 'subscriptions is only allowed on topics'
@@ -326,6 +330,16 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         topic: Optional[TopicProperties] = None
 
+        if should_forward:
+            with suppress(ResourceNotFoundError):
+                self.mgmt_client.delete_queue(queue_name=subscription_name)
+
+            try:
+                self.mgmt_client.create_queue(queue_name=subscription_name)
+            except Exception as e:
+                message = f'failed to create forward queue for subscription "{subscription_name}"'
+                raise AsyncMessageError(message) from e
+
         try:
             topic = self.mgmt_client.get_topic(topic_name=topic_name)
         except ResourceNotFoundError:
@@ -338,7 +352,24 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         try:
             self.mgmt_client.get_subscription(topic_name=topic_name, subscription_name=subscription_name)
         except ResourceNotFoundError:
-            self.mgmt_client.create_subscription(topic_name=topic_name, subscription_name=subscription_name)
+            subscription_args: dict[str, Any] = {
+                'topic_name': topic_name,
+                'subscription_name': subscription_name,
+            }
+
+            if should_forward:
+                subscription_args.update({'forward_to': subscription_name})
+
+            self.mgmt_client.create_subscription(**subscription_args)
+            was_created = True
+
+        if not is_unique and not was_created:
+            message = f'non-unique subscription "{subscription_name}" on topic "{topic_name}" already created'
+            self.logger.debug(message)
+
+            return {
+                'message': message,
+            }
 
         with suppress(ResourceNotFoundError):
             self.mgmt_client.delete_rule(
@@ -371,7 +402,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         self._subscriptions.append(request)
 
-        message = f'created subscription {subscription_name} on topic {topic_name}'
+        entity = 'forward queue and subscription' if should_forward else 'subscription'
+
+        message = f'created {entity} "{subscription_name}" on topic "{topic_name}"'
 
         self.logger.debug(message)
 
@@ -389,6 +422,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         endpoint = context['endpoint']
         instance_type = context['connection']
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
+
+        is_unique = context.get('unique', True)
+        should_forward = context.get('forward', False)
 
         if arguments['endpoint_type'] != 'topic':
             message = 'subscriptions is only allowed on topics'
@@ -417,8 +453,16 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         try:
             self.mgmt_client.get_subscription(topic_name=topic_name, subscription_name=subscription_name)
         except ResourceNotFoundError as e:
-            message = f'subscription "{subscription_name}" does not exist on topic "{topic_name}"'
-            raise AsyncMessageError(message) from e
+            if is_unique:
+                message = f'subscription "{subscription_name}" does not exist on topic "{topic_name}"'
+                raise AsyncMessageError(message) from e
+
+            message = f'non-unique subscription "{subscription_name}" on topic "{topic_name}" already removed'
+            self.logger.debug(message)
+
+            return {
+                'message': message,
+            }
 
         try:
             topic_properties = self.mgmt_client.get_subscription_runtime_properties(
@@ -432,7 +476,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 f'transfer_message_count={topic_properties.transfer_message_count}'
             )
         except Exception:
-            self.logger.exception('failed to get topic statistics for %s@%s', subscription_name, topic_name)
+            self.logger.exception('failed to get topic statistics for subscription "%s" on topic "%s"', subscription_name, topic_name)
             topic_statistics = 'unknown'
 
         self.mgmt_client.delete_subscription(
@@ -440,8 +484,13 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             subscription_name=subscription_name,
         )
 
+        if should_forward:
+            self.mgmt_client.delete_queue(queue_name=subscription_name)
+            entity = 'forward queue and subscription'
+        else:
+            entity = 'subscription'
 
-        message = f'removed subscription {subscription_name} on topic {topic_name} (stats: {topic_statistics})'
+        message = f'removed {entity} "{subscription_name}" on topic "{topic_name}" (stats: {topic_statistics})'
 
         self.logger.debug(message)
 
@@ -501,6 +550,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         endpoint = context['endpoint']
         instance_type = context['connection']
         message_wait = context.get('message_wait', None)
+        should_forward = context.get('forward', False)
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
         endpoint_arguments = parse_arguments(endpoint, ':')
 
@@ -509,8 +559,16 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
-        if instance_type == 'receiver' and message_wait is not None:
-            arguments['wait'] = str(message_wait)
+        if instance_type == 'receiver':
+            subscription_name = arguments.get('subscription')
+            if should_forward and subscription_name is not None:
+                arguments = {
+                    'endpoint_type': 'queue',
+                    'endpoint': subscription_name,
+                }
+
+            if message_wait is not None:
+                arguments.update({'wait': str(message_wait)})
 
         cache: GenericCache
 
@@ -573,6 +631,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
     def request(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: C901, PLR0912, PLR0915
         context = request.get('context', None)
         action = request.get('action', None)
+        request_id = request.get('request_id', None)
 
         if context is None:
             msg = 'no context in request'
@@ -593,7 +652,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         message: Optional[ServiceBusMessage] = None
         metadata: Optional[dict[str, Any]] = None
         payload = request.get('payload', None)
-        client = request.get('client', -1)
 
         if instance_type not in ['receiver', 'sender']:
             msg = f'"{instance_type}" is not a valid value for context.connection'
@@ -606,6 +664,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             raise AsyncMessageError(msg)
 
         expression = request_arguments.get('expression')
+        log_level = logging.INFO if context.get('verbose', False) else logging.DEBUG
 
         if instance_type == 'sender':
             if payload is None:
@@ -648,6 +707,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 if self._event.is_set():
                     break
 
+                error_message: str | None = None
+
                 try:
                     if action == 'EMPTY':
                         empty_message_count = 0
@@ -659,7 +720,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                     empty_message_count += 1
 
                         empty_message_time = perf_counter() - empty_message_start
-                        msg = f'consumed {empty_message_count} messages from {cache_endpoint} which took {empty_message_time:.2f} seconds'
+                        msg = f'consumed {empty_message_count} messages for request id {request_id} on {cache_endpoint}, which took {empty_message_time:.2f} seconds'
 
                         self.logger.info(msg)
 
@@ -678,10 +739,10 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     for received_message in receiver:
                         message = received_message
 
-                        self.logger.debug('%d::%s: got message id %s', client, cache_endpoint, message.message_id)
+                        self.logger.log(log_level, 'received message id %s for request id %s on %s', message.message_id, request_id, cache_endpoint)
 
                         if expression is None:
-                            self.logger.debug('completing message id %s on %s', message.message_id, cache_endpoint)
+                            self.logger.log(log_level, 'completing message id %s for request id %s on %s', message.message_id, request_id, cache_endpoint)
                             receiver.complete_message(message)
                             break
 
@@ -701,14 +762,19 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                             values = get_values(transformed_payload)
 
-                            self.logger.debug('%d::%s: expression=%s, matches=%r, payload=%s', client, cache_endpoint, expression, values, transformed_payload)
+                            self.logger.log(
+                                log_level,
+                                'matched message id %s for request id %s on %s, expression=%s, matches=%r, payload=%s',
+                                message.message_id, request_id, cache_endpoint, expression, values, transformed_payload,
+                            )
 
                             # message matching expression found, return it
                             if len(values) > 0:
                                 wait_time = perf_counter() - wait_start
                                 self.logger.info(
-                                    'completing message id %s on %s, with expression "%s" after consuming %d messages (%.2fs)',
+                                    'completing message id %s for request id %s on %s, with expression "%s" after consuming %d messages (%.2fs)',
                                     message.message_id,
+                                    request_id,
                                     cache_endpoint,
                                     expression,
                                     consume_message_ignore_count,
@@ -721,20 +787,25 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             if had_error:
                                 if message is not None:
                                     if not consume:
-                                        self.logger.debug(
-                                            '%d::%s: abandoning message id %s, %d', client, cache_endpoint, message.message_id, message._raw_amqp_message.header.delivery_count,
+                                        self.logger.log(
+                                            log_level,
+                                            'abandoning message id %s for request id %s on %s, %d',
+                                            message.message_id, request_id, cache_endpoint, message._raw_amqp_message.header.delivery_count,
                                         )
                                         receiver.abandon_message(message)
                                         message = None
                                     else:
-                                        self.logger.debug('consuming and ignoring message id %s on %s', message.message_id, cache_endpoint)
+                                        self.logger.log(log_level, 'consuming and ignoring message id %s for request id %s on %s', message.message_id, request_id, cache_endpoint)
                                         receiver.complete_message(message)  # remove message from endpoint, but ignore contents
                                         message = payload = metadata = None
                                         consume_message_ignore_count += 1
 
                                 # do not wait any longer, give up due to message_wait
                                 if message_wait > 0 and (perf_counter() - wait_start) >= message_wait:
-                                    self.logger.warning('giving up in read loop since it took more than %d seconds, might still be messages on %s', cache_endpoint, message_wait)
+                                    self.logger.warning(
+                                        'giving up in read loop for request id %s, since it took more than %d seconds, might still be messages on %s',
+                                        request_id, cache_endpoint, message_wait,
+                                    )
                                     raise StopIteration
 
                                 sleep(0.01)
@@ -745,7 +816,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     break
                 except MessageLockLostError as e:
                     if message is not None:
-                        self.logger.warning('message lock expired for message id %s on %s', message.message_id, cache_endpoint)
+                        self.logger.warning('message lock expired for message id %s for request id %s on %s', message.message_id, request_id, cache_endpoint)
 
                     if self._event.is_set():
                         break
@@ -755,7 +826,10 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         continue
 
                     raise AsyncMessageError(str(e)) from e
-                except (ServiceBusError, AMQPLinkError, OperationTimeoutError) as e:
+                except (ServiceBusError, AMQPLinkError, OperationTimeoutError, ValueError) as e:
+                    if isinstance(e, ValueError) and 'Please use ServiceBusClient to create a new instance' not in str(e):
+                        raise
+
                     if retry < 3 and not self._event.is_set():
                         self.logger.warning('connection unexpectedly closed, reconnecting', exc_info=True)
                         self._hello(request, force=True)
@@ -774,22 +848,26 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                     if message_wait > 0:
                         if delta >= message_wait:
-                            error_message = f'no messages on {endpoint}'
+                            error_message = f'no messages on "{cache_endpoint}"'
                             message = None
+                            if expression is not None:
+                                error_message = f'{error_message} matching expression "{expression}"'
                             if message_wait > 0:
                                 error_message = f'{error_message} within {message_wait} seconds'
+                            if consume:
+                                error_message = f'{error_message}, consumed and ignored {consume_message_ignore_count} messages'
                         elif consume and expression is not None:
                             if self._event.is_set():
                                 break
 
-                            self.logger.debug('%d::%s: waiting for more messages', client, cache_endpoint)
+                            self.logger.log(log_level, 'waiting for more messages on %s for request id %s', cache_endpoint, request_id)
                             continue
                         else:  # noqa: PLR5501
                             # ugly brute-force way of handling no messages on service bus
                             if retry < 3:
-                                self.logger.warning('receiver for %d::%s returned no message without trying, brute-force retry #%d', client, cache_endpoint, retry)
+                                self.logger.warning('receiver for request id %s on %s returned no message without trying, brute-force retry #%d', request_id, cache_endpoint, retry)
                                 # <!-- useful debugging information, actual message count on message entity
-                                if self.logger.getEffectiveLevel() == logging.DEBUG and self.mgmt_client is not None:  # pragma: no cover
+                                if (self.logger.getEffectiveLevel() == logging.DEBUG or log_level == logging.DEBUG) and self.mgmt_client is not None:  # pragma: no cover
                                     if 'topic' in endpoint_arguments:
                                         topic_properties = self.mgmt_client.get_subscription_runtime_properties(
                                             topic_name=endpoint_arguments['topic'],
@@ -826,6 +904,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                     if self._event.is_set():
                         break
+
+                    if error_message is None:
+                        error_message = 'unknown error'
 
                     raise AsyncMessageError(error_message) from None
                 except:

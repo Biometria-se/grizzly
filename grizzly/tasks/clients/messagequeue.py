@@ -100,11 +100,12 @@ if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Generator
 
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.testdata.communication import GrizzlyDependencies
 
 
 @client('mq', 'mqs')
 class MessageQueueClientTask(ClientTask):
-    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[GrizzlyDependencies] = {'async-messaged'}
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: ztypes.Context

@@ -2,6 +2,9 @@
 """@anchor pydoc:grizzly.users.iothub Iot hub
 Communicate with an Azure IoT hub device.
 
+Due to how Azure IoT hub devices works, you can only run one instance of this user if you rely on cloud-to-device (C2D) messages.
+Chose to handle task errors strategy so you do not end up with a scenario that will cause the whole feature to fail since the `IotHubUser` stopped.
+
 ## Request methods
 
 Supports the following request methods:
@@ -35,18 +38,16 @@ for the difference.
 
 ## Receiving
 
-Receiving cloud-to-device (C2D) messages is a little bit special, the `endpoint` in the in the request must be `cloud-to-device`. The first client to connect to a IoT device
-will register a message handler, that will receive all the messages and store them in the global keystore. When a "receive" request is executing, it will wait for the keystore
-to be populated with a message, and get (consume) it from the keystore.
+Receiving cloud-to-device (C2D) messages is a little bit special, the `endpoint` in the in the request must be `cloud-to-device`.
 
-There are 3 other context variables that will control wether a message will be pushed to the keystore for handling or not:
+There are 3 other context variables that will control wether a message will be pushed to the internal queue or not:
 
-- `expression.unique`, this is a JSON-path expression will extract a value from the message payload, push the whole message to the keystore and save the value in a "volatile list",
-  if a message with the same value is received within 5 seconds, it will not be handled. This is to avoid handling duplicates of messages, which can occur for different reasons.
-  E.g. `$.body.event.id`.
+- `expression.unique`, this is a JSON-path expression will extract a value from the message payload, push the whole message to the internal queue and save the value in a
+  "volatile list", if a message with the same value is received within 5 seconds, it will not be handled. This is to avoid handling duplicates of messages, which can occur
+  for different reasons. E.g. `$.body.event.id`.
 
 - `expression.metadata` (bool), this a JSON-path expression that should validate to a boolean expression, messages for which this expression does not validate to `True` will be
-  dropped and not pushed to the keystore. E.g. `$.size>=1024`.
+  dropped and not pushed to the internal queue. E.g. `$.size>=1024`.
 
 - `expression.payload` (bool), same as `expression.metadata` except it will validate against the actual message payload. E.g. `$.body.timestamp>='2024-09-23 20:39:00`, which will
   drop all messages having a timestamp before the specified date.
@@ -100,15 +101,22 @@ from __future__ import annotations
 
 import gzip
 import json
-from typing import TYPE_CHECKING, Any, cast
+import logging
+from contextlib import suppress
+from time import perf_counter
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import UUID, uuid4
 
-from azure.iot.device import IoTHubDeviceClient, Message
+from azure.iot.device import IoTHubDeviceClient
+from azure.iot.device import Message as IotMessage
+from azure.iot.device.exceptions import ClientError
 from azure.storage.blob import BlobClient, ContentSettings
 from gevent import sleep as gsleep
+from gevent.queue import Empty, Queue
 
 from grizzly.events import GrizzlyEventDecoder, event, events
+from grizzly.exceptions import retry
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.utils import has_template
 from grizzly_extras.queue import VolatileDeque
@@ -118,7 +126,11 @@ from . import GrizzlyUser, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
+    from grizzly.testdata.communication import GrizzlyDependencies
     from grizzly.types.locust import Environment
+
+
+logger = logging.getLogger(__name__)
 
 
 class MessageJsonSerializer(json.JSONEncoder):
@@ -177,10 +189,13 @@ class IotMessageDecoder(GrizzlyEventDecoder):
     },
 })
 class IotHubUser(GrizzlyUser):
+    __dependencies__: ClassVar[GrizzlyDependencies] = set()
+
     iot_client: IoTHubDeviceClient
     device_id: str
 
     _unique: VolatileDeque[str]
+    _queue: Queue[str]
     _expression_unique: str | None
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
@@ -213,15 +228,15 @@ class IotHubUser(GrizzlyUser):
             message = f'{self.__class__.__name__} needs SharedAccessKey in the query string'
             raise ValueError(message)
 
-        self._startup_ignore = True
-        self._startup_ignore_count = 0
-        self._unique = VolatileDeque(timeout=5.0)
         self._expression_unique = self._context.get('expression', {}).get('unique', None)
         self._expression_payload = self._context.get('expression', {}).get('payload', None)
         self._expression_metadata = self._context.get('expression', {}).get('metadata', None)
 
+        self._unique = VolatileDeque(timeout=20.0)
+        self._queue = Queue()
+
     @classmethod
-    def _serialize_message(cls, message: Message) -> str:
+    def _serialize_message(cls, message: IotMessage) -> str:
         metadata = {
             'custom_properties': message.custom_properties,
             'message_id': message.message_id,
@@ -243,7 +258,8 @@ class IotHubUser(GrizzlyUser):
         message = json.loads(serialized_message)
         return message.get('metadata'), message.get('payload')
 
-    def _extract(self, data: Any, expression: str) -> list[str]:
+    @classmethod
+    def _extract(cls, data: Any, expression: str) -> list[str]:
         # all IoT messages are in JSON format
         parser = JsonTransformer.parser(expression)
 
@@ -252,81 +268,99 @@ class IotHubUser(GrizzlyUser):
 
         return parser(data)
 
-    @event(events.user_event, tags={'type': 'iot::cloud-to-device'}, decoder=IotMessageDecoder(arg=1))  # 0 = self...
-    def message_handler(self, message: Message) -> None:
-        serialized_message = self._serialize_message(message)
-
-        if any(expression is not None for expression in [self._expression_unique, self._expression_metadata, self._expression_payload]):
-            metadata, payload = self._unserialize_message(serialized_message)
-
-            if self._expression_metadata is not None:
-                values = self._extract(metadata, self._expression_metadata)
-
-                if len(values) < 1:
-                    self.logger.debug('message id %s metadata did not match "%s"', message.message_id, self._expression_metadata)
-                    return
-
-            if self._expression_payload is not None:
-                values = self._extract(payload, self._expression_payload)
-
-                if len(values) < 1:
-                    self.logger.debug('message id %s payload did not match "%s"', message.message_id, self._expression_payload)
-                    return
-
-            if self._expression_unique is not None:
-                values = self._extract(payload, self._expression_unique)
-
-                if len(values) < 1:
-                    self.logger.debug('message id %s was an unknown message, no matches for "%s"', message.message_id, self._expression_unique)
-                    return
-
-                value = next(iter(values))
-
-                if value in self._unique:
-                    self.logger.warning('message id %s contained "%s", which has already been received within %d seconds', message.message_id, value, self._unique.timeout)
-                    return
-
-                self._unique.append(value)
-
-        self.logger.debug('C2D message received: %s', serialized_message)
-        self.consumer.keystore_push(f'cloud-to-device::{self.device_id}', serialized_message)
-
     def on_start(self) -> None:
         super().on_start()
+
+        if self._scenario.user.fixed_count != 1:
+            self.logger.warning('do not run more than 1 user if you rely on cloud-to-device messages')
+
         self.iot_client = IoTHubDeviceClient.create_from_connection_string(self.host, websockets=True)
+        self.iot_client.connect()
+        self.iot_client.on_message_received = self.message_handler
 
     def on_state(self, *, state: ScenarioState) -> None:
         super().on_state(state=state)
 
-        if state == ScenarioState.RUNNING:
-            device_clients = self.consumer.keystore_inc(f'clients::{self.device_id}')
-
-            # only have one C2D handler per device, independent on how many users of this type is spawned
-            if device_clients == 1:
-                ignore_time = float(self._context.get('ignore', {}).get('time', '1.5'))
-
-                self.iot_client.on_message_received = self.message_handler
-                self.logger.info('registered device %s as C2D handler', self.device_id)
-
-                gsleep(ignore_time)
-
-                self._startup_ignore = False
-
-                if self._startup_ignore_count > 0:
-                    self.logger.info('consumed %d message that was left on the C2D queue for device %s', self._startup_ignore_count, self.device_id)
-
     def on_stop(self) -> None:
-        self.iot_client.disconnect()
+        with suppress(Exception):
+            self.iot_client.shutdown()
         super().on_stop()
+
+    @event(events.user_event, tags={'type': 'iot::cloud-to-device'}, decoder=IotMessageDecoder(arg=1))  # 0 = self...
+    def message_handler(self, message: IotMessage) -> None:
+        try:
+            serialized_message = self._serialize_message(message)
+            self.logger.debug('C2D message received serialized: %s', serialized_message)
+
+            if any(expression is not None for expression in [self._expression_metadata, self._expression_payload, self._expression_unique]):
+                metadata, payload = IotHubUser._unserialize_message(serialized_message)
+
+                if self._expression_metadata is not None:
+                    values = self._extract(metadata, self._expression_metadata)
+
+                    if len(values) < 1:
+                        self.logger.debug('message id %s metadata did not match "%s" in %s', message.message_id, self._expression_metadata, serialized_message)
+                        return
+
+                if self._expression_payload is not None:
+                    values = self._extract(payload, self._expression_payload)
+
+                    if len(values) < 1:
+                        self.logger.debug('message id %s payload did not match "%s" in %s', message.message_id, self._expression_payload, serialized_message)
+                        return
+
+                if self._expression_unique is not None:
+                    values = self._extract(payload, self._expression_unique)
+
+                    if len(values) < 1:
+                        self.logger.debug('message id %s was an unknown message, no matches for "%s" in %s', message.message_id, self._expression_unique, serialized_message)
+                        return
+
+                    value = next(iter(values))
+
+                    if value in self._unique:
+                        self.logger.warning(
+                            'message id %s contained "%s", which has already been received within %d seconds, %s',
+                            message.message_id,
+                            value,
+                            self._unique.timeout,
+                            serialized_message,
+                        )
+                        return
+
+                    self._unique.append(value)
+
+            self.logger.info('C2D message received handled: %s', serialized_message)
+            self._queue.put_nowait(serialized_message)
+        except:
+            self.logger.exception('unable to handle C2D message: %s', serialized_message)
 
     def _request_receive(self, request: RequestTask) -> GrizzlyResponse:
         message_wait = int((request.arguments or {}).get('wait', '-1'))
+        count = 0
 
-        return self._unserialize_message(self.consumer.keystore_pop(f'{request.endpoint}::{self.device_id}', wait=message_wait))
+        start = perf_counter()
+        while True:
+            count += 1
+            try:
+                serialized_message = self._queue.get_nowait()
+                return self._unserialize_message(serialized_message)
+            except Empty:
+                delta = perf_counter() - start
+
+                if delta >= message_wait:
+                    message = f'no message within {message_wait} seconds'
+                    raise RuntimeError(message) from None
+
+                if count % 50 == 0:
+                    count = 0
+                    self.logger.debug('still no C2D message received within %f seconds', delta)
+
+                gsleep(0.1)
 
     def _request_send(self, request: RequestTask) -> GrizzlyResponse:
         source = cast(str, request.source)  # it hasn't come here if it was None
-        message = Message(data=None, message_id=uuid4())
+        message = IotMessage(data=None, message_id=uuid4())
 
         if has_template(source):
             source = self.render(source, variables={'__message__': message})
@@ -349,14 +383,18 @@ class IotHubUser(GrizzlyUser):
         storage_info: dict[str, Any] | None = None
 
         try:
-            storage_info = cast(dict[str, Any], self.iot_client.get_storage_info_for_blob(filename))
+            with retry(retries=3, exceptions=(ClientError,), backoff=1.0) as context:
+                storage_info = cast(dict[str, Any], context.execute(self.iot_client.get_storage_info_for_blob, filename))
 
-            sas_url = 'https://{}/{}/{}{}'.format(
-                storage_info['hostName'],
-                storage_info['containerName'],
-                storage_info['blobName'],
-                storage_info['sasToken'],
-            )
+                sas_url = 'https://{}/{}/{}{}'.format(
+                    storage_info['hostName'],
+                    storage_info['containerName'],
+                    storage_info['blobName'],
+                    storage_info['sasToken'],
+                )
+
+            if storage_info is None:
+                raise RuntimeError
 
             with BlobClient.from_blob_url(sas_url) as blob_client:
                 content_type: str | None = None

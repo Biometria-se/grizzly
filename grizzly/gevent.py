@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from gevent import Greenlet, Timeout, getcurrent
 
 from grizzly.exceptions import TaskTimeoutError
+from grizzly.types import FailureAction
 
 if TYPE_CHECKING:  # pragma: no cover
     import logging
@@ -40,7 +41,12 @@ class GreenletFactory:
         """Handle exception thrown, by throwing it from the greenlet that started this greenlet."""
         if exception.__class__ not in self.ignore_exceptions and self.total > 0:
             message = f'task {self.index} of {self.total} failed: {self.description}'
-            self.logger.error(message)
+
+            exc_info: Exception | None = exception
+            if isinstance(exception, FailureAction.get_failure_exceptions()):
+                exc_info = None
+
+            self.logger.error(message, exc_info=exc_info)
 
         self.started_from.throw(exception)
 

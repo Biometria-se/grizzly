@@ -38,6 +38,14 @@ class AuthMethod(Enum):
     CLIENT = 2
     USER = 3
 
+    @classmethod
+    def from_string(cls, value: str) -> AuthMethod:
+        try:
+            return cls[value.strip().upper()]
+        except KeyError as e:
+            message = f'"{value.upper()}" is not a valid value of {cls.__name__}'
+            raise AssertionError(message) from e
+
 
 class AuthType(Enum):
     HEADER = 1
@@ -314,6 +322,8 @@ class AzureAadCredential(TokenCredential):
                     )
             else:
                 self._access_token = self.get_oauth_token(tenant_id=tenant_id)
+
+            logger.info('requested token for %s', self.username)
 
         return cast(AccessToken, self._access_token)
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from os import environ
 from pathlib import Path
+from shlex import split as shlex_split
 from typing import cast
 
 from grizzly.context import GrizzlyContext
@@ -149,14 +150,51 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
         raise
 
 
-def _execute_python_script(context: Context, source: str) -> None:
+def _execute_python_script(context: Context, source: str, args: str | None) -> None:
     if on_worker(context):
         return
 
-    scope = globals()
-    scope.update({'context': context})
+    scope_args: list[str] | None = None
+    if args is not None:
+        scope_args = shlex_split(args)
+
+    scope = {**globals()}
+    scope.update({'context': context, 'args': scope_args})
 
     exec(source, scope, scope)  # noqa: S102
+
+@then('execute python script "{script_path}" with arguments "{arguments}"')
+def step_setup_execute_python_script_with_args(context: Context, script_path: str, arguments: str) -> None:
+    """Execute python script located in specified path, providing the specified arguments.
+
+    The script will not execute on workers, only on master (distributed mode) or local (local mode), and
+    it will only execute once before the test starts. Available in the scope is the current `context` object
+    and also `args` (list), which is `shlex.split` of specified `arguments`.
+
+    This can be useful for generating test data files.
+
+    Example:
+    ```gherkin
+    Then execute python script "../bin/generate-testdata.py"
+    ```
+
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    script_file = Path(script_path)
+    if not script_file.exists():
+        feature = cast(Feature, context.feature)
+        base_path = Path(feature.filename).parent if feature.filename not in [None, '<string>'] else Path.cwd()
+        script_file = (base_path / script_path).resolve()
+
+    assert script_file.exists(), f'script {script_path} does not exist'
+
+    if has_template(arguments):
+        grizzly.scenario.orphan_templates.append(arguments)
+
+    arguments = cast(str, resolve_variable(grizzly.scenario, arguments, guess_datatype=False, try_file=False))
+
+    _execute_python_script(context, script_file.read_text(), arguments)
 
 @then('execute python script "{script_path}"')
 def step_setup_execute_python_script(context: Context, script_path: str) -> None:
@@ -181,7 +219,7 @@ def step_setup_execute_python_script(context: Context, script_path: str) -> None
 
     assert script_file.exists(), f'script {script_path} does not exist'
 
-    _execute_python_script(context, script_file.read_text())
+    _execute_python_script(context, script_file.read_text(), None)
 
 @then('execute python script')
 def step_setup_execute_python_script_inline(context: Context) -> None:
@@ -201,7 +239,7 @@ def step_setup_execute_python_script_inline(context: Context) -> None:
     ```
 
     """
-    _execute_python_script(context, context.text)
+    _execute_python_script(context, context.text, None)
 
 
 @given('set context variable "{variable}" to "{value}"')

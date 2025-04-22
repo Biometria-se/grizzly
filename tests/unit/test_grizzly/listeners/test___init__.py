@@ -10,6 +10,7 @@ import pytest
 from locust.runners import STATE_RUNNING, WorkerNode
 from locust.stats import RequestStats, StatsError
 
+from grizzly.auth import RefreshTokenDistributor
 from grizzly.context import GrizzlyContextScenarioResponseTimePercentile
 from grizzly.listeners import (
     grizzly_worker_quit,
@@ -62,7 +63,7 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
         runner = MasterRunner(grizzly_fixture.behave.locust.environment, '0.0.0.0', 5555)
         grizzly.state.locust = runner
 
-        init_function: Callable[..., None] = init(grizzly, {})
+        init_function: Callable[..., None] = init(grizzly, {RefreshTokenDistributor}, {})
         assert callable(init_function)
 
         assert not grizzly.state.spawning_complete.locked()
@@ -71,19 +72,24 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
 
         assert grizzly.state.spawning_complete.locked()
         assert grizzly.state.producer is not None
-        assert grizzly.state.locust.custom_messages == {'produce_testdata': (grizzly.state.producer.handle_request, True)}
+        assert grizzly.state.locust.custom_messages == {
+            'produce_testdata': (grizzly.state.producer.handle_request, True),
+            'produce_token': (RefreshTokenDistributor.handle_request, True),
+        }
 
         grizzly.state.locust.custom_messages.clear()
         grizzly.state.spawning_complete.release()
 
         with caplog.at_level(logging.ERROR):
-            init_function = init(grizzly, None)
+            init_function = init(grizzly, set(), None)
             assert callable(init_function)
             init_function(runner)
 
         assert grizzly.state.spawning_complete.locked()
         assert 'there is no test data' in caplog.text
         grizzly.state.spawning_complete.release()
+
+        grizzly.state.locust.custom_messages.clear()
 
         def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
             pass
@@ -94,13 +100,14 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
         grizzly.setup.locust.messages.register(MessageDirection.CLIENT_SERVER, 'test_message', callback)
         grizzly.setup.locust.messages.register(MessageDirection.SERVER_CLIENT, 'test_message_ack', callback_ack)
 
-        init_function = init(grizzly, {})
+        init_function = init(grizzly, {RefreshTokenDistributor}, {})
         init_function(runner)
 
         assert grizzly.state.spawning_complete.locked()
         assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'test_message': (callback, True),
             'produce_testdata': (grizzly.state.producer.handle_request, True),
+            'produce_token': (RefreshTokenDistributor.handle_request, True),
         })
         grizzly.state.spawning_complete.release()
     finally:
@@ -116,7 +123,7 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
     try:
         grizzly = grizzly_fixture.grizzly
 
-        init_function: Callable[..., None] = init(grizzly)
+        init_function: Callable[..., None] = init(grizzly, {RefreshTokenDistributor})
         assert callable(init_function)
 
         runner = WorkerRunner(grizzly_fixture.behave.locust.environment, 'localhost', 5555)
@@ -132,6 +139,7 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
         assert runner.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'grizzly_worker_quit': (grizzly_worker_quit, False),
             'consume_testdata': (TestdataConsumer.handle_response, True),
+            'consume_token': (RefreshTokenDistributor.handle_response, True),
         })
 
         grizzly.state.spawning_complete.release()
@@ -153,6 +161,7 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
         assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'grizzly_worker_quit': (grizzly_worker_quit, False),
             'consume_testdata': (TestdataConsumer.handle_response, True),
+            'consume_token': (RefreshTokenDistributor.handle_response, True),
             'test_message_ack': (callback_ack, True),
         })
         grizzly.state.spawning_complete.release()
@@ -168,7 +177,7 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
 
     grizzly = grizzly_fixture.grizzly
 
-    init_function: Callable[..., None] = init(grizzly, {})
+    init_function: Callable[..., None] = init(grizzly, {RefreshTokenDistributor}, {})
     assert callable(init_function)
     assert not grizzly.state.spawning_complete.locked()
 
@@ -179,6 +188,8 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
     assert grizzly.state.locust.custom_messages == {
         'consume_testdata': (TestdataConsumer.handle_response, True),
         'produce_testdata': (grizzly.state.producer.handle_request, True),
+        'consume_token': (RefreshTokenDistributor.handle_response, True),
+        'produce_token': (RefreshTokenDistributor.handle_request, True),
     }
 
     grizzly.state.spawning_complete.release()
@@ -199,6 +210,8 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
     assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
         'consume_testdata': (TestdataConsumer.handle_response, True),
         'produce_testdata': (grizzly.state.producer.handle_request, True),
+        'consume_token': (RefreshTokenDistributor.handle_response, True),
+        'produce_token': (RefreshTokenDistributor.handle_request, True),
         'test_message': (callback, True),
         'test_message_ack': (callback_ack, True),
     })
@@ -208,7 +221,7 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
 def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
     # Influx -- short circuit
     mocker.patch(
-        'grizzly.listeners.influxdb.InfluxDb.connect',
+        'grizzly.listeners.influxdb.InfluxDbV1.connect',
         return_value=None,
     )
 
@@ -250,15 +263,27 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
     assert len(environment.events.quit._handlers) == 1
     assert len(environment.events.spawning_complete._handlers) == 0
 
+    mocker.patch(
+        'grizzly.listeners.influxdb.InfluxDbV2.connect',
+        return_value=None,
+    )
+
+    grizzly.setup.statistics_url = 'influxdb2://token@influxhost/org:bucket?Testplan=test'
+    init_statistics_listener(grizzly.setup.statistics_url)(environment)
+    assert len(environment.events.request._handlers) == 3
+    assert len(environment.events.quitting._handlers) == 0
+    assert len(environment.events.quit._handlers) == 2
+    assert len(environment.events.spawning_complete._handlers) == 0
+
     grizzly.setup.statistics_url = 'insights://?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
     with pytest.raises(AssertionError, match='IngestionEndpoint was neither set as the hostname or in the query string'):
         init_statistics_listener(grizzly.setup.statistics_url)(environment)
 
     grizzly.setup.statistics_url = 'insights://insights.example.se/?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
     init_statistics_listener(grizzly.setup.statistics_url)(environment)
-    assert len(environment.events.request._handlers) == 3
+    assert len(environment.events.request._handlers) == 4
     assert len(environment.events.quitting._handlers) == 0
-    assert len(environment.events.quit._handlers) == 1
+    assert len(environment.events.quit._handlers) == 2
     assert len(environment.events.spawning_complete._handlers) == 0
 
 
@@ -437,7 +462,7 @@ def test_grizzly_worker_quit_non_worker(locust_fixture: LocustFixture, caplog: L
     assert se.value.code == 1
 
     assert len(caplog.messages) == 2
-    assert caplog.messages[0] == f'received message grizzly_worker_quit: msg={message!r}'
+    assert caplog.messages[0] == f'received quit message from master: msg={message!r}'
     assert caplog.messages[1] == 'received grizzly_worker_quit message on a non WorkerRunner?!'
 
 
@@ -462,7 +487,7 @@ def test_grizzly_worker_quit_worker(locust_fixture: LocustFixture, caplog: LogCa
 
     log_messages = list(filter(lambda m: 'CPU usage' not in m, caplog.messages))
 
-    assert log_messages == [f'received message grizzly_worker_quit: msg={message!r}']
+    assert log_messages == [f'received quit message from master: msg={message!r}']
     caplog.clear()
 
     runner_stop_mock.assert_called_once()
@@ -479,7 +504,7 @@ def test_grizzly_worker_quit_worker(locust_fixture: LocustFixture, caplog: LogCa
 
     log_messages = list(filter(lambda m: 'CPU usage' not in m, caplog.messages))
 
-    assert log_messages == [f'received message grizzly_worker_quit: msg={message!r}']
+    assert log_messages == [f'received quit message from master: msg={message!r}']
     caplog.clear()
 
     environment.process_exit_code = None
@@ -491,5 +516,5 @@ def test_grizzly_worker_quit_worker(locust_fixture: LocustFixture, caplog: LogCa
 
     log_messages = list(filter(lambda m: 'CPU usage' not in m, caplog.messages))
 
-    assert log_messages == [f'received message grizzly_worker_quit: msg={message!r}']
+    assert log_messages == [f'received quit message from master: msg={message!r}']
     caplog.clear()
