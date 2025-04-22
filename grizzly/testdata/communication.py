@@ -10,7 +10,7 @@ from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, Protocol, TypedDict, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, Protocol, TypedDict, Union, cast
 from uuid import uuid4
 
 from dateutil.parser import parse as date_parser
@@ -909,4 +909,4 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
         environment.runner.send_message(message_type, {'uid': uid, 'rid': rid, 'response': response}, client_id=cid)
 
 
-GrizzlyDependencies = set[str | type[GrizzlyMessageHandler] | tuple[str, MessageHandler]]
+GrizzlyDependencies = set[Union[str, type[GrizzlyMessageHandler], tuple[str, MessageHandler]]]

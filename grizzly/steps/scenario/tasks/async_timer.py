@@ -31,7 +31,7 @@ def step_task_async_timer_start(context: Context, name: str, tid: str, version: 
 
 
 @then('stop document timer with name "{name}" for id "{tid}" and version "{version}"')
-def step_task_async_timer_stop_name(context: Context, name: str, tid: str, version: str) -> None:
+def step_task_async_timer_stop(context: Context, name: str, tid: str, version: str) -> None:
     """Stop an asynchrounous timer, with a known name.
 
     This is needed if the combination of `tid` and `version` the timer was started with is not

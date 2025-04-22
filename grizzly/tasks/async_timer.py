@@ -7,15 +7,13 @@ than the id (which it might have received from a queue or topic), and hence the 
 
 A name must **always** be provided when starting the timer.
 
-`name`, `tid` and `version` supports {@pylink framework.usage.variables.templating}.
+`name`, `tid` and `version` supports {@link framework.usage.variables.templating}.
 
 ## Step implementations
 
 * {@pylink grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_start}
 
-* {@pylink grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_stop_name}
-
-* {@pylink grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_stop_tid}
+* {@pylink grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_stop}
 
 ## Statistics
 
