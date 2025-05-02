@@ -187,9 +187,11 @@ class TestIotHubUser:
                 'messageID': 137,
             }),
         }
+        old_request = cast(RequestTask, user._scenario.tasks()[-1])
+        request = RequestTask(RequestMethod.SEND, "test-send", "not_relevant | allow_aready_exists=True", old_request.source)
+        user._scenario.tasks().clear()
+        user._scenario.tasks.add(request)
         user.add_context(remote_variables)
-        request = cast(RequestTask, user._scenario.tasks()[-1])
-        request.endpoint = 'not_relevant'
 
         expected_payload = {
             'result': {

@@ -108,6 +108,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import UUID, uuid4
 
+from azure.core.exceptions import ResourceExistsError
 from azure.iot.device import IoTHubDeviceClient
 from azure.iot.device import Message as IotMessage
 from azure.iot.device.exceptions import ClientError
@@ -382,6 +383,8 @@ class IotHubUser(GrizzlyUser):
         filename = request.endpoint
         storage_info: dict[str, Any] | None = None
 
+        print(f'{request.arguments=}')
+
         try:
             with retry(retries=3, exceptions=(ClientError,), backoff=1.0) as context:
                 storage_info = cast(dict[str, Any], context.execute(self.iot_client.get_storage_info_for_blob, filename))
@@ -406,15 +409,21 @@ class IotHubUser(GrizzlyUser):
                 if request.metadata:
                     content_encoding = request.metadata.get('content_encoding', None)
 
-                if content_encoding == 'gzip':
-                    compressed_payload: bytes = gzip.compress(cast(str, request.source).encode())
-                    content_settings = ContentSettings(content_type=content_type, content_encoding=content_encoding)
-                    metadata = blob_client.upload_blob(compressed_payload, content_settings=content_settings)
-                elif content_encoding:
-                    error_message = f'Unhandled request content_encoding in IotHubUser: {content_encoding}'
-                    raise RuntimeError(error_message)
-                else:
-                    metadata = blob_client.upload_blob(request.source)
+                try:
+                    if content_encoding == 'gzip':
+                        compressed_payload: bytes = gzip.compress(cast(str, request.source).encode())
+                        content_settings = ContentSettings(content_type=content_type, content_encoding=content_encoding)
+                        metadata = blob_client.upload_blob(compressed_payload, content_settings=content_settings)
+                    elif content_encoding:
+                        error_message = f'Unhandled request content_encoding in IotHubUser: {content_encoding}'
+                        raise RuntimeError(error_message)
+                    else:
+                            metadata = blob_client.upload_blob(request.source)
+                except ResourceExistsError:
+                    if (request.arguments or {}).get('allow_already_exist', 'False').lower() == 'true':
+                        self.logger.warning('file %s already exist, continue', filename)
+                    else:
+                        raise
 
                 self.logger.debug('uploaded blob to IoT hub, filename: %s, correlationId: %s', filename, storage_info['correlationId'])
 

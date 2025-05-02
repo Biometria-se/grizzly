@@ -19,6 +19,9 @@
                 "python.pythonPath": "/usr/local/bin/python",
                 "python.languageServer": "Pylance",
                 "pythonTestExplorer.testFramework": "pytest",
+                "github.copilot.enable": {
+                    "*": false
+                },
                 "files.associations": {
                     "*.j2.json": "jinja-json",
                     "*.j2.xml": "jinja-xml"
