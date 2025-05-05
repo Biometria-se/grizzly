@@ -131,6 +131,7 @@ class refresh_token(Generic[P]):
             self.impl.initialize(client, user)
 
             if client.credential is not None and client.credential.auth_method is not AuthMethod.NONE:
+                logger.debug('%s should be authenticated', client.__class__.__name__)
                 # refresh token if session has been alive for at least refresh_time
                 authorization_token = client.metadata.get('Authorization', None)
                 exception: Exception | None = None
@@ -143,10 +144,12 @@ class refresh_token(Generic[P]):
                     now = datetime.now(tz=timezone.utc).timestamp()
 
                     if (authorization_token is None and client.cookies == {}) or client.credential._access_token is None or client.credential._access_token.expires_on <= now:
+                        logger.debug('%s asking for token', client.__class__.__name__)
                         access_token, refreshed = RefreshTokenDistributor.get_token(client)
                         client.credential._access_token = access_token
                         action_triggered = refreshed or (authorization_token is None and client.cookies == {})
                     else:
+                        logger.debug('%s reusing previous valid token', client.__class__.__name__)
                         access_token = client.credential._access_token
                         refreshed = False
                         action_triggered = False
@@ -205,6 +208,8 @@ class refresh_token(Generic[P]):
 
                     if exception is not None:
                         raise StopUser from exception
+            else:
+                logger.debug('%s should not be authenticated', client.__class__.__name__)
 
             bound = func.__get__(client, client.__class__)
 
@@ -369,6 +374,8 @@ class RefreshToken(metaclass=ABCMeta):
                 otp_secret=otp_secret,
                 scope=scope,
             )
+
+            logger.debug('%s credential %r', client.__class__.__name__, client.credential)
 
 
 from .aad import AAD

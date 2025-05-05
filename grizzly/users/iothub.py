@@ -383,8 +383,6 @@ class IotHubUser(GrizzlyUser):
         filename = request.endpoint
         storage_info: dict[str, Any] | None = None
 
-        print(f'{request.arguments=}')
-
         try:
             with retry(retries=3, exceptions=(ClientError,), backoff=1.0) as context:
                 storage_info = cast(dict[str, Any], context.execute(self.iot_client.get_storage_info_for_blob, filename))
