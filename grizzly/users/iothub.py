@@ -279,7 +279,7 @@ class IotHubUser(GrizzlyUser):
             self.iot_client.on_message_received = self.message_handler
         else:
             self.logger.warning(
-                'no handler for C2D messages registered, since there are %d users of type %s',
+                'no handler for C2D messages registered, since there are %s users of type %s',
                 self._scenario.user.fixed_count,
                 self._scenario.user.class_name,
             )

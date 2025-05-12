@@ -125,6 +125,7 @@ configuration:
 ```
 
 With the following secrets in `grizzly-dummy` keyvault:
+
 | key                                            | value  |
 | ---------------------------------------------- | ------ |
 | grizzly--global--authentication-admin-username | root   |

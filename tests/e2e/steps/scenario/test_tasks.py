@@ -389,7 +389,7 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
         assert task.content_type == TransformerContentType.JSON
         assert issubclass(task._transformer, JsonTransformer)
         assert task.get_templates() == ['{{ document }}']
-        assert callable(task._parser)
+        assert task.min_matches == 1
 
         task = tasks[1]
         assert isinstance(task, TransformerTask)
@@ -399,7 +399,7 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
         assert task.content_type == TransformerContentType.JSON
         assert issubclass(task._transformer, JsonTransformer)
         assert task.get_templates() == ['{{ document }}']
-        assert callable(task._parser)
+        assert task.min_matches == 0
 
     e2e_fixture.add_validator(validate_transform)
 
@@ -409,7 +409,7 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
             'And value for variable "document_title" is "None"',
             'And value for variable "document" is "{"document": {"id": "DOCUMENT_8843-1", "title": "TPM Report 2021"}}"',
             'Then parse "{{ document }}" as "json" and save value of "$.document.id" in variable "document_id"',
-            'Then parse "{{ document }}" as "json" and save value of "$.document.title" in variable "document_title"',
+            'Then parse "{{ document }}" as "json" and save value of "$.document.title | min_matches=0" in variable "document_title"',
             'Then log message "document_id={{ document_id }}"',
             'Then log message "document_title={{ document_title }}"',
         ],

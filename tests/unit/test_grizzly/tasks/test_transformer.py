@@ -44,11 +44,6 @@ class TestTransformerTask:
         finally:
             transformer.available.update({TransformerContentType.JSON: json_transformer})
 
-        with pytest.raises(AssertionError, match=r'\$\. is not a valid expression for JSON'):
-            TransformerTask(
-                variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
-            )
-
         task_factory = TransformerTask(
             variable='test_variable', expression='$.result.value', content_type=TransformerContentType.JSON, content='',
         )
@@ -167,6 +162,23 @@ class TestTransformerTask:
         )
         fire_spy.reset_mock()
 
+        # allow 0 matches with `| min_matches=0`
+        task_factory = TransformerTask(
+            variable='test_variable',
+            expression='$.result.name | min_matches=0',
+            content_type=TransformerContentType.JSON,
+            content=jsondumps({
+                'result': {
+                    'value': 'hello world!',
+                },
+            }),
+        )
+        task = task_factory()
+        parent.user._scenario.failure_handling.update({None: RestartScenario})
+        task(parent)
+
+        fire_spy.assert_not_called()
+
         with suppress(KeyError):
             del parent.user._scenario.failure_handling[None]
 
@@ -199,6 +211,7 @@ class TestTransformerTask:
                 'success': True,
             }),
         )
+        assert task_factory.min_matches == 1
         task = task_factory()
         task(parent)
 
@@ -206,7 +219,7 @@ class TestTransformerTask:
 
         task_factory = TransformerTask(
             variable='test_variable',
-            expression='//actor[@id="9"]',
+            expression='//actor[@id="9"] | min_matches=-1',
             content_type=TransformerContentType.XML,
             content="""<root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
   <actors>
@@ -221,6 +234,9 @@ class TestTransformerTask:
   </foo:singers>
 </root>""",
         )
+
+        assert task_factory.expression == '//actor[@id="9"]'
+        assert task_factory.min_matches == -1
 
         task = task_factory()
 
