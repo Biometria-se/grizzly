@@ -211,7 +211,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             base_url=self.host,
             user=self,
             insecure=not self._context.get('verify_certificates', True),
-            max_retries=1,
+            max_retries=0,
             network_timeout=self._context.get('timeout', 60),
             ssl_context_factory=_ssl_context_factory,
         )

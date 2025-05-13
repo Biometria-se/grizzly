@@ -99,6 +99,9 @@ class GrizzlyScenario(SequentialTaskSet):
         self.user.consumer = self.__class__._consumer
         self.user.scenario_state = ScenarioState.RUNNING
 
+        # only prefetch iterator testdata if everything was started OK
+        self.prefetch()
+
         for task in self.tasks:
             if isinstance(task, grizzlytask):
                 try:  # type: ignore[unreachable]
@@ -106,9 +109,6 @@ class GrizzlyScenario(SequentialTaskSet):
                 except:
                     self.logger.exception('on_start failed for task %r', task)
                     raise StopUser from None
-
-        # only prefetch iterator testdata if everything was started OK
-        self.prefetch()
 
     def on_iteration(self) -> None:
         self.user.on_iteration()

@@ -22,16 +22,23 @@ then have the request type `TRNSF`.
 
 * `content_type` _TransformerContentType_ - MIME type of `contents`, which transformer to use
 
-* `expression` _str_ - JSON- or XPath expression to extract specific values in `contents`
+* `expression` _str_ - JSON- or XPath expression to extract specific values in `contents`, support for pipe (`|`) arguments
 
 * `variable` _str_ - name of variable to save value to, must have been intialized
+
+## Pipe arguments
+
+* `min_matches` _int_ - minimum number of matches that the expression should return, `-1` as value will allow any number of matches (default `1`)
+
 """
 from __future__ import annotations
 
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from grizzly.exceptions import failure_handler
+from grizzly_extras.arguments import parse_arguments, split_value
+from grizzly_extras.text import has_separator
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 
 from . import GrizzlyTask, grizzlytask, template
@@ -48,7 +55,7 @@ class TransformerTask(GrizzlyTask):
     content_type: TransformerContentType
 
     _transformer: type[Transformer]
-    _parser: Callable[[Any], list[str]]
+    min_matches: int
 
     def __init__(
         self,
@@ -72,9 +79,13 @@ class TransformerTask(GrizzlyTask):
 
         self._transformer = _transformer
 
-        assert self._transformer.validate(self.expression), f'{self.__class__.__name__}: {self.expression} is not a valid expression for {self.content_type.name}'
+        if has_separator('|', self.expression):
+            self.expression, pipe_arguments = split_value(self.expression)
+            arguments = parse_arguments(pipe_arguments)
 
-        self._parser = self._transformer.parser(self.expression)
+            self.min_matches = int(arguments.get('min_matches', '1'))
+        else:
+            self.min_matches = 1
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
@@ -84,7 +95,14 @@ class TransformerTask(GrizzlyTask):
 
             try:
                 content_raw = parent.user.render(self.content)
+                expression = parent.user.render(self.expression)
                 response_length = len(content_raw)
+
+                if not self._transformer.validate(expression):
+                    message = f'"{expression}" is not a valid expression for {self._transformer.__class__.__name__}'
+                    raise ValueError(message)
+
+                parser = self._transformer.parser(expression)
 
                 try:
                     content = self._transformer.transform(content_raw)
@@ -93,11 +111,11 @@ class TransformerTask(GrizzlyTask):
                     parent.logger.exception('%s: %s', message, content_raw)
                     raise
 
-                values = self._parser(content)
+                values = parser(content)
 
                 number_of_values = len(values)
 
-                if number_of_values < 1:
+                if self.min_matches > -1 and number_of_values < self.min_matches:
                     message = f'"{self.expression}" returned {number_of_values} matches'
                     parent.logger.error('%s: %s', message, content_raw)
                     raise RuntimeError(message)

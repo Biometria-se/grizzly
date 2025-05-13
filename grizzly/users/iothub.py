@@ -272,12 +272,17 @@ class IotHubUser(GrizzlyUser):
     def on_start(self) -> None:
         super().on_start()
 
-        if self._scenario.user.fixed_count != 1:
-            self.logger.warning('do not run more than 1 user if you rely on cloud-to-device messages')
-
         self.iot_client = IoTHubDeviceClient.create_from_connection_string(self.host, websockets=True)
         self.iot_client.connect()
-        self.iot_client.on_message_received = self.message_handler
+
+        if self._scenario.user.fixed_count == 1:
+            self.iot_client.on_message_received = self.message_handler
+        else:
+            self.logger.warning(
+                'no handler for C2D messages registered, since there are %s users of type %s',
+                self._scenario.user.fixed_count,
+                self._scenario.user.class_name,
+            )
 
     def on_state(self, *, state: ScenarioState) -> None:
         super().on_state(state=state)
@@ -382,8 +387,6 @@ class IotHubUser(GrizzlyUser):
     def _request_file_upload(self, request: RequestTask) -> GrizzlyResponse:
         filename = request.endpoint
         storage_info: dict[str, Any] | None = None
-
-        print(f'{request.arguments=}')
 
         try:
             with retry(retries=3, exceptions=(ClientError,), backoff=1.0) as context:
