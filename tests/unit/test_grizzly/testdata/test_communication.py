@@ -1165,7 +1165,8 @@ value3,value4
             response = request_keystore('pop', 'foobar')
 
             assert response == {'message': 'keystore', 'action': 'pop', 'data': 'foobaz', 'identifier': grizzly.scenario.class_name, 'key': 'foobar'}
-            assert grizzly.state.producer.keystore['foobar'] == []
+            with pytest.raises(KeyError):
+                grizzly.state.producer.keystore['foobar']
 
             response = request_keystore('pop', 'foobar')
 
@@ -1173,6 +1174,7 @@ value3,value4
             # // pop -->
 
             # <!-- del
+            grizzly.state.producer.keystore.update({'foobar': 'barfoo'})
             assert 'foobar' in grizzly.state.producer.keystore
 
             response = request_keystore('del', 'foobar', 'dummy')
