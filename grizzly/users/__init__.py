@@ -18,6 +18,7 @@ from contextlib import suppress
 from copy import copy, deepcopy
 from datetime import datetime, timezone
 from errno import ENAMETOOLONG
+from itertools import chain
 from json import dumps as jsondumps
 from json import loads as jsonloads
 from logging import Logger
@@ -32,7 +33,7 @@ from locust.user.task import LOCUST_STATE_RUNNING
 from locust.user.users import User, UserMeta
 
 from grizzly.events import GrizzlyEventHook, RequestLogger, ResponseHandler
-from grizzly.exceptions import RestartScenario, StopScenario, failure_handler
+from grizzly.exceptions import RestartScenario, StopScenario
 from grizzly.testdata import GrizzlyVariables
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
 from grizzly.types.locust import Environment, StopUser
@@ -43,7 +44,7 @@ T = TypeVar('T', bound=UserMeta)
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-    from grizzly.tasks import RequestTask
+    from grizzly.tasks import GrizzlyTask, RequestTask
     from grizzly.testdata.communication import GrizzlyDependencies, TestdataConsumer
 
 
@@ -131,6 +132,39 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
         from grizzly.context import grizzly
         self.grizzly = grizzly
+
+    def failure_handler(self, exception: Exception | None, *, task: GrizzlyTask | None = None) -> None:
+        # no failure, just return
+        if exception is None:
+            return
+
+        # failure action has already been decided, let it through
+        from grizzly.types import FailureAction
+        if isinstance(exception, FailureAction.get_failure_exceptions()):
+            raise exception
+
+        # always raise StopUser when these unhandled exceptions has occured
+        if isinstance(exception, NotImplementedError | KeyError | IndexError | AttributeError | TypeError | SyntaxError):
+            raise StopUser from exception
+
+        # check for custom actions based on failure
+        task_failure_handling = task.failure_handling if task is not None and hasattr(task, 'failure_handling') else {}
+        for failure_type, failure_action in chain(task_failure_handling.items(), self._scenario.failure_handling.items()):
+            if failure_type is None:
+                continue
+
+            # continue test for this specific error, i.e. ignore it
+            if failure_action is None:
+                return
+
+            if (isinstance(failure_type, str) and failure_type in str(exception)) or exception.__class__ is failure_type:
+                raise failure_action from exception
+
+        # no match, raise the default if it has been set
+        default_exception = self._scenario.failure_handling.get(None, None)
+
+        if default_exception is not None:
+            raise default_exception from exception
 
     def on_quitting(self, *_args: Any, **kwargs: Any) -> None:
         # if it already has been called with True, do not change it back to False
@@ -271,7 +305,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             )
 
         # ...request handled
-        failure_handler(exception, self._scenario)
+        self.failure_handler(exception, task=request)
 
         return (metadata, payload)
 

@@ -43,7 +43,6 @@ from json import dumps as jsondumps
 from json import loads as jsonloads
 from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
-from grizzly.exceptions import failure_handler
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import resolve_variable
 from grizzly_extras.arguments import parse_arguments, split_value
@@ -189,6 +188,6 @@ class KeystoreTask(GrizzlyTask):
                     exception=e,
                 )
 
-                failure_handler(e, parent.user._scenario)
+                parent.user.failure_handler(e, task=self)
 
         return task

@@ -8,7 +8,7 @@ from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, cast
 
-from grizzly.exceptions import failure_handler
+from grizzly.exceptions import StopUser
 from grizzly.testdata.ast import get_template_variables, parse_templates
 from grizzly.utils import has_template, is_file, merge_dicts, unflatten
 
@@ -75,7 +75,7 @@ def transform(scenario: GrizzlyContextScenario, data: dict[str, Any], *, objecti
                 except Exception as e:
                     logger.exception('failed to get value from variable instance')
 
-                    failure_handler(e, scenario)
+                    raise StopUser from e
 
             paths: list[str] = key.split('.')
             variable = paths.pop(0)

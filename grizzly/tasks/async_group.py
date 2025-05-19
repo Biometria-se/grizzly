@@ -33,7 +33,6 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import gevent
 
-from grizzly.exceptions import failure_handler
 from grizzly.types import RequestType
 from grizzly.users import AsyncRequests
 
@@ -137,6 +136,6 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
                     exception=exception,
                 )
 
-                failure_handler(exception, parent.user._scenario)
+                parent.user.failure_handler(exception, task=self)
 
         return task

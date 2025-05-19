@@ -6,55 +6,12 @@ from unittest.mock import call
 
 import pytest
 
-from grizzly.exceptions import RestartScenario, RetryTask, StopUser, failure_handler, retry
-from grizzly.types import FailureAction
+from grizzly.exceptions import retry
 
 if TYPE_CHECKING:
     from unittest.mock import MagicMock
 
-    from tests.fixtures import GrizzlyFixture, MockerFixture
-
-
-def test_failure_handler(grizzly_fixture: GrizzlyFixture) -> None:
-    grizzly = grizzly_fixture.grizzly
-
-    scenario = grizzly.scenario
-
-    assert scenario.failure_handling == {}
-
-    scenario.failure_handling.update({
-        None: StopUser,
-        '504 gateway timeout': RetryTask,
-    })
-
-    failure_handler(None, scenario)
-
-    with pytest.raises(StopUser):
-        failure_handler(RuntimeError('foobar'), scenario)
-
-    with pytest.raises(RetryTask):
-        failure_handler(RuntimeError('504 gateway timeout'), scenario)
-
-    del scenario.failure_handling[None]
-
-    failure_handler(RuntimeError('foobar'), scenario)
-
-    with pytest.raises(RetryTask):
-        failure_handler(RuntimeError('504 gateway timeout'), scenario)
-
-    scenario.failure_handling.update({AttributeError: RestartScenario})
-
-    with pytest.raises(StopUser):
-        failure_handler(AttributeError('foobaz'), scenario)
-
-    scenario.failure_handling.update({MemoryError: RestartScenario})
-
-    with pytest.raises(RestartScenario):
-        failure_handler(MemoryError('0% free'), scenario)
-
-    for exception in FailureAction.get_failure_exceptions():
-        with pytest.raises(exception):
-            failure_handler(exception(), scenario)
+    from tests.fixtures import MockerFixture
 
 
 def test_retry(mocker: MockerFixture) -> None:

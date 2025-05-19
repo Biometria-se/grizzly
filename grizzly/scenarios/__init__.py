@@ -8,7 +8,7 @@ from gevent.event import Event
 from locust.exception import LocustError
 from locust.user.sequential_taskset import SequentialTaskSet
 
-from grizzly.exceptions import StopScenario, TaskTimeoutError, failure_handler
+from grizzly.exceptions import StopScenario, TaskTimeoutError
 from grizzly.gevent import GreenletFactory
 from grizzly.tasks import GrizzlyTask, grizzlytask
 from grizzly.testdata.communication import TestdataConsumer
@@ -174,7 +174,7 @@ class GrizzlyScenario(SequentialTaskSet):
             name = metadata.get('name', None) or description
 
             self.user.environment.stats.log_error(method, name, str(e))
-            failure_handler(e, self.user._scenario)
+            self.user.failure_handler(e, task=task)
         finally:
             self.task_greenlet = None
 

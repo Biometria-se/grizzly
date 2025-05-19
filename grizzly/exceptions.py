@@ -14,7 +14,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Callable
     from types import TracebackType
 
-    from grizzly.context import GrizzlyContextScenario
     from grizzly.types.behave import Scenario, Step
 
 
@@ -105,39 +104,6 @@ class FeatureError(Exception):
 
     def __str__(self) -> str:
         return f'{self.error!s}'
-
-
-def failure_handler(exception: Exception | None, scenario: GrizzlyContextScenario) -> None:
-    # no failure, just return
-    if exception is None:
-        return
-
-    # failure action has already been decided, let it through
-    from grizzly.types import FailureAction
-    if isinstance(exception, FailureAction.get_failure_exceptions()):
-        raise exception
-
-    # always raise StopUser when these unhandled exceptions has occured
-    if isinstance(exception, NotImplementedError | KeyError | IndexError | AttributeError | TypeError | SyntaxError):
-        raise StopUser from exception
-
-    # custom actions based on failure
-    for failure_type, failure_action in scenario.failure_handling.items():
-        if failure_type is None:
-            continue
-
-        # continue test for this specific error, i.e. ignore it
-        if failure_action is None:
-            return
-
-        if (isinstance(failure_type, str) and failure_type in str(exception)) or exception.__class__ is failure_type:
-            raise failure_action from exception
-
-    # no match, raise the default if it has been set
-    default_exception = scenario.failure_handling.get(None, None)
-
-    if default_exception is not None:
-        raise default_exception from exception
 
 
 class retry:

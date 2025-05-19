@@ -36,7 +36,6 @@ from __future__ import annotations
 from time import perf_counter
 from typing import TYPE_CHECKING, Any
 
-from grizzly.exceptions import failure_handler
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
@@ -134,6 +133,6 @@ class TransformerTask(GrizzlyTask):
                     exception=exception,
                 )
 
-                failure_handler(exception, parent.user._scenario)
+                parent.user.failure_handler(exception, task=self)
 
         return task
