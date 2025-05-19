@@ -64,6 +64,7 @@ def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
 
     result = ''.join(output)
 
+    assert 'Exception ignored in' not in result
     assert "key_holder_1={'hello': 'world'}" in result
     assert "key_holder_2=hello, key_holder_3={'hello': 'world'}" in result
     assert "foobar_push: 10, 20, 30" in result

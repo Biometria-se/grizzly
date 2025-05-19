@@ -84,6 +84,7 @@ def test_e2e_variables_atomic_json_reader(e2e_fixture: End2EndFixture) -> None:
 
     result = ''.join(output)
 
+    assert 'Exception ignored in' not in result
     assert 'object={"password": "some-password", "username": "bob1"}' in result
     assert 'object.username=bob1' in result
     assert 'object.password=some-password' in result

@@ -79,6 +79,7 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
     result = ''.join(output)
 
     assert rc == 0
+    assert 'Exception ignored in' not in result
     assert 'persistent=3' in result
     assert "foobar=['hello', '3']" in result
     assert 'persistent=4' in result

@@ -68,6 +68,7 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
     assert code == 0
 
     try:
+        assert 'Exception ignored in' not in result
         assert 'ERROR' not in result
         assert 'WARNING' not in result
         assert '1 feature passed, 0 failed, 0 skipped' in result
