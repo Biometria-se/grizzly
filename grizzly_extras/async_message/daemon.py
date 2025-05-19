@@ -12,13 +12,12 @@ from multiprocessing import Process
 from signal import SIGINT, SIGTERM, Signals, signal
 from threading import Event
 from time import sleep
-from typing import TYPE_CHECKING, Optional, Union, cast
+from typing import TYPE_CHECKING, Literal, Optional, Union, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
 import setproctitle as proc
 import zmq.green as zmq
-from typing_extensions import Literal
 from zmq import sugar as ztypes
 
 from grizzly_extras.transformer import JsonBytesEncoder

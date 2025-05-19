@@ -5,7 +5,7 @@ import json
 from contextlib import suppress
 from hashlib import sha256
 from time import time
-from typing import TYPE_CHECKING, Any, Callable, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import gevent
 import pytest
@@ -24,6 +24,8 @@ from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY, SOME, create_mocked_fast_response_context_manager
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from _pytest.logging import LogCaptureFixture
 
     from tests.fixtures import GrizzlyFixture, MockerFixture

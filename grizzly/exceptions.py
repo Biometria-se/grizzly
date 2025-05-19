@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from random import uniform
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from gevent import sleep as gsleep
 from locust.exception import StopUser
@@ -11,6 +11,7 @@ from typing_extensions import Self
 from grizzly_extras.exceptions import StopScenario
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
     from types import TracebackType
 
     from grizzly.context import GrizzlyContextScenario
@@ -117,7 +118,7 @@ def failure_handler(exception: Exception | None, scenario: GrizzlyContextScenari
         raise exception
 
     # always raise StopUser when these unhandled exceptions has occured
-    if isinstance(exception, (NotImplementedError, KeyError, IndexError, AttributeError, TypeError, SyntaxError)):
+    if isinstance(exception, NotImplementedError | KeyError | IndexError | AttributeError | TypeError | SyntaxError):
         raise StopUser from exception
 
     # custom actions based on failure

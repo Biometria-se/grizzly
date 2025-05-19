@@ -8,7 +8,7 @@ import re
 from datetime import datetime, timezone
 from http.cookiejar import Cookie
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, cast
+from typing import TYPE_CHECKING, Any, Optional, Protocol, cast
 from urllib.parse import urlparse
 
 from dateutil.parser import ParserError
@@ -19,6 +19,7 @@ from grizzly.utils import _print_table
 from grizzly_extras.async_message.utils import async_message_request
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
     from http.cookiejar import CookieJar
 
     from zmq import sugar as ztypes

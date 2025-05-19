@@ -39,7 +39,7 @@ from __future__ import annotations
 from contextlib import suppress
 from secrets import choice, randbelow
 from string import ascii_letters
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 from uuid import uuid4
 
 from grizzly.types import bool_type, int_rounded_float_type
@@ -49,6 +49,8 @@ from grizzly_extras.text import has_separator
 from . import AtomicVariable
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from grizzly.context import GrizzlyContextScenario
 
 

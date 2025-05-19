@@ -7,7 +7,7 @@ import socket
 from datetime import datetime, timezone
 from json import dumps as jsondumps
 from platform import node as get_hostname
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import patch
 
 import pytest
@@ -21,6 +21,8 @@ from grizzly.types.locust import CatchResponseError
 from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from _pytest.logging import LogCaptureFixture
     from influxdb_client import InfluxDBClient  # type: ignore[attr-defined]
     from pytest_mock import MockerFixture

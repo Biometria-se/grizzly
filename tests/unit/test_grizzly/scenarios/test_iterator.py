@@ -841,7 +841,7 @@ class TestIterationScenario:
 
         assert len(actual_messages) == len(expected_messages)
 
-        for actual, _expected in zip(actual_messages, expected_messages):
+        for actual, _expected in zip(actual_messages, expected_messages, strict=False):
             expected = regex.possible(_expected)
             assert actual == expected
 
@@ -953,7 +953,7 @@ class TestIterationScenario:
 
             assert len(actual_messages) == len(expected_messages)
 
-            for actual, _expected in zip(actual_messages, expected_messages):
+            for actual, _expected in zip(actual_messages, expected_messages, strict=False):
                 expected = regex.possible(_expected)
                 assert actual == expected
 
@@ -1066,7 +1066,7 @@ class TestIterationScenario:
 
             assert len(actual_messages) == len(expected_messages)
 
-            for actual, _expected in zip(actual_messages, expected_messages):
+            for actual, _expected in zip(actual_messages, expected_messages, strict=False):
                 expected = regex.possible(_expected)
                 assert actual == expected
 

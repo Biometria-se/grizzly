@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from json import dumps as jsondumps
 from json import loads as jsonloads
 from json.decoder import JSONDecodeError
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from lxml import etree as XML  # noqa: N812
@@ -22,6 +22,8 @@ from grizzly_extras.transformer import (
 from tests.helpers import JSON_EXAMPLE
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from pytest_mock import MockerFixture
 
 

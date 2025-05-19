@@ -1,12 +1,13 @@
 """Grizzly types."""
 from __future__ import annotations
 
+from collections.abc import Callable
 from enum import Enum, auto
-from typing import Any, Callable, Optional, TypeVar, Union, cast
+from typing import Any, Concatenate, Optional, TypeVar, Union, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from locust.rpc.protocol import Message
-from typing_extensions import Concatenate, ParamSpec
+from typing_extensions import ParamSpec
 
 from grizzly.exceptions import RestartIteration, RestartScenario, RetryTask, StopUser
 from grizzly_extras.text import PermutationEnum

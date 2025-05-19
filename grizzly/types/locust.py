@@ -1,5 +1,6 @@
 """Locust types frequently used in grizzly."""
-from typing import Callable, Union
+from collections.abc import Callable
+from typing import Union
 
 from locust.env import Environment
 from locust.exception import CatchResponseError, LocustError, StopUser

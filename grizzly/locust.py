@@ -15,7 +15,7 @@ from os import environ
 from platform import node as gethostname
 from signal import SIGINT, SIGTERM, Signals
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Callable, NoReturn, Optional, SupportsIndex, TypeVar, cast
+from typing import TYPE_CHECKING, Any, NoReturn, Optional, SupportsIndex, TypeVar, cast
 
 import gevent
 import gevent.event
@@ -45,7 +45,7 @@ __all__ = [
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import Generator, Iterator
+    from collections.abc import Callable, Generator, Iterator
 
     from gevent.fileobject import FileObjectThread
     from locust.runners import WorkerNode
@@ -188,7 +188,7 @@ class FixedUsersDispatcher(UsersDispatcher):
         and the one below is the most efficient.
         """
         # type is ignored due to: https://github.com/python/mypy/issues/1507
-        return dict(zip(users_on_workers.keys(), map(dict.copy, users_on_workers.values())))  # type: ignore[arg-type]
+        return dict(zip(users_on_workers.keys(), map(dict.copy, users_on_workers.values()), strict=False))  # type: ignore[arg-type]
 
     def __next__(self) -> dict[str, dict[str, int]]:
         users_on_workers = next(self._dispatcher_generator)
@@ -496,7 +496,7 @@ class FixedUsersDispatcher(UsersDispatcher):
 
         # map worker to sticky tag
         self._workers_to_sticky_tag.clear()
-        for worker, worker_sticky_tag in zip(self._worker_nodes, sticky_tags_gen):
+        for worker, worker_sticky_tag in zip(self._worker_nodes, sticky_tags_gen, strict=False):
             if worker_sticky_tag is None:
                 continue
             self._workers_to_sticky_tag.update({worker: worker_sticky_tag})

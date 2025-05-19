@@ -55,10 +55,11 @@ There are examples of this in the {@link framework.example}.
 from __future__ import annotations
 
 from abc import ABC, ABCMeta, abstractmethod
+from collections.abc import Callable
 from inspect import getmro
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, Union, cast, overload
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast, overload
 
 from grizzly.utils import has_template
 

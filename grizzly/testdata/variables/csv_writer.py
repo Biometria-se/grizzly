@@ -219,7 +219,7 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
             message = f'{self.__class__.__name__}.{variable}: {diff_text} values ({values_count}) than headers ({header_count})'
             raise ValueError(message)
 
-        buffer = dict(zip(headers, values))
+        buffer = dict(zip(headers, values, strict=False))
 
         # values for all headers set, flush to file
         data = {

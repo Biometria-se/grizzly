@@ -236,7 +236,7 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
 
     request = grizzly.scenario.tasks()[-1]
 
-    assert isinstance(request, (RequestTask, HttpClientTask)), 'previous task is not a request'
+    assert isinstance(request, RequestTask | HttpClientTask), 'previous task is not a request'
 
     add_request_response_status_codes(request, status_list)
 
@@ -286,7 +286,7 @@ def step_response_allow_status_codes_table(context: Context) -> None:
     try:
         for row in rows:
             task = tasks[index]
-            assert isinstance(task, (RequestTask, HttpClientTask)), f'task at index {index} is not a request'
+            assert isinstance(task, RequestTask | HttpClientTask), f'task at index {index} is not a request'
             index -= 1
             add_request_response_status_codes(task, row['status'])
     except KeyError as e:

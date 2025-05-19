@@ -4,7 +4,7 @@ from __future__ import annotations
 from contextlib import suppress
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -15,6 +15,8 @@ from grizzly.users import GrizzlyUser
 from tests.helpers import rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from tests.fixtures import GrizzlyFixture
 
 

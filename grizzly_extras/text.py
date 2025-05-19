@@ -8,10 +8,13 @@ from contextlib import suppress
 from enum import Enum, EnumMeta
 from json import JSONDecodeError
 from json import loads as jsonloads
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from dateutil.parser import ParserError
 from dateutil.parser import parse as date_parse
+
+if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
 
 
 class permutation:

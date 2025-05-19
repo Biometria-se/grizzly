@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Optional, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Concatenate, Optional, cast
 from urllib.parse import urlparse
 
 from locust.stats import (
@@ -12,7 +13,7 @@ from locust.stats import (
     print_percentile_stats,
     print_stats,
 )
-from typing_extensions import Concatenate, ParamSpec
+from typing_extensions import ParamSpec
 
 from grizzly.testdata.communication import GrizzlyDependencies, TestdataConsumer, TestdataProducer
 from grizzly.types import MessageDirection, RequestType, TestdataType

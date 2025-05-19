@@ -221,7 +221,7 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
         if isinstance(node, j2.Getattr):
             child_node = getattr(node, 'node', None)
             if child_node is not None:
-                if isinstance(child_node, (j2.Getattr, j2.Name)):
+                if isinstance(child_node, j2.Getattr | j2.Name):
                     attributes = walk_attr(node)
                 else:
                     yield from _getattr(child_node)
@@ -257,7 +257,7 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
             name = getattr(node, 'name', None)
             if name is not None:
                 attributes = [name]
-        elif isinstance(node, (j2.Filter, j2.UnaryExpr)):
+        elif isinstance(node, j2.Filter | j2.UnaryExpr):
             child_node = getattr(node, 'node', None)
             if child_node is not None:
                 yield from _getattr(child_node)
@@ -338,7 +338,7 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
         elif isinstance(node, j2.Output):
             for child_node in getattr(node, 'nodes', []):
                 yield from _getattr(child_node)
-        elif not isinstance(node, (j2.Const, j2.TemplateData, j2.For)):  # all unhandled AST nodes
+        elif not isinstance(node, j2.Const | j2.TemplateData | j2.For):  # all unhandled AST nodes
             logger.warning('unhandled AST node: %r', node)
 
         if attributes is not None:

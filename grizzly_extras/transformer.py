@@ -10,12 +10,15 @@ from functools import wraps
 from json import JSONEncoder
 from json import dumps as jsondumps
 from json import loads as jsonloads
-from typing import Any, Callable, ClassVar, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast
 
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML  # noqa: N812
 
 from .text import PermutationEnum, caster
+
+if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
 
 
 class TransformerError(Exception):
@@ -247,7 +250,7 @@ class JsonTransformer(Transformer):
                     if m is None or m.value is None:
                         continue
 
-                    value = jsondumps(m.value) if isinstance(m.value, (dict, list)) else str(m.value)
+                    value = jsondumps(m.value) if isinstance(m.value, dict | list) else str(m.value)
 
                     if expected is None or (assertion is not None and assertion(value, expected)):
                         values.append(value)

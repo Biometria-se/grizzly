@@ -7,7 +7,7 @@ from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from os import environ, sep
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 from uuid import uuid4
 
 import pytest
@@ -23,6 +23,7 @@ from grizzly.types.locust import Environment, LocalRunner, MasterRunner, Message
 from tests.helpers import ANY, ANYUUID, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
     from unittest.mock import MagicMock
 
     from _pytest.logging import LogCaptureFixture
@@ -1165,7 +1166,8 @@ value3,value4
             response = request_keystore('pop', 'foobar')
 
             assert response == {'message': 'keystore', 'action': 'pop', 'data': 'foobaz', 'identifier': grizzly.scenario.class_name, 'key': 'foobar'}
-            assert grizzly.state.producer.keystore['foobar'] == []
+            with pytest.raises(KeyError):
+                grizzly.state.producer.keystore['foobar']
 
             response = request_keystore('pop', 'foobar')
 
@@ -1173,6 +1175,7 @@ value3,value4
             # // pop -->
 
             # <!-- del
+            grizzly.state.producer.keystore.update({'foobar': 'barfoo'})
             assert 'foobar' in grizzly.state.producer.keystore
 
             response = request_keystore('del', 'foobar', 'dummy')

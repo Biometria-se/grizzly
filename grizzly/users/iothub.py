@@ -139,7 +139,7 @@ class MessageJsonSerializer(json.JSONEncoder):
         serialized_value: Any
         if isinstance(value, UUID):
             serialized_value = str(value)
-        elif isinstance(value, (bytes, bytearray)):
+        elif isinstance(value, bytes | bytearray):
             serialized_value = value.decode()
         else:
             serialized_value = super().default(value)
@@ -278,6 +278,9 @@ class IotHubUser(GrizzlyUser):
         if self._scenario.user.fixed_count == 1:
             self.iot_client.on_message_received = self.message_handler
         else:
+            with suppress(Exception):
+                self.iot_client.on_message_received = self.noop_message_handler
+
             self.logger.warning(
                 'no handler for C2D messages registered, since there are %s users of type %s',
                 self._scenario.user.fixed_count,
@@ -291,6 +294,9 @@ class IotHubUser(GrizzlyUser):
         with suppress(Exception):
             self.iot_client.shutdown()
         super().on_stop()
+
+    def noop_message_handler(self, message: IotMessage) -> None:  # noqa: ARG002
+        return
 
     @event(events.user_event, tags={'type': 'iot::cloud-to-device'}, decoder=IotMessageDecoder(arg=1))  # 0 = self...
     def message_handler(self, message: IotMessage) -> None:

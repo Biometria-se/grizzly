@@ -4,11 +4,11 @@ from __future__ import annotations
 from collections import deque
 from contextlib import suppress
 from time import perf_counter
-from typing import TYPE_CHECKING, Callable, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 from unittest.mock import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
 T = TypeVar('T')
 

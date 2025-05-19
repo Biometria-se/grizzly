@@ -7,7 +7,7 @@ from json import dumps as jsondumps
 from json import loads as jsonloads
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import pytest
 from jinja2.filters import FILTERS
@@ -25,6 +25,8 @@ from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY, JSON_EXAMPLE, TestUser
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from pytest_mock import MockerFixture
 
     from tests.fixtures import GrizzlyFixture
