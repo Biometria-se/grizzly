@@ -59,14 +59,14 @@ def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
     Scenario: RequestTask
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "1" iteration
-        And stop user on failure
+        When any task fail stop user
         Then get request with name "request-task-reset" from endpoint "/api/until/reset"
         Then get request with name "request-task" from endpoint "/api/until/barbar?nth=2&wrong=foobar&right=world&as_array=true | content_type=json" until "$.`this`[?barbar="world"] | retries=2, expected_matches=1"
 
     Scenario: HttpClientTask
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "1" iteration
-        And stop user on failure
+        When any task fail stop user
         Then get from "http://$conf::test.host$/api/until/foofoo?nth=2&wrong=foobar&right=world&as_array=true | content_type=json" with name "http-client-task" until "$.`this`[?foofoo="world"] | retries=3, expected_matches=1"
     """))  # noqa: E501
 

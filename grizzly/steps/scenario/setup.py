@@ -10,12 +10,10 @@ import parse
 
 from grizzly.auth import GrizzlyHttpAuthClient
 from grizzly.context import GrizzlyContext
-from grizzly.exceptions import RestartScenario
 from grizzly.tasks import GrizzlyTask, RequestTask
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import FailureAction
 from grizzly.types.behave import Context, given, register_type, then, when
-from grizzly.types.locust import StopUser
 from grizzly.utils import ModuleLoader, has_template
 from grizzly_extras.text import permutation
 
@@ -165,55 +163,58 @@ def step_setup_log_all_requests(context: Context) -> None:
     grizzly.scenario.context['log_all_requests'] = True
 
 
-@given('stop user on failure')
-def step_setup_stop_user_on_failure(context: Context) -> None:
-    """Stop user if a request fails.
-
-    !!! attention
-        This step is deprecated and will be removed in the future, use {@pylink grizzly.steps.scenario.setup.step_setup_failed_task_default} instead.
-
-    Default behavior is to continue the scenario if a request fails.
-
-    Example:
-    ```gherkin
-    And stop user on failure
-    ```
-
-    """
-    grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.failure_handling.update({None: StopUser})
-
-
-@given('restart scenario on failure')
-def step_setup_restart_scenario_on_failure(context: Context) -> None:
-    """Restart scenario, from first task, if a request fails.
-
-    !!! attention
-        This step is deprecated and will be removed in the future, use {@pylink grizzly.steps.scenario.setup.step_setup_failed_task_default} instead.
-
-    Default behavior is to continue the scenario if a request fails.
-
-    Example:
-    ```gherkin
-    And restart scenario on failure
-    ```
-
-    """
-    grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.failure_handling.update({None: RestartScenario})
-
-
-@when('a task fails with "{failure:FailureType}" {failure_action:FailureActionStepExpression}')
-def step_setup_failed_task_custom(context: Context, failure: type[Exception] | str, failure_action: FailureAction) -> None:
-    """Set behavior when specific failure occurs.
+@when('the task fails with "{failure:FailureType}" {failure_action:FailureActionStepExpression}')
+def step_setup_the_failed_task_custom(context: Context, failure: type[Exception] | str, failure_action: FailureAction) -> None:
+    """Set behavior when specific failure occurs for the latest task.
 
     It can be either a `str` or an exception type, where the later is more specific.
 
     Example:
     ```gherkin
-    When a task fails with "504 gateway timeout" retry task
-    When a task fails with "RuntimeError" stop user
-    When a task fails with "TaskTimeoutError" retry task
+    ...
+    When the task fails with "504 gateway timeout" retry task
+    When the task fails with "RuntimeError" stop user
+    When the task fails with "TaskTimeoutError" retry task
+    ```
+
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    assert len(grizzly.scenario.tasks()) > 0, 'scenario does not have any tasks'
+    grizzly.scenario.tasks()[-1].failure_handling.update({failure: failure_action.exception})
+
+
+@when('the task fails {failure_action:FailureActionStepExpression}')
+def step_setup_the_failed_task_default(context: Context, failure_action: FailureAction) -> None:
+    """Set default behavior when the latest task fails.
+
+    If no default behavior is set, the scenario will continue as nothing happened.
+
+    Example:
+    ```gherkin
+    ...
+    When the task fails restart scenario
+    When the task fails stop user
+    ```
+
+    """
+    assert failure_action.default_friendly, f'{failure_action.step_expression} should not be used as the default behavior, only use it for specific failures'
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    assert len(grizzly.scenario.tasks()) > 0, 'scenario does not have any tasks'
+    grizzly.scenario.tasks()[-1].failure_handling.update({None: failure_action.exception})
+
+
+@when('any task fail with "{failure:FailureType}" {failure_action:FailureActionStepExpression}')
+def step_setup_any_failed_task_custom(context: Context, failure: type[Exception] | str, failure_action: FailureAction) -> None:
+    """Set behavior when specific failure occurs for any tasks in the scenario.
+
+    It can be either a `str` or an exception type, where the later is more specific.
+
+    Example:
+    ```gherkin
+    When any task fail with "504 gateway timeout" retry task
+    When any task fail with "RuntimeError" stop user
+    When any task fail with "TaskTimeoutError" retry task
     ```
 
     """
@@ -221,16 +222,16 @@ def step_setup_failed_task_custom(context: Context, failure: type[Exception] | s
     grizzly.scenario.failure_handling.update({failure: failure_action.exception})
 
 
-@when('a task fails {failure_action:FailureActionStepExpression}')
-def step_setup_failed_task_default(context: Context, failure_action: FailureAction) -> None:
-    """Set default behavior when a task fails.
+@when('any task fail {failure_action:FailureActionStepExpression}')
+def step_setup_any_failed_task_default(context: Context, failure_action: FailureAction) -> None:
+    """Set default behavior when latest task fail.
 
     If no default behavior is set, the scenario will continue as nothing happened.
 
     Example:
     ```gherkin
-    When a task fails restart scenario
-    When a task fails stop user
+    When any task fail restart scenario
+    When any task fail stop user
     ```
 
     """

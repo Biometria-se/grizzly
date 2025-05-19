@@ -218,52 +218,6 @@ def test_e2e_step_setup_log_all_requests(e2e_fixture: End2EndFixture) -> None:
     assert rc == 0
 
 
-def test_e2e_step_setup_stop_user_on_failure(e2e_fixture: End2EndFixture) -> None:
-    def validate_stop_user_on_failure(context: Context) -> None:
-        from grizzly.types.locust import StopUser
-        grizzly = cast(GrizzlyContext, context.grizzly)
-
-        assert grizzly.scenario.failure_handling.get(None, None) is not None
-        failure_action = grizzly.scenario.failure_handling.get(None, RuntimeError)
-        assert failure_action is not None
-        assert isinstance(failure_action(), StopUser), 'failure exception is not StopUser'
-
-    e2e_fixture.add_validator(validate_stop_user_on_failure)
-
-    feature_file = e2e_fixture.test_steps(
-        scenario=[
-            'And stop user on failure',
-        ],
-    )
-
-    rc, _ = e2e_fixture.execute(feature_file)
-
-    assert rc == 0
-
-
-def test_e2e_step_setup_restart_scenario_on_failure(e2e_fixture: End2EndFixture) -> None:
-    def validate_restart_scenario_on_failure(context: Context) -> None:
-        from grizzly.exceptions import RestartScenario
-        grizzly = cast(GrizzlyContext, context.grizzly)
-
-        assert grizzly.scenario.failure_handling.get(None, None) is not None
-        failure_action = grizzly.scenario.failure_handling.get(None, RuntimeError)
-        assert failure_action is not None
-        assert isinstance(failure_action(), RestartScenario), 'failure exception is not RestartScenario'
-
-    e2e_fixture.add_validator(validate_restart_scenario_on_failure)
-
-    feature_file = e2e_fixture.test_steps(
-        scenario=[
-            'And restart scenario on failure',
-        ],
-    )
-
-    rc, _ = e2e_fixture.execute(feature_file)
-
-    assert rc == 0
-
-
 def test_e2e_setup_metadata(e2e_fixture: End2EndFixture) -> None:
     def validate_metadata(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
@@ -293,7 +247,7 @@ def test_e2e_setup_metadata(e2e_fixture: End2EndFixture) -> None:
     assert rc == 0
 
 
-def test_e2e_setup_failed_task(e2e_fixture: End2EndFixture) -> None:
+def test_e2e_setup_failed_any_the_task(e2e_fixture: End2EndFixture) -> None:
     def validate_failure_handling(context: Context) -> None:
         from grizzly.exceptions import RestartIteration, RestartScenario, RetryTask, StopUser, TaskTimeoutError
 
@@ -307,16 +261,33 @@ def test_e2e_setup_failed_task(e2e_fixture: End2EndFixture) -> None:
             RuntimeError: RestartIteration,
         }
 
+        task = grizzly.scenario.tasks()[-1]
+
+        assert task.failure_handling == {
+            None: RestartScenario,
+            '500 internal server error': RetryTask,
+            MemoryError: None,
+            TaskTimeoutError: RestartIteration,
+            RuntimeError: StopUser,
+        }
+
     e2e_fixture.add_validator(validate_failure_handling)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
-            'When a task fails restart scenario',
-            'When a task fails with "504 gateway timeout" retry task',
-            'When a task fails with "MemoryError" stop user',
-            'When a task fails with "TaskTimeoutError" continue',
-            'When a task fails with "RuntimeError" restart iteration',
+            'When any task fail restart scenario',
+            'When any task fail with "504 gateway timeout" retry task',
+            'When any task fail with "MemoryError" stop user',
+            'When any task fail with "TaskTimeoutError" continue',
+            'When any task fail with "RuntimeError" restart iteration',
+            'Then log message "dummy"',
+            'When the task fails restart scenario',
+            'When the task fails with "500 internal server error" retry task',
+            'When the task fails with "MemoryError" continue',
+            'When the task fails with "TaskTimeoutError" restart iteration',
+            'When the task fails with "RuntimeError" stop user',
         ],
+        add_dummy_step=False,
     )
 
     rc, _ = e2e_fixture.execute(feature_file)

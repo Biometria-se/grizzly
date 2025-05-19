@@ -9,10 +9,8 @@ from urllib.parse import urlparse
 from parse import compile
 
 from grizzly.context import GrizzlyContext
-from grizzly.exceptions import RestartScenario
 from grizzly.steps import *
 from grizzly.types import MessageDirection
-from grizzly.types.locust import StopUser
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -113,37 +111,6 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
     parsed = urlparse(grizzly.setup.statistics_url)
     assert parsed.username == 'username'
     assert parsed.password == 'password'  # noqa: S105
-
-
-def test_step_setup_stop_user_on_failure(behave_fixture: BehaveFixture) -> None:
-    behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-
-    assert grizzly.scenario.failure_handling.get(None, None) is None
-
-    step_setup_stop_user_on_failure(behave)
-
-    failure_action = grizzly.scenario.failure_handling.get(None, RuntimeError)
-    assert failure_action is not None
-    assert isinstance(failure_action(), StopUser)
-
-
-def test_step_setup_restart_scenario_on_failure(behave_fixture: BehaveFixture) -> None:
-    behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-
-    assert not behave.config.stop
-    assert grizzly.scenario.failure_handling.get(None, None) is None
-
-    step_setup_restart_scenario_on_failure(behave)
-
-    failure_action = grizzly.scenario.failure_handling.get(None, RuntimeError)
-    assert failure_action is not None
-
-    assert not behave.config.stop
-    assert isinstance(failure_action(), RestartScenario)
 
 
 def test_step_setup_log_level(behave_fixture: BehaveFixture) -> None:

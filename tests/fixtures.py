@@ -810,7 +810,7 @@ def step_start_webserver(context: Context, port: int) -> None:
         callee = inspect.stack()[1].function
         self._before_features[callee] = implementation
 
-    def test_steps(self, /, scenario: Optional[list[str]] = None, background: Optional[list[str]] = None, identifier: Optional[str] = None) -> str:
+    def test_steps(self, /, scenario: Optional[list[str]] = None, background: Optional[list[str]] = None, identifier: Optional[str] = None, *, add_dummy_step: bool = True) -> str:
         callee = inspect.stack()[1].function
         contents: list[str] = ['Feature:']
         add_user_count_step = True
@@ -861,7 +861,9 @@ def step_start_webserver(context: Context, port: int) -> None:
 
         contents.append(f'  Scenario: {callee}')
         contents.extend([f'    {step}' for step in scenario or []])
-        contents.append('    Then log message "dummy"\n')
+
+        if add_dummy_step:
+            contents.append('    Then log message "dummy"\n')
 
         return self.create_feature(
             '\n'.join(contents),
