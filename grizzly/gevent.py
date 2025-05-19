@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from gevent import Greenlet, Timeout, getcurrent
 
@@ -12,7 +12,7 @@ from grizzly.types import FailureAction
 
 if TYPE_CHECKING:  # pragma: no cover
     import logging
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
     from grizzly.scenarios import GrizzlyScenario
 

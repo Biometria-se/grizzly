@@ -44,7 +44,7 @@ import json
 import logging
 from contextlib import suppress
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Callable, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from gevent import sleep as gsleep
 
@@ -60,6 +60,8 @@ from grizzly_extras.transformer import Transformer, TransformerContentType, Tran
 from . import GrizzlyMetaRequestTask, GrizzlyTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -170,7 +172,7 @@ class UntilRequestTask(GrizzlyTask):
 
                         # only way to get these exceptions here is if we've beem abprted
                         # by injecting an exception in the task greenlet
-                        if isinstance(e, (StopUser, StopScenario)):
+                        if isinstance(e, StopUser | StopScenario):
                             break
                     finally:
                         retry += 1

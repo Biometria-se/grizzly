@@ -139,7 +139,7 @@ class MessageJsonSerializer(json.JSONEncoder):
         serialized_value: Any
         if isinstance(value, UUID):
             serialized_value = str(value)
-        elif isinstance(value, (bytes, bytearray)):
+        elif isinstance(value, bytes | bytearray):
             serialized_value = value.decode()
         else:
             serialized_value = super().default(value)

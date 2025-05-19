@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pytest
 
@@ -10,6 +10,8 @@ from grizzly.listeners.appinsights import ApplicationInsightsListener
 from grizzly.types.locust import CatchResponseError
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 

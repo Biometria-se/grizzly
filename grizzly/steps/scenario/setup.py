@@ -278,7 +278,7 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
     if len(tasks) > 0:
         previous_task = tasks[-1]
 
-    if isinstance(previous_task, (RequestTask, GrizzlyHttpAuthClient)):
+    if isinstance(previous_task, RequestTask | GrizzlyHttpAuthClient):
         previous_task.add_metadata(key, value)
     else:
         if grizzly.scenario.context.get('metadata', None) is None:

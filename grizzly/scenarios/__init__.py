@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from math import floor
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast
 
 from gevent.event import Event
 from locust.exception import LocustError
@@ -17,6 +17,7 @@ from grizzly.types.locust import LocalRunner, StopUser, WorkerRunner
 
 if TYPE_CHECKING:  # pragma: no cover
     import logging
+    from collections.abc import Callable
 
     from gevent import Greenlet
     from locust.user.task import TaskSet

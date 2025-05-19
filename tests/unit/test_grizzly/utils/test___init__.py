@@ -119,7 +119,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     user_class_type_1 = create_user_class_type(scenario)
     user_class_type_1.host = 'http://localhost:8000'
 
-    assert issubclass(user_class_type_1, (RestApiUser, GrizzlyUser))
+    assert issubclass(user_class_type_1, RestApiUser | GrizzlyUser)
     user_class_type_1 = cast(type[RestApiUser], user_class_type_1)
     assert user_class_type_1.__name__ == f'grizzly.users.RestApiUser_{scenario.identifier}'
     assert user_class_type_1.weight == 1
@@ -220,7 +220,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     )
     user_class_type_2.host = 'http://localhost:8001'
 
-    assert issubclass(user_class_type_2, (RestApiUser, GrizzlyUser))
+    assert issubclass(user_class_type_2, RestApiUser | GrizzlyUser)
     user_class_type_2 = cast(type[RestApiUser], user_class_type_2)
     assert user_class_type_2.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_2.weight == 1
@@ -311,7 +311,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     user_class_type_3 = create_user_class_type(scenario, {'test': {'value': 1}})
     user_class_type_3.host = 'http://localhost:8002'
 
-    assert issubclass(user_class_type_3, (RestApiUser, GrizzlyUser))
+    assert issubclass(user_class_type_3, RestApiUser | GrizzlyUser)
     assert user_class_type_3.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_3.weight == 1
     assert user_class_type_3.fixed_count == 0
@@ -356,7 +356,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     user_class_type_3 = create_user_class_type(scenario, {'test': {'value': 1}}, fixed_count=10)
     user_class_type_3.host = 'http://localhost:8002'
 
-    assert issubclass(user_class_type_3, (RestApiUser, GrizzlyUser))
+    assert issubclass(user_class_type_3, RestApiUser | GrizzlyUser)
     assert user_class_type_3.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_3.weight == 1
     assert user_class_type_3.fixed_count == 10
@@ -410,7 +410,7 @@ def test_create_scenario_class_type(behave_fixture: BehaveFixture) -> None:
 
     task_class_type_1 = create_scenario_class_type('grizzly.scenarios.IteratorScenario', scenario)
 
-    assert issubclass(task_class_type_1, (IteratorScenario, TaskSet))
+    assert issubclass(task_class_type_1, IteratorScenario | TaskSet)
     assert task_class_type_1.__name__ == 'IteratorScenario_001'
     assert task_class_type_1.__module__ == 'grizzly.scenarios.iterator'
     assert getattr(task_class_type_1, 'pace_time', '') is None
@@ -423,7 +423,7 @@ def test_create_scenario_class_type(behave_fixture: BehaveFixture) -> None:
     scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('TestTestTest'), grizzly=behave_fixture.grizzly)
     scenario.pace = '2000'
     task_class_type_2 = create_scenario_class_type('IteratorScenario', scenario)
-    assert issubclass(task_class_type_2, (IteratorScenario, TaskSet))
+    assert issubclass(task_class_type_2, IteratorScenario | TaskSet)
     assert task_class_type_2.__name__ == 'IteratorScenario_002'
     assert task_class_type_2.__module__ == 'grizzly.scenarios.iterator'
     assert getattr(task_class_type_2, 'pace_time', '') == '2000'

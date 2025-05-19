@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from itertools import product
-from typing import TYPE_CHECKING, Callable, Union, cast
+from typing import TYPE_CHECKING, Union, cast
 
 import pytest
 from parse import compile
@@ -17,6 +17,8 @@ from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 

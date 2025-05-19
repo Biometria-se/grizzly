@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, Callable, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from grizzly.context import GrizzlyContextScenario
     from grizzly.testdata.communication import GrizzlyDependencies
     from grizzly.types import GrizzlyVariableType
@@ -111,7 +113,7 @@ class GrizzlyVariables(dict):
 
     @classmethod
     def guess_datatype(cls, value: Any) -> GrizzlyVariableType:
-        if isinstance(value, (int, bool, float)) or (isinstance(value, str) and len(value) == 0):
+        if isinstance(value, int | bool | float) or (isinstance(value, str) and len(value) == 0):
             return value
 
         check_value = value.replace('.', '', 1)

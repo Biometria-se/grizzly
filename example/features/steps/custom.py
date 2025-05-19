@@ -32,11 +32,11 @@ class Task(GrizzlyTask):
     def __call__(self) -> grizzlytask:
         @grizzlytask
         def implementation(parent: GrizzlyScenario) -> Any:
-            if isinstance(parent.grizzly.state.locust, (LocalRunner,)) and self.data.get('server', None) is not None:
+            if isinstance(parent.grizzly.state.locust, LocalRunner) and self.data.get('server', None) is not None:
                 self.logger.info('sending "server_client" from SERVER')
                 parent.grizzly.state.locust.send_message('server_client', self.data)
 
-            if isinstance(parent.grizzly.state.locust, (WorkerRunner, LocalRunner)) and self.data.get('client', None) is not None:
+            if isinstance(parent.grizzly.state.locust, WorkerRunner | LocalRunner) and self.data.get('client', None) is not None:
                 self.logger.info('sending "client_server" from CLIENT')
                 parent.grizzly.state.locust.send_message('client_server', self.data)
 

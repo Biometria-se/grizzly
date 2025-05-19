@@ -130,7 +130,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
                 name = f'{parent.user._scenario.identifier} {self.name}: {condition_rendered} ({task_count})'
 
                 # do not log these exceptions if thrown from wrapped task, just log the error for this task
-                if not isinstance(exception, (StopUser, RestartScenario)):
+                if not isinstance(exception, StopUser | RestartScenario):
                     parent.user.environment.events.request.fire(
                         request_type='COND',
                         name=name,

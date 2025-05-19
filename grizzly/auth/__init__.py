@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta
+from collections.abc import Callable
 from datetime import datetime, timezone
 from functools import wraps
 from importlib import import_module
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, Union, cast
 from urllib.parse import urlparse
 
 from azure.core.credentials import AccessToken

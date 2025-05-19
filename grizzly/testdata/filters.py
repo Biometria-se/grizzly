@@ -5,9 +5,12 @@ import json
 from ast import literal_eval as ast_literal_eval
 from base64 import b64decode as base64_b64decode
 from base64 import b64encode as base64_b64encode
-from typing import Any, Callable, NamedTuple, Optional, Union
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Union
 
 from jinja2.filters import FILTERS
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class templatingfilter:

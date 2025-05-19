@@ -39,7 +39,7 @@ class TestServiceBusUser:
 
         test_cls.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
         user = test_cls(environment=behave_fixture.locust.environment)
-        assert issubclass(user.__class__, (GrizzlyUser, ServiceBusUser))
+        assert issubclass(user.__class__, GrizzlyUser | ServiceBusUser)
 
         user.on_start()
 

@@ -13,7 +13,7 @@ from pathlib import Path
 from re import Match
 from token import NAME, OP, STRING
 from tokenize import TokenError, TokenInfo, tokenize
-from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Union, cast
 
 import frontmatter
 import mistune
@@ -28,7 +28,7 @@ from pydoc_markdown.contrib.renderers.markdown import MarkdownRenderer as PydocM
 from pydoc_markdown.novella.preprocessor import PydocTagPreprocessor
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
     from novella.markdown.tags.anchor import AnchorTagProcessor
     from novella.novella import NovellaContext

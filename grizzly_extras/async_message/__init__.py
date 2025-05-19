@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import sys
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from datetime import datetime
 from json import dumps as jsondumps
 from os import environ
@@ -11,7 +12,7 @@ from pathlib import Path
 from platform import node as hostname
 from threading import Event
 from time import monotonic as time
-from typing import Any, Callable, Optional, TypedDict, final
+from typing import Any, Optional, TypedDict, final
 
 from grizzly_extras.transformer import JsonBytesEncoder
 

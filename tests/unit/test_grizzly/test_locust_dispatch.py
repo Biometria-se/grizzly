@@ -3774,10 +3774,10 @@ class TestRampUpUsersFromZeroWithFixed(UsersDispatcherTestCase):
             fixed_users = user_classes[: len(case.fixed_counts)]
             weighted_users_list = user_classes[len(case.fixed_counts) :]
 
-            for user, fixed_count in zip(fixed_users, case.fixed_counts):
+            for user, fixed_count in zip(fixed_users, case.fixed_counts, strict=False):
                 user.fixed_count = fixed_count
 
-            for user, weight in zip(weighted_users_list, case.weights):
+            for user, weight in zip(weighted_users_list, case.weights, strict=False):
                 user.weight = weight
 
             worker_node1 = WorkerNode("1")

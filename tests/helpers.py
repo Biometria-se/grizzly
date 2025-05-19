@@ -15,7 +15,7 @@ from pathlib import Path
 from re import Pattern
 from shutil import rmtree
 from types import MethodType, TracebackType
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 from unittest.mock import MagicMock
 from uuid import UUID
 
@@ -32,7 +32,7 @@ from grizzly.types.locust import Environment, Message
 from grizzly.users import GrizzlyUser
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
 
 class AtomicCustomVariable(AtomicVariable[str]):
@@ -254,11 +254,9 @@ def get_property_decorated_attributes(target: Any) -> set[str]:
             for name, _ in inspect.getmembers(
                 target,
                 lambda p: isinstance(
-                    p,
-                    (property, MethodType),
+                    p, property | MethodType,
                 ) and not isinstance(
-                    p,
-                    (classmethod, MethodType),  # @classmethod anotated methods becomes @property
+                    p, classmethod | MethodType,  # @classmethod anotated methods becomes @property
                 )) if not name.startswith('_')
     }
 
@@ -355,7 +353,7 @@ def tree(dir_path: Path, prefix: str = '', ignore: Optional[list[str]] = None) -
     contents = sorted(dir_path.iterdir())
     # contents each get pointers that are ├── with a final └── :
     pointers = [tee] * (len(contents) - 1) + [last]
-    for pointer, sub_path in zip(pointers, contents):
+    for pointer, sub_path in zip(pointers, contents, strict=False):
         if ignore is None or sub_path.name not in ignore:
             yield prefix + pointer + sub_path.name
             if sub_path.is_dir():  # extend the prefix and recurse:

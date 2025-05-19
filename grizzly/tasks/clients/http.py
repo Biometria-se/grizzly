@@ -49,7 +49,7 @@ import logging
 from json import dumps as jsondumps
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 from geventhttpclient import Session
 from locust.exception import CatchResponseError
@@ -65,6 +65,8 @@ from grizzly_extras.transformer import TransformerContentType
 from . import ClientTask, client
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from geventhttpclient.useragent import CompatResponse
 
     from grizzly.scenarios import GrizzlyScenario
@@ -180,7 +182,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
 
     def _handle_response(self, parent: GrizzlyScenario, meta: dict[str, Any], url: str, response: CompatResponse) -> GrizzlyResponse:
         text = response.text
-        payload = text.decode() if isinstance(text, (bytearray, bytes)) else text
+        payload = text.decode() if isinstance(text, bytearray | bytes) else text
 
         metadata = {key: value for key, value in response.headers.items()}  # noqa: C416
 

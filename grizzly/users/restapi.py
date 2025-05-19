@@ -331,7 +331,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
 
             headers = dict(response.headers.items()) if response.headers not in [None, {}] else None
             text = response.text
-            payload = text.decode() if isinstance(text, (bytearray, bytes)) else text
+            payload = text.decode() if isinstance(text, bytearray | bytes) else text
 
         exception = response.request_meta.get('exception', None)
 

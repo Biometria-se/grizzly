@@ -7,7 +7,7 @@ from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from os import environ, sep
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 from uuid import uuid4
 
 import pytest
@@ -23,6 +23,7 @@ from grizzly.types.locust import Environment, LocalRunner, MasterRunner, Message
 from tests.helpers import ANY, ANYUUID, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
     from unittest.mock import MagicMock
 
     from _pytest.logging import LogCaptureFixture

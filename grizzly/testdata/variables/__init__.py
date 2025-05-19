@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Optional, TypeVar
 
 from gevent.lock import DummySemaphore, Semaphore
 
@@ -22,6 +22,8 @@ T = TypeVar('T')
 
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
     from grizzly.testdata.communication import GrizzlyDependencies
 

@@ -12,7 +12,7 @@ from os import chdir, environ
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from textwrap import dedent, indent
-from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 from urllib.parse import urlparse
 
 import yaml
@@ -40,6 +40,7 @@ from grizzly.utils import create_scenario_class_type, create_user_class_type
 from .helpers import TestScenario, TestUser, rm_rf, run_command
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
     from types import TracebackType
     from unittest.mock import MagicMock
 

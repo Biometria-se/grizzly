@@ -238,7 +238,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
                 raise exception
 
             # execute response listeners, but not on these exceptions
-            if not isinstance(exception, (RestartScenario, StopUser, AsyncMessageError)):
+            if not isinstance(exception, RestartScenario | StopUser | AsyncMessageError):
                 try:
                     self.events.request.fire(
                         name=request.name,
