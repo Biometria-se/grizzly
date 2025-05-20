@@ -8,6 +8,7 @@ from types import FunctionType
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 import pytest
+from gevent.lock import Semaphore
 from locust.exception import InterruptTaskSet, RescheduleTask, RescheduleTaskImmediately, StopUser
 from locust.user.sequential_taskset import SequentialTaskSet
 from locust.user.task import LOCUST_STATE_RUNNING, LOCUST_STATE_STOPPING
@@ -129,7 +130,7 @@ class TestIterationScenario:
 
         iterator_mock.assert_called_once_with(prefetch=True)
 
-    def test_iterator(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test_iterator(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         parent = grizzly_fixture(scenario_type=IteratorScenario)
 
         grizzly = grizzly_fixture.grizzly
@@ -140,6 +141,8 @@ class TestIterationScenario:
         parent.__class__._consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
 
         on_iteration_mock = mocker.patch.object(parent, 'on_iteration', return_value=None)
+        request_fire_mock = mocker.patch.object(parent.user.environment.events.request, 'fire', return_value=None)
+        spawning_complete_mock = mocker.patch.object(grizzly.state, 'spawning_complete', spec=Semaphore)
 
         def mock_request(data: Optional[dict[str, Any]]) -> None:
             def testdata_request(self: TestdataConsumer) -> Optional[dict[str, Any]]:  # noqa: ARG001
@@ -157,13 +160,18 @@ class TestIterationScenario:
             )
 
         mock_request(None)
+        assert getattr(parent, 'start', '') is None
+        assert getattr(grizzly.setup, 'wait_for_spawning_complete', '') is None
 
         with pytest.raises(StopScenario):
             parent.iterator()
 
         assert parent.user.variables == {}
+        assert getattr(parent, 'start', '') is not None
         on_iteration_mock.assert_called_once_with()
         on_iteration_mock.reset_mock()
+        request_fire_mock.assert_not_called()
+        spawning_complete_mock.assert_not_called()
 
         mock_request({})
 
@@ -173,6 +181,16 @@ class TestIterationScenario:
         assert parent.user.variables == {}
         on_iteration_mock.assert_called_once_with()
         on_iteration_mock.reset_mock()
+        request_fire_mock.assert_called_once_with(
+            request_type='SCEN',
+            name='001 test scenario',
+            response_time=ANY(int),
+            response_length=2,
+            context=parent.user._context,
+            exception=None,
+        )
+        request_fire_mock.reset_mock()
+        spawning_complete_mock.assert_not_called()
 
         mock_request({
             'variables': {
@@ -185,14 +203,28 @@ class TestIterationScenario:
         })
 
         # called from on_start
+        grizzly.setup.wait_for_spawning_complete = 10
         parent.iterator(prefetch=True)
 
         on_iteration_mock.assert_not_called()
+        spawning_complete_mock.assert_not_called()
+        request_fire_mock.assert_called_with(
+            request_type='TSTD',
+            name='001 test scenario',
+            response_time=ANY(int),
+            response_length=ANY(int),
+            context=parent.user._context,
+            exception=None,
+        )
+        assert request_fire_mock.call_count == 2
+        request_fire_mock.reset_mock()
         assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1337
         assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value1'
         assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value2'
         assert getattr(parent, '_prefetch', False)
 
+        # without waiting for spawning complete
+        grizzly.setup.wait_for_spawning_complete = None
         mock_request({
             'variables': {
                 'AtomicIntegerIncrementer.messageID': 1338,
@@ -211,6 +243,7 @@ class TestIterationScenario:
         assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value2'
         assert not getattr(parent, '_prefetch', True)
         on_iteration_mock.assert_not_called()  # on_iteration is not needed *before* first iteration
+        spawning_complete_mock.reset_mock()
 
         parent.iterator()
 
@@ -220,6 +253,81 @@ class TestIterationScenario:
         assert not getattr(parent, '_prefetch', True)
         on_iteration_mock.assert_called_once_with()
         on_iteration_mock.reset_mock()
+        spawning_complete_mock.assert_not_called()
+
+        mock_request({
+            'variables': {
+                'AtomicIntegerIncrementer.messageID': 1339,
+                'AtomicCsvReader.test': {
+                    'header1': 'value5',
+                    'header2': 'value6',
+                },
+            },
+        })
+
+        parent.iterator()
+
+        assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1339
+        assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value5'
+        assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value6'
+        assert not getattr(parent, '_prefetch', True)
+        on_iteration_mock.assert_called_once_with()
+        on_iteration_mock.reset_mock()
+        spawning_complete_mock.assert_not_called()
+
+        # with waiting for spawning complete
+        grizzly.setup.wait_for_spawning_complete = 10
+        parent._prefetch = True
+        mock_request({
+            'variables': {
+                'AtomicIntegerIncrementer.messageID': 1338,
+                'AtomicCsvReader.test': {
+                    'header1': 'value3',
+                    'header2': 'value4',
+                },
+            },
+        })
+
+        # called from Iterator.run, first actual iteration
+        parent.iterator()
+
+        assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1339
+        assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value5'
+        assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value6'
+        assert not getattr(parent, '_prefetch', True)
+        on_iteration_mock.assert_not_called()  # on_iteration is not needed *before* first iteration
+        spawning_complete_mock.reset_mock()
+
+        parent.iterator()
+
+        assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1338
+        assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value3'
+        assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value4'
+        assert not getattr(parent, '_prefetch', True)
+        on_iteration_mock.assert_called_once_with()
+        on_iteration_mock.reset_mock()
+        spawning_complete_mock.wait.assert_called_once_with(timeout=10)
+        spawning_complete_mock.reset_mock()
+
+        mock_request({
+            'variables': {
+                'AtomicIntegerIncrementer.messageID': 1339,
+                'AtomicCsvReader.test': {
+                    'header1': 'value5',
+                    'header2': 'value6',
+                },
+            },
+        })
+
+        parent.iterator()
+
+        assert parent.user.variables['AtomicIntegerIncrementer'].messageID == 1339
+        assert parent.user.variables['AtomicCsvReader'].test.header1 == 'value5'
+        assert parent.user.variables['AtomicCsvReader'].test.header2 == 'value6'
+        assert not getattr(parent, '_prefetch', True)
+        on_iteration_mock.assert_called_once_with()
+        on_iteration_mock.reset_mock()
+        spawning_complete_mock.assert_not_called()
 
     def test_pace(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         parent = grizzly_fixture(scenario_type=IteratorScenario)

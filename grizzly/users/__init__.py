@@ -157,7 +157,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             if failure_action is None:
                 return
 
-            if (isinstance(failure_type, str) and failure_type in str(exception)) or exception.__class__ is failure_type:
+            if (isinstance(failure_type, str) and failure_type in repr(exception)) or exception.__class__ is failure_type:
                 raise failure_action from exception
 
         # no match, raise the default if it has been set

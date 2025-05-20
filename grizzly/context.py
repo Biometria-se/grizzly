@@ -315,6 +315,7 @@ class GrizzlyContextSetup:
     statistics_url: Optional[str] = field(init=False, default=None)
     locust: GrizzlyContextSetupLocust = field(init=False, default_factory=GrizzlyContextSetupLocust)
     hooks: list[Callable[[LocustEnvironment], None]]  = field(init=False, default_factory=list)
+    wait_for_spawning_complete: float | None = field(default=None)
 
 
 class GrizzlyContextScenarios(list[GrizzlyContextScenario]):

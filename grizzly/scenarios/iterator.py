@@ -11,7 +11,7 @@ from json import dumps as jsondumps
 from math import ceil
 from random import uniform
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, ClassVar, Optional
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from gevent import sleep as gsleep
 from gevent.exceptions import GreenletExit
@@ -43,13 +43,14 @@ NUMBER_TO_WORD: dict[int, str] = {
 class IteratorScenario(GrizzlyScenario):
     user: GrizzlyUser
 
-    start: Optional[float]
+    start: float | None
     task_count: ClassVar[int] = 0
     stats: StatsEntry
     behave_steps: ClassVar[dict[int, str]]
-    pace_time: ClassVar[Optional[str]] = None  # class variable injected by `grizzly.utils.create_scenario_class_type`
+    pace_time: ClassVar[str | None] = None  # class variable injected by `grizzly.utils.create_scenario_class_type`
 
     _prefetch: bool
+    _has_waited: bool
 
     current_task_index: int = 0
 
@@ -62,6 +63,7 @@ class IteratorScenario(GrizzlyScenario):
         self.stats = self.user.environment.stats.get(self.user._scenario.locust_name, RequestType.SCENARIO())
         self._prefetch = False
         self._on_quitting = False
+        self._has_waited = False
 
     def on_quitting(self, *_args: Any, **kwargs: Any) -> None:
         super().on_quitting(*_args, **kwargs)
@@ -122,7 +124,7 @@ class IteratorScenario(GrizzlyScenario):
 
                 try:
                     if self.user._state == LOCUST_STATE_STOPPING:
-                        on_stop_exception: Optional[Exception] = None
+                        on_stop_exception: Exception | None = None
 
                         try:
                             self.on_stop()
@@ -155,7 +157,7 @@ class IteratorScenario(GrizzlyScenario):
 
                                 break
 
-                            sleep_time = retries * uniform(1.0, 2.0)  # noqa: S311
+                            sleep_time = retries * uniform(1.0, 5.0)  # noqa: S311
                             message = f'task {self.current_task_index + 1} of {self.task_count} will execute a {NUMBER_TO_WORD[retries+1]} time in {sleep_time:.2f} seconds: {step}'
                             self.logger.warning(message)
 
@@ -302,7 +304,7 @@ class IteratorScenario(GrizzlyScenario):
         self.iterator(prefetch=True)
 
     @task
-    def iterator(self, *, prefetch: Optional[bool] = False) -> None:
+    def iterator(self, *, prefetch: bool = False) -> None:
         # if data has been prefetched, use it for the first iteration,
         # then ask for new data the second iteration
         if self._prefetch:
@@ -338,7 +340,7 @@ class IteratorScenario(GrizzlyScenario):
             request_type=RequestType.TESTDATA(),
             name=self.user._scenario.locust_name,
             response_time=response_time,
-            response_length=len(jsondumps(remote_context)),
+            response_length=len(jsondumps(remote_context).encode('utf-8')),
             context=self.user._context,
             exception=None,
         )
@@ -348,6 +350,27 @@ class IteratorScenario(GrizzlyScenario):
         # next call to this method should be ignored, first iteration should use the prefetched data
         if prefetch:
             self._prefetch = True
+
+        # wait for locust saying spawning is complete, before starting to execute tasks
+        spawn_timeout = self.grizzly.setup.wait_for_spawning_complete
+        if not prefetch and spawn_timeout is not None and not self._has_waited:
+            spawn_timeout = None if spawn_timeout < 0 else spawn_timeout
+            start = perf_counter()
+
+            with suppress(Exception):
+                self.grizzly.state.spawning_complete.wait(timeout=spawn_timeout)
+
+            self._has_waited = True
+            response_time = int((perf_counter() - start) * 1000)
+
+            self.user.environment.events.request.fire(
+                request_type='SPWN',
+                name=self.user._scenario.locust_name,
+                response_time=response_time,
+                response_length=0,
+                context=self.user._context,
+                exception=None,
+            )
 
     # <!-- user tasks will be injected between these two static tasks -->
 
@@ -359,7 +382,7 @@ class IteratorScenario(GrizzlyScenario):
         if self.pace_time is None:
             return
 
-        exception: Optional[Exception] = None
+        exception: Exception | None = None
         response_length: int = 0
 
         try:

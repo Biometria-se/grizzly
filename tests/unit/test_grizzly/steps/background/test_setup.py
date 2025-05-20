@@ -206,3 +206,29 @@ def test_step_setup_configuration_value(behave_fixture: BehaveFixture) -> None:
     step_setup_configuration_value(behave, 'env.var', '$env::TEST_VAR$')
 
     assert grizzly.state.configuration['env.var'] == 'foobar'
+
+
+def test_step_setup_wait_spawning_complete_timeout(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
+
+    assert getattr(grizzly.setup, 'wait_for_spawning_complete', '') is None
+
+    step_setup_wait_spawning_complete_timeout(behave, 10.0)
+
+    assert grizzly.setup.wait_for_spawning_complete == 10.0
+
+
+def test_step_setup_wait_spawning_complete_indefinitely(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
+
+    assert getattr(grizzly.setup, 'wait_for_spawning_complete', '') is None
+
+    step_setup_wait_spawning_complete_indefinitely(behave)
+
+    assert grizzly.setup.wait_for_spawning_complete == -1

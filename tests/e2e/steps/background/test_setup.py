@@ -190,3 +190,38 @@ def test_e2e_step_setup_message_type_callback(
     rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
+
+
+@pytest.mark.parametrize('timeout', [
+    None,
+    10.0,
+])
+def test_e2e_step_setup_wait_spawning_complete(e2e_fixture: End2EndFixture, timeout: float | None) -> None:
+    def validator(context: Context) -> None:
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        data = next(iter(context.table)).as_dict()
+
+        timeout = data.pop('timeout')
+
+        value = -1 if timeout == 'None' else float(timeout)
+
+        assert grizzly.setup.wait_for_spawning_complete == value, f'{grizzly.setup.wait_for_spawning_complete} != {value}'
+
+    table: list[dict[str, str]] = [{
+        'timeout': f'{timeout!r}',
+    }]
+
+    e2e_fixture.add_validator(validator, table=table)
+
+    step = 'Given wait until spawning is complete' if timeout is None else f'Given wait "{timeout}" seconds until spawning is complete'
+
+    feature_file = e2e_fixture.test_steps(
+        background=[
+            step,
+        ],
+        identifier=f'{timeout!r}',
+    )
+
+    rc, _ = e2e_fixture.execute(feature_file)
+
+    assert rc == 0

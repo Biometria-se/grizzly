@@ -32,7 +32,6 @@ class GrizzlyScenario(SequentialTaskSet):
     task_greenlet: Optional[Greenlet]
     task_greenlet_factory: GreenletFactory
     abort: Event
-    spawning_complete: bool
 
     _task_index: int
 
@@ -42,7 +41,6 @@ class GrizzlyScenario(SequentialTaskSet):
         self.task_greenlet = None
         self.task_greenlet_factory = GreenletFactory(logger=self.logger, ignore_exceptions=[StopScenario])
         self.abort = Event()
-        self.spawning_complete = False
         self.parent.environment.events.quitting.add_listener(self.on_quitting)
         self._task_index = 0
 

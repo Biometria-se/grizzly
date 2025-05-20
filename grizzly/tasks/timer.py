@@ -14,7 +14,7 @@ and logs the "response time" in the `locust` statistics.
 
 ## Statistics
 
-Executions of this task will be visible in `locust` statistics with request type `TIMR`. `name` will be prefixed with ` (<n>)`, where `<n>`
+Executions of this task will be visible in `locust` statistics with request type `TIMR`. `name` will be suffixed with ` (<n>)`, where `<n>`
 indicates how many tasks was run between the start and stop of this timer. Response time is the total time it took for the `<n>` tasks to
 run.
 
