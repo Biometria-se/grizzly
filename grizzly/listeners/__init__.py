@@ -91,7 +91,7 @@ def init_statistics_listener(url: str) -> Callable[Concatenate[Environment, P], 
     return cast(Callable[Concatenate[Environment, P], None], gstatistics_listener)
 
 
-def locust_test_start(grizzly: GrizzlyContext) -> Callable[Concatenate[Environment, P], None]:
+def locust_test_start() -> Callable[Concatenate[Environment, P], None]:
     def gtest_start(environment: Environment, **_kwargs: P.kwargs) -> None:
         if isinstance(environment.runner, MasterRunner):
             num_connected_workers = (
@@ -101,10 +101,6 @@ def locust_test_start(grizzly: GrizzlyContext) -> Callable[Concatenate[Environme
             )
 
             logger.debug('connected workers: %d', num_connected_workers)
-
-            total_iterations = sum([scenario.iterations for scenario in grizzly.scenarios()])
-            if total_iterations < num_connected_workers:
-                logger.error('number of iterations is lower than number of workers, %d < %d', total_iterations, num_connected_workers)
 
     return cast(Callable[Concatenate[Environment, P], None], gtest_start)
 

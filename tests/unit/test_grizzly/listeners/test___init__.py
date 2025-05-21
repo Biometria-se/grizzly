@@ -303,16 +303,9 @@ def test_locust_test_start(grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFi
     grizzly.state.locust.environment.runner = runner
 
     with caplog.at_level(logging.ERROR):
-        locust_test_start(grizzly)(grizzly.state.locust.environment)
+        locust_test_start()(grizzly.state.locust.environment)
 
     assert caplog.messages == []
-
-    grizzly.scenario.iterations = 1
-
-    with caplog.at_level(logging.ERROR):
-        locust_test_start(grizzly)(grizzly.state.locust.environment)
-
-    assert caplog.messages == ['number of iterations is lower than number of workers, 1 < 2']
 
 
 @pytest.mark.usefixtures('_listener_test_mocker')

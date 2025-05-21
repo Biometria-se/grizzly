@@ -795,7 +795,7 @@ def setup_environment_listeners(context: Context, *, dependencies: GrizzlyDepend
         environment.events.worker_report.add_listener(worker_report)
 
     environment.events.init.add_listener(init(grizzly, dependencies, testdata))
-    environment.events.test_start.add_listener(locust_test_start(grizzly))
+    environment.events.test_start.add_listener(locust_test_start())
     environment.events.test_stop.add_listener(locust_test_stop(grizzly))
 
     environment.events.spawning_complete.add_listener(spawning_complete(grizzly))
