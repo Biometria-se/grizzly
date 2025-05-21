@@ -14,12 +14,6 @@ from grizzly.types.behave import Context, when
 def step_results_fail_ratio(context: Context, fail_ratio: int) -> None:
     """Set how many percentages of requests that are allowed to fail before the whole scenario will be set as failed.
 
-    This step cannot be used in combination with:
-
-    * {@pylink grizzly.steps.scenario.setup.step_setup_stop_user_on_failure}
-
-    * {@pylink grizzly.steps.scenario.setup.step_setup_restart_scenario_on_failure}
-
     Default behavior is not to validate the result for a scenario based on failed requests.
 
     Example:

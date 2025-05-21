@@ -355,6 +355,7 @@ class IteratorScenario(GrizzlyScenario):
         spawn_timeout = self.grizzly.setup.wait_for_spawning_complete
         if not prefetch and spawn_timeout is not None and not self._has_waited:
             spawn_timeout = None if spawn_timeout < 0 else spawn_timeout
+            self.user.logger.info('waiting for spawning complete')
             start = perf_counter()
 
             with suppress(Exception):
