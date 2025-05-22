@@ -97,6 +97,7 @@ class TestGrizzlyContextSetup:
             'locust': None,
             'dispatcher_class': (None, FixedUsersDispatcher),
             'hooks': ([], []),
+            'wait_for_spawning_complete': (None, 10.0),
         }
 
         expected_attributes = list(expected_properties.keys())

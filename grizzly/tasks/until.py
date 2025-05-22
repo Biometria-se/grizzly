@@ -48,7 +48,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 
 from gevent import sleep as gsleep
 
-from grizzly.exceptions import StopScenario, failure_handler
+from grizzly.exceptions import StopScenario
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import RequestType
 from grizzly.types.locust import StopUser
@@ -231,7 +231,7 @@ class UntilRequestTask(GrizzlyTask):
                     exception=exception,
                 )
 
-                failure_handler(exception, parent.user._scenario)
+                parent.user.failure_handler(exception, task=self)
 
         @task.on_start
         def on_start(parent: GrizzlyScenario) -> None:

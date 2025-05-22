@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING
 import pytest
 from jinja2.filters import FILTERS
 
+from grizzly.exceptions import RestartIteration, RestartScenario, RetryTask, StopUser
 from grizzly.tasks import RequestTask
 from grizzly.testdata.filters import templatingfilter
-from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
-from grizzly.types.locust import StopUser
+from grizzly.types import FailureAction, GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.users import GrizzlyUser
 from tests.helpers import ANY, SOME
 
@@ -34,6 +34,65 @@ class DummyGrizzlyUser(GrizzlyUser):
 
 
 class TestGrizzlyUser:
+    def test_failure_handler(self, grizzly_fixture: GrizzlyFixture) -> None:
+        parent = grizzly_fixture()
+
+        assert parent.user._scenario.failure_handling == {}
+
+        parent.user._scenario.failure_handling.update({
+            None: StopUser,
+            '504 gateway timeout': RetryTask,
+        })
+
+        parent.user.failure_handler(None)
+
+        with pytest.raises(StopUser):
+            parent.user.failure_handler(RuntimeError('foobar'))
+
+        with pytest.raises(RetryTask):
+            parent.user.failure_handler(RuntimeError('504 gateway timeout'))
+
+        del parent.user._scenario.failure_handling[None]
+
+        parent.user.failure_handler(RuntimeError('foobar'))
+
+        with pytest.raises(RetryTask):
+            parent.user.failure_handler(RuntimeError('504 gateway timeout'))
+
+        parent.user._scenario.failure_handling.update({AttributeError: RestartScenario})
+
+        with pytest.raises(StopUser):
+            parent.user.failure_handler(AttributeError('foobaz'))
+
+        parent.user._scenario.failure_handling.update({MemoryError: RestartScenario})
+
+        with pytest.raises(RestartScenario):
+            parent.user.failure_handler(MemoryError('0% free'))
+
+        for exception in FailureAction.get_failure_exceptions():
+            with pytest.raises(exception):
+                parent.user.failure_handler(exception())
+
+        task = parent.user._scenario.tasks[-1]
+        task.failure_handling.update({
+            '504 gateway timeout': RestartIteration,
+            MemoryError: StopUser,
+        })
+
+        with pytest.raises(RestartIteration):
+            parent.user.failure_handler(RuntimeError('504 gateway timeout'), task=task)
+
+        with pytest.raises(StopUser):
+            parent.user.failure_handler(MemoryError('0% free'), task=task)
+
+        task.failure_handling.clear()
+        # it's failure_handler exception, so the custom should not matter
+        for exception in FailureAction.get_failure_exceptions():
+            task.failure_handling.update({exception: StopUser})
+
+            with pytest.raises(exception):
+                parent.user.failure_handler(exception(), task=task)
+
     def test_render(self, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture(user_type=DummyGrizzlyUser)
 

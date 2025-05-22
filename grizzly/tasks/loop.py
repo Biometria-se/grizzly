@@ -31,8 +31,6 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from gevent import sleep as gsleep
 
-from grizzly.exceptions import failure_handler
-
 from . import GrizzlyTask, GrizzlyTaskWrapper, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -117,7 +115,7 @@ class LoopTask(GrizzlyTaskWrapper):
                     exception=exception,
                 )
 
-                failure_handler(exception, parent.user._scenario)
+                parent.user.failure_handler(exception, task=self)
 
         @task.on_start
         def on_start(parent: GrizzlyScenario) -> None:

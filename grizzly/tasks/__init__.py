@@ -176,10 +176,12 @@ class GrizzlyTask(ABC):
 
     timeout: float | None
     grizzly: GrizzlyContext
+    failure_handling: dict[type[Exception] | str | None, type[Exception] | None]
 
     def __init__(self, *, timeout: float | None = None) -> None:
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
         self.timeout = timeout
+        self.failure_handling = {}
 
         from grizzly.context import grizzly
         self.grizzly =  grizzly

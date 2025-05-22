@@ -9,7 +9,7 @@ import pytest
 from parse import compile
 
 from grizzly.context import GrizzlyContext
-from grizzly.exceptions import RestartScenario, RetryTask, StepError
+from grizzly.exceptions import RestartScenario, RetryTask, StepError, StopUser
 from grizzly.steps import *
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.types import FailureAction, GrizzlyVariableType, RequestDirection, RequestMethod
@@ -18,7 +18,7 @@ from tests.helpers import ANY
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
-    from tests.fixtures import BehaveFixture
+    from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
 def test_parse_iteration_gramatical_number() -> None:
@@ -242,7 +242,7 @@ def test_step_setup_metadata(behave_fixture: BehaveFixture) -> None:
     assert task_factory._context['metadata'] == {'x-test-header': 'foobar'}
 
 
-def test_step_setup_failed_task_default(behave_fixture: BehaveFixture) -> None:
+def test_step_setup_any_failed_task_default(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -251,15 +251,15 @@ def test_step_setup_failed_task_default(behave_fixture: BehaveFixture) -> None:
 
     assert grizzly.scenario.failure_handling == {}
 
-    step_setup_failed_task_default(behave, FailureAction.STOP_USER)
+    step_setup_any_failed_task_default(behave, FailureAction.STOP_USER)
 
     assert grizzly.scenario.failure_handling == {None: StopUser}
 
-    step_setup_failed_task_default(behave, FailureAction.RESTART_SCENARIO)
+    step_setup_any_failed_task_default(behave, FailureAction.RESTART_SCENARIO)
 
     assert grizzly.scenario.failure_handling == {None: RestartScenario}
 
-    step_setup_failed_task_default(behave, FailureAction.RETRY_TASK)
+    step_setup_any_failed_task_default(behave, FailureAction.RETRY_TASK)
 
     assert behave.exceptions == {grizzly.scenario.name: [
         ANY(StepError),
@@ -270,28 +270,119 @@ def test_step_setup_failed_task_default(behave_fixture: BehaveFixture) -> None:
     assert exception.error == 'retry task should not be used as the default behavior, only use it for specific failures'
 
 
-def test_step_setup_failed_task_custom(behave_fixture: BehaveFixture) -> None:
+def test_step_setup_any_failed_task_custom(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert grizzly.scenario.failure_handling == {}
 
-    step_setup_failed_task_custom(behave, RuntimeError, FailureAction.STOP_USER)
+    step_setup_any_failed_task_custom(behave, RuntimeError, FailureAction.STOP_USER)
 
     assert grizzly.scenario.failure_handling == {RuntimeError: StopUser}
 
-    step_setup_failed_task_custom(behave, RestartScenario, FailureAction.RESTART_SCENARIO)
+    step_setup_any_failed_task_custom(behave, RestartScenario, FailureAction.RESTART_SCENARIO)
 
     assert grizzly.scenario.failure_handling == {
         RuntimeError: StopUser,
         RestartScenario: RestartScenario,
     }
 
-    step_setup_failed_task_custom(behave, '504 gateway timeout', FailureAction.RETRY_TASK)
+    step_setup_any_failed_task_custom(behave, '504 gateway timeout', FailureAction.RETRY_TASK)
 
     assert grizzly.scenario.failure_handling == {
         RuntimeError: StopUser,
         RestartScenario: RestartScenario,
         '504 gateway timeout': RetryTask,
     }
+
+
+def test_step_setup_the_failed_task_default(grizzly_fixture: GrizzlyFixture) -> None:
+    behave = grizzly_fixture.behave.context
+    grizzly = grizzly_fixture.grizzly
+    behave.scenario.name = grizzly.scenario.name
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert grizzly.scenario.failure_handling == {}
+    assert task.failure_handling == {}
+
+    step_setup_the_failed_task_default(behave, FailureAction.STOP_USER)
+
+    assert grizzly.scenario.failure_handling == {}
+    assert task.failure_handling == {None: StopUser}
+
+    step_setup_the_failed_task_default(behave, FailureAction.RESTART_SCENARIO)
+
+    assert grizzly.scenario.failure_handling == {}
+    assert task.failure_handling == {None: RestartScenario}
+
+    step_setup_the_failed_task_default(behave, FailureAction.RETRY_TASK)
+
+    assert behave.exceptions == {grizzly.scenario.name: [
+        ANY(StepError),
+    ]}
+
+    exception = cast(StepError, behave.exceptions[grizzly.scenario.name][0])
+
+    assert exception.error == 'retry task should not be used as the default behavior, only use it for specific failures'
+    behave.exceptions.clear()
+
+    grizzly.scenario.tasks().clear()
+    task.failure_handling.clear()
+
+    step_setup_the_failed_task_default(behave, FailureAction.RESTART_SCENARIO)
+
+    assert behave.exceptions == {grizzly.scenario.name: [
+        ANY(StepError),
+    ]}
+
+    exception = cast(StepError, behave.exceptions[grizzly.scenario.name][0])
+
+    assert exception.error == 'scenario does not have any tasks'
+
+
+def test_step_setup_the_failed_task_custom(grizzly_fixture: GrizzlyFixture) -> None:
+    behave = grizzly_fixture.behave.context
+    grizzly = grizzly_fixture.grizzly
+    behave.scenario.name = grizzly.scenario.name
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert grizzly.scenario.failure_handling == {}
+    assert task.failure_handling == {}
+
+    step_setup_the_failed_task_custom(behave, RuntimeError, FailureAction.STOP_USER)
+
+    assert grizzly.scenario.failure_handling == {}
+    assert task.failure_handling == {RuntimeError: StopUser}
+
+    step_setup_the_failed_task_custom(behave, RestartScenario, FailureAction.RESTART_SCENARIO)
+
+    assert grizzly.scenario.failure_handling == {}
+    assert task.failure_handling == {
+        RuntimeError: StopUser,
+        RestartScenario: RestartScenario,
+    }
+
+    step_setup_the_failed_task_custom(behave, '504 gateway timeout', FailureAction.RETRY_TASK)
+
+    assert grizzly.scenario.failure_handling == {}
+    assert task.failure_handling == {
+        RuntimeError: StopUser,
+        RestartScenario: RestartScenario,
+        '504 gateway timeout': RetryTask,
+    }
+
+    grizzly.scenario.tasks().clear()
+    task.failure_handling.clear()
+
+    step_setup_the_failed_task_custom(behave, '504 gateway timeout', FailureAction.RESTART_SCENARIO)
+
+    assert behave.exceptions == {grizzly.scenario.name: [
+        ANY(StepError),
+    ]}
+
+    exception = cast(StepError, behave.exceptions[grizzly.scenario.name][0])
+
+    assert exception.error == 'scenario does not have any tasks'

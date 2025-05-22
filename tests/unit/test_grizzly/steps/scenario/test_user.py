@@ -30,12 +30,6 @@ def test__setup_user_validation(behave_fixture: BehaveFixture) -> None:
     with pytest.raises(AssertionError, match='this step cannot be used in combination with step'):
         _setup_user(behave, 'Dummy', 'dummy://foobar', user_count='200')
 
-    grizzly.setup.user_count = None
-    grizzly.setup.spawn_rate = 300
-
-    with pytest.raises(AssertionError, match=r'spawn rate \(300\) cannot be greater than user count \(200\)'):
-        _setup_user(behave, 'Dummy', 'dummy://foobar', user_count='200')
-
 
 def test_step_user_type_count_tag(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context

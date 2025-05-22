@@ -58,9 +58,9 @@ def test_e2e_iteration_pace(e2e_fixture: End2EndFixture) -> None:
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "3" iteration
         And set iteration time to "500" milliseconds
-        And stop user on failure
         And value for variable "AtomicRandomInteger.sleep1" is "1..5"
         And value for variable "AtomicIntegerIncrementer.run_id" is "1"
+        When any task fail stop user
         When condition "{{{{ AtomicIntegerIncrementer.run_id < 3 }}}}" with name "run" is true, execute these tasks
         Then get request with name "sleep-1" from endpoint "/api/sleep/{{{{ AtomicRandomInteger.sleep1 / 1000 / 2 }}}}"
         But if condition is false, execute these tasks

@@ -58,7 +58,7 @@ def test_e2e_scenario_failure_handling(e2e_fixture: End2EndFixture) -> None:
     Scenario: stop user
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "2" iterations
-        When a task fails stop user
+        When any task fail stop user
         Then get request with name "stop-get1" from endpoint "/api/echo"
         Then get request with name "stop-get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
         When response payload "$.hello" is not "world" fail request
@@ -67,7 +67,7 @@ def test_e2e_scenario_failure_handling(e2e_fixture: End2EndFixture) -> None:
     Scenario: restart scenario
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "2" iterations
-        When a task fails restart scenario
+        When any task fail restart scenario
         Then get request with name "restart-get1" from endpoint "/api/echo"
         Then get request with name "restart-get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
         When response payload "$.hello" is not "world" fail request
@@ -114,7 +114,7 @@ def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
     Scenario: fails 1
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "2" iterations
-        When a task fails stop user
+        When any task fail stop user
         Then get request with name "{{{{ get1 }}}}" from endpoint "/api/echo"
         Then get request with name "get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
         Then save response payload "$.hello.world" in variable "var1"
@@ -125,7 +125,7 @@ def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
     Scenario: fails 2
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "2" iterations
-        When a task fails restart scenario
+        When any task fail restart scenario
         Then get request with name "get1" from endpoint "/api/echo"
         Then save response metadata "$.Content-Type" in variable "var2"
         Then get request with name "{{{{ get2 }}}}" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
@@ -209,27 +209,27 @@ def test_e2e_scenario_failure_handling_retry_task(e2e_fixture: End2EndFixture) -
     Scenario: stop user
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "2" iterations
-        When a task fails stop user
-        When a task fails with "504 not in [200]" stop user
         Then get request with name "stop-get1" from endpoint "/api/echo"
         Then get request with name "stop-get2" from endpoint "/api/until/hello?nth=2&wrong=504&right=200 | content_type=json"
+        When the task fails stop user
+        When the task fails with "504 not in [200]" stop user
         Then get request with name "stop-get3" from endpoint "/api/echo"
 
     Scenario: restart scenario
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "2" iterations
-        When a task fails restart scenario
-        When a task fails with "504 not in [200]" retry task
         Then get request with name "restart-get1" from endpoint "/api/echo"
         Then get request with name "restart-get2" from endpoint "/api/until/hello?nth=2&wrong=504&right=200 | content_type=json"
+        When the task fails restart scenario
+        When the task fails with "504 not in [200]" retry task
         Then get request with name "restart-get3" from endpoint "/api/echo"
 
     Scenario: default
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "2" iterations
-        When a task fails with "504 not in [200]" restart scenario
         Then get request with name "default-get1" from endpoint "/api/echo"
         Then get request with name "default-get2" from endpoint "/api/until/hello?nth=2&wrong=504&right=200 | content_type=json"
+        When the task fails with "504 not in [200]" restart scenario
         Then get request with name "default-get3" from endpoint "/api/echo"
     """))
 
@@ -282,8 +282,8 @@ def test_e2e_scenario_failure_handling_timeout(e2e_fixture: End2EndFixture) -> N
     Scenario: long response time
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "2" iterations
-        When a task fails stop user
-        When a task fails with "TaskTimeoutError" retry task
+        When any task fail stop user
+        When any task fail with "TaskTimeoutError" retry task
         Then get request with name "slow-get1" from endpoint "/api/sleep-once/10 | timeout=1.0"
         Then get request with name "fast-get2" from endpoint "/api/echo?foo=bar | content_type=json"
     """))

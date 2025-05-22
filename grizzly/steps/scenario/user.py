@@ -48,9 +48,6 @@ def _setup_user(context: Context, user_class_name: str, host: str, *, weight: st
 
         assert user_count_value > 0, f'{user_count} resolved to {user_count_value} users, which is not valid'
 
-        if grizzly.setup.spawn_rate is not None:
-            assert user_count_value >= grizzly.setup.spawn_rate, f'spawn rate ({grizzly.setup.spawn_rate}) cannot be greater than user count ({user_count_value})'
-
         grizzly.scenario.user.fixed_count = user_count_value
         grizzly.scenario.user.sticky_tag = tag
 

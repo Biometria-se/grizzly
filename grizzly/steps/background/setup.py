@@ -183,3 +183,25 @@ def step_setup_configuration_value(context: Context, name: str, value: str) -> N
     resolved_value = resolve_variable(grizzly.scenario, value, try_template=False)
 
     grizzly.state.configuration.update({name: resolved_value})
+
+
+@given('wait "{timeout:g}" seconds until spawning is complete')
+def step_setup_wait_spawning_complete_timeout(context: Context, timeout: float) -> None:
+    """Step to make scenarios wait with execution of tasks until spawning is complete, at most `timeout` seconds.
+
+    This is when there are dependencies between scenarios. This will make all scenarios to wait until all defined
+    users are spawned.
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.setup.wait_for_spawning_complete = timeout
+
+
+@given('wait until spawning is complete')
+def step_setup_wait_spawning_complete_indefinitely(context: Context) -> None:
+    """Step to make scenarios wait with execution until spawning is complete, without timeout.
+
+    This is when there are dependencies between scenarios. This will make all scenarios to wait until all defined
+    users are spawned.
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.setup.wait_for_spawning_complete = -1
