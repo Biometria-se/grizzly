@@ -101,7 +101,6 @@ from copy import copy
 from datetime import datetime, timezone
 from hashlib import sha256
 from html.parser import HTMLParser
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 import requests
@@ -195,11 +194,18 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
         key_file = self._context.get('auth', {}).get('client', {}).get('key_file', None)
 
         if cert_file is not None and key_file is not None:
-            if not Path(cert_file).exists() or not Path(key_file).exists():
+            cert_file = (self._context_root / cert_file).resolve()
+            key_file = (self._context_root / key_file).resolve()
+            if not cert_file.exists() or not key_file.exists():
                 message = f'either {cert_file} or {key_file} does not exist'
                 raise ValueError(message)
 
-            _ssl_context_factory = ssl_context_factory(cert=(cert_file, key_file))
+            _ssl_context_factory = ssl_context_factory(
+                cert=(
+                    cert_file.as_posix(),
+                    key_file.as_posix(),
+                ),
+            )
         elif any(file is not None for file in [cert_file, key_file]):
             message = f'both "auth.client.cert_file" ({cert_file}) and "auth.client.key_file" ({key_file}) has to be set'
             raise ValueError(message)
