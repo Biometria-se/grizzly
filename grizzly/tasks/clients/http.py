@@ -138,6 +138,9 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             client_key = None
 
         if client_cert is not None and client_key is not None:
+            client_cert = (Path(self._context_root) / client_cert).resolve()
+            client_key = (Path(self._context_root) / client_key).resolve()
+
             if not Path(client_cert).exists() or not Path(client_key).exists():
                 message = f'either {client_cert} or {client_key} does not exist'
                 raise ValueError(message)
