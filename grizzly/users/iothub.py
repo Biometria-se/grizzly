@@ -342,7 +342,7 @@ class IotHubUser(GrizzlyUser):
 
                     self._unique.append(value)
 
-            self.logger.info('C2D message received handled: %s', serialized_message)
+            self.logger.debug('C2D message received handled: %s', serialized_message)
             self._queue.put_nowait(serialized_message)
         except:
             self.logger.exception('unable to handle C2D message: %s', serialized_message)
