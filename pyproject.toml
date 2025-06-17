@@ -274,5 +274,8 @@ filterwarnings = [
     "ignore:setDaemon\\(\\) is deprecated.*:DeprecationWarning",
     "ignore:.*pkg_resources.*:DeprecationWarning",
     "ignore:Use setlocale.*instead:DeprecationWarning",
-    "error:.*:gevent.monkey.MonkeyPatchWarning"
+    "error:.*:gevent.monkey.MonkeyPatchWarning",
+    "ignore:.*Use timezone-aware objects to represent datetimes",
+    "ignore:.*use of fork\\(\\) may lead to deadlocks in the child",
+    "ignore:'locale\\.getdefaultlocale' is deprecated"
 ]

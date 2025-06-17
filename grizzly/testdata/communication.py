@@ -462,12 +462,22 @@ class TestdataConsumer:
         start = perf_counter()
         while value is None:
             gsleep(poll_interval)
+
             with suppress(Exception):
                 value = self._keystore_pop_poll(request)
 
             if value is None and wait > -1 and (int(perf_counter() - start) > wait):
-                error_message = f'no value for key "{key}" available within {wait} seconds'
-                raise RuntimeError(error_message)
+                error_message = 'no value for key "{key}" available within {wait} seconds'
+                self.logger.error(error_message.format(key=key, wait=wait))
+
+                if '::' in key:
+                    """Last suffix (which is prefixed with '::') is considered a unique identifier"""
+                    ambigous_key, _ = key.rsplit('::', 1)
+                    ambigous_key = f'{ambigous_key}::{{{{ id }}}}'
+                else:
+                    ambigous_key = key
+
+                raise RuntimeError(error_message.format(key=ambigous_key, wait=wait))
 
         return value
 
