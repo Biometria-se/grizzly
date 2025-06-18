@@ -127,9 +127,9 @@ class KeystoreTask(GrizzlyTask):
         else:
             return serialized_value
 
-    def __call__(self) -> grizzlytask:
+    def __call__(self) -> grizzlytask:  # noqa: C901, PLR0915
         @grizzlytask
-        def task(parent: GrizzlyScenario) -> Any:
+        def task(parent: GrizzlyScenario) -> Any:  # noqa: PLR0912, PLR0915
             key = parent.user.render(self.key)
 
             def render(value: Any) -> Any:
@@ -178,10 +178,19 @@ class KeystoreTask(GrizzlyTask):
                     pass
             except Exception as e:
                 error_message = str(e)
-                parent.user.logger.exception('keystore action %s failed: %s', self.action, error_message)
+                if '::' in key:
+                    """Last suffix (which is prefixed with '::') is considered a unique identifier"""
+                    ambigous_key, _ = key.rsplit('::', 1)
+                    ambigous_key = f'{ambigous_key}::{{{{ id }}}}'
+                else:
+                    ambigous_key = key
+
+                if self.action not in ['pop'] or (self.action in ['pop'] and not isinstance(e, RuntimeError)):
+                    parent.user.logger.exception('keystore action %s failed: %s', self.action, error_message)
+
                 parent.user.environment.events.request.fire(
                     request_type='KEYS',
-                    name=f'{parent.user._scenario.identifier} {key}',
+                    name=f'{parent.user._scenario.identifier} {ambigous_key}',
                     response_time=0,
                     response_length=1,
                     context=parent.user._context,

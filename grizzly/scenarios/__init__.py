@@ -88,6 +88,9 @@ class GrizzlyScenario(SequentialTaskSet):
         """When test start the testdata producer should be started, and if the implementing scenario
         has some prefetching todo it must also be one. There might be cases where an on_start method
         needs the first iteration of testdata.
+
+        There should be one `TestdataConsumer` per scenario type, which means that all users on the
+        same worker will share the same instance.
         """
         if self.__class__._consumer is None:
             self.__class__._consumer = TestdataConsumer(
