@@ -330,6 +330,7 @@ class TestdataConsumer:
         self.stopped = False
 
         self.response = {}
+        self.logger = logging.getLogger(f'{scenario.__class__.__name__}/testdata')
         self.logger.debug('started consumer')
 
         self.async_timers = AsyncTimersConsumer(scenario, self.semaphore)
@@ -341,9 +342,6 @@ class TestdataConsumer:
 
         cls._responses[uid].set(response)
 
-    @property
-    def logger(self) -> logging.Logger:
-        return self.scenario.user.logger
 
     @event(events.testdata_request, tags={'type': 'consumer'}, decoder=TestdataDecoder(arg='request'))
     def _testdata_request(self, *, request: dict[str, Any]) -> dict[str, Any] | None:
