@@ -107,8 +107,14 @@ class FeatureError(Exception):
 
 
 class retry:
-    def __init__(self, *, retries: int = 3, exceptions: tuple[type[Exception], ...], backoff: float | None = None,
-                 failure_exception: type[Exception] | Exception | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        retries: int = 3,
+        exceptions: tuple[type[Exception], ...],
+        backoff: float | None = None,
+        failure_exception: type[Exception] | Exception | None = None,
+    ) -> None:
         self.retries = retries
         self.exceptions = exceptions
         self.backoff = backoff
