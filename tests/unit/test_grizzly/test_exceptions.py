@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from tests.fixtures import MockerFixture
 
 
-def test_retry(mocker: MockerFixture) -> None:
+def test_retry(mocker: MockerFixture) -> None:  # noqa: PLR0915
     uniform_mock = mocker.patch('grizzly.exceptions.uniform', return_value=1.0)
     sleep_mock = mocker.patch('grizzly.exceptions.gsleep', return_value=None)
 
@@ -66,3 +66,34 @@ def test_retry(mocker: MockerFixture) -> None:
         assert uniform_mock.call_args_list[i] == call(0.5, 1.5)
     uniform_mock.reset_mock()
 
+    # func raises RuntimeError when number of retires is exceeded, but retry raises AssertionError
+    func = raise_exception(retries=4, exception=RuntimeError, return_value='foobar')
+    with pytest.raises(AssertionError), retry(retries=3, exceptions=(RuntimeError,), backoff=1.0, failure_exception=AssertionError) as context:
+        result = context.execute(func, 'hello', foobar='world')
+
+    assert func.call_count == 3
+    assert sleep_mock.call_count == 2
+    assert sleep_mock.call_args_list[0] == call(2.0)
+    assert sleep_mock.call_args_list[1] == call(4.0)
+    sleep_mock.reset_mock()
+
+    assert uniform_mock.call_count == 2
+    for i in range(uniform_mock.call_count):
+        assert uniform_mock.call_args_list[i] == call(0.5, 1.5)
+    uniform_mock.reset_mock()
+
+    # func raises RuntimeError when number of retires is exceeded, but retry raises AssertionError with specific message
+    func = raise_exception(retries=4, exception=RuntimeError, return_value='foobar')
+    with pytest.raises(AssertionError, match='Big trouble'), retry(retries=3, exceptions=(RuntimeError,), backoff=1.0, failure_exception=AssertionError('Big trouble')) as context:
+        result = context.execute(func, 'hello', foobar='world')
+
+    assert func.call_count == 3
+    assert sleep_mock.call_count == 2
+    assert sleep_mock.call_args_list[0] == call(2.0)
+    assert sleep_mock.call_args_list[1] == call(4.0)
+    sleep_mock.reset_mock()
+
+    assert uniform_mock.call_count == 2
+    for i in range(uniform_mock.call_count):
+        assert uniform_mock.call_args_list[i] == call(0.5, 1.5)
+    uniform_mock.reset_mock()
