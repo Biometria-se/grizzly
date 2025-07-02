@@ -1,4 +1,5 @@
 """Core async-message functionality."""
+
 from __future__ import annotations
 
 import logging
@@ -18,6 +19,7 @@ from grizzly_extras.transformer import JsonBytesEncoder
 
 __all__: list[str] = []
 
+
 def _get_log_dir() -> Path:
     grizzly_context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
     log_dir_path = environ.get('GRIZZLY_LOG_DIR', None)
@@ -32,6 +34,7 @@ def _get_log_dir() -> Path:
     log_dir_root.mkdir(parents=True, exist_ok=True)
 
     return log_dir_root
+
 
 def configure_logging() -> None:
     handlers: list[logging.Handler] = [logging.StreamHandler(sys.stderr)]
@@ -55,11 +58,12 @@ def configure_logging() -> None:
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.ERROR)
 
+
 configure_logging()
 
 
-AsyncMessageMetadata = Optional[dict[str, Any]]
-AsyncMessagePayload = Optional[Any]
+AsyncMessageMetadata = dict | None
+AsyncMessagePayload = Any
 
 
 class AsyncMessageContext(TypedDict, total=False):
@@ -67,18 +71,18 @@ class AsyncMessageContext(TypedDict, total=False):
     queue_manager: str
     connection: str
     channel: str
-    username: Optional[str]
-    password: Optional[str]
-    tenant: Optional[str]
-    key_file: Optional[str]
-    cert_label: Optional[str]
-    ssl_cipher: Optional[str]
-    message_wait: Optional[int]
+    username: str | None
+    password: str | None
+    tenant: str | None
+    key_file: str | None
+    cert_label: str | None
+    ssl_cipher: str | None
+    message_wait: int | None
     endpoint: str
-    content_type: Optional[str]
-    heartbeat_interval: Optional[int]
-    header_type: Optional[str]
-    metadata: Optional[dict[str, str]]
+    content_type: str | None
+    heartbeat_interval: int | None
+    header_type: str | None
+    metadata: dict[str, str] | None
     consume: bool
     unique: bool
     verbose: bool
@@ -88,7 +92,7 @@ class AsyncMessageContext(TypedDict, total=False):
 class AsyncMessageRequest(TypedDict, total=False):
     request_id: str
     action: str
-    worker: Optional[str]
+    worker: str | None
     client: int
     context: AsyncMessageContext
     payload: AsyncMessagePayload
@@ -98,7 +102,7 @@ class AsyncMessageResponse(TypedDict, total=False):
     request_id: str
     success: bool
     worker: str
-    message: Optional[str]
+    message: str | None
     payload: AsyncMessagePayload
     metadata: AsyncMessageMetadata
     response_length: int
@@ -112,7 +116,7 @@ class AsyncMessageError(Exception):
 
 class AsyncMessageHandler(ABC):
     worker: str
-    message_wait: Optional[int]
+    message_wait: int | None
     logger: logging.Logger
     _event: Event
 
@@ -127,7 +131,7 @@ class AsyncMessageHandler(ABC):
             logging.getLogger(logger_name).setLevel(logging.ERROR)
 
     @abstractmethod
-    def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
+    def get_handler(self, action: str) -> AsyncMessageRequestHandler | None:
         message = f'{self.__class__.__name__}: get_handler is not implemented'
         raise NotImplementedError(message)  # pragma: no cover
 
@@ -168,12 +172,14 @@ class AsyncMessageHandler(ABC):
             self.logger.exception('%s: request_id=%s, %s="%s"', action or 'UNKNOWN', request_id, e.__class__.__name__, str(e))  # noqa: TRY401
         finally:
             total_time = int((time() - start_time) * 1000)
-            response.update({
-                'worker': self.worker,
-                'response_time': total_time,
-            })
+            response.update(
+                {
+                    'worker': self.worker,
+                    'response_time': total_time,
+                },
+            )
 
-            if response.get('action', None) is None:
+            if response.get('action') is None:
                 response.update({'action': str(action)})
 
             if not self._event.is_set():

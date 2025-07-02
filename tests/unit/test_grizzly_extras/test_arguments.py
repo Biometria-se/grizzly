@@ -1,4 +1,5 @@
 """Unit tests of grizzly_extras.arguments."""
+
 from __future__ import annotations
 
 import pytest
@@ -10,9 +11,11 @@ from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments,
 def test_split_value(separator: str) -> None:
     assert split_value(f'hello world  {separator} foo bar', separator) == ('hello world', 'foo bar')
     assert split_value(
-        f'hello {separator} world {separator} foo {separator} bar', separator,
+        f'hello {separator} world {separator} foo {separator} bar',
+        separator,
     ) == (
-        'hello', f'world {separator} foo {separator} bar',
+        'hello',
+        f'world {separator} foo {separator} bar',
     )
 
     assert split_value('hello|=test | yo') == ('hello|=test', 'yo')
@@ -20,19 +23,28 @@ def test_split_value(separator: str) -> None:
 
 
 def test_get_unsupported_arguments() -> None:
-    assert get_unsupported_arguments(['hello', 'world'], {
-        'hello': True,
-        'world': True,
-        'foo': True,
-        'bar': False,
-    }) == ['foo', 'bar']
+    assert get_unsupported_arguments(
+        ['hello', 'world'],
+        {
+            'hello': True,
+            'world': True,
+            'foo': True,
+            'bar': False,
+        },
+    ) == ['foo', 'bar']
 
-    assert get_unsupported_arguments(['hello', 'world', 'foo', 'bar'], {
-        'hello': True,
-        'world': True,
-        'foo': True,
-        'bar': False,
-    }) == []
+    assert (
+        get_unsupported_arguments(
+            ['hello', 'world', 'foo', 'bar'],
+            {
+                'hello': True,
+                'world': True,
+                'foo': True,
+                'bar': False,
+            },
+        )
+        == []
+    )
 
 
 def test_unquote() -> None:
@@ -68,7 +80,7 @@ def test_parse_arguments(separator: str) -> None:  # noqa: PLR0915
         parse_arguments(f'arg{separator}"value\'', separator)
 
     with pytest.raises(ValueError, match='value is incorrectly quoted'):
-        parse_arguments(f"arg{separator}'value\"", separator)
+        parse_arguments(f'arg{separator}\'value"', separator)
 
     with pytest.raises(ValueError, match='value is incorrectly quoted'):
         parse_arguments(f'arg{separator}value"', separator)
@@ -92,10 +104,10 @@ def test_parse_arguments(separator: str) -> None:  # noqa: PLR0915
         'arg1': '$.expression=="{{ value }}"',
     }
 
-    arguments = parse_arguments(f'arg1{separator}$.expression|="[\'a\', \'b\', \'c\']"', separator)
+    arguments = parse_arguments(f"arg1{separator}$.expression|=\"['a', 'b', 'c']\"", separator)
 
     assert arguments == {
-        'arg1': '$.expression|="[\'a\', \'b\', \'c\']"',
+        'arg1': "$.expression|=\"['a', 'b', 'c']\"",
     }
 
     arguments = parse_arguments(f'arg1{separator}$.expression|=\'["a", "b", "c"]\'', separator)
@@ -132,19 +144,22 @@ def test_parse_arguments(separator: str) -> None:  # noqa: PLR0915
         'value3': 'true, false, asdf',
     }
 
-    arguments = parse_arguments((
-        f"queue{separator}INCOMING.MESSAGES, expression{separator}'//tag1/tag2/tag3[starts-with(text(), \"Prefix{{{{ tag3_value }}}}\") "
-        "and //tag1/tag2/tag4[text() < 13]]'"
-    ), separator)
+    arguments = parse_arguments(
+        (f'queue{separator}INCOMING.MESSAGES, expression{separator}\'//tag1/tag2/tag3[starts-with(text(), "Prefix{{{{ tag3_value }}}}") and //tag1/tag2/tag4[text() < 13]]\''),
+        separator,
+    )
     assert arguments == {
         'queue': 'INCOMING.MESSAGES',
         'expression': '//tag1/tag2/tag3[starts-with(text(), "Prefix{{ tag3_value }}") and //tag1/tag2/tag4[text() < 13]]',
     }
 
-    arguments = parse_arguments((
-        f"queue{separator}INCOMING.MESSAGES, expression{separator}'//tag1/tag2/tag3[starts-with(text(), \"Prefix{{{{ tag3_value }}}}\") "
-        "and //tag1/tag2/tag4[starts-with(text(), \"{{ tag4_value }}\"]]'"
-    ), separator)
+    arguments = parse_arguments(
+        (
+            f'queue{separator}INCOMING.MESSAGES, expression{separator}\'//tag1/tag2/tag3[starts-with(text(), "Prefix{{{{ tag3_value }}}}") '
+            'and //tag1/tag2/tag4[starts-with(text(), "{{ tag4_value }}"]]\''
+        ),
+        separator,
+    )
     assert arguments == {
         'queue': 'INCOMING.MESSAGES',
         'expression': '//tag1/tag2/tag3[starts-with(text(), "Prefix{{ tag3_value }}") and //tag1/tag2/tag4[starts-with(text(), "{{ tag4_value }}"]]',

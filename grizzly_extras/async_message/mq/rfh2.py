@@ -1,9 +1,10 @@
 """Logic for handling IBM MQ RFH2 headers."""
+
 from __future__ import annotations
 
 import gzip
 import time
-import xml.etree.ElementTree as XML  # noqa: N814
+import xml.etree.ElementTree as ET
 from struct import pack, unpack
 from typing import Optional
 
@@ -55,29 +56,29 @@ class Rfh2Decoder:
             name_value_ccsid = parts[17]
             """
             self.name_values = message[RFH2_HEADER_LENGTH:struc_length]
-            self.payload = message[RFH2_HEADER_LENGTH + len(self.name_values):]
+            self.payload = message[RFH2_HEADER_LENGTH + len(self.name_values) :]
         except Exception as e:
             msg = 'Failed to parse RFH2 header'
             raise ValueError(msg) from e
 
     def _parse_name_values(self) -> None:
-        self.name_value_parts: list[XML.Element] = []
+        self.name_value_parts: list[ET.Element] = []
         pos = 0
         maxpos = len(self.name_values) - 1
         if maxpos == -1:
             return
         try:
             while pos <= maxpos:
-                part_length = unpack('<l', self.name_values[pos:pos + 4])[0]
+                part_length = unpack('<l', self.name_values[pos : pos + 4])[0]
                 pos += 4
-                part = self.name_values[pos:pos + part_length].decode('utf-8')
-                self.name_value_parts.append(XML.fromstring(part))
+                part = self.name_values[pos : pos + part_length].decode('utf-8')
+                self.name_value_parts.append(ET.fromstring(part))
                 pos += part_length
         except Exception as e:
             msg = 'Failed to parse RFH2 name values'
             raise ValueError(msg) from e
 
-    def _get_usr_encoding(self) -> Optional[str]:
+    def _get_usr_encoding(self) -> str | None:
         if len(self.name_value_parts) == 0:
             return None
         for part in self.name_value_parts:
@@ -110,7 +111,7 @@ class Rfh2Encoder:
         md.Encoding = Rfh2Encoder.ENCODING
         return md
 
-    def __init__(self, payload: bytes, queue_name: str, encoding: str = 'gzip', tstamp: Optional[str] = None, metadata: Optional[dict[str, str]] = None) -> None:
+    def __init__(self, payload: bytes, queue_name: str, encoding: str = 'gzip', tstamp: str | None = None, metadata: dict[str, str] | None = None) -> None:
         if encoding != 'gzip':
             msg = 'Only gzip encoding is implemented'
             raise NotImplementedError(msg)
@@ -134,8 +135,8 @@ class Rfh2Encoder:
         tstamp = str(round(time.time() * 1000)) if self.tstamp is None else self.tstamp
         metadata_headers = ''.join([f'<{key}>{value}</{key}>' for key, value in (self.metadata or {}).items()])
         name_values_txt = [
-            "<mcd><Msd>jms_bytes</Msd></mcd>",
-            f"<jms><Dst>queue:///{self.queue_name}</Dst><Tms>{tstamp}</Tms><Dlv>2</Dlv></jms>",
+            '<mcd><Msd>jms_bytes</Msd></mcd>',
+            f'<jms><Dst>queue:///{self.queue_name}</Dst><Tms>{tstamp}</Tms><Dlv>2</Dlv></jms>',
             f"<usr>{metadata_headers}<ContentEncoding>{self.content_encoding}</ContentEncoding><ContentLength dt='i8'>{content_length}</ContentLength></usr>",
         ]
         for value in name_values_txt:

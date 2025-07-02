@@ -1,4 +1,5 @@
 """Unit tests for grizzly_extras.transformer."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -41,7 +42,6 @@ class TestTransformer:
             @classmethod
             def parser(cls, expression: str) -> Callable[[Any], list[str]]:
                 return super().parser(expression)
-
 
         with pytest.raises(NotImplementedError, match='has not implemented transform'):
             DummyTransformer.transform('{}')
@@ -166,7 +166,7 @@ class TestJsonTransformer:
         actual = get_values({'test': [{'value': 'test1'}, {'value': 'test2'}]})
 
         assert len(actual) == 2
-        assert ['test1', 'test2'] == actual
+        assert actual == ['test1', 'test2']
 
         with pytest.raises(ValueError, match=r'JsonTransformer: unable to parse with ".*": not a valid expression'):
             JsonTransformer.parser('$......asdf')
@@ -180,31 +180,31 @@ class TestJsonTransformer:
         get_values = JsonTransformer.parser('$.glossary.GlossDiv.GlossList.GlossEntry.Abbrev')
         actual = get_values(JSON_EXAMPLE)
         assert len(actual) == 1
-        assert ['ISO 8879:1986'] == actual
+        assert actual == ['ISO 8879:1986']
 
         get_values = JsonTransformer.parser('$.glossary.title=="example glossary"')
         actual = get_values(JSON_EXAMPLE)
-        assert ['example glossary'] == actual
+        assert actual == ['example glossary']
 
         get_values = JsonTransformer.parser("$.glossary.title=='template glossary'")
         actual = get_values(JSON_EXAMPLE)
-        assert [] == actual
+        assert actual == []
 
         get_values = JsonTransformer.parser('$.*..title')
         actual = get_values(JSON_EXAMPLE)
         assert len(actual) == 2
-        assert ['example glossary', 'S'] == actual
+        assert actual == ['example glossary', 'S']
 
         get_values = JsonTransformer.parser('$.*..GlossSeeAlso')
         actual = get_values(JSON_EXAMPLE)
         assert len(actual) == 1
-        assert ['["GML", "XML"]'] == actual
+        assert actual == ['["GML", "XML"]']
         assert jsonloads(actual[0]) == ['GML', 'XML']
 
         get_values = JsonTransformer.parser('$.*..GlossSeeAlso[*]')
         actual = get_values(JSON_EXAMPLE)
         assert len(actual) == 2
-        assert ['GML', 'XML'] == actual
+        assert actual == ['GML', 'XML']
 
         get_values = JsonTransformer.parser('$..Additional[?addtitle="test1"].addvalue')
         actual = get_values(JSON_EXAMPLE)
@@ -257,7 +257,7 @@ class TestJsonTransformer:
         actual = get_values(document)
         assert actual == []
 
-        get_values = JsonTransformer.parser('$.id|=\'[1, 2, 3]\'')
+        get_values = JsonTransformer.parser("$.id|='[1, 2, 3]'")
         actual = get_values(document)
         assert actual == ['1']
 
@@ -581,14 +581,20 @@ class TestJsonBytesEncoder:
         assert encoder.default(b'hello') == 'hello'
         assert encoder.default(b'invalid \xe9 char') == 'invalid \xe9 char'
 
-        assert jsondumps({
-            'hello': b'world',
-            'invalid': b'\xe9 char',
-            'value': 'something',
-            'test': False,
-            'int': 1,
-            'empty': None,
-        }, cls=JsonBytesEncoder) == '{"hello": "world", "invalid": "\\u00e9 char", "value": "something", "test": false, "int": 1, "empty": null}'
+        assert (
+            jsondumps(
+                {
+                    'hello': b'world',
+                    'invalid': b'\xe9 char',
+                    'value': 'something',
+                    'test': False,
+                    'int': 1,
+                    'empty': None,
+                },
+                cls=JsonBytesEncoder,
+            )
+            == '{"hello": "world", "invalid": "\\u00e9 char", "value": "something", "test": false, "int": 1, "empty": null}'
+        )
 
         with pytest.raises(TypeError, match='is not JSON serializable'):
             encoder.default(None)
@@ -614,4 +620,3 @@ class TestTransformerContentType:
     def test_unknown(self) -> None:
         with pytest.raises(ValueError, match='"foo" is an unknown response content type'):
             TransformerContentType.from_string('foo')
-

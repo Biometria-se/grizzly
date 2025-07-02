@@ -1,6 +1,7 @@
 """@anchor pydoc:grizzly.auth
 Core logic for handling different implementations for authorization.
 """
+
 from __future__ import annotations
 
 import logging
@@ -80,11 +81,11 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
         if self._context.get('metadata', None) is None:
             self._context['metadata'] = {}
 
-        cast(dict, self._context['metadata']).update({key: value})
+        cast('dict', self._context['metadata']).update({key: value})
 
     @property
     def __context_change_history__(self) -> set[str]:
-        return cast(set[str], self._context['__context_change_history__'])
+        return cast('set[str]', self._context['__context_change_history__'])
 
     @property
     def __cached_auth__(self) -> dict[str, AzureAadCredential]:
@@ -92,7 +93,7 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
         # which could be refered to later, without updating client implementation
         if '__cached_auth__' not in self._context:
             self._context['__cached_auth__'] = {}
-        return cast(dict[str, AzureAadCredential], self._context['__cached_auth__'])
+        return cast('dict[str, AzureAadCredential]', self._context['__cached_auth__'])
 
 
 AuthenticatableFunc = TypeVar('AuthenticatableFunc', bound=Callable[..., GrizzlyResponse])
@@ -114,7 +115,7 @@ class refresh_token(Generic[P]):
             assert issubclass(dynamic_impl, RefreshToken), f'{module_name}.{class_name} is not a subclass of {RefreshToken.__module__}.{RefreshToken.__name__}'
             impl = dynamic_impl
 
-        self.impl = cast(type[RefreshToken], impl)
+        self.impl = cast('type[RefreshToken]', impl)
 
     def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:  # noqa: PLR0915
         @wraps(func)
@@ -127,7 +128,7 @@ class refresh_token(Generic[P]):
                 user = arg.user
             else:
                 request = arg
-                user = cast(GrizzlyUser, client)
+                user = cast('GrizzlyUser', client)
 
             self.impl.initialize(client, user)
 
@@ -214,9 +215,9 @@ class refresh_token(Generic[P]):
 
             bound = func.__get__(client, client.__class__)
 
-            return cast(GrizzlyResponse, bound(arg, *args, **kwargs))
+            return cast('GrizzlyResponse', bound(arg, *args, **kwargs))
 
-        return cast(AuthenticatableFunc, refresh_token)
+        return cast('AuthenticatableFunc', refresh_token)
 
 
 def render(client: GrizzlyHttpAuthClient, user: GrizzlyUser) -> None:
@@ -229,7 +230,7 @@ def render(client: GrizzlyHttpAuthClient, user: GrizzlyUser) -> None:
 
     # we have a host specific context that we should merge into current context
     if client_context is not None:
-        client._context = merge_dicts(client._context, cast(dict, client_context))
+        client._context = merge_dicts(client._context, cast('dict', client_context))
 
 
 class RefreshTokenDistributor(GrizzlyMessageHandler):
@@ -297,7 +298,7 @@ class RefreshTokenDistributor(GrizzlyMessageHandler):
 
         response = cls.send_request(client, request)
 
-        return AccessToken(response['token'], response['expires_on']), cast(bool, response['refreshed'])
+        return AccessToken(response['token'], response['expires_on']), cast('bool', response['refreshed'])
 
 
 class RefreshToken(metaclass=ABCMeta):
@@ -320,9 +321,7 @@ class RefreshToken(metaclass=ABCMeta):
 
             # nothing has changed, use existing crendential
             if client.credential is not None and (
-                client.credential.username == username
-                and client.credential.password == password
-                and client.credential.auth_method != AuthMethod.NONE
+                client.credential.username == username and client.credential.password == password and client.credential.auth_method != AuthMethod.NONE
             ):
                 return
 
@@ -330,22 +329,9 @@ class RefreshToken(metaclass=ABCMeta):
             initialize_uri = auth_user.get('initialize_uri')
             redirect_uri = auth_user.get('redirect_uri')
 
-            use_auth_client = (
-                client_id is not None
-                and auth_client.get('secret') is not None
-                and tenant is not None
-            )
+            use_auth_client = client_id is not None and auth_client.get('secret') is not None and tenant is not None
             use_auth_user = (
-                username is not None
-                and password is not None
-                and (
-                    (
-                        redirect_uri is not None
-                        and tenant is not None
-                        and client_id is not None
-                    )
-                    or initialize_uri is not None
-                )
+                username is not None and password is not None and ((redirect_uri is not None and tenant is not None and client_id is not None) or initialize_uri is not None)
             )
 
             if use_auth_client:
@@ -356,7 +342,6 @@ class RefreshToken(metaclass=ABCMeta):
                 initialize_uri = auth_user.get('initialize_uri')
             else:
                 auth_method = AuthMethod.NONE
-
 
             parsed = urlparse(client_id)
             scope: str | None = None

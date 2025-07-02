@@ -1,4 +1,5 @@
 """Fixtures used in tests."""
+
 from __future__ import annotations
 
 import inspect
@@ -12,7 +13,7 @@ from os import chdir, environ
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from textwrap import dedent, indent
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 from urllib.parse import urlparse
 
 import yaml
@@ -55,12 +56,12 @@ if TYPE_CHECKING:  # pragma: no cover
 
 __all__ = [
     'AtomicVariableCleanupFixture',
-    'LocustFixture',
     'BehaveFixture',
-    'RequestTaskFixture',
     'GrizzlyFixture',
-    'NoopZmqFixture',
+    'LocustFixture',
     'MockerFixture',
+    'NoopZmqFixture',
+    'RequestTaskFixture',
 ]
 
 
@@ -92,9 +93,9 @@ class LocustFixture:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> Literal[True]:
         with suppress(KeyError):
             del environ['GRIZZLY_CONTEXT_ROOT']
@@ -122,9 +123,9 @@ class EnvFixture:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> Literal[True]:
         for key in self.env:
             with suppress(KeyError):
@@ -151,15 +152,13 @@ class CwdFixture:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> Literal[True]:
-
         chdir(self.old_cwd)
 
         return True
-
 
 
 class BehaveFixture:
@@ -171,12 +170,12 @@ class BehaveFixture:
 
     @property
     def grizzly(self) -> GrizzlyContext:
-        return cast(GrizzlyContext, self.context.grizzly)
+        return cast('GrizzlyContext', self.context.grizzly)
 
     def create_scenario(self, name: str) -> Scenario:
         return Scenario(filename=None, line=None, keyword='', name=name)
 
-    def create_step(self, name: str, *, in_background: bool = False, context: Optional[BehaveContext] = None) -> Step:
+    def create_step(self, name: str, *, in_background: bool = False, context: BehaveContext | None = None) -> Step:
         step = Step(filename=None, line=None, keyword='given', step_type='given', name=name, text=None, table=None)
         step.in_background = in_background
 
@@ -211,9 +210,9 @@ class BehaveFixture:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> Literal[True]:
         if hasattr(grizzly_context.grizzly.state, 'locust') and grizzly_context.grizzly.state.locust is not None:
             del grizzly_context.grizzly.state.locust
@@ -266,9 +265,9 @@ class RequestTaskFixture:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> Literal[True]:
         rm_rf(Path(self.context_root).parent)
 
@@ -289,7 +288,7 @@ class GrizzlyFixture:
 
     @property
     def grizzly(self) -> GrizzlyContext:
-        return cast(GrizzlyContext, self.behave.context.grizzly)
+        return cast('GrizzlyContext', self.behave.context.grizzly)
 
     def __enter__(self) -> Self:
         environ['GRIZZLY_CONTEXT_ROOT'] = Path(self.request_task.context_root).parent.as_posix()
@@ -305,10 +304,10 @@ class GrizzlyFixture:
     def __call__(
         self,
         host: str = '',
-        user_type: Optional[type[GrizzlyUser]] = None,
-        scenario_type: Optional[type[GrizzlyScenario]] = None,
+        user_type: type[GrizzlyUser] | None = None,
+        scenario_type: type[GrizzlyScenario] | None = None,
         *,
-        no_tasks: Optional[bool] = False,
+        no_tasks: bool | None = False,
     ) -> GrizzlyScenario:
         if user_type is None:
             user_type = TestUser
@@ -348,9 +347,9 @@ class GrizzlyFixture:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> Literal[True]:
         with suppress(KeyError):
             del environ['GRIZZLY_CONTEXT_ROOT']
@@ -360,7 +359,7 @@ class GrizzlyFixture:
 
 class ResponseContextManagerFixture:
     # borrowed from geventhttpclient.client._build_request
-    def _build_request(self, method: str, request_url: str, body: Optional[str] = '', headers: Optional[dict[str, Any]] = None) -> str:  # noqa: ARG002
+    def _build_request(self, method: str, request_url: str, body: str | None = '', headers: dict[str, Any] | None = None) -> str:  # noqa: ARG002
         parsed = urlparse(request_url)
 
         request = method + ' ' + parsed.path + ' HTTP/1.1\r\n'
@@ -374,12 +373,12 @@ class ResponseContextManagerFixture:
     def __call__(
         self,
         status_code: int,
-        response_body: Optional[Any] = None,
-        response_headers: Optional[dict[str, Any]] = None,
-        request_method: Optional[str] = None,
-        request_body: Optional[Any] = None,
-        request_headers: Optional[dict[str, Any]] = None,
-        url: Optional[str] = None,
+        response_body: Any | None = None,
+        response_headers: dict[str, Any] | None = None,
+        request_method: str | None = None,
+        request_body: Any | None = None,
+        request_headers: dict[str, Any] | None = None,
+        url: str | None = None,
         **kwargs: dict[str, Any],
     ) -> FastResponseContextManager:
         name = kwargs['name']
@@ -388,14 +387,14 @@ class ResponseContextManagerFixture:
         request_url = url
 
         class FakeGhcResponse(HTTPSocketPoolResponse):
-            _headers_index: Optional[Headers]
+            _headers_index: Headers | None
             _sent_request: str
             _sock: Any
 
             def __init__(self) -> None:
                 self._headers_index = None
 
-                body: Optional[Any] = None
+                body: Any | None = None
                 if request_headers is not None and CaseInsensitiveDict(**request_headers).get('Content-Type', None) in [None, 'application/json']:
                     body = jsondumps(request_body or '')
                 else:
@@ -473,9 +472,13 @@ class NoopZmqFixture:
 
         for target in targets:
             try:
-                self._mocks.update({target: self._mocker.patch(
-                    f'{prefix}.{target}',
-                )})
+                self._mocks.update(
+                    {
+                        target: self._mocker.patch(
+                            f'{prefix}.{target}',
+                        ),
+                    },
+                )
             except AttributeError as e:  # noqa: PERF203
                 if 'gsleep' in str(e):
                     continue
@@ -504,13 +507,13 @@ BehaveKeyword = Literal['Then', 'Given', 'And', 'When']
 class End2EndValidator:
     name: str
     implementation: Any
-    table: Optional[list[dict[str, str]]]
+    table: list[dict[str, str]] | None
 
     def __init__(
         self,
         name: str,
         implementation: Callable[[BehaveContext], None],
-        table: Optional[list[dict[str, str]]] = None,
+        table: list[dict[str, str]] | None = None,
     ) -> None:
         self.name = name
         self.implementation = implementation
@@ -561,21 +564,21 @@ def step_start_webserver(context: Context, port: int) -> None:
 
     _tmp_path_factory: TempPathFactory
     _env: dict[str, str]
-    _validators: dict[Optional[str], list[End2EndValidator]]
+    _validators: dict[str | None, list[End2EndValidator]]
     _distributed: bool
 
     _after_features: dict[str, Callable[[BehaveContext, Feature], None]]
     _before_features: dict[str, Callable[[BehaveContext, Feature], None]]
 
-    _root: Optional[Path]
+    _root: Path | None
 
-    _has_pymqi: Optional[bool]
+    _has_pymqi: bool | None
 
     cwd: Path
     test_tmp_dir: Path
-    _tmp_path_factory_basetemp: Optional[Path]
+    _tmp_path_factory_basetemp: Path | None
     webserver: Webserver
-    profile: Optional[Profile]
+    profile: Profile | None
 
     def __init__(self, tmp_path_factory: TempPathFactory, webserver: Webserver, *, distributed: bool) -> None:
         self.test_tmp_dir = (Path(__file__) / '..' / '..' / '.pytest_tmp').resolve()
@@ -621,7 +624,7 @@ def step_start_webserver(context: Context, port: int) -> None:
 
         return self._has_pymqi
 
-    def __enter__(self) -> Self:  # noqa: PLR0912, PLR0915
+    def __enter__(self) -> Self:  # noqa: PLR0915
         if environ.get('PROFILE', None) is not None:
             self.profile = Profile()
             self.profile.enable()
@@ -646,12 +649,14 @@ def step_start_webserver(context: Context, port: int) -> None:
 
         path = environ.get('PATH', '')
 
-        self._env.update({
-            'PATH': f'{virtual_env_path!s}/bin:{path}',
-            'VIRTUAL_ENV': str(virtual_env_path),
-            'PYTHONPATH': environ.get('PYTHONPATH', '.'),
-            'HOME': environ.get('HOME', '/'),
-        })
+        self._env.update(
+            {
+                'PATH': f'{virtual_env_path!s}/bin:{path}',
+                'VIRTUAL_ENV': str(virtual_env_path),
+                'PYTHONPATH': environ.get('PYTHONPATH', '.'),
+                'HOME': environ.get('HOME', '/'),
+            },
+        )
 
         for env_key in ['SSH_AUTH_SOCK', 'GRIZZLY_MOUNT_CONTEXT']:
             env_value = environ.get(env_key, None)
@@ -758,9 +763,9 @@ def step_start_webserver(context: Context, port: int) -> None:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> Literal[True]:
         # reset fixture basetemp
         self._tmp_path_factory._basetemp = self._tmp_path_factory_basetemp
@@ -792,8 +797,8 @@ def step_start_webserver(context: Context, port: int) -> None:
         self,
         implementation: Callable[[BehaveContext], None],
         /,
-        scenario: Optional[str] = None,
-        table: Optional[list[dict[str, str]]] = None,
+        scenario: str | None = None,
+        table: list[dict[str, str]] | None = None,
     ) -> None:
         callee = inspect.stack()[1].function
 
@@ -810,7 +815,7 @@ def step_start_webserver(context: Context, port: int) -> None:
         callee = inspect.stack()[1].function
         self._before_features[callee] = implementation
 
-    def test_steps(self, /, scenario: Optional[list[str]] = None, background: Optional[list[str]] = None, identifier: Optional[str] = None, *, add_dummy_step: bool = True) -> str:
+    def test_steps(self, /, scenario: list[str] | None = None, background: list[str] | None = None, identifier: str | None = None, *, add_dummy_step: bool = True) -> str:
         callee = inspect.stack()[1].function
         contents: list[str] = ['Feature:']
         add_user_count_step = True
@@ -871,7 +876,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             identifier=identifier,
         )
 
-    def create_feature(self, contents: str, name: Optional[str] = None, identifier: Optional[str] = None) -> str:  # noqa: C901, PLR0915
+    def create_feature(self, contents: str, name: str | None = None, identifier: str | None = None) -> str:  # noqa: C901, PLR0912, PLR0915
         if name is None:
             name = inspect.stack()[1].function
 
@@ -884,7 +889,7 @@ def step_start_webserver(context: Context, port: int) -> None:
         steps_file = self.root / 'features' / 'steps' / 'steps.py'
         environment_file = self.root / 'features' / 'environment.py'
 
-        scenario: Optional[str] = None
+        scenario: str | None = None
         indentation = '    '
         modified_feature_lines: list[str] = []
         offset = 0  # number of added steps
@@ -946,8 +951,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             fd.write('from grizzly.types.behave import Context, Feature\n')
             fd.write('from grizzly.context import GrizzlyContext\n')
             fd.write(
-                'from grizzly.behave import before_feature as grizzly_before_feature, '
-                'after_feature as grizzly_after_feature, before_scenario, after_scenario, before_step\n\n',
+                'from grizzly.behave import before_feature as grizzly_before_feature, after_feature as grizzly_after_feature, before_scenario, after_scenario, before_step\n\n',
             )
 
             fd.write('def before_feature(context: Context, feature: Feature, *args: tuple[Any, ...], **kwargs: dict[str, Any]) -> None:\n')
@@ -989,16 +993,16 @@ def step_start_webserver(context: Context, port: int) -> None:
     def execute(
         self,
         feature_file: str,
-        env_conf: Optional[dict[str, Any]] = None,
-        testdata: Optional[dict[str, str]] = None,
-        project_name: Optional[str] = None,
+        env_conf: dict[str, Any] | None = None,
+        testdata: dict[str, str] | None = None,
+        project_name: str | None = None,
         *,
         dry_run: bool = False,
     ) -> tuple[int, list[str]]:
         env_conf_fd: Any
         if env_conf is not None:
             prefix = Path(feature_file).stem
-            env_conf_fd = NamedTemporaryFile(delete=not self.keep_files, prefix=prefix, suffix='.yaml', dir=(self.root / 'environments'))
+            env_conf_fd = NamedTemporaryFile(delete=not self.keep_files, prefix=prefix, suffix='.yaml', dir=(self.root / 'environments'))  # noqa: SIM115
         else:
             env_conf_fd = nullcontext()
 
@@ -1012,7 +1016,8 @@ def step_start_webserver(context: Context, port: int) -> None:
                 'run',
                 '--yes',
                 '--verbose',
-                '-l', '/tmp/grizzly.log',  # noqa: S108
+                '-l',
+                '/tmp/grizzly.log',  # noqa: S108
                 feature_file,
             ]
 
@@ -1020,7 +1025,7 @@ def step_start_webserver(context: Context, port: int) -> None:
                 command.append('--dry-run')
 
             if self._distributed:
-                command = command[:2] + ['--project-name', project_name] + command[2:]
+                command = [*command[:2], '--project-name', project_name, *command[2:]]
 
             if env_conf is not None:
                 env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())
@@ -1043,7 +1048,7 @@ def step_start_webserver(context: Context, port: int) -> None:
 
                 if self._distributed:
                     # get docker compose project
-                    validate_command = command[:2] + ['--validate-config'] + command[2:]
+                    validate_command = [*command[:2], '--validate-config', *command[2:]]
                     _, output = run_command(
                         validate_command,
                         cwd=str(self.root),

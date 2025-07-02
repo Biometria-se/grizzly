@@ -1,4 +1,5 @@
 """Useful helper stuff for tests."""
+
 from __future__ import annotations
 
 import inspect
@@ -41,6 +42,7 @@ class AtomicCustomVariable(AtomicVariable[str]):
 
 message_callback_not_a_method = True
 
+
 def ANYUUID(version: int = 4) -> object:  # noqa: N802
     class WrappedAnyUuid:
         def __eq__(self, other: object) -> bool:
@@ -57,11 +59,15 @@ def ANYUUID(version: int = 4) -> object:  # noqa: N802
         def __neq__(self, other: object) -> bool:
             return self.__ne__(other)
 
+        def __hash__(self) -> int:
+            return hash(self)
+
     return WrappedAnyUuid()
 
 
-def ANY(*cls: type, message: Optional[str] = None) -> object:  # noqa: N802
+def ANY(*cls: type, message: str | None = None) -> object:  # noqa: N802
     """Compare equal to everything, as long as it is of the same type."""
+
     class WrappedAny(metaclass=ABCMeta):  # noqa: B024
         def __eq__(self, other: object) -> bool:
             if len(cls) < 1:
@@ -84,18 +90,24 @@ def ANY(*cls: type, message: Optional[str] = None) -> object:  # noqa: N802
 
             return ''.join(representation)
 
+        def __hash__(self) -> int:
+            return hash(self)
+
     for c in cls:
         WrappedAny.register(c)
 
     return WrappedAny()
 
+
 def SOME(cls: type, *value: Any, **values: Any) -> object:  # noqa: N802
     class WrappedSome:
         def __eq__(self, other: object) -> bool:
             if issubclass(cls, dict):
+
                 def get_value(other: Any, attr: str) -> Any:
                     return other.get(attr)
             else:
+
                 def get_value(other: Any, attr: str) -> Any:
                     return getattr(other, attr)
 
@@ -108,8 +120,11 @@ def SOME(cls: type, *value: Any, **values: Any) -> object:  # noqa: N802
             return self.__ne__(other)
 
         def __repr__(self) -> str:
-            info = ', '.join([f"{key}={value}" for key, value in values.items()])
+            info = ', '.join([f'{key}={value}' for key, value in values.items()])
             return f'<SOME({cls}, {info})>'
+
+        def __hash__(self) -> int:
+            return hash(self)
 
     if len(value) > 0 and len(values) > 0:
         message = 'cannot use both positional and named arguments'
@@ -128,7 +143,7 @@ def SOME(cls: type, *value: Any, **values: Any) -> object:  # noqa: N802
     return WrappedSome()
 
 
-def message_callback(environment: Environment, msg: Message) -> None:  # noqa: ARG001
+def message_callback(environment: Environment, msg: Message) -> None:
     pass
 
 
@@ -150,14 +165,14 @@ class RequestCalled(Exception):  # noqa: N818
 class TestUser(GrizzlyUser):
     __test__ = False
 
-    _config_property: Optional[str] = None
+    _config_property: str | None = None
 
     @property
-    def config_property(self) -> Optional[str]:
+    def config_property(self) -> str | None:
         return self._config_property
 
     @config_property.setter
-    def config_property(self, value: Optional[str]) -> None:
+    def config_property(self, value: str | None) -> None:
         self._config_property = value
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
@@ -178,11 +193,11 @@ class TestScenario(GrizzlyScenario):
 class TestTask(GrizzlyTask):
     __test__ = False
 
-    name: Optional[str]
+    name: str | None
     call_count: int
     task_call_count: int
 
-    def __init__(self, name: Optional[str] = None) -> None:
+    def __init__(self, name: str | None = None) -> None:
         super().__init__(timeout=None)
 
         self.name = name
@@ -251,17 +266,22 @@ def check_arguments(kwargs: dict[str, Any]) -> tuple[bool, list[str]]:
 def get_property_decorated_attributes(target: Any) -> set[str]:
     return {
         name
-            for name, _ in inspect.getmembers(
-                target,
-                lambda p: isinstance(
-                    p, property | MethodType,
-                ) and not isinstance(
-                    p, classmethod | MethodType,  # @classmethod anotated methods becomes @property
-                )) if not name.startswith('_')
+        for name, _ in inspect.getmembers(
+            target,
+            lambda p: isinstance(
+                p,
+                property | MethodType,
+            )
+            and not isinstance(
+                p,
+                classmethod | MethodType,  # @classmethod anotated methods becomes @property
+            ),
+        )
+        if not name.startswith('_')
     }
 
 
-def run_command(command: list[str], env: Optional[dict[str, str]] = None, cwd: Optional[str] = None) -> tuple[int, list[str]]:
+def run_command(command: list[str], env: dict[str, str] | None = None, cwd: str | None = None) -> tuple[int, list[str]]:
     output: list[str] = []
     if env is None:
         env = os.environ.copy()
@@ -304,10 +324,14 @@ def run_command(command: list[str], env: Optional[dict[str, str]] = None, cwd: O
     return process.returncode, output
 
 
-def onerror(func: Callable, path: str, exc_info: Union[  # noqa: ARG001
+def onerror(
+    func: Callable,
+    path: str,
+    exc_info: Union[  # noqa: ARG001
         BaseException,
-        tuple[type[BaseException], BaseException, Optional[TracebackType]],
-]) -> None:
+        tuple[type[BaseException], BaseException, TracebackType | None],
+    ],
+) -> None:
     """Error handler for shutil.rmtree.
 
     If the error is due to an access error (read only file)
@@ -321,7 +345,7 @@ def onerror(func: Callable, path: str, exc_info: Union[  # noqa: ARG001
         _path.chmod(stat.S_IWUSR)
         func(path)
     else:
-        raise  # pylint: disable=E0704
+        raise  # noqa: PLE0704
 
 
 def rm_rf(path: Union[str, Path]) -> None:
@@ -344,7 +368,7 @@ tee = '├── '
 last = '└── '
 
 
-def tree(dir_path: Path, prefix: str = '', ignore: Optional[list[str]] = None) -> Generator[str, None, None]:
+def tree(dir_path: Path, prefix: str = '', ignore: list[str] | None = None) -> Generator[str, None, None]:
     """Recursive generator.
 
     Given a directory Path object will yield a visual tree structure line by line
@@ -385,8 +409,11 @@ class regex:
     def __repr__(self) -> str:
         return self._regex.pattern
 
+    def __hash__(self) -> int:
+        return hash(self)
 
-def create_mocked_fast_response_context_manager(*, content: str, headers: Optional[dict[str, str]] = None, status_code: int = 200) -> FastResponseContextManager:
+
+def create_mocked_fast_response_context_manager(*, content: str, headers: dict[str, str] | None = None, status_code: int = 200) -> FastResponseContextManager:
     ghc_response = MagicMock(spec=HTTPSocketPoolResponse)
     ghc_response.get_code.return_value = status_code
     ghc_response._headers_index = headers or {}
