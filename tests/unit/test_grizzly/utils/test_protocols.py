@@ -1,4 +1,5 @@
 """Unit tests of grizzly.protocols."""
+
 from __future__ import annotations
 
 import logging
@@ -102,10 +103,7 @@ EXPLANATION:
     assert (
         caplog.messages[2]
         == caplog.messages[4]
-        == (
-            '--------------------|-----------------------------------------------------------------'
-            '----------------------------------------------------------------------------'
-        )
+        == ('--------------------|---------------------------------------------------------------------------------------------------------------------------------------------')
     )
     assert caplog.messages[5] == ''
 
@@ -132,10 +130,7 @@ EXPLANATION:
     assert (
         caplog.messages[2]
         == caplog.messages[4]
-        == (
-            '--------------------|-----------------------------------------------------------------'
-            '----------------------------------------------------------------------------'
-        )
+        == ('--------------------|---------------------------------------------------------------------------------------------------------------------------------------------')
     )
     assert caplog.messages[5] == ''
 
@@ -180,10 +175,7 @@ EXPLANATION:
     assert (
         amqerr_log_entries[2]
         == amqerr_log_entries[5]
-        == (
-            '--------------------|-----------------------------------------------------------------'
-            '----------------------------------------------------------------------------'
-        )
+        == ('--------------------|---------------------------------------------------------------------------------------------------------------------------------------------')
     )
     assert amqerr_log_entries[3].strip() == f"{entry_date_1.strftime('%Y-%m-%d %H:%M:%S')}  AMQ9999E: Channel 'CLIENT.CONN' to host '1.2.3.4' ended abnormally."
     assert amqerr_log_entries[4].strip() == f'{entry_date_2.strftime("%Y-%m-%d %H:%M:%S")}  AMQ1234E: dude, what did you do?!'
@@ -195,10 +187,7 @@ EXPLANATION:
     assert (
         amqerr_fdc_files[2]
         == amqerr_fdc_files[5]
-        == (
-            '--------------------|-----------------------------------------------------------------'
-            '----------------------------------------------------------------------------'
-        )
+        == ('--------------------|---------------------------------------------------------------------------------------------------------------------------------------------')
     )
 
     assert amqerr_fdc_files[3].strip() == f'{entry_date_2.strftime("%Y-%m-%d %H:%M:%S")}  {amqerr_fdc_file_2}'
@@ -257,24 +246,26 @@ def test_http_populate_cookiejar() -> None:
     monster = CookieMonster()
 
     # add cookie that should be discarded
-    monster.cookiejar.set_cookie(Cookie(
-        version=0,
-        name='leftovers',
-        value='crumbles',
-        port=None,
-        port_specified=False,
-        domain='example.com',
-        domain_specified=True,
-        domain_initial_dot=False,
-        path='/',
-        path_specified=True,
-        secure=False,
-        expires=None,
-        discard=False,
-        comment=None,
-        comment_url=None,
-        rest={},
-    ))
+    monster.cookiejar.set_cookie(
+        Cookie(
+            version=0,
+            name='leftovers',
+            value='crumbles',
+            port=None,
+            port_specified=False,
+            domain='example.com',
+            domain_specified=True,
+            domain_initial_dot=False,
+            path='/',
+            path_specified=True,
+            secure=False,
+            expires=None,
+            discard=False,
+            comment=None,
+            comment_url=None,
+            rest={},
+        ),
+    )
 
     assert len(monster.cookiejar) == 1
 

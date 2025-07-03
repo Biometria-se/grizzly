@@ -1,18 +1,19 @@
 """Unit tests of grizzly.steps.scenario.results."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import BehaveFixture
 
 
 def test_step_results_fail_ratio(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert grizzly.scenario.validation.fail_ratio is None
@@ -26,7 +27,7 @@ def test_step_results_fail_ratio(behave_fixture: BehaveFixture) -> None:
 
 def test_step_results_avg_response_time(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert grizzly.scenario.validation.avg_response_time is None
@@ -40,7 +41,7 @@ def test_step_results_avg_response_time(behave_fixture: BehaveFixture) -> None:
 
 def test_step_results_response_time_percentile(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert grizzly.scenario.validation.response_time_percentile is None

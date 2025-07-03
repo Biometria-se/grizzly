@@ -12,6 +12,7 @@ Example of how to use it in a scenario:
 Given a user of type "Dummy" load testing "/dev/null"
 ```
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any

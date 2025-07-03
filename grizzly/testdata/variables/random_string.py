@@ -34,15 +34,16 @@ This can then be used in a template:
 
 `AtomicRandomString.registration_plate_number` will then be a string in the format `[A-Z][A-Z]Z[0-9][0-9]0` and there will be `100` unique values for disposal.
 """
+
 from __future__ import annotations
 
 from contextlib import suppress
 from secrets import choice, randbelow
 from string import ascii_letters
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 from uuid import uuid4
 
-from grizzly.types import bool_type, int_rounded_float_type
+from grizzly.types import StrDict, bool_type, int_rounded_float_type
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
@@ -98,7 +99,7 @@ class AtomicRandomString(AtomicVariable[str]):
     __initialized: bool = False
 
     _strings: dict[str, list[str]]
-    arguments: ClassVar[dict[str, Any]] = {'upper': bool_type, 'count': int_rounded_float_type}
+    arguments: ClassVar[StrDict] = {'upper': bool_type, 'count': int_rounded_float_type}
 
     @staticmethod
     def get_generators(format_string: str) -> list[Callable[[AtomicRandomString], str]]:
@@ -131,8 +132,7 @@ class AtomicRandomString(AtomicVariable[str]):
                     if argument in arguments:
                         settings[argument] = caster(arguments[argument])
 
-                if settings['count'] < 1:
-                    settings['count'] = 1
+                settings['count'] = max(settings['count'], 1)
             else:
                 string_pattern = value
 
@@ -156,14 +156,14 @@ class AtomicRandomString(AtomicVariable[str]):
     def _generate_g(self) -> str:
         return str(uuid4())
 
-    def _generate_strings(self, string_pattern: str, settings: dict[str, Any]) -> list[str]:
+    def _generate_strings(self, string_pattern: str, settings: StrDict) -> list[str]:
         generated_strings: set[str] = set()
         generators = self.__class__.get_generators(string_pattern)
 
         string_pattern = string_pattern.replace('%g', '%s')
 
         for _ in range(settings['count']):
-            generated_string: Optional[str] = None
+            generated_string: str | None = None
 
             while generated_string is None or generated_string in generated_strings:
                 generated_part = tuple([generator(self) for generator in generators])
@@ -182,13 +182,13 @@ class AtomicRandomString(AtomicVariable[str]):
 
         instances = cls._instances.get(cls, {})
         for scenario in instances:
-            instance = cast(AtomicRandomString, cls.get(scenario))
+            instance = cast('AtomicRandomString', cls.get(scenario))
             variables = list(instance._strings.keys())
 
             for variable in variables:
                 del instance._strings[variable]
 
-    def __getitem__(self, variable: str) -> Optional[str]:
+    def __getitem__(self, variable: str) -> str | None:
         with self.semaphore():
             self._get_value(variable)
 

@@ -1,6 +1,7 @@
 """@anchor pydoc:grizzly_extras.azure.aad Azure Active Directory
 Non-grizzly implementation of an Azure Credential, used by grizzly.
 """
+
 from __future__ import annotations
 
 import json
@@ -17,7 +18,7 @@ from os import environ
 from pathlib import Path
 from secrets import token_urlsafe
 from threading import Thread
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, TypedDict, cast
+from typing import TYPE_CHECKING, Any, ClassVar, TypedDict, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
@@ -66,6 +67,7 @@ class CookieTokenPayload(TypedDict):
     state: str | None
     session_state: str | None
 
+
 class FormPostParser(HTMLParser):
     action: str | None
     _payload: CookieTokenPayload
@@ -84,7 +86,7 @@ class FormPostParser(HTMLParser):
 
         return self._payload
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag == 'form':
             for attr, value in attrs:
                 if attr == 'action':
@@ -102,17 +104,18 @@ class FormPostParser(HTMLParser):
             if prop_name is not None and prop_name in self._payload and prop_value is not None:
                 self._payload.update({prop_name: prop_value})  # type: ignore[misc]
 
+
 class AzureAadWebserver:
     enable: bool
     credential: AzureAadCredential
 
     _http_server: HTTPServer
     _thread: Thread
-    _redirect: Optional[str]
+    _redirect: str | None
 
     def __init__(self, credential: AzureAadCredential) -> None:
         self.credential = credential
-        self.enable = (self.credential.redirect is None and self.credential.initialize is None)
+        self.enable = self.credential.redirect is None and self.credential.initialize is None
 
     def _start(self) -> None:
         if not self.enable:
@@ -120,7 +123,9 @@ class AzureAadWebserver:
 
         # start http server and do stuff here
         self._http_server = HTTPServer(
-            ('127.0.0.1', 0), SimpleHTTPRequestHandler, bind_and_activate=False,
+            ('127.0.0.1', 0),
+            SimpleHTTPRequestHandler,
+            bind_and_activate=False,
         )
         self._http_server.timeout = 0.5
         self._http_server.allow_reuse_address = True
@@ -160,9 +165,9 @@ class AzureAadWebserver:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> bool:
         self._stop()
 
@@ -192,9 +197,9 @@ class AzureAadCredential(TokenCredential):
     _access_token: AccessToken | None
     _webserver: AzureAadWebserver
     _refreshed: bool
-    _token_payload: Optional[dict[str, Any]]
+    _token_payload: dict[str, Any] | None
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         username: str | None,
         password: str | None,
@@ -246,7 +251,7 @@ class AzureAadCredential(TokenCredential):
     def webserver(self) -> AzureAadWebserver:
         return self._webserver
 
-    def get_tenant(self, tenant_id: Optional[str]) -> Optional[str]:
+    def get_tenant(self, tenant_id: str | None) -> str | None:
         tenant = tenant_id if tenant_id is not None else self.tenant
 
         if tenant is None:
@@ -318,14 +323,16 @@ class AzureAadCredential(TokenCredential):
             if self.auth_method == AuthMethod.USER:
                 with self.webserver:
                     self._access_token = self.get_oauth_authorization(
-                        *scopes, claims=claims, tenant_id=tenant_id,
+                        *scopes,
+                        claims=claims,
+                        tenant_id=tenant_id,
                     )
             else:
                 self._access_token = self.get_oauth_token(tenant_id=tenant_id)
 
             logger.info('requested token for %s', self.username)
 
-        return cast(AccessToken, self._access_token)
+        return cast('AccessToken', self._access_token)
 
     def get_expires_on(self, token: str) -> int:
         # default to 3000 seconds
@@ -342,13 +349,16 @@ class AzureAadCredential(TokenCredential):
             decoded = b64decode(payload)
             json_payload = json.loads(decoded)
 
-            return cast(int, json_payload.get('exp', default_exp))
+            return cast('int', json_payload.get('exp', default_exp))
         except:
             logger.exception('failed to get expire timestamp from token')
             return default_exp
 
-    def get_oauth_authorization(  # noqa: C901, PLR0915
-        self, *scopes: str, claims: str | None = None, tenant_id: str | None = None,  # noqa: ARG002
+    def get_oauth_authorization(  # noqa: C901, PLR0912, PLR0915
+        self,
+        *scopes: str,
+        claims: str | None = None,  # noqa: ARG002
+        tenant_id: str | None = None,
     ) -> AccessToken:
         tenant = self.get_tenant(tenant_id)
 
@@ -365,10 +375,11 @@ class AzureAadCredential(TokenCredential):
                 message = f'no config found in response from {response.url}'
                 raise ValueError(message)
 
-            return cast(dict[str, Any], json.loads(f'{{{match.group(1)}}}'))
+            return cast('dict[str, Any]', json.loads(f'{{{match.group(1)}}}'))
 
         def update_state(
-            state: dict[str, str], response: requests.Response,
+            state: dict[str, str],
+            response: requests.Response,
         ) -> dict[str, Any]:
             config = _parse_response_config(response)
 
@@ -414,10 +425,10 @@ class AzureAadCredential(TokenCredential):
 
         is_token_v2_0: bool = True
         if initialize_uri is None:
-            redirect_uri = cast(str, self.redirect)
+            redirect_uri = cast('str', self.redirect)
 
         verify = True
-        username_lowercase = cast(str, self.username).lower()
+        username_lowercase = cast('str', self.username).lower()
 
         with requests.Session() as session:
             retries = Retry(total=3, connect=3, read=3, status=0, backoff_factor=0.1)
@@ -425,8 +436,8 @@ class AzureAadCredential(TokenCredential):
 
             headers: dict[str, str]
             payload: dict[str, Any]
-            code_verifier: Optional[str] = None
-            code_challenge: Optional[str] = None
+            code_verifier: str | None = None
+            code_challenge: str | None = None
             data: dict[str, Any]
             state: dict[str, str] = {
                 'hpgact': '',
@@ -450,7 +461,7 @@ class AzureAadCredential(TokenCredential):
                 redirect_uri_parsed = urlparse(redirect_uri)
 
                 if len(redirect_uri_parsed.netloc) == 0:
-                    redirect_uri = f"{self.host}{redirect_uri}"
+                    redirect_uri = f'{self.host}{redirect_uri}'
 
                 url = f'{provider_url}/authorize'
 
@@ -470,13 +481,15 @@ class AzureAadCredential(TokenCredential):
                     scope = ' '.join(scopes) if len(scopes) > 0 else ' '.join(default_scopes)
 
                     code_verifier, code_challenge = generate_pkcs()
-                    params.update({
-                        'response_mode': ['fragment'],
-                        'response_type': ['code'],
-                        'code_challenge_method': ['S256'],
-                        'code_challenge': [code_challenge],
-                        'scope': [scope],
-                    })
+                    params.update(
+                        {
+                            'response_mode': ['fragment'],
+                            'response_type': ['code'],
+                            'code_challenge_method': ['S256'],
+                            'code_challenge': [code_challenge],
+                            'scope': [scope],
+                        },
+                    )
 
                 headers = {
                     'Host': provider_parsed.netloc,
@@ -591,7 +604,7 @@ class AzureAadCredential(TokenCredential):
                 message = f'user auth request 2: {response.url} had unexpected status code {response.status_code}'
                 raise AzureAadFlowError(message)
 
-            data = cast(dict[str, Any], json.loads(response.text))
+            data = cast('dict[str, Any]', json.loads(response.text))
             if 'error' in data:
                 error = data['error']
                 message = f'error response from {url}: code={error["code"]}, message={error["message"]}'
@@ -731,13 +744,15 @@ class AzureAadCredential(TokenCredential):
                         logger.error(error_message)
                         raise AzureAadFlowError(error_message)
 
-                    state.update({
-                        'sCtx': payload['Ctx'],
-                        'sFT': payload['FlowToken'],
-                        'correlationId': payload['CorrelationId'],
-                        'sessionId': payload['SessionId'],
-                        'x-ms-request-id': response.headers.get('X-Ms-Request-Id', state['x-ms-request-id']),
-                    })
+                    state.update(
+                        {
+                            'sCtx': payload['Ctx'],
+                            'sFT': payload['FlowToken'],
+                            'correlationId': payload['CorrelationId'],
+                            'sessionId': payload['SessionId'],
+                            'x-ms-request-id': response.headers.get('X-Ms-Request-Id', state['x-ms-request-id']),
+                        },
+                    )
                     poll_end = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
                     # // begin auth -->
 
@@ -769,13 +784,15 @@ class AzureAadCredential(TokenCredential):
                         logger.error(error_message)
                         raise AzureAadFlowError(error_message)
 
-                    state.update({
-                        'sCtx': payload['Ctx'],
-                        'sFT': payload['FlowToken'],
-                        'correlationId': payload['CorrelationId'],
-                        'sessionId': payload['SessionId'],
-                        'x-ms-request-id': response.headers.get('X-Ms-Request-Id', state['x-ms-request-id']),
-                    })
+                    state.update(
+                        {
+                            'sCtx': payload['Ctx'],
+                            'sFT': payload['FlowToken'],
+                            'correlationId': payload['CorrelationId'],
+                            'sessionId': payload['SessionId'],
+                            'x-ms-request-id': response.headers.get('X-Ms-Request-Id', state['x-ms-request-id']),
+                        },
+                    )
                     # // end auth -->
 
                     # <!-- process auth
@@ -829,7 +846,7 @@ class AzureAadCredential(TokenCredential):
 
                 #  <!-- request 4
                 if config['urlPost'].startswith('https://'):
-                    message = f"unexpected response from {response.url}, incorrect username and/or password?"
+                    message = f'unexpected response from {response.url}, incorrect username and/or password?'
                     raise AzureAadFlowError(message)
 
                 url = f'https://{host}{config["urlPost"]}'
@@ -856,11 +873,13 @@ class AzureAadCredential(TokenCredential):
 
                 # does not seem to be needed for token v2.0, so only add them for v1.0
                 if not is_token_v2_0:
-                    payload.update({
-                        'i2': '',
-                        'i17': '',
-                        'i18': '',
-                    })
+                    payload.update(
+                        {
+                            'i2': '',
+                            'i17': '',
+                            'i18': '',
+                        },
+                    )
 
                 response = session.post(url, headers=headers, data=payload, allow_redirects=False)
                 logger.debug('user auth request 4: %s (%d)', response.url, response.status_code)
@@ -982,7 +1001,12 @@ class AzureAadCredential(TokenCredential):
             return self.get_oauth_token(code=code, verifier=code_verifier)
 
     def get_oauth_token(
-        self, *, code: Optional[str] = None, verifier: Optional[str] = None, resource: Optional[str] = None, tenant_id: Optional[str] = None,
+        self,
+        *,
+        code: str | None = None,
+        verifier: str | None = None,
+        resource: str | None = None,
+        tenant_id: str | None = None,
     ) -> AccessToken:
         tenant = self.get_tenant(tenant_id)
 
@@ -1001,7 +1025,7 @@ class AzureAadCredential(TokenCredential):
         headers = {}
 
         if self.auth_type == AuthType.HEADER:
-            redirect_uri = cast(str, self.redirect)
+            redirect_uri = cast('str', self.redirect)
             redirect_uri_parsed = urlparse(redirect_uri)
         else:
             redirect_uri_parsed = urlparse(self.host)

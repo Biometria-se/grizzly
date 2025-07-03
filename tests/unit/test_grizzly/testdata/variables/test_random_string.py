@@ -1,4 +1,5 @@
 """Unit tests of grizzly.testdata.variables.random_string."""
+
 from __future__ import annotations
 
 import re
@@ -113,7 +114,7 @@ class TestAtomicRandomString:
             t = AtomicRandomString(scenario=scenario2, variable='uuid', value='%g | count=3')
 
             assert len(t._strings['uuid']) == 3
-            regex = re.compile(r'^[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12}\Z', re.I)
+            regex = re.compile(r'^[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12}\Z', re.IGNORECASE)
             for _ in range(3):
                 uuid = t['uuid']
                 assert uuid is not None

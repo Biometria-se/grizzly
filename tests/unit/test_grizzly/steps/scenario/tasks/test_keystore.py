@@ -1,4 +1,5 @@
 """Unit tests of grizzly.steps.scenario.tasks.keystore."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -141,7 +142,7 @@ def test_step_task_keystore_set(behave_fixture: BehaveFixture) -> None:
     assert task.action_context == ['hello', 'world']
     assert task.arguments == {}
 
-    step_task_keystore_set(behave, 'foobar', "{{ foo }} | render=True")
+    step_task_keystore_set(behave, 'foobar', '{{ foo }} | render=True')
 
     task = grizzly.scenario.tasks()[-1]
 
@@ -325,7 +326,7 @@ def test_step_task_keystore_push(behave_fixture: BehaveFixture) -> None:
     assert task.arguments == {}
 
     grizzly.scenario.variables.update({'hello': 'world'})
-    step_task_keystore_push(behave, 'foobar', "{{ hello }} | render=True")
+    step_task_keystore_push(behave, 'foobar', '{{ hello }} | render=True')
 
     assert getattr(behave, 'exceptions', {}) == {}
 
@@ -377,7 +378,7 @@ def test_step_task_keystore_push_text(behave_fixture: BehaveFixture) -> None:
     assert task.arguments == {}
 
     grizzly.scenario.variables.update({'hello': 'world'})
-    behave.text = "{{ hello }} | render=True"
+    behave.text = '{{ hello }} | render=True'
     step_task_keystore_push_text(behave, 'foobar')
 
     assert getattr(behave, 'exceptions', {}) == {}

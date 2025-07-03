@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tests.utils."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -17,6 +18,7 @@ def test_step_utils_fail(behave_fixture: BehaveFixture) -> None:
     step_utils_fail(behave)
 
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='manually failed')]}
+
 
 def test_step_utils_add_orphan_template(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context

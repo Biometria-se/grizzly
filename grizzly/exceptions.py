@@ -1,8 +1,9 @@
 """Custom grizzly exceptions."""
+
 from __future__ import annotations
 
 from random import uniform
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from gevent import sleep as gsleep
 from locust.exception import StopUser
@@ -24,9 +25,9 @@ __all__ = [
 
 
 class ResponseHandlerError(Exception):
-    message: Optional[str] = None
+    message: str | None = None
 
-    def __init__(self, message: Optional[str] = None) -> None:
+    def __init__(self, message: str | None = None) -> None:
         self.message = message
 
 
@@ -74,6 +75,7 @@ class AssertionErrors(Exception):  # noqa: N818
 
     def __len__(self) -> int:
         return len(self.errors)
+
 
 class StepError(AssertionError):
     def __init__(self, error: AssertionError | str, step: Step) -> None:

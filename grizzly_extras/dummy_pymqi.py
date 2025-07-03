@@ -1,6 +1,7 @@
 """Dummy pymqi interface implementation.
 This is used if `pymqi` is not installed, to get around typing errors.
 """
+
 from __future__ import annotations
 
 

@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.write_file."""
+
 from __future__ import annotations
 
 from base64 import b64encode
@@ -103,4 +104,3 @@ class TestWriteFile:
         task.on_stop(parent)
 
         assert not expected_file.exists()
-

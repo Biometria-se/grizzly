@@ -1,18 +1,18 @@
 """End-to-end tests of grizzly.steps.scenario.results."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
-
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from grizzly.types.behave import Context
     from tests.fixtures import End2EndFixture
 
 
 def test_e2e_step_results_fail_ratio(e2e_fixture: End2EndFixture) -> None:
     def validate_fail_ratio(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         assert grizzly.scenario.validation.fail_ratio == 96 / 100.0, f'{grizzly.scenario.validation.fail_ratio} != 0.96'
 
@@ -31,7 +31,7 @@ def test_e2e_step_results_fail_ratio(e2e_fixture: End2EndFixture) -> None:
 
 def test_e2e_step_results_avg_response_time(e2e_fixture: End2EndFixture) -> None:
     def validate_avg_response_time(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         assert grizzly.scenario.validation.avg_response_time == 500, f'{grizzly.scenario.validation.avg_response_time} != 500'
 
@@ -50,7 +50,7 @@ def test_e2e_step_results_avg_response_time(e2e_fixture: End2EndFixture) -> None
 
 def test_e2e_step_results_response_time_percentile(e2e_fixture: End2EndFixture) -> None:
     def validate_response_time_percentile(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         assert grizzly.scenario.validation.response_time_percentile is not None
         assert grizzly.scenario.validation.response_time_percentile.response_time == 333, f'{grizzly.scenario.validation.response_time_percentile.response_time} != 333'

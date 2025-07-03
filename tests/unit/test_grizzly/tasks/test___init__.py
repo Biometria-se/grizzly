@@ -1,4 +1,5 @@
 """Unit tests for grizzly.tasks."""
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -156,14 +157,16 @@ class TestGrizzlyTask:
     def test_get_templates(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         task = DummyTask(timeout=None)
 
-        assert sorted(task.get_templates()) == sorted([
-            '{{ string_template }}',
-            '{{ list_template_1 }}',
-            '{{ list_template_2 }}',
-            '{{ list_template_3 }}',
-            '{{ dict_template_1 }}',
-            '{{ dict_template_2 }}',
-        ])
+        assert sorted(task.get_templates()) == sorted(
+            [
+                '{{ string_template }}',
+                '{{ list_template_1 }}',
+                '{{ list_template_2 }}',
+                '{{ list_template_3 }}',
+                '{{ dict_template_1 }}',
+                '{{ dict_template_2 }}',
+            ],
+        )
 
         mocker.patch('grizzly.tasks.loop.gsleep', autospec=True)
         parent = grizzly_fixture()
@@ -190,14 +193,16 @@ class TestGrizzlyTask:
 
         conditional_factory.add(loop_factory)
 
-        assert sorted(conditional_factory.get_templates()) == sorted([
-            '/api/test/{{ endpoint_suffix }}',
-            'conditional-{{ conditional_name }}',
-            'loop-{{ loop_name }}:test-0',
-            'loop-{{ loop_name }}:test-1',
-            'loop-{{ loop_name }}:test-2',
-            '{{ value | int > 0 }}',
-        ])
+        assert sorted(conditional_factory.get_templates()) == sorted(
+            [
+                '/api/test/{{ endpoint_suffix }}',
+                'conditional-{{ conditional_name }}',
+                'loop-{{ loop_name }}:test-0',
+                'loop-{{ loop_name }}:test-1',
+                'loop-{{ loop_name }}:test-2',
+                '{{ value | int > 0 }}',
+            ],
+        )
 
         # loop -> conditional -> request
         conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}')
@@ -211,14 +216,16 @@ class TestGrizzlyTask:
 
         loop_factory.add(conditional_factory)
 
-        assert sorted(loop_factory.get_templates()) == sorted([
-            '/api/test/{{ endpoint_suffix }}',
-            'conditional-{{ conditional_name }}:test-0',
-            'conditional-{{ conditional_name }}:test-1',
-            'conditional-{{ conditional_name }}:test-2',
-            'loop-{{ loop_name }}:conditional-{{ conditional_name }}',
-            '{{ value | int > 0 }}',
-        ])
+        assert sorted(loop_factory.get_templates()) == sorted(
+            [
+                '/api/test/{{ endpoint_suffix }}',
+                'conditional-{{ conditional_name }}:test-0',
+                'conditional-{{ conditional_name }}:test-1',
+                'conditional-{{ conditional_name }}:test-2',
+                'loop-{{ loop_name }}:conditional-{{ conditional_name }}',
+                '{{ value | int > 0 }}',
+            ],
+        )
 
         # conditional -> loop -> async group -> request
         conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}')
@@ -230,23 +237,27 @@ class TestGrizzlyTask:
         async_group_factory = AsyncRequestGroupTask('async-{{ async_name }}')
 
         for i in range(3):
-            async_group_factory.add(RequestTask(
-                RequestMethod.GET,
-                name=f'request-{i}-{{{{ request_name }}}}',
-                endpoint='/api/test/{{ endpoint_suffix }}',
-                source=None,
-            ))
+            async_group_factory.add(
+                RequestTask(
+                    RequestMethod.GET,
+                    name=f'request-{i}-{{{{ request_name }}}}',
+                    endpoint='/api/test/{{ endpoint_suffix }}',
+                    source=None,
+                ),
+            )
 
         loop_factory.add(async_group_factory)
 
         conditional_factory.add(loop_factory)
 
-        assert sorted(conditional_factory.get_templates()) == sorted([
-            '/api/test/{{ endpoint_suffix }}',
-            'async-{{ async_name }}:request-0-{{ request_name }}',
-            'async-{{ async_name }}:request-1-{{ request_name }}',
-            'async-{{ async_name }}:request-2-{{ request_name }}',
-            'conditional-{{ conditional_name }}',
-            'loop-{{ loop_name }}:async-{{ async_name }}',
-            '{{ value | int > 0 }}',
-        ])
+        assert sorted(conditional_factory.get_templates()) == sorted(
+            [
+                '/api/test/{{ endpoint_suffix }}',
+                'async-{{ async_name }}:request-0-{{ request_name }}',
+                'async-{{ async_name }}:request-1-{{ request_name }}',
+                'async-{{ async_name }}:request-2-{{ request_name }}',
+                'conditional-{{ conditional_name }}',
+                'loop-{{ loop_name }}:async-{{ async_name }}',
+                '{{ value | int > 0 }}',
+            ],
+        )

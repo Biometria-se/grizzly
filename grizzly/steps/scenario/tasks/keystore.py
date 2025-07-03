@@ -1,13 +1,16 @@
 """@anchor pydoc:grizzly.steps.scenario.tasks.keystore Keystore
 This module contains step implementations for the {@pylink grizzly.tasks.keystore} task.
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import KeystoreTask
 from grizzly.types.behave import Context, then
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @then('get "{key}" from keystore and save in variable "{variable}", with default value "{default_value}"')
@@ -26,7 +29,7 @@ def step_task_keystore_get_default(context: Context, key: str, variable: str, de
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'get', variable, default_value))
 
 
@@ -43,7 +46,7 @@ def step_task_keystore_get_remove(context: Context, key: str, variable: str) -> 
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'get_del', variable))
 
 
@@ -60,7 +63,7 @@ def step_task_keystore_get(context: Context, key: str, variable: str) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'get', variable))
 
 
@@ -79,7 +82,7 @@ def step_task_keystore_set(context: Context, key: str, value: str) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'set', value))
 
 
@@ -98,7 +101,7 @@ def step_task_keystore_set_text(context: Context, key: str) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     assert context.text is not None, 'this step requires a value in the step text'
     grizzly.scenario.tasks.add(KeystoreTask(key, 'set', context.text))
 
@@ -118,7 +121,7 @@ def step_task_keystore_inc_default_step(context: Context, key: str, variable: st
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'inc', variable))
 
 
@@ -137,7 +140,7 @@ def step_task_keystore_dec_default_step(context: Context, key: str, variable: st
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'dec', variable))
 
 
@@ -162,7 +165,7 @@ def step_task_keystore_pop(context: Context, key: str, variable: str) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'pop', variable))
 
 
@@ -186,7 +189,7 @@ def step_task_keystore_push(context: Context, key: str, value: str) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'push', value))
 
 
@@ -216,7 +219,7 @@ def step_task_keystore_push_text(context: Context, key: str) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     assert context.text is not None, 'this step requires a value in the step text'
     grizzly.scenario.tasks.add(KeystoreTask(key, 'push', context.text))
 
@@ -236,5 +239,5 @@ def step_task_keystore_del(context: Context, key: str) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'del', None))

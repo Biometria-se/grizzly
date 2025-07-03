@@ -1,15 +1,18 @@
 """@anchor pydoc:grizzly.steps.scenario.tasks.wait_between Wait between
 This module contains step implementations for the {@pylink grizzly.tasks.wait_between} task.
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import WaitBetweenTask
 from grizzly.testdata.utils import resolve_parameters
 from grizzly.types.behave import Context, given
 from grizzly.utils import has_parameter
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @given('wait "{min_time}..{max_time}" seconds between tasks')
@@ -39,7 +42,7 @@ def step_task_wait_between_random(context: Context, min_time: str, max_time: str
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     if has_parameter(min_time):
         min_time = resolve_parameters(grizzly.scenario, min_time)
 
@@ -76,7 +79,7 @@ def step_task_wait_between_constant(context: Context, time: str) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     if has_parameter(time):
         time = resolve_parameters(grizzly.scenario, time)
 

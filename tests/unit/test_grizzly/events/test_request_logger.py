@@ -1,4 +1,5 @@
 """Unit tests of grizzly.users.base.request_logger."""
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -20,7 +21,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import GrizzlyFixture
 
 
-@pytest.fixture()
+@pytest.fixture
 def get_log_files() -> Callable[[], list[Path]]:
     def wrapped() -> list[Path]:
         logs_root = Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'logs'
@@ -29,7 +30,6 @@ def get_log_files() -> Callable[[], list[Path]]:
             logs_root = logs_root / log_dir
 
         return list(logs_root.glob('*.log'))
-
 
     return wrapped
 
@@ -48,10 +48,7 @@ class TestRequestLogger:
 
             assert len(parent.user.events.request._handlers) == 2
             assert any(
-                h.__class__ is RequestLogger
-                and isinstance(h, GrizzlyEventHandlerClass)
-                and isinstance(h.user, GrizzlyUser)
-                and h.user is parent.user
+                h.__class__ is RequestLogger and isinstance(h, GrizzlyEventHandlerClass) and isinstance(h.user, GrizzlyUser) and h.user is parent.user
                 for h in parent.user.events.request._handlers
             )
         finally:
@@ -61,13 +58,15 @@ class TestRequestLogger:
             rm_rf(log_root)
 
     def test__remove_secrets_attribute(self) -> None:
-        assert RequestLogger._remove_secrets_attribute({
-            'test': 'visible',
-            'access_token': 'hidden',
-            'Authorization': 'hidden',
-            'authorization': 'hidden',
-            'Content-Type': 'application/json',
-        }) == {
+        assert RequestLogger._remove_secrets_attribute(
+            {
+                'test': 'visible',
+                'access_token': 'hidden',
+                'Authorization': 'hidden',
+                'authorization': 'hidden',
+                'Content-Type': 'application/json',
+            },
+        ) == {
             'test': 'visible',
             'access_token': '*** REMOVED ***',
             'Authorization': '*** REMOVED ***',
@@ -128,10 +127,13 @@ class TestRequestLogger:
 
         event(
             'custom-user-call',
-            ({
-                'x-bus-message': 'yes',
-                'sent-by': 'grizzly',
-            }, '<?xml encoding="UTF-8" version="1.0"?><test>value</test>'),
+            (
+                {
+                    'x-bus-message': 'yes',
+                    'sent-by': 'grizzly',
+                },
+                '<?xml encoding="UTF-8" version="1.0"?><test>value</test>',
+            ),
             request,
         )
 
@@ -143,7 +145,8 @@ class TestRequestLogger:
 
         try:
             # check response section
-            assert """<- mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN status=OK:
+            assert (
+                """<- mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN status=OK:
 metadata:
 {
   "x-bus-message": "yes",
@@ -151,17 +154,22 @@ metadata:
 }
 
 payload:
-<?xml encoding="UTF-8" version="1.0"?><test>value</test>""" in log_file_contents
+<?xml encoding="UTF-8" version="1.0"?><test>value</test>"""
+                in log_file_contents
+            )
 
             # check request section
-            assert """-> PUT mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:
+            assert (
+                """-> PUT mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:
 metadata:
 {
   "application": "helloworld"
 }
 
 payload:
-execute command foobar""" in log_file_contents
+execute command foobar"""
+                in log_file_contents
+            )
         finally:
             log_file.unlink()
 
@@ -170,10 +178,13 @@ execute command foobar""" in log_file_contents
 
         event(
             'custom-user-call',
-            ({
-                'x-bus-message': 'yes',
-                'sent-by': 'grizzly',
-            }, '<?xml encoding="UTF-8" version="1.0"?><test>value</test>'),
+            (
+                {
+                    'x-bus-message': 'yes',
+                    'sent-by': 'grizzly',
+                },
+                '<?xml encoding="UTF-8" version="1.0"?><test>value</test>',
+            ),
             request,
             Exception('error message'),
             locust_request_meta={
@@ -189,7 +200,8 @@ execute command foobar""" in log_file_contents
 
         try:
             # check response section
-            assert """<- mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN (133.70 ms) status=ERROR:
+            assert (
+                """<- mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN (133.70 ms) status=ERROR:
 metadata:
 {
   "x-bus-message": "yes",
@@ -197,16 +209,21 @@ metadata:
 }
 
 payload:
-<?xml encoding="UTF-8" version="1.0"?><test>value</test>""" in log_file_contents
+<?xml encoding="UTF-8" version="1.0"?><test>value</test>"""
+                in log_file_contents
+            )
 
             # check request section
-            assert """-> GET mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:
+            assert (
+                """-> GET mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:
 metadata:
 {
   "application": "helloworld"
 }
 
 payload:
-execute command foobar""" in log_file_contents
+execute command foobar"""
+                in log_file_contents
+            )
         finally:
             log_file.unlink()

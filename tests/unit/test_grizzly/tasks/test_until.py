@@ -1,4 +1,5 @@
 """Unit tests for grizzly.tasks.until."""
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -11,7 +12,7 @@ import pytest
 from grizzly.exceptions import RestartScenario
 from grizzly.tasks import GrizzlyMetaRequestTask, RequestTask, UntilRequestTask
 from grizzly.tasks.clients import HttpClientTask
-from grizzly.types import RequestDirection, RequestMethod
+from grizzly.types import RequestDirection, RequestMethod, StrDict
 from grizzly.types.locust import StopUser
 from grizzly_extras.transformer import TransformerContentType, TransformerError, transformer
 from tests.helpers import ANY
@@ -23,10 +24,13 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import GrizzlyFixture
 
 
-parameterize = ('meta_request_task_type,meta_args,meta_kwargs', [
-    (RequestTask, (RequestMethod.GET,), {'name': 'test-request', 'endpoint': '/api/test | content_type=json'}),
-    (HttpClientTask, (RequestDirection.FROM, 'https://example.io/test | content_type=json', 'test-request'), {}),
-])
+parameterize = (
+    'meta_request_task_type,meta_args,meta_kwargs',
+    [
+        (RequestTask, (RequestMethod.GET,), {'name': 'test-request', 'endpoint': '/api/test | content_type=json'}),
+        (HttpClientTask, (RequestDirection.FROM, 'https://example.io/test | content_type=json', 'test-request'), {}),
+    ],
+)
 
 
 class TestUntilRequestTask:
@@ -70,7 +74,7 @@ class TestUntilRequestTask:
         caplog: LogCaptureFixture,
         meta_request_task_type: type[GrizzlyMetaRequestTask],
         meta_args: tuple[Any, ...],
-        meta_kwargs: dict[str, Any],
+        meta_kwargs: StrDict,
     ) -> None:
         parent = grizzly_fixture()
 
@@ -82,9 +86,11 @@ class TestUntilRequestTask:
         meta_request_task = meta_request_task_type(*meta_args, **meta_kwargs)
 
         def create_response(status: str) -> str:
-            return jsondumps({
-                'status': status,
-            })
+            return jsondumps(
+                {
+                    'status': status,
+                },
+            )
 
         request_spy = mocker.patch.object(
             meta_request_task,
@@ -100,16 +106,26 @@ class TestUntilRequestTask:
         time_spy = mocker.patch(
             'grizzly.tasks.until.perf_counter',
             side_effect=[
-                0.0, 153.5,
-                0.0, 12.25,
-                0.0, 12.25,
-                0.0, 1.5,
-                0.0, 0.8,
-                0.0, 0.8,
-                0.0, 0.555,
-                0.0, 0.666,
-                0.0, 0.666,
-                0.0, 0.111,
+                0.0,
+                153.5,
+                0.0,
+                12.25,
+                0.0,
+                12.25,
+                0.0,
+                1.5,
+                0.0,
+                0.8,
+                0.0,
+                0.8,
+                0.0,
+                0.555,
+                0.0,
+                0.666,
+                0.0,
+                0.666,
+                0.0,
+                0.111,
             ],
         )
 
@@ -150,7 +166,7 @@ class TestUntilRequestTask:
         for args_list in gsleep_spy.call_args_list:
             args, _ = args_list
             call_args_list.append(args)
-        assert call_args_list == [(100.0, ), (100.0, ), (100.0, )]
+        assert call_args_list == [(100.0,), (100.0,), (100.0,)]
 
         fire_spy.assert_called_once_with(
             request_type='UNTL',
@@ -179,7 +195,7 @@ class TestUntilRequestTask:
         for args_list in gsleep_spy.call_args_list:
             args, _ = args_list
             call_args_list.append(args)
-        assert call_args_list == [(100.0, ), (100.0, ), (100.0, ), (100.0, )]
+        assert call_args_list == [(100.0,), (100.0,), (100.0,), (100.0,)]
 
         fire_spy.assert_called_once_with(
             request_type='UNTL',
@@ -251,9 +267,7 @@ class TestUntilRequestTask:
         fire_spy.reset_mock()
 
         assert len(caplog.messages) == 1
-        assert caplog.messages[-1] == (
-            f'{parent.user._scenario.identifier} test-request, w=10.0s, r=2, em=1: retry=0, endpoint={meta_request_task.endpoint}'
-        )
+        assert caplog.messages[-1] == (f'{parent.user._scenario.identifier} test-request, w=10.0s, r=2, em=1: retry=0, endpoint={meta_request_task.endpoint}')
 
         caplog.clear()
 
@@ -275,9 +289,7 @@ class TestUntilRequestTask:
             task(parent)
 
         assert len(caplog.messages) == 1
-        assert caplog.messages[-1] == (
-            f'{parent.user._scenario.identifier} test-request, w=4.0s, r=4, em=1: retry=1, endpoint={meta_request_task.endpoint}'
-        )
+        assert caplog.messages[-1] == (f'{parent.user._scenario.identifier} test-request, w=4.0s, r=4, em=1: retry=1, endpoint={meta_request_task.endpoint}')
 
         caplog.clear()
 
@@ -292,25 +304,32 @@ class TestUntilRequestTask:
         fire_spy.reset_mock()
 
         return_value_object = {
-            'list': [{
-                'count': 18,
-                'value': 'first',
-            }, {
-                'count': 18,
-                'value': 'wildcard',
-            }, {
-                'count': 19,
-                'value': 'second',
-            }, {
-                'count': 20,
-                'value': 'third',
-            }, {
-                'count': 21,
-                'value': 'fourth',
-            }, {
-                'count': 22,
-                'value': 'fifth',
-            }],
+            'list': [
+                {
+                    'count': 18,
+                    'value': 'first',
+                },
+                {
+                    'count': 18,
+                    'value': 'wildcard',
+                },
+                {
+                    'count': 19,
+                    'value': 'second',
+                },
+                {
+                    'count': 20,
+                    'value': 'third',
+                },
+                {
+                    'count': 21,
+                    'value': 'fourth',
+                },
+                {
+                    'count': 22,
+                    'value': 'fifth',
+                },
+            ],
         }
 
         request_spy = mocker.patch.object(
@@ -353,7 +372,7 @@ class TestUntilRequestTask:
         assert len(caplog.messages) == 1
         assert caplog.messages[-1] == (
             f'{parent.user._scenario.identifier} test-request, w=4.0s, r=4, em=4: endpoint={meta_request_task.endpoint}, number_of_matches=3, '
-            f'condition=\'$.list[?(@.count > 19)]\', retry=4, response_time=555 payload=\n{jsondumps(return_value_object, indent=2)}'
+            f"condition='$.list[?(@.count > 19)]', retry=4, response_time=555 payload=\n{jsondumps(return_value_object, indent=2)}"
         )
 
         caplog.clear()
@@ -426,8 +445,8 @@ class TestUntilRequestTask:
         grizzly_fixture: GrizzlyFixture,
         mocker: MockerFixture,
         meta_request_task_type: type[GrizzlyMetaRequestTask],
-        meta_args: tuple[Any, ...],
-        meta_kwargs: dict[str, Any],
+        meta_args: tuple,
+        meta_kwargs: StrDict,
     ) -> None:
         parent = grizzly_fixture()
 
@@ -453,8 +472,8 @@ class TestUntilRequestTask:
         grizzly_fixture: GrizzlyFixture,
         mocker: MockerFixture,
         meta_request_task_type: type[GrizzlyMetaRequestTask],
-        meta_args: tuple[Any, ...],
-        meta_kwargs: dict[str, Any],
+        meta_args: tuple,
+        meta_kwargs: StrDict,
     ) -> None:
         parent = grizzly_fixture()
 

@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.request."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -59,14 +60,14 @@ class TestRequestTaskResponse:
 
         response_task.add_status_code(200)
         response_task.add_status_code(302)
-        assert [200, 302] == response_task.status_codes
+        assert response_task.status_codes == [200, 302]
 
         response_task.add_status_code(200)
-        assert [200, 302] == response_task.status_codes
+        assert response_task.status_codes == [200, 302]
 
         response_task.add_status_code(-302)
         response_task.add_status_code(400)
-        assert [200, 400] == response_task.status_codes
+        assert response_task.status_codes == [200, 400]
 
 
 class TestRequestTask:

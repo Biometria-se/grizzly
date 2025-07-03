@@ -2,12 +2,15 @@
 This module contains steps that can be useful during development or troubleshooting of a
 feature file, but should not be included in a finished, testable, feature.
 """
+
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.types.behave import Context, then
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @then('fail')
@@ -45,11 +48,10 @@ def step_utils_add_orphan_template(context: Context, template: str) -> None:
         template (str): templating string with jinja2 template containing variable names
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     if not context.step.in_background:
         grizzly.scenario.orphan_templates.append(template)
     else:
         for scenario in grizzly.scenarios:
             scenario.orphan_templates.append(template)
-

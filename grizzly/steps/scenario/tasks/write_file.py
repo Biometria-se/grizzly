@@ -1,13 +1,16 @@
 """@anchor pydoc:grizzly.steps.scenario.tasks.write_file Write file
 This module contains step implementations for the {@pylink grizzly.tasks.write_file} task.
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import WriteFileTask
 from grizzly.types.behave import Context, then
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @then('write "{content}" in file "{file_name}"')
@@ -32,7 +35,7 @@ def step_task_write_file(context: Context, content: str, file_name: str) -> None
         file_name (str): file name, which can include non-existing directory levels (will be created)
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(WriteFileTask(file_name=file_name, content=content))
 
 
@@ -57,5 +60,5 @@ def step_task_write_temp_file(context: Context, content: str, file_name: str) ->
         file_name (str): file name, which can include non-existing directory levels (will be created)
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(WriteFileTask(file_name=file_name, content=content, temp_file=True))

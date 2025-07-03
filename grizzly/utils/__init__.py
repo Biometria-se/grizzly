@@ -1,4 +1,5 @@
 """Module contains utils."""
+
 from __future__ import annotations
 
 import logging
@@ -9,12 +10,12 @@ from copy import deepcopy
 from importlib import import_module
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generic, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Generic, cast
 from unicodedata import normalize as __normalize
 
 from locust.stats import STATS_NAME_WIDTH
 
-from grizzly.types import T
+from grizzly.types import StrDict, T
 
 if TYPE_CHECKING:  # pragma: no cover
     from datetime import datetime
@@ -44,7 +45,7 @@ class ModuleLoader(Generic[T]):
 
         class_type_instance = globals()[class_name]
 
-        return cast(type[T], class_type_instance)
+        return cast('type[T]', class_type_instance)
 
 
 @contextmanager
@@ -69,7 +70,7 @@ def fail_direct(context: Context) -> Generator[None, None, None]:
     context.config.verbose = orig_verbose_value
 
 
-def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[dict[str, Any]] = None, fixed_count: Optional[int] = None) -> type[GrizzlyUser]:
+def create_user_class_type(scenario: GrizzlyContextScenario, global_context: StrDict | None = None, fixed_count: int | None = None) -> type[GrizzlyUser]:
     """Create a unique (name wise) class, that locust will use to create user instances."""
     if not hasattr(scenario, 'user') or scenario.user is None:
         message = f'scenario {scenario.description} has not set a user'
@@ -79,11 +80,11 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         message = f'scenario {scenario.description} does not have a user type set'
         raise ValueError(message)
 
-    base_user_class_type = cast(type['GrizzlyUser'], ModuleLoader['GrizzlyUser'].load('grizzly.users', scenario.user.class_name))  # type: ignore[redundant-cast]
+    base_user_class_type = cast('type[GrizzlyUser]', ModuleLoader['GrizzlyUser'].load('grizzly.users', scenario.user.class_name))  # type: ignore[redundant-cast]
     user_class_name = f'{scenario.user.class_name}_{scenario.identifier}'
 
-    context: dict[str, Any] = {}
-    contexts: list[dict[str, Any]] = [
+    context: StrDict = {}
+    contexts: list[StrDict] = [
         base_user_class_type.__context__,
         global_context or {},
         scenario.context,
@@ -96,7 +97,7 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         logger.debug('%s context: %r', user_class_name, merge_context)
         context = merge_dicts(context, merge_context)
 
-    distribution: dict[str, Union[int, float, str | None]] = {
+    distribution: dict[str, int | float | str | None] = {
         'weight': scenario.user.weight,
         'sticky_tag': scenario.user.sticky_tag,
     }
@@ -104,13 +105,17 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     if fixed_count is not None:
         distribution.update({'fixed_count': fixed_count})
 
-    return type(user_class_name, (base_user_class_type, ), {
-        '__module__': base_user_class_type.__module__,
-        '__dependencies__': base_user_class_type.__dependencies__,
-        '__scenario__': scenario,
-        '__context__': context,
-        **distribution,
-    })
+    return type(
+        user_class_name,
+        (base_user_class_type,),
+        {
+            '__module__': base_user_class_type.__module__,
+            '__dependencies__': base_user_class_type.__dependencies__,
+            '__scenario__': scenario,
+            '__context__': context,
+            **distribution,
+        },
+    )
 
 
 def create_scenario_class_type(base_type: str, scenario: GrizzlyContextScenario) -> type[GrizzlyScenario]:
@@ -123,24 +128,24 @@ def create_scenario_class_type(base_type: str, scenario: GrizzlyContextScenario)
     base_task_class_type = ModuleLoader['GrizzlyScenario'].load(module, base_type)
     task_class_name = f'{base_type}_{scenario.identifier}'
 
-    return type(task_class_name, (base_task_class_type, ), {
-        '__module__': base_task_class_type.__module__,
-        'pace_time': scenario.pace,
-        'tasks': [],
-    })
+    return type(
+        task_class_name,
+        (base_task_class_type,),
+        {
+            '__module__': base_task_class_type.__module__,
+            'pace_time': scenario.pace,
+            'tasks': [],
+        },
+    )
 
 
-def merge_dicts(merged: dict[str, Any], source: dict[str, Any]) -> dict[str, Any]:
+def merge_dicts(merged: StrDict, source: StrDict) -> dict:
     """Merge two dicts recursively, where `source` values takes precedance over `merged` values."""
     merged = deepcopy(merged)
     source = deepcopy(source)
 
     for key in source:
-        if (
-            key in merged
-            and isinstance(merged[key], dict)
-            and isinstance(source[key], Mapping)
-        ):
+        if key in merged and isinstance(merged[key], dict) and isinstance(source[key], Mapping):
             merged[key] = merge_dicts(merged[key], source[key])
         else:
             value = source[key]
@@ -158,9 +163,7 @@ def in_correct_section(func: StepFunctionType, expected: list[str]) -> bool:
     except AttributeError:  # function does not belong to a module
         actual = 'custom'
 
-    return (
-        actual.startswith('grizzly.') and actual in expected
-    ) or not actual.startswith('grizzly.')
+    return (actual.startswith('grizzly.') and actual in expected) or not actual.startswith('grizzly.')
 
 
 def parse_timespan(timespan: str) -> dict[str, int]:
@@ -187,17 +190,17 @@ def _print_table(subject: str, header: str, data: list[tuple[datetime, str]]) ->
     if len(data) < 1:
         return
 
-    from grizzly.locust import stats_logger
+    from grizzly.locust import stats_logger  # noqa: PLC0415
 
     data = sorted(data, key=lambda k: k[0])
 
     stats_logger.info(f'{subject}:')
-    stats_logger.info('%-20s %-100s' % ('Timestamp (UTC)', header))
+    stats_logger.info('%-20s %-100s', 'Timestamp (UTC)', header)
     separator = f'{"-" * 20}|{"-" * ((80 + STATS_NAME_WIDTH) - 19)}'
     stats_logger.info(separator)
 
     for timestamp, info in data:
-        stats_logger.info('%-20s %-100s' % (timestamp.strftime('%Y-%m-%d %H:%M:%S'), info))
+        stats_logger.info('%-20s %-100s', timestamp.strftime('%Y-%m-%d %H:%M:%S'), info)
     stats_logger.info(separator)
     stats_logger.info('')
 
@@ -205,7 +208,7 @@ def _print_table(subject: str, header: str, data: list[tuple[datetime, str]]) ->
         handler.flush()
 
 
-def safe_del(struct: dict[str, Any], key: str) -> None:
+def safe_del(struct: StrDict, key: str) -> None:
     """Remove a key from a dictionary, but do not fail if it does not exist."""
     with suppress(KeyError):
         del struct[key]
@@ -235,9 +238,9 @@ def is_file(text: str) -> bool:
         return False
 
 
-def flatten(node: dict[str, Any], parents: Optional[list[str]] = None) -> dict[str, Any]:
+def flatten(node: StrDict, parents: list[str] | None = None) -> StrDict:
     """Flatten a dictionary so each value key is the path down the nested dictionary structure."""
-    flat: dict[str, Any] = {}
+    flat: StrDict = {}
     if parents is None:
         parents = []
 
@@ -252,7 +255,8 @@ def flatten(node: dict[str, Any], parents: Optional[list[str]] = None) -> dict[s
 
     return flat
 
-def unflatten(key: str, value: Any) -> dict[str, Any]:
+
+def unflatten(key: str, value: Any) -> StrDict:
     paths: list[str] = key.split('.')
 
     # last node should have the value

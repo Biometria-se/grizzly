@@ -1,4 +1,5 @@
 """Unit tests for grizzly.users.base.response_handler."""
+
 from __future__ import annotations
 
 from abc import ABC
@@ -32,7 +33,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import GrizzlyFixture
 
 
-@pytest.fixture()
+@pytest.fixture
 def get_log_files() -> Callable[[], list[Path]]:
     def wrapped() -> list[Path]:
         logs_root = Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'logs'
@@ -42,9 +43,7 @@ def get_log_files() -> Callable[[], list[Path]]:
 
         return list(logs_root.glob('*.log'))
 
-
     return wrapped
-
 
 
 class TestResponseHandlerAction:
@@ -85,16 +84,20 @@ class TestResponseHandlerAction:
             handler.get_match((TransformerContentType.JSON, None), user)
 
         response = {
-            'hello': [{
-                'world': 'bar',
-                'foo': 1,
-            }, {
-                'world': 'hello',
-                'foo': 999,
-            }, {
-                'world': 'bar',
-                'foo': 2,
-            }],
+            'hello': [
+                {
+                    'world': 'bar',
+                    'foo': 1,
+                },
+                {
+                    'world': 'hello',
+                    'foo': 999,
+                },
+                {
+                    'world': 'bar',
+                    'foo': 2,
+                },
+            ],
         }
 
         user.set_variable('count', '2')
@@ -346,7 +349,7 @@ class TestSaveHandlerAction:
         assert handler.match_with == 'foo'
         assert handler.expected_matches == '1'
 
-    def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:
+    def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
         parent = grizzly_fixture()
 
         assert 'test' not in parent.user.variables
@@ -383,7 +386,6 @@ class TestSaveHandlerAction:
         with pytest.raises(ResponseHandlerError, match='did not match value'):
             handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), parent.user)
         assert parent.user.variables.get('test', 'test') is None
-
 
         for failure_exception in [None, StopUser, RestartScenario]:
             if failure_exception is not None:
@@ -434,7 +436,8 @@ class TestSaveHandlerAction:
             parent.user,
         )
 
-        test_object = parent.user.variables.get('test_object', None)
+        test_object: str | None = parent.user.variables.get('test_object', None)
+        assert test_object is not None
         assert jsonloads(test_object) == {
             'prop21': False,
             'prop22': 100,
@@ -482,7 +485,8 @@ class TestSaveHandlerAction:
             parent.user,
         )
 
-        test_list = parent.user.variables.get('test_list', None)
+        test_list: str | None = parent.user.variables.get('test_list')
+        assert test_list is not None
         assert jsonloads(test_list) == [
             'prop41',
             True,
@@ -516,6 +520,7 @@ class TestSaveHandlerAction:
         )
 
         test_list = parent.user.variables.get('test_list', None)
+        assert test_list is not None
         assert jsonloads(test_list) == [
             'prop41',
         ]
@@ -540,6 +545,7 @@ class TestSaveHandlerAction:
         )
 
         test_list = parent.user.variables.get('test_list', None)
+        assert test_list is not None
         assert jsonloads(test_list) == [
             'prop41',
             'prop42',
@@ -551,10 +557,7 @@ class TestResponseHandler:
         parent = grizzly_fixture(host='http://example.com')
         assert len(parent.user.events.request._handlers) == 2
         assert any(
-            h.__class__ is ResponseHandler
-            and isinstance(h, GrizzlyEventHandlerClass)
-            and isinstance(h.user, GrizzlyUser)
-            and h.user is parent.user
+            h.__class__ is ResponseHandler and isinstance(h, GrizzlyEventHandlerClass) and isinstance(h.user, GrizzlyUser) and h.user is parent.user
             for h in parent.user.events.request._handlers
         )
 
@@ -715,14 +718,16 @@ class TestResponseHandler:
 
         assert get_log_files() == []
 
-        response_payload = jsondumps({
-            'hello': {
-                'world': [
-                    {'value': 'foo'},
-                    {'value': 'bar'},
-                ],
+        response_payload = jsondumps(
+            {
+                'hello': {
+                    'world': [
+                        {'value': 'foo'},
+                        {'value': 'bar'},
+                    ],
+                },
             },
-        })
+        )
 
         with pytest.raises(ResponseHandlerError, match='did not match value'):
             event(
@@ -743,5 +748,3 @@ class TestResponseHandler:
 
         assert '"$.hello.world[?value="foobar"]" did not match value' in log_file_contents
         assert response_payload in log_file_contents
-
-

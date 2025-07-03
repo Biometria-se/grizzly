@@ -1,4 +1,5 @@
 """Unit tests of grizzly.locust."""
+
 from __future__ import annotations
 
 import logging
@@ -20,7 +21,6 @@ from locust.dispatch import UsersDispatcher as WeightedUsersDispatcher
 from locust.stats import RequestStats
 
 from grizzly.auth import RefreshTokenDistributor
-from grizzly.context import GrizzlyContext
 from grizzly.locust import (
     greenlet_exception_logger,
     grizzly_print_percentile_stats,
@@ -34,7 +34,6 @@ from grizzly.locust import (
     setup_locust_scenarios,
     setup_resource_limits,
 )
-from grizzly.scenarios import IteratorScenario
 from grizzly.tasks import ExplicitWaitTask, LogMessageTask, RequestTask
 from grizzly.tasks.clients import MessageQueueClientTask
 from grizzly.testdata.utils import initialize_testdata
@@ -52,7 +51,10 @@ if TYPE_CHECKING:  # pragma: no cover
     from locust.user.users import User
     from pytest_mock import MockerFixture
 
+    from grizzly.context import GrizzlyContext
+    from grizzly.scenarios import IteratorScenario
     from tests.fixtures import BehaveFixture, NoopZmqFixture
+
 
 def test_greenlet_exception_logger(caplog: LogCaptureFixture) -> None:
     logger = logging.getLogger()
@@ -63,6 +65,7 @@ def test_greenlet_exception_logger(caplog: LogCaptureFixture) -> None:
     greenlet = gevent.Greenlet()
 
     from grizzly.locust import unhandled_greenlet_exception
+
     assert not unhandled_greenlet_exception
 
     with caplog.at_level(logging.CRITICAL):
@@ -71,6 +74,7 @@ def test_greenlet_exception_logger(caplog: LogCaptureFixture) -> None:
 
     # re-import to get updated value
     import grizzly.locust
+
     assert getattr(grizzly.locust, 'unhandled_greenlet_exception', False)
 
     caplog.clear()
@@ -143,7 +147,7 @@ def test_on_local(behave_fixture: BehaveFixture) -> None:
 def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
     noop_zmq('grizzly.tasks.clients.messagequeue')
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
 
     with pytest.raises(AssertionError, match='no scenarios in feature'):
         setup_locust_scenarios(grizzly)
@@ -192,7 +196,7 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
 
     user_tasks = user_class.tasks[-1]
     assert issubclass(type(user_tasks), SequentialTaskSetMeta)
-    user_tasks = cast(IteratorScenario, user_tasks)
+    user_tasks = cast('IteratorScenario', user_tasks)
     assert len(user_tasks.tasks) == 3 + 2  # IteratorScenario has two internal task other than what we've added
     assert isinstance(user_tasks.tasks[0], FunctionType)
     assert user_tasks.tasks[0].__name__ == 'iterator'
@@ -216,7 +220,7 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
 
         user_tasks = user_class.tasks[-1]
         assert issubclass(type(user_tasks), SequentialTaskSetMeta)
-        user_tasks = cast(IteratorScenario, user_tasks)
+        user_tasks = cast('IteratorScenario', user_tasks)
         assert len(user_tasks.tasks) == 3 + 2  # IteratorScenario has two internal task other than what we've added
 
         grizzly.scenario.user.class_name = 'RestApiUser'
@@ -229,16 +233,19 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
         assert len(user_classes) == 1
 
 
-@pytest.mark.parametrize(('user_count', 'user_distribution'), [
-    (6, [1, 1, 1, 1, 1, 1]),
-    (10, [2, 4, 1, 1, 1, 1]),
-    (60, [14, 25, 5, 8, 4, 4]),
-    (70, [17, 29, 5, 9, 5, 5]),
-])
+@pytest.mark.parametrize(
+    ('user_count', 'user_distribution'),
+    [
+        (6, [1, 1, 1, 1, 1, 1]),
+        (10, [2, 4, 1, 1, 1, 1]),
+        (60, [14, 25, 5, 8, 4, 4]),
+        (70, [17, 29, 5, 9, 5, 5]),
+    ],
+)
 def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture, user_count: int, user_distribution: list[int]) -> None:
     distribution: list[int] = [25, 42, 8, 13, 6, 6]
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.setup.user_count = user_count
     grizzly.scenarios.clear()
 
@@ -261,6 +268,7 @@ def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture,
 @pytest.mark.skipif(sys.platform == 'win32', reason='resource module is posix only, this is not done in locust on windows')
 def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
     import resource
+
     behave = behave_fixture.context
 
     def mock_on_master(*, is_master: bool) -> None:
@@ -369,7 +377,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
             mocked_on_worker,
         )
 
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     user_classes: list[type[User]] = []
     environment = Environment(
@@ -411,7 +419,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         task = RequestTask(RequestMethod.POST, 'test-post-1', '/api/v3/test/post/1')
         task.source = '{{ AtomicIntegerIncrementer.value }}, {{ test_id }}'
-        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly = cast('GrizzlyContext', behave.grizzly)
         grizzly.scenario.tasks.clear()
         grizzly.scenario.tasks.add(task)
 
@@ -461,19 +469,22 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
 def test_print_scenario_summary(behave_fixture: BehaveFixture, capsys: CaptureFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
 
     grizzly.scenarios.create(behave_fixture.create_scenario('test-1'))
 
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    assert summary == """Scenario
+    assert (
+        summary
+        == """Scenario
 ident   iter  status      description
 ------|-----|-----------|-------------|
 001      0/1  undefined   test-1
 ------|-----|-----------|-------------|
 """
+    )
     capsys.readouterr()
 
     grizzly.scenarios.create(behave_fixture.create_scenario('test-2-test-2-test-2-test-2'))
@@ -489,13 +500,16 @@ ident   iter  status      description
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    assert summary == """Scenario
+    assert (
+        summary
+        == """Scenario
 ident   iter  status   description
 ------|-----|--------|-----------------------------|
 001      1/1  passed   test-1
 002      3/4  failed   test-2-test-2-test-2-test-2
 ------|-----|--------|-----------------------------|
 """
+    )
     capsys.readouterr()
 
     grizzly.scenarios.create(behave_fixture.create_scenario('#3'))
@@ -508,7 +522,9 @@ ident   iter  status   description
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    assert summary == """Scenario
+    assert (
+        summary
+        == """Scenario
 ident      iter  status   description
 ------|--------|--------|-----------------------------|
 001         1/1  passed   test-1
@@ -516,6 +532,7 @@ ident      iter  status   description
 003     998/999  failed   #3
 ------|--------|--------|-----------------------------|
 """
+    )
     capsys.readouterr()
 
     grizzly.scenarios.create(behave_fixture.create_scenario('foo bar hello world'))
@@ -525,7 +542,9 @@ ident      iter  status   description
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    assert summary == """Scenario
+    assert (
+        summary
+        == """Scenario
 ident      iter  status      description
 ------|--------|-----------|-----------------------------|
 001         1/1  passed      test-1
@@ -534,6 +553,7 @@ ident      iter  status      description
 004     0/99999  undefined   foo bar hello world
 ------|--------|-----------|-----------------------------|
 """
+    )
     capsys.readouterr()
 
 
@@ -580,7 +600,7 @@ def test_run_worker(behave_fixture: BehaveFixture, mocker: MockerFixture) -> Non
     messagequeue_process_spy = mocker.spy(subprocess_spy.Popen, '__init__')
 
     mock_on_node(master=False, worker=True)
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
 
     grizzly.setup.user_count = 1
     grizzly.setup.spawn_rate = 1
@@ -768,10 +788,10 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
 
         for ident in range(1, scenario_count):
             index = (ident - 1) * ((len(request_types_sequence) * request_types_sequence_count) + 4) + 3
-            assert re.match(fr'^SCEN\s+{ident:03}', grizzly_stats[index].strip())
-            assert re.match(fr'^TSTD\s+{ident:03}', grizzly_stats[index + 1].strip())
-            assert re.match(fr'^GET\s+{ident:03} 01-get-test', grizzly_stats[index + 2].strip())
-            assert re.match(fr'^VAR\s+{ident:03} var-test', grizzly_stats[index + (len(request_types_sequence) * request_types_sequence_count) + 3].strip())
+            assert re.match(rf'^SCEN\s+{ident:03}', grizzly_stats[index].strip())
+            assert re.match(rf'^TSTD\s+{ident:03}', grizzly_stats[index + 1].strip())
+            assert re.match(rf'^GET\s+{ident:03} 01-get-test', grizzly_stats[index + 2].strip())
+            assert re.match(rf'^VAR\s+{ident:03} var-test', grizzly_stats[index + (len(request_types_sequence) * request_types_sequence_count) + 3].strip())
 
         last_stat_row = len(grizzly_stats) - 4
 
@@ -836,10 +856,10 @@ def test_grizzly_print_percentile_stats(caplog: LogCaptureFixture, mocker: Mocke
 
     for ident in range(1, scenario_count):
         index = (ident - 1) * ((len(request_types_sequence) * request_types_sequence_count) + 4) + 3
-        assert re.match(fr'^SCEN\s+{ident:03}', grizzly_stats[index].strip()), grizzly_stats[index].strip()
-        assert re.match(fr'^TSTD\s+{ident:03}', grizzly_stats[index + 1].strip())
-        assert re.match(fr'^GET\s+{ident:03} 01-get-test', grizzly_stats[index + 2].strip())
-        assert re.match(fr'^VAR\s+{ident:03} var-test', grizzly_stats[index + (len(request_types_sequence) * request_types_sequence_count) + 3].strip())
+        assert re.match(rf'^SCEN\s+{ident:03}', grizzly_stats[index].strip()), grizzly_stats[index].strip()
+        assert re.match(rf'^TSTD\s+{ident:03}', grizzly_stats[index + 1].strip())
+        assert re.match(rf'^GET\s+{ident:03} 01-get-test', grizzly_stats[index + 2].strip())
+        assert re.match(rf'^VAR\s+{ident:03} var-test', grizzly_stats[index + (len(request_types_sequence) * request_types_sequence_count) + 3].strip())
 
     for stat in grizzly_stats:
         assert stat in locust_stats

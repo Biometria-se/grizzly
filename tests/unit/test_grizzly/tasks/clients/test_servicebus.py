@@ -1,14 +1,15 @@
 """Unit tests for grizzly.tasks.clients.servicebus."""
+
 from __future__ import annotations
 
 import logging
 from json import dumps as jsondumps
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
 from grizzly.tasks.clients import ServiceBusClientTask
-from grizzly.types import RequestDirection
+from grizzly.types import RequestDirection, StrDict
 from tests.helpers import SOME
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -181,7 +182,8 @@ class TestServiceBusClientTask:
         context_mock.reset_mock()
 
         task = task_type(
-            RequestDirection.FROM, (
+            RequestDirection.FROM,
+            (
                 'sb://my-sbns/topic:my-topic/subscription:my-subscription/expression:$.name|=\'["hello", "world"]\''
                 ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json&Unique=False'
             ),
@@ -273,7 +275,8 @@ class TestServiceBusClientTask:
 
         with pytest.raises(AssertionError, match='subscription name is too long, max length is 50 characters'):
             task_type(
-                RequestDirection.FROM, (
+                RequestDirection.FROM,
+                (
                     'sb://my-sbns/topic:my-topic/subscription:my-subscriptionaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
                     ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
                 ),
@@ -282,7 +285,8 @@ class TestServiceBusClientTask:
 
         with pytest.raises(AssertionError, match='subscription name is too long, max length is 42 characters'):
             task_type(
-                RequestDirection.FROM, (
+                RequestDirection.FROM,
+                (
                     'sb://my-sbns/topic:my-topic/subscription:my-subscriptionaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
                     ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
                 ),
@@ -292,7 +296,8 @@ class TestServiceBusClientTask:
 
         with pytest.raises(AssertionError, match='asdf is not a valid boolean'):
             task_type(
-                RequestDirection.FROM, (
+                RequestDirection.FROM,
+                (
                     'sb://my-sbns/topic:my-topic/subscription:my-subscription'
                     ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json&Verbose=asdf'
                 ),
@@ -344,12 +349,15 @@ class TestServiceBusClientTask:
         assert state.parent is parent
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=fooBARfoo'
 
-        async_message_request_mock.assert_called_once_with(state.client, {
-            'worker': None,
-            'client': state.parent_id,
-            'action': 'HELLO',
-            'context': state.context,
-        })
+        async_message_request_mock.assert_called_once_with(
+            state.client,
+            {
+                'worker': None,
+                'client': state.parent_id,
+                'action': 'HELLO',
+                'context': state.context,
+            },
+        )
 
     def test_disconnect(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
@@ -378,12 +386,15 @@ class TestServiceBusClientTask:
 
         task.disconnect(parent)
 
-        async_message_request_mock.assert_called_once_with(client_mock, {
-            'worker': 'foo-bar-baz-foo',
-            'client': state.parent_id,
-            'action': 'DISCONNECT',
-            'context': state.context,
-        })
+        async_message_request_mock.assert_called_once_with(
+            client_mock,
+            {
+                'worker': 'foo-bar-baz-foo',
+                'client': state.parent_id,
+                'action': 'DISCONNECT',
+                'context': state.context,
+            },
+        )
         zmq_disconnect_mock.assert_called_once_with(client_mock, destroy_context=False)
 
         assert task._state == {}
@@ -419,13 +430,16 @@ class TestServiceBusClientTask:
             task.subscribe(parent)
 
         assert caplog.messages == ['foobar!']
-        async_message_request_mock.assert_called_once_with(client_mock, {
-            'worker': 'foo-bar-baz',
-            'client': state.parent_id,
-            'action': 'SUBSCRIBE',
-            'context': expected_context,
-            'payload': '1=2',
-        })
+        async_message_request_mock.assert_called_once_with(
+            client_mock,
+            {
+                'worker': 'foo-bar-baz',
+                'client': state.parent_id,
+                'action': 'SUBSCRIBE',
+                'context': expected_context,
+                'payload': '1=2',
+            },
+        )
         caplog.clear()
         async_message_request_mock.reset_mock()
 
@@ -433,7 +447,7 @@ class TestServiceBusClientTask:
             RequestDirection.FROM,
             (
                 "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/expression:'$.`this`[bar='foo' && bar='foo']';"
-                "SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324="
+                'SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324='
             ),
             'test',
         )
@@ -451,25 +465,28 @@ class TestServiceBusClientTask:
             task.subscribe(parent)
 
         assert caplog.messages == ['foobar!']
-        async_message_request_mock.assert_called_once_with(client_mock, {
-            'worker': 'foo-bar-baz',
-            'client': state.parent_id,
-            'action': 'SUBSCRIBE',
-            'context': {
-                'url': expected_context['url'],
-                'connection': 'receiver',
-                'endpoint': "topic:my-topic, subscription:'my-subscription-baz-bar-foodeadbeef', expression:'$.`this`[bar='foo' && bar='foo']'",
-                'message_wait': None,
-                'consume': False,
-                'username': None,
-                'password': None,
-                'tenant': None,
-                'unique': True,
-                'verbose': False,
-                'forward': False,
+        async_message_request_mock.assert_called_once_with(
+            client_mock,
+            {
+                'worker': 'foo-bar-baz',
+                'client': state.parent_id,
+                'action': 'SUBSCRIBE',
+                'context': {
+                    'url': expected_context['url'],
+                    'connection': 'receiver',
+                    'endpoint': "topic:my-topic, subscription:'my-subscription-baz-bar-foodeadbeef', expression:'$.`this`[bar='foo' && bar='foo']'",
+                    'message_wait': None,
+                    'consume': False,
+                    'username': None,
+                    'password': None,
+                    'tenant': None,
+                    'unique': True,
+                    'verbose': False,
+                    'forward': False,
+                },
+                'payload': '1=1',
             },
-            'payload': '1=1',
-        })
+        )
 
         async_message_request_mock.reset_mock()
         caplog.clear()
@@ -497,25 +514,28 @@ class TestServiceBusClientTask:
 
         assert caplog.messages == ['foobar!']
         print(async_message_request_mock.call_args_list)
-        async_message_request_mock.assert_called_once_with(client_mock, {
-            'worker': 'foo-bar-baz',
-            'client': state.parent_id,
-            'action': 'SUBSCRIBE',
-            'context': {
-                'url': expected_context['url'],
-                'connection': 'receiver',
-                'endpoint': "topic:my-topic, subscription:'my-subscription-baz-bar-foo', expression:'$.`this`[?bar='foo' & bar='foo']'",
-                'message_wait': None,
-                'consume': False,
-                'username': None,
-                'password': None,
-                'tenant': None,
-                'unique': False,
-                'verbose': True,
-                'forward': True,
+        async_message_request_mock.assert_called_once_with(
+            client_mock,
+            {
+                'worker': 'foo-bar-baz',
+                'client': state.parent_id,
+                'action': 'SUBSCRIBE',
+                'context': {
+                    'url': expected_context['url'],
+                    'connection': 'receiver',
+                    'endpoint': "topic:my-topic, subscription:'my-subscription-baz-bar-foo', expression:'$.`this`[?bar='foo' & bar='foo']'",
+                    'message_wait': None,
+                    'consume': False,
+                    'username': None,
+                    'password': None,
+                    'tenant': None,
+                    'unique': False,
+                    'verbose': True,
+                    'forward': True,
+                },
+                'payload': '1=1',
             },
-            'payload': '1=1',
-        })
+        )
 
     def test_unsubscribe(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         parent = grizzly_fixture()
@@ -542,12 +562,15 @@ class TestServiceBusClientTask:
 
         assert caplog.messages == ['hello world!']
 
-        async_message_request_mock.assert_called_once_with(client_mock, {
-            'worker': 'foo-bar-baz',
-            'client': id(parent.user),
-            'action': 'UNSUBSCRIBE',
-            'context': state.context,
-        })
+        async_message_request_mock.assert_called_once_with(
+            client_mock,
+            {
+                'worker': 'foo-bar-baz',
+                'client': id(parent.user),
+                'action': 'UNSUBSCRIBE',
+                'context': state.context,
+            },
+        )
 
     def test_empty(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         parent = grizzly_fixture()
@@ -573,12 +596,15 @@ class TestServiceBusClientTask:
             task.empty(parent)
 
         assert caplog.messages == []
-        async_message_request_mock.assert_called_once_with(client_mock, {
-            'worker': 'foo-bar-baz',
-            'client': id(parent.user),
-            'action': 'EMPTY',
-            'context': state.context,
-        })
+        async_message_request_mock.assert_called_once_with(
+            client_mock,
+            {
+                'worker': 'foo-bar-baz',
+                'client': id(parent.user),
+                'action': 'EMPTY',
+                'context': state.context,
+            },
+        )
 
         async_message_request_mock.reset_mock()
         async_message_request_mock.return_value = {'message': 'removed 100 messages which took 1.3 seconds'}
@@ -587,12 +613,15 @@ class TestServiceBusClientTask:
             task.empty(parent)
 
         assert caplog.messages == ['removed 100 messages which took 1.3 seconds']
-        async_message_request_mock.assert_called_once_with(client_mock, {
-            'worker': 'foo-bar-baz',
-            'client': id(parent.user),
-            'action': 'EMPTY',
-            'context': state.context,
-        })
+        async_message_request_mock.assert_called_once_with(
+            client_mock,
+            {
+                'worker': 'foo-bar-baz',
+                'client': id(parent.user),
+                'action': 'EMPTY',
+                'context': state.context,
+            },
+        )
 
     def test_on_start(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
@@ -735,7 +764,7 @@ class TestServiceBusClientTask:
         state = task.get_state(parent)
         state.client = client_mock
         action_mock = mocker.MagicMock()
-        meta_mock: dict[str, Any] = {}
+        meta_mock: StrDict = {}
         action_mock.__enter__.return_value = meta_mock
         context_mock = mocker.patch.object(task, 'action', return_value=action_mock)
 
@@ -815,12 +844,15 @@ class TestServiceBusClientTask:
 
         assert task.request_from(parent) == (None, 'foobar')
 
-        request_mock.assert_called_once_with(state.parent, {
-            'action': 'RECEIVE',
-            'worker': 'foo-bar',
-            'context': state.context,
-            'payload': None,
-        })
+        request_mock.assert_called_once_with(
+            state.parent,
+            {
+                'action': 'RECEIVE',
+                'worker': 'foo-bar',
+                'context': state.context,
+                'payload': None,
+            },
+        )
 
         assert parent.user.variables == {}
 
@@ -831,12 +863,15 @@ class TestServiceBusClientTask:
 
         assert task.request_from(parent) == (None, 'foobar')
 
-        request_mock.assert_called_once_with(state.parent, {
-            'action': 'RECEIVE',
-            'worker': 'foo-bar',
-            'context': state.context,
-            'payload': None,
-        })
+        request_mock.assert_called_once_with(
+            state.parent,
+            {
+                'action': 'RECEIVE',
+                'worker': 'foo-bar',
+                'context': state.context,
+                'payload': None,
+            },
+        )
 
         assert parent.user.variables.get('foobaz', None) == 'foobar'
 
@@ -847,12 +882,15 @@ class TestServiceBusClientTask:
 
         assert task.request_from(parent) == ({'x-foo-bar': 'hello'}, 'foobar')
 
-        request_mock.assert_called_once_with(state.parent, {
-            'action': 'RECEIVE',
-            'worker': 'foo-bar',
-            'context': state.context,
-            'payload': None,
-        })
+        request_mock.assert_called_once_with(
+            state.parent,
+            {
+                'action': 'RECEIVE',
+                'worker': 'foo-bar',
+                'context': state.context,
+                'payload': None,
+            },
+        )
 
         assert parent.user.variables == SOME(dict, {'foobaz': 'foobar', 'bazfoo': jsondumps({'x-foo-bar': 'hello'})})
 
@@ -879,12 +917,15 @@ class TestServiceBusClientTask:
         # inline source, no file
         assert task.request_to(scenario) == (None, 'foobar')
 
-        request_mock.assert_called_once_with(state.parent, {
-            'action': 'SEND',
-            'worker': 'foo-baz',
-            'context': state.context,
-            'payload': 'hello world',
-        })
+        request_mock.assert_called_once_with(
+            state.parent,
+            {
+                'action': 'SEND',
+                'worker': 'foo-baz',
+                'context': state.context,
+                'payload': 'hello world',
+            },
+        )
 
         request_mock.reset_mock()
 
@@ -894,12 +935,15 @@ class TestServiceBusClientTask:
 
         assert task.request_to(scenario) == (None, 'foobar')
 
-        request_mock.assert_called_once_with(state.parent, {
-            'action': 'SEND',
-            'worker': 'foo-baz',
-            'context': state.context,
-            'payload': 'hello world',
-        })
+        request_mock.assert_called_once_with(
+            state.parent,
+            {
+                'action': 'SEND',
+                'worker': 'foo-baz',
+                'context': state.context,
+                'payload': 'hello world',
+            },
+        )
 
         request_mock.reset_mock()
         del scenario.user.variables['foobar']
@@ -910,12 +954,15 @@ class TestServiceBusClientTask:
 
         assert task.request_to(scenario) == (None, 'foobar')
 
-        request_mock.assert_called_once_with(state.parent, {
-            'action': 'SEND',
-            'worker': 'foo-baz',
-            'context': state.context,
-            'payload': 'hello world',
-        })
+        request_mock.assert_called_once_with(
+            state.parent,
+            {
+                'action': 'SEND',
+                'worker': 'foo-baz',
+                'context': state.context,
+                'payload': 'hello world',
+            },
+        )
 
         request_mock.reset_mock()
 
@@ -926,11 +973,14 @@ class TestServiceBusClientTask:
 
         assert task.request_to(scenario) == (None, 'foobar')
 
-        request_mock.assert_called_once_with(state.parent, {
-            'action': 'SEND',
-            'worker': 'foo-baz',
-            'context': state.context,
-            'payload': 'hello world',
-        })
+        request_mock.assert_called_once_with(
+            state.parent,
+            {
+                'action': 'SEND',
+                'worker': 'foo-baz',
+                'context': state.context,
+                'payload': 'hello world',
+            },
+        )
 
         request_mock.reset_mock()

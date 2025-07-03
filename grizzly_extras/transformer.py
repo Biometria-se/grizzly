@@ -2,6 +2,7 @@
 This modules contains the means to transform a raw string to format that is possible to easy search
 for attributes and their value in.
 """
+
 from __future__ import annotations
 
 import re
@@ -10,7 +11,7 @@ from functools import wraps
 from json import JSONEncoder
 from json import dumps as jsondumps
 from json import loads as jsonloads
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML  # noqa: N812
@@ -22,9 +23,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class TransformerError(Exception):
-    message: Optional[str] = None
+    message: str | None = None
 
-    def __init__(self, message: Optional[str] = None) -> None:
+    def __init__(self, message: str | None = None) -> None:
         self.message = message
 
 
@@ -135,7 +136,7 @@ class JsonTransformer(Transformer):
         _actual = caster(actual)
         _expected = caster(expected)
 
-        return cast(bool, _actual == _expected)
+        return cast('bool', _actual == _expected)
 
     @classmethod
     def _op_in(cls, actual: str, expected: list[str]) -> bool:
@@ -146,14 +147,14 @@ class JsonTransformer(Transformer):
         _actual = caster(actual)
         _expected = caster(expected)
 
-        return cast(bool, _actual >= _expected)
+        return cast('bool', _actual >= _expected)
 
     @classmethod
     def _op_le(cls, actual: str, expected: str) -> bool:
         _actual = caster(actual)
         _expected = caster(expected)
 
-        return cast(bool, _actual >= _expected)
+        return cast('bool', _actual >= _expected)
 
     @classmethod
     def _get_outer_op(cls, expression: str, op: str) -> tuple[str, str] | None:
@@ -180,16 +181,16 @@ class JsonTransformer(Transformer):
                 raise ValueError
 
             # op was found inline between [ and ]
-            if start_group < op_index and op_index < end_group:
+            if start_group < op_index < end_group:
                 return None
 
             jsonpath_expression = expression[:op_index]
-            expected_value = expression[op_index + op_length:]
+            expected_value = expression[op_index + op_length :]
         except ValueError:  # check right side
             try:
                 end_group = expression[op_index:].index(']') + op_index
                 start_group = expression[op_index:].index('[') + op_index
-                if start_group < op_index and op_index < end_group:
+                if start_group < op_index < end_group:
                     raise ValueError
 
             except ValueError:
@@ -197,7 +198,7 @@ class JsonTransformer(Transformer):
 
             jsonpath_expression, expected_value = expression.rsplit(op, 1)
             jsonpath_expression = expression[:op_index]
-            expected_value = expression[op_index + op_length:]
+            expected_value = expression[op_index + op_length :]
 
         return jsonpath_expression, expected_value
 
@@ -225,7 +226,7 @@ class JsonTransformer(Transformer):
                             expected_value = expected_value[1:-1]
 
                         expected_value = expected_value.replace("'", '"')
-                        expected = [str(ev) for ev in cast(list[str], jsonloads(expected_value))]
+                        expected = [str(ev) for ev in cast('list[str]', jsonloads(expected_value))]
                     else:
                         expected = expected_value
 
@@ -238,7 +239,7 @@ class JsonTransformer(Transformer):
 
             jsonpath = jsonpath_parse(expression)
 
-            def _parser(input_payload: Union[list, dict]) -> list[str]:
+            def _parser(input_payload: list | dict) -> list[str]:
                 # we need to fool jsonpath-ng to allow "validation" queries on objects on multiple properties
                 # this shouldn't be done if the input is a nested object, and the query looks for any properties
                 # recursively under the root (`@.`)
@@ -354,6 +355,7 @@ class PlainTransformer(Transformer):
 
             get_values_impl = get_values
         except re.error:
+
             def get_values(input_payload: Any) -> list[str]:
                 matches: list[str] = []
                 if str(input_payload) == expression:

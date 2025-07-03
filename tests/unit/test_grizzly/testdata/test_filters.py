@@ -1,4 +1,5 @@
 """Unit tests for grizzly.testdata.filters."""
+
 from __future__ import annotations
 
 from base64 import b64encode as base64_b64encode
@@ -19,6 +20,7 @@ def test_templatingfilter(grizzly_fixture: GrizzlyFixture) -> None:
     parent = grizzly_fixture()
 
     try:
+
         def testuppercase(value: str) -> str:
             return value.upper()
 

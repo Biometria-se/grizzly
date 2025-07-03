@@ -1,4 +1,5 @@
 """Unit tests for grizzly.users.blobstorage."""
+
 from __future__ import annotations
 
 import json
@@ -29,7 +30,7 @@ if TYPE_CHECKING:  # pragma: no cover
 CONNECTION_STRING = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=my-storage;AccountKey=xxxyyyyzzz=='
 
 
-@pytest.fixture()
+@pytest.fixture
 def blob_storage_parent(grizzly_fixture: GrizzlyFixture) -> GrizzlyScenario:
     parent = grizzly_fixture(
         CONNECTION_STRING,
@@ -58,10 +59,14 @@ class TestBlobStorageUser:
         blob_service_client_mock = mocker.patch('grizzly.users.blobstorage.BlobServiceClient')
 
         # connection string
-        cls_blob_storage_user = type('BlobStorageUserTest', (BlobStorageUser,), {
-            '__scenario__': grizzly.scenario,
-            'host': CONNECTION_STRING,
-        })
+        cls_blob_storage_user = type(
+            'BlobStorageUserTest',
+            (BlobStorageUser,),
+            {
+                '__scenario__': grizzly.scenario,
+                'host': CONNECTION_STRING,
+            },
+        )
 
         user = cls_blob_storage_user(grizzly.state.locust.environment)
 
@@ -72,19 +77,23 @@ class TestBlobStorageUser:
         blob_service_client_mock.reset_mock()
 
         # token credentials
-        cls_blob_storage_user = type('BlobStorageUserTest', (BlobStorageUser,), {
-            '__scenario__': grizzly.scenario,
-            'host': 'bs://my-storage-account',
-            '__context__': {
-                'auth': {
-                    'tenant': 'example.com',
-                    'user': {
-                        'username': 'bob@example.com',
-                        'password': 'secret',
+        cls_blob_storage_user = type(
+            'BlobStorageUserTest',
+            (BlobStorageUser,),
+            {
+                '__scenario__': grizzly.scenario,
+                'host': 'bs://my-storage-account',
+                '__context__': {
+                    'auth': {
+                        'tenant': 'example.com',
+                        'user': {
+                            'username': 'bob@example.com',
+                            'password': 'secret',
+                        },
                     },
                 },
             },
-        })
+        )
 
         user = cls_blob_storage_user(grizzly.state.locust.environment)
 
@@ -96,13 +105,12 @@ class TestBlobStorageUser:
             credential=SOME(
                 AzureAadCredential,
                 username='bob@example.com',
-                password='secret',  # noqa: S106
+                password='secret',
                 tenant='example.com',
                 auth_method=AuthMethod.USER,
                 host='https://my-storage-account.blob.core.windows.net',
             ),
         )
-
 
     @pytest.mark.usefixtures('blob_storage_parent')
     def test_on_stop(self, mocker: MockerFixture, blob_storage_parent: GrizzlyScenario) -> None:
@@ -119,10 +127,14 @@ class TestBlobStorageUser:
         grizzly = grizzly_fixture.grizzly
 
         # connection string
-        cls_user = type('BlobStorageUserTest', (BlobStorageUser,), {
-            '__scenario__': grizzly.scenario,
-            'host': CONNECTION_STRING,
-        })
+        cls_user = type(
+            'BlobStorageUserTest',
+            (BlobStorageUser,),
+            {
+                '__scenario__': grizzly.scenario,
+                'host': CONNECTION_STRING,
+            },
+        )
 
         assert issubclass(cls_user, BlobStorageUser)
 
@@ -153,14 +165,17 @@ class TestBlobStorageUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly.scenario, {
-                'AtomicIntegerIncrementer.messageID': 31337,
-                'AtomicDate.now': '',
-                'messageID': 137,
-            }),
+            'variables': transform(
+                grizzly.scenario,
+                {
+                    'AtomicIntegerIncrementer.messageID': 31337,
+                    'AtomicDate.now': '',
+                    'messageID': 137,
+                },
+            ),
         }
         blob_storage_parent.user.add_context(remote_variables)
-        request = cast(RequestTask, blob_storage_parent.user._scenario.tasks()[-1])
+        request = cast('RequestTask', blob_storage_parent.user._scenario.tasks()[-1])
         request.endpoint = 'some_container_name/file.txt'
 
         upload_blob = mocker.patch('azure.storage.blob._blob_service_client.BlobClient.upload_blob', autospec=True)
@@ -185,7 +200,7 @@ class TestBlobStorageUser:
         upload_blob.assert_called_once_with(ANY(BlobClient), json.dumps(expected_payload, indent=4), overwrite=True)
         args, _ = upload_blob.call_args_list[-1]
 
-        blob_client = cast(BlobClient, args[0])
+        blob_client = cast('BlobClient', args[0])
 
         assert metadata == {'size': 1337, 'etag': '0xdeadbeef'}
 
@@ -214,14 +229,17 @@ class TestBlobStorageUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly.scenario, {
-                'AtomicIntegerIncrementer.messageID': 31337,
-                'AtomicDate.now': '',
-                'messageID': 137,
-            }),
+            'variables': transform(
+                grizzly.scenario,
+                {
+                    'AtomicIntegerIncrementer.messageID': 31337,
+                    'AtomicDate.now': '',
+                    'messageID': 137,
+                },
+            ),
         }
         blob_storage_parent.user.add_context(remote_variables)
-        request = cast(RequestTask, blob_storage_parent.user._scenario.tasks()[-1])
+        request = cast('RequestTask', blob_storage_parent.user._scenario.tasks()[-1])
         request.method = RequestMethod.RECEIVE
         request.endpoint = 'some_container_name/file.txt'
 
@@ -246,7 +264,7 @@ class TestBlobStorageUser:
         assert payload == json.dumps(expected_payload, indent=4)
         args, _ = download_blob.call_args_list[-1]
 
-        blob_client = cast(BlobClient, args[0])
+        blob_client = cast('BlobClient', args[0])
         download_blob.assert_called_once_with(blob_client)
         download_blob.return_value.readall.assert_called_once_with()
 
@@ -276,15 +294,18 @@ class TestBlobStorageUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly.scenario, {
-                'AtomicIntegerIncrementer.messageID': 31337,
-                'AtomicDate.now': '',
-                'messageID': 137,
-            }),
+            'variables': transform(
+                grizzly.scenario,
+                {
+                    'AtomicIntegerIncrementer.messageID': 31337,
+                    'AtomicDate.now': '',
+                    'messageID': 137,
+                },
+            ),
         }
         blob_storage_parent.user.add_context(remote_variables)
 
-        request = cast(RequestTask, blob_storage_parent.user._scenario.tasks()[-1])
+        request = cast('RequestTask', blob_storage_parent.user._scenario.tasks()[-1])
         request.endpoint = 'some_container_name/file.txt'
 
         download_blob = mocker.patch('azure.storage.blob._blob_service_client.BlobClient.download_blob', autospec=True)
@@ -332,19 +353,23 @@ class TestBlobStorageUser:
         grizzly = grizzly_fixture.grizzly
         parent = grizzly_fixture()
 
-        cls_blob_storage_user = type('BlobStorageUserTest', (BlobStorageUser,), {
-            '__scenario__': grizzly.scenario,
-            '__context__': {
-                'auth': {
-                    'tenant': '<tenant>',
-                    'user': {
-                        'username': '<username>',
-                        'password': '<password>',
+        cls_blob_storage_user = type(
+            'BlobStorageUserTest',
+            (BlobStorageUser,),
+            {
+                '__scenario__': grizzly.scenario,
+                '__context__': {
+                    'auth': {
+                        'tenant': '<tenant>',
+                        'user': {
+                            'username': '<username>',
+                            'password': '<password>',
+                        },
                     },
                 },
+                'host': 'bs://<storage account>',
             },
-            'host': 'bs://<storage account>',
-        })
+        )
 
         user = cls_blob_storage_user(grizzly.state.locust.environment)
         parent._user = user
@@ -357,4 +382,3 @@ class TestBlobStorageUser:
             parent.user.request(request)
 
         assert 0  # noqa: PT015
-

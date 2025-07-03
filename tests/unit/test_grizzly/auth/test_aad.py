@@ -1,4 +1,5 @@
 """Unit tests of grizzly.auth.aad."""
+
 from __future__ import annotations
 
 import logging
@@ -7,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from itertools import product
 from json import dumps as jsondumps
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
 import pytest
@@ -15,7 +16,7 @@ from requests.cookies import create_cookie
 from requests.models import Response
 
 from grizzly.auth import AAD, AccessToken, RefreshToken
-from grizzly.types import ZoneInfo
+from grizzly.types import StrDict, ZoneInfo
 from grizzly.users import RestApiUser
 from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential, AzureAadError, AzureAadFlowError
 from tests.helpers import ANY, SOME
@@ -54,7 +55,13 @@ class TestAzureAadCredential:
         )
 
         credential = AzureAadCredential(
-            'bob', 'secret', 'example.com', AuthMethod.CLIENT, host='https://example.com', redirect='https://example.com/login-callback', initialize=None,
+            'bob',
+            'secret',
+            'example.com',
+            AuthMethod.CLIENT,
+            host='https://example.com',
+            redirect='https://example.com/login-callback',
+            initialize=None,
         )
 
         credential.get_token('profile', 'offline', claims='profile', tenant_id='foobar')
@@ -63,7 +70,13 @@ class TestAzureAadCredential:
         get_oauth_token_mock.reset_mock()
 
         credential = AzureAadCredential(
-            'bob', 'secret', 'example.com', AuthMethod.USER, host='https://example.com', redirect='https://example.com/login-callback', initialize=None,
+            'bob',
+            'secret',
+            'example.com',
+            AuthMethod.USER,
+            host='https://example.com',
+            redirect='https://example.com/login-callback',
+            initialize=None,
         )
 
         access_token = credential.get_token('profile', 'offline', claims='profile', tenant_id='foobar')
@@ -96,18 +109,20 @@ class TestAzureAadCredential:
             payload_variable='test_payload',
         )
 
-        parent.user._context.update({
-            '<host of url to request>': {
-                'auth': {
-                    'user': {
-                        'username': '<username>',
-                        'password': '<password>',
-                        'initialize_uri': '<url that initializes the login by redirecting to microsoftonline.com>',
+        parent.user._context.update(
+            {
+                '<host of url to request>': {
+                    'auth': {
+                        'user': {
+                            'username': '<username>',
+                            'password': '<password>',
+                            'initialize_uri': '<url that initializes the login by redirecting to microsoftonline.com>',
+                        },
                     },
+                    'verify_certificates': False,
                 },
-                'verify_certificates': False,
             },
-        })
+        )
 
         task = task_factory()
 
@@ -136,24 +151,28 @@ class TestAzureAadCredential:
             payload_variable='test_payload',
         )
 
-        parent.user._context.update({
-            '<host of request url>': {
-                'auth': {
-                    'tenant': '<tenant to authenticate with>',
-                    'client': {
-                        'id': '<client id of application @ tenant>',
-                    },
-                    'user': {
-                        'username': '<username>',
-                        'password': '<password>',
-                        'redirect_uri': '<url that tenant will redirect to with token in url fragment',
+        parent.user._context.update(
+            {
+                '<host of request url>': {
+                    'auth': {
+                        'tenant': '<tenant to authenticate with>',
+                        'client': {
+                            'id': '<client id of application @ tenant>',
+                        },
+                        'user': {
+                            'username': '<username>',
+                            'password': '<password>',
+                            'redirect_uri': '<url that tenant will redirect to with token in url fragment',
+                        },
                     },
                 },
             },
-        })
-        task_factory.metadata.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0',
-        })
+        )
+        task_factory.metadata.update(
+            {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0',
+            },
+        )
 
         task = task_factory()
 
@@ -177,7 +196,13 @@ class TestAzureAadCredential:
             is_token_v2_0 = version == 'v2.0'
 
             credential = AzureAadCredential(
-                'test-user@example.com', 'secret', 'example.com', AuthMethod.USER, host='https://example.com', redirect='https://www.example.com/login-callback', initialize=None,
+                'test-user@example.com',
+                'secret',
+                'example.com',
+                AuthMethod.USER,
+                host='https://example.com',
+                redirect='https://www.example.com/login-callback',
+                initialize=None,
             )
             get_oauth_token_mock = mocker.patch.object(credential, 'get_oauth_token', return_value=None)
 
@@ -206,8 +231,8 @@ class TestAzureAadCredential:
                 REQUEST_5_HTTP_STATUS = 500
                 REQUEST_5_NO_COOKIE = 501
 
-            def mock_request_session(inject_error: Optional[Error] = None) -> None:  # noqa: PLR0915, C901
-                def request(self: requests.Session, method: str, url: str, name: Optional[str] = None, **kwargs: dict[str, Any]) -> requests.Response:  # noqa: ARG001, PLR0915, C901, PLR0912
+            def mock_request_session(inject_error: Error | None = None) -> None:  # noqa: PLR0915, C901
+                def request(self: requests.Session, method: str, url: str, name: str | None = None, **kwargs: StrDict) -> requests.Response:  # noqa: ARG001, PLR0915, C901, PLR0912
                     response = Response()
                     response.status_code = 200
                     response.url = url
@@ -249,7 +274,7 @@ class TestAzureAadCredential:
 
                         response.headers['x-ms-request-id'] = 'aaaa-bbbb-cccc-dddd'
                     elif method == 'POST' and url.endswith('/GetCredentialType'):
-                        data: dict[str, Any] = {
+                        data: StrDict = {
                             'FlowToken': 'xxxxxxxxxxxxxxxxxxx',
                             'apiCanary': 'zzzzzzzzzzzz',
                         }
@@ -284,36 +309,47 @@ class TestAzureAadCredential:
                         }
 
                         if inject_error == Error.REQUEST_3_ERROR_MESSAGE:
-                            dollar_dict.update({
-                                'strServiceExceptionMessage': 'failed big time',
-                            })
+                            dollar_dict.update(
+                                {
+                                    'strServiceExceptionMessage': 'failed big time',
+                                },
+                            )
                         elif inject_error == Error.REQUEST_3_MFA_REQUIRED:
-                            dollar_dict.update({
-                                'arrUserProofs': [{
-                                    'authMethodId': 'fax',
-                                    'display': '+46 1234',
-                                }],
-                            })
+                            dollar_dict.update(
+                                {
+                                    'arrUserProofs': [
+                                        {
+                                            'authMethodId': 'fax',
+                                            'display': '+46 1234',
+                                        },
+                                    ],
+                                },
+                            )
                         elif inject_error is not None and inject_error.value >= 330 and inject_error.value < 400:
-                            dollar_dict.update({
-                                'arrUserProofs': [{
-                                    'authMethodId': 'PhoneAppNotification',
-                                    'data': 'PhoneAppNotification',
-                                    'display': '+XX XXXXXXXXX',
-                                    'isDefault': True,
-                                    'isLocationAware': False,
-                                }, {
-                                    'authMethodId': 'PhoneAppOTP',
-                                    'data': 'PhoneAppOTP',
-                                    'display': '+XX XXXXXXXXX',
-                                    'isDefault': False,
-                                    'isLocationAware': False,
-                                    'phoneAppOtpTypes': ['MicrosoftAuthenticatorBasedTOTP', 'SoftwareTokenBasedTOTP'],
-                                }],
-                                'urlBeginAuth': 'https://test.nu/common/SAS/BeginAuth',
-                                'urlEndAuth': 'https://test.nu/common/SAS/EndAuth',
-                                'urlPost': 'https://test.nu/common/SAS/ProcessAuth',
-                            })
+                            dollar_dict.update(
+                                {
+                                    'arrUserProofs': [
+                                        {
+                                            'authMethodId': 'PhoneAppNotification',
+                                            'data': 'PhoneAppNotification',
+                                            'display': '+XX XXXXXXXXX',
+                                            'isDefault': True,
+                                            'isLocationAware': False,
+                                        },
+                                        {
+                                            'authMethodId': 'PhoneAppOTP',
+                                            'data': 'PhoneAppOTP',
+                                            'display': '+XX XXXXXXXXX',
+                                            'isDefault': False,
+                                            'isLocationAware': False,
+                                            'phoneAppOtpTypes': ['MicrosoftAuthenticatorBasedTOTP', 'SoftwareTokenBasedTOTP'],
+                                        },
+                                    ],
+                                    'urlBeginAuth': 'https://test.nu/common/SAS/BeginAuth',
+                                    'urlEndAuth': 'https://test.nu/common/SAS/EndAuth',
+                                    'urlPost': 'https://test.nu/common/SAS/ProcessAuth',
+                                },
+                            )
 
                         dollar_config = jsondumps(dollar_dict)
                         response._content = f'$Config={dollar_config};'.encode()
@@ -355,12 +391,14 @@ class TestAzureAadCredential:
                         }
 
                         if inject_error == Error.REQUEST_3_MFA_BEGIN_AUTH_FAILURE:
-                            response_json.update({
-                                'Success': False,
-                                'ResultValue': 'Failure',
-                                'Message': 'some error, probably',
-                                'ErrCode': 1337,
-                            })
+                            response_json.update(
+                                {
+                                    'Success': False,
+                                    'ResultValue': 'Failure',
+                                    'Message': 'some error, probably',
+                                    'ErrCode': 1337,
+                                },
+                            )
 
                         response._content = jsondumps(response_json).encode('utf-8')
                         response.headers['x-ms-request-id'] = 'aaaa-bbbb-cccc-dddd'
@@ -401,12 +439,14 @@ class TestAzureAadCredential:
                         }
 
                         if inject_error == Error.REQUEST_3_MFA_END_AUTH_FAILURE:
-                            response_json.update({
-                                'Success': False,
-                                'ResultValue': 'Failure',
-                                'Message': 'some error, for sure',
-                                'ErrCode': 7331,
-                            })
+                            response_json.update(
+                                {
+                                    'Success': False,
+                                    'ResultValue': 'Failure',
+                                    'Message': 'some error, for sure',
+                                    'ErrCode': 7331,
+                                },
+                            )
 
                         response._content = jsondumps(response_json).encode('utf-8')
                         response.headers['x-ms-request-id'] = 'aaaa-bbbb-cccc-dddd'
@@ -445,9 +485,11 @@ class TestAzureAadCredential:
                                 response.status_code = 302
                         elif inject_error == Error.REQUEST_4_HTTP_STATUS_CONFIG:
                             response.status_code = 400
-                            dollar_config = jsondumps({
-                                'strServiceExceptionMessage': 'error! error! error!',
-                            })
+                            dollar_config = jsondumps(
+                                {
+                                    'strServiceExceptionMessage': 'error! error! error!',
+                                },
+                            )
                             response._content = f'$Config={dollar_config};'.encode()
                         elif login_start == 'redirect_uri':
                             response.status_code = 302
@@ -501,7 +543,7 @@ class TestAzureAadCredential:
                     'provider': None,
                 },
             }
-            parent.user.host = cast(str, parent.user._context['host'])
+            parent.user.host = cast('str', parent.user._context['host'])
 
             mock_request_session()
 
@@ -634,8 +676,12 @@ class TestAzureAadCredential:
 
             # BeginAuth, response status
             mock_request_session(Error.REQUEST_3_MFA_BEGIN_AUTH_STATUS)
-            with caplog.at_level(logging.ERROR), pytest.raises(
-                AzureAadFlowError, match='user auth request BeginAuth: https://test.nu/common/SAS/BeginAuth had unexpected status code 400',
+            with (
+                caplog.at_level(logging.ERROR),
+                pytest.raises(
+                    AzureAadFlowError,
+                    match='user auth request BeginAuth: https://test.nu/common/SAS/BeginAuth had unexpected status code 400',
+                ),
             ):
                 credential.get_oauth_authorization()
 
@@ -653,8 +699,12 @@ class TestAzureAadCredential:
             # EndAuth, response status
             mock_request_session(Error.REQUEST_3_MFA_END_AUTH_STATUS)
 
-            with caplog.at_level(logging.ERROR), pytest.raises(
-                AzureAadFlowError, match='user auth request EndAuth: https://test.nu/common/SAS/EndAuth had unexpected status code 400',
+            with (
+                caplog.at_level(logging.ERROR),
+                pytest.raises(
+                    AzureAadFlowError,
+                    match='user auth request EndAuth: https://test.nu/common/SAS/EndAuth had unexpected status code 400',
+                ),
             ):
                 credential.get_oauth_authorization()
 
@@ -672,8 +722,12 @@ class TestAzureAadCredential:
             # ProcessAuth, response status
             mock_request_session(Error.REQUEST_3_MFA_PROCESS_AUTH_STATUS)
 
-            with caplog.at_level(logging.ERROR), pytest.raises(
-                AzureAadFlowError, match='user auth request ProcessAuth: https://test.nu/common/SAS/ProcessAuth had unexpected status code 500',
+            with (
+                caplog.at_level(logging.ERROR),
+                pytest.raises(
+                    AzureAadFlowError,
+                    match='user auth request ProcessAuth: https://test.nu/common/SAS/ProcessAuth had unexpected status code 500',
+                ),
             ):
                 credential.get_oauth_authorization()
 
@@ -702,10 +756,13 @@ class TestAzureAadCredential:
         finally:
             parent.user.__class__.__name__ = original_class_name
 
-    @pytest.mark.parametrize('grant_type', [
-        'client_credentials::v2',
-        'authorization_code::v2',
-    ])
+    @pytest.mark.parametrize(
+        'grant_type',
+        [
+            'client_credentials::v2',
+            'authorization_code::v2',
+        ],
+    )
     def test_get_oauth_token(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, grant_type: str) -> None:  # noqa: PLR0915
         parent = grizzly_fixture(user_type=RestApiUser)
 
@@ -723,7 +780,6 @@ class TestAzureAadCredential:
                 return mocker.patch('grizzly_extras.azure.aad.requests.Session.post', return_value=response)
 
             assert isinstance(parent.user, RestApiUser)
-
 
             access_token = AccessToken('asdf', expires_on=1)
             credential = AzureAadCredential(
@@ -757,16 +813,20 @@ class TestAzureAadCredential:
 
             data: dict[str, str] = {}
             if pkcs == {}:
-                data.update({
-                    'scope': 'asdf',
-                    'tenant': 'example.com',
-                })
+                data.update(
+                    {
+                        'scope': 'asdf',
+                        'tenant': 'example.com',
+                    },
+                )
             else:
-                data.update({
-                    'redirect_uri': 'https://example.com/auth',
-                    'code': pkcs['code'],
-                    'code_verifier': pkcs['verifier'],
-                })
+                data.update(
+                    {
+                        'redirect_uri': 'https://example.com/auth',
+                        'code': pkcs['code'],
+                        'code_verifier': pkcs['verifier'],
+                    },
+                )
 
             requests_mock.assert_called_once_with(
                 'https://login.microsoftonline.com/example.com/oauth2/v2.0/token',
@@ -777,11 +837,13 @@ class TestAzureAadCredential:
             )
             requests_mock.reset_mock()
 
-            parent.user.metadata.update({
-                'Authorization': 'foobar',
-                'Content-Type': 'plain/text',
-                'Ocp-Apim-Subscription-Key': 'secret',
-            })
+            parent.user.metadata.update(
+                {
+                    'Authorization': 'foobar',
+                    'Content-Type': 'plain/text',
+                    'Ocp-Apim-Subscription-Key': 'secret',
+                },
+            )
             parent.user._context['verify_certificates'] = False
 
             requests_mock = mock_requests_post(jsondumps({token_name: 'asdf'}), 200)
@@ -793,11 +855,13 @@ class TestAzureAadCredential:
             if pkcs == {}:
                 data.update({'scope': 'asdf', 'tenant': 'example.com'})
             else:
-                data.update({
-                    'redirect_uri': f'{parent.user.host}/auth',
-                    'code': pkcs['code'],
-                    'code_verifier': pkcs['verifier'],
-                })
+                data.update(
+                    {
+                        'redirect_uri': f'{parent.user.host}/auth',
+                        'code': pkcs['code'],
+                        'code_verifier': pkcs['verifier'],
+                    },
+                )
                 headers.update({'Origin': 'https://example.com', 'Referer': 'https://example.com'})
 
             requests_mock.assert_called_once_with(

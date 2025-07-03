@@ -23,13 +23,14 @@ where `<n>` is the number of requests in the group. Each request in the group wi
 
 * `name` (str): name of the group of asynchronously requests
 """
+
 from __future__ import annotations
 
 import inspect
 import logging
 from os import environ
 from time import perf_counter as time_perf_counter
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import gevent
 
@@ -71,7 +72,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
                 message = f'{parent.user.__class__.__name__} does not inherit AsyncRequests'
                 raise NotImplementedError(message)  # pragma: no cover
 
-            exception: Optional[Exception] = None
+            exception: Exception | None = None
             response_length = 0
 
             def trace_green(event: str, args: tuple[gevent.Greenlet, gevent.Greenlet]) -> None:  # pragma: no cover
@@ -90,7 +91,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
                     buff = []
                     for traceback in tracebacks:
                         srcfile, lineno, func_name, codesample = traceback[1:-1]
-                        trace_line = f"""File "{srcfile}", line {lineno}, in {func_name}\n{"".join(codesample or [])} """
+                        trace_line = f"""File "{srcfile}", line {lineno}, in {func_name}\n{''.join(codesample or [])} """
                         buff.append(trace_line)
 
                     parent.user.logger.debug(''.join(buff))
@@ -99,10 +100,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
             start = time_perf_counter()
 
             try:
-                debug_enabled = (
-                    parent.user.logger.isEnabledFor(logging.DEBUG)
-                    and environ.get('GEVENT_MONITOR_THREAD_ENABLE', None) is not None
-                )
+                debug_enabled = parent.user.logger.isEnabledFor(logging.DEBUG) and environ.get('GEVENT_MONITOR_THREAD_ENABLE', None) is not None
 
                 for request in self.tasks:
                     greenlet = gevent.spawn(parent.user.request, request)

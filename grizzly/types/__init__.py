@@ -1,9 +1,10 @@
 """Grizzly types."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
 from enum import Enum, auto
-from typing import Any, Concatenate, Optional, TypeVar, Union, cast
+from typing import Any, Concatenate, TypeVar, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from locust.rpc.protocol import Message
@@ -161,7 +162,7 @@ class RequestDirection(PermutationEnum):
         return [method for method in RequestMethod if method.direction == self]
 
     def get_value(self) -> str:
-        return cast(str, self.value)
+        return cast('str', self.value)
 
 
 class RequestDirectionWrapper:
@@ -192,7 +193,7 @@ class RequestMethod(PermutationEnum):
     @property
     def direction(self) -> RequestDirection:
         """Request direction for this request method."""
-        return cast(RequestDirection, self.value.wrapped)
+        return cast('RequestDirection', self.value.wrapped)
 
     def get_value(self) -> str:
         return self.name.lower()
@@ -216,9 +217,9 @@ class RequestType(Enum):
     EMPTY = ('EMPTY', None)
 
     _value: str
-    _weight: Optional[int]
+    _weight: int | None
 
-    def __new__(cls, value: str, weight: Optional[int] = None) -> RequestType:  # noqa: PYI034
+    def __new__(cls, value: str, weight: int | None = None) -> RequestType:  # noqa: PYI034
         """Create a multi-value enum value."""
         obj = object.__new__(cls)
         obj._value = value
@@ -258,7 +259,7 @@ class RequestType(Enum):
     @classmethod
     def from_method(cls, request_type: RequestMethod) -> str:
         """Convert a request method to a request type."""
-        method_name = cast(Optional[RequestType], getattr(cls, request_type.name, None))
+        method_name = cast('RequestType | None', getattr(cls, request_type.name, None))
         if method_name is not None:
             return method_name.alias
 
@@ -277,14 +278,14 @@ class RequestType(Enum):
     @classmethod
     def from_string(cls, key: str) -> str:
         """Convert string value (can be either alias or name) to request type."""
-        rt_attribute = cast(Optional[RequestType], getattr(cls, key, None))
+        rt_attribute = cast('RequestType | None', getattr(cls, key, None))
         if rt_attribute is not None:
             return rt_attribute.alias
 
         if key in [e.alias for e in cls.__iter__()]:
             return key
 
-        rm_attribute = cast(Optional[RequestMethod], getattr(RequestMethod, key, None))
+        rm_attribute = cast('RequestMethod | None', getattr(RequestMethod, key, None))
         if rm_attribute is not None:
             return rm_attribute.name
 
@@ -292,13 +293,15 @@ class RequestType(Enum):
         raise AssertionError(message)
 
 
-GrizzlyResponse = tuple[Optional[dict[str, Any]], Optional[str]]
+StrDict = dict[str, Any]
 
-TestdataType = dict[str, dict[str, Any]]
+GrizzlyResponse = tuple[StrDict | None, str | None]
 
-HandlerContextType = Union[dict[str, Any], Optional[Any]]
+TestdataType = dict[str, StrDict]
 
-GrizzlyVariableType = Union[str, float, int, bool]
+HandlerContextType = StrDict | Any
+
+GrizzlyVariableType = str | float | int | bool
 
 MessageCallback = Callable[Concatenate[Environment, Message, P], None]
 
@@ -325,10 +328,10 @@ def list_type(value: str) -> list[str]:
 
 def int_rounded_float_type(value: str) -> int:
     """Convert a string representation of an integer to an actual integer."""
-    return int(round(float(value)))
+    return round(float(value))
 
 
-def optional_str_lower_type(value: Optional[str]) -> Optional[str]:
+def optional_str_lower_type(value: str | None) -> str | None:
     """Convert an optional string to lower case."""
     if value is None:
         return None

@@ -1,4 +1,5 @@
 """End-to-end tests of grizzly.tasks.async_timer."""
+
 from __future__ import annotations
 
 from textwrap import dedent
@@ -9,7 +10,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def test_e2e_async_timers(e2e_fixture: End2EndFixture) -> None:
-    feature_file = e2e_fixture.create_feature(dedent("""Feature: test async timers
+    feature_file = e2e_fixture.create_feature(
+        dedent("""Feature: test async timers
     Background: common configuration
         Given "3" users
         And spawn rate is "3" user per second
@@ -40,7 +42,8 @@ def test_e2e_async_timers(e2e_fixture: End2EndFixture) -> None:
         Then wait for "1.5" seconds
 
         Then stop document timer with name "timer-2" for id "foobar" and version "{{ AtomicIntegerIncrementer.id }}"
-    """))
+    """),
+    )
 
     rc, output = e2e_fixture.execute(feature_file)
 
@@ -49,31 +52,29 @@ def test_e2e_async_timers(e2e_fixture: End2EndFixture) -> None:
     result = ''.join(output)
 
     try:
-        assert "The following asynchronous timers has not been stopped:" in result
-        assert "- timer-1 (5):" in result
-        assert "* foobar (version 21):" in result
-        assert "* foobar (version 22):" in result
-        assert "* foobar (version 23):" in result
-        assert "* foobar (version 24):" in result
-        assert "* foobar (version 25):" in result
-        assert "- timer-2 (5):" in result
-        assert "* foobar (version 21):" in result
-        assert "* foobar (version 22):" in result
-        assert "* foobar (version 23):" in result
-        assert "* foobar (version 24):" in result
-        assert "* foobar (version 25):" in result
-        assert "The following asynchronous timers has not been started:" in result
-        assert "- timer-3 (5):" in result
-        assert "* foobar (version 1):" in result
-        assert "* foobar (version 2):" in result
-        assert "* foobar (version 3):" in result
-        assert "* foobar (version 4):" in result
-        assert "* foobar (version 5):" in result
+        assert 'The following asynchronous timers has not been stopped:' in result
+        assert '- timer-1 (5):' in result
+        assert '* foobar (version 21):' in result
+        assert '* foobar (version 22):' in result
+        assert '* foobar (version 23):' in result
+        assert '* foobar (version 24):' in result
+        assert '* foobar (version 25):' in result
+        assert '- timer-2 (5):' in result
+        assert '* foobar (version 21):' in result
+        assert '* foobar (version 22):' in result
+        assert '* foobar (version 23):' in result
+        assert '* foobar (version 24):' in result
+        assert '* foobar (version 25):' in result
+        assert 'The following asynchronous timers has not been started:' in result
+        assert '- timer-3 (5):' in result
+        assert '* foobar (version 1):' in result
+        assert '* foobar (version 2):' in result
+        assert '* foobar (version 3):' in result
+        assert '* foobar (version 4):' in result
+        assert '* foobar (version 5):' in result
 
         assert result.count('DOC      timer-1') >= 2
         assert result.count('DOC      timer-2') >= 2
     except:
         print(result)
         raise
-
-

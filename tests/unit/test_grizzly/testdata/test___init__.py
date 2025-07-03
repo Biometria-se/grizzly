@@ -1,8 +1,9 @@
 """Unit tests of grizzly.testdata."""
+
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -246,7 +247,7 @@ value1,value2
         grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test-3'))
         test_context = grizzly_fixture.test_context / 'requests'
 
-        test_file = (test_context / 'test.json')
+        test_file = test_context / 'test.json'
         with test_file.open('w') as fd:
             json.dump([{'hello': 'world'}, {'hello': 'foo'}, {'hello': 'bar'}], fd)
 
@@ -328,15 +329,18 @@ value1,value2
         finally:
             cleanup()
 
-    @pytest.mark.parametrize(('value', 'expected_spec', 'expected_init_value'), [
-        ('variable', (None, None, 'variable', None), 'variable'),
-        ('AtomicIntegerIncrementer.foo', ('grizzly.testdata.variables', 'AtomicIntegerIncrementer', 'foo', None), 'AtomicIntegerIncrementer.foo'),
-        ('AtomicCsvReader.users.username', ('grizzly.testdata.variables', 'AtomicCsvReader', 'users', 'username'), 'AtomicCsvReader.users'),
-        ('tests.helpers.AtomicCustomVariable.hello', ('tests.helpers', 'AtomicCustomVariable', 'hello', None), 'tests.helpers.AtomicCustomVariable.hello'),
-        ('tests.helpers.AtomicCustomVariable.foo.bar', ('tests.helpers', 'AtomicCustomVariable', 'foo', 'bar'), 'tests.helpers.AtomicCustomVariable.foo'),
-        ('a.custom.struct', (None, None, 'a.custom.struct', None), 'a.custom.struct'),
-    ])
-    def test_get_variable_spec_and_initialization_value(self, value: str, expected_spec: tuple[Optional[str], Optional[str], str, Optional[str]], expected_init_value: str) -> None:
+    @pytest.mark.parametrize(
+        ('value', 'expected_spec', 'expected_init_value'),
+        [
+            ('variable', (None, None, 'variable', None), 'variable'),
+            ('AtomicIntegerIncrementer.foo', ('grizzly.testdata.variables', 'AtomicIntegerIncrementer', 'foo', None), 'AtomicIntegerIncrementer.foo'),
+            ('AtomicCsvReader.users.username', ('grizzly.testdata.variables', 'AtomicCsvReader', 'users', 'username'), 'AtomicCsvReader.users'),
+            ('tests.helpers.AtomicCustomVariable.hello', ('tests.helpers', 'AtomicCustomVariable', 'hello', None), 'tests.helpers.AtomicCustomVariable.hello'),
+            ('tests.helpers.AtomicCustomVariable.foo.bar', ('tests.helpers', 'AtomicCustomVariable', 'foo', 'bar'), 'tests.helpers.AtomicCustomVariable.foo'),
+            ('a.custom.struct', (None, None, 'a.custom.struct', None), 'a.custom.struct'),
+        ],
+    )
+    def test_get_variable_spec_and_initialization_value(self, value: str, expected_spec: tuple[str | None, str | None, str, str | None], expected_init_value: str) -> None:
         assert GrizzlyVariables.get_variable_spec(value) == expected_spec
         assert GrizzlyVariables.get_initialization_value(value) == expected_init_value
 

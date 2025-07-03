@@ -1,17 +1,17 @@
 """Unit tests of grizzly.steps.scenario.response."""
+
 from __future__ import annotations
 
 from itertools import product
-from typing import TYPE_CHECKING, Union, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
-from parse import compile
+from parse import compile as parse_compile
 
-from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 from grizzly.tasks import ExplicitWaitTask, RequestTask
 from grizzly.tasks.clients import HttpClientTask
-from grizzly.types import RequestMethod, ResponseTarget
+from grizzly.types import RequestMethod, ResponseTarget, StrDict
 from grizzly.types.behave import Row, Table
 from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY
@@ -19,11 +19,12 @@ from tests.helpers import ANY
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Callable
 
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
 def test_parse_condition() -> None:
-    p = compile(
+    p = parse_compile(
         'value {condition:Condition} world',
         extra_types={
             'Condition': parse_condition,
@@ -38,7 +39,7 @@ def test_parse_condition() -> None:
 
 
 def test_parse_response_target() -> None:
-    p = compile(
+    p = parse_compile(
         'save response {target:ResponseTarget}',
         extra_types={
             'ResponseTarget': ResponseTarget.from_string,
@@ -55,7 +56,7 @@ def test_parse_response_target() -> None:
 
 
 def test_parse_response_content_type() -> None:
-    p = compile(
+    p = parse_compile(
         'content type is "{content_type:TransformerContentType}"',
         extra_types={
             'TransformerContentType': TransformerContentType.from_string,
@@ -80,14 +81,14 @@ def test_parse_response_content_type() -> None:
 
 
 @pytest.mark.parametrize(
-        ('response_target', 'step_impl'),
-        product(ResponseTarget, [step_response_save_matches, step_response_save_matches_optional, step_response_save, step_response_save_optional]),
+    ('response_target', 'step_impl'),
+    product(ResponseTarget, [step_response_save_matches, step_response_save_matches_optional, step_response_save, step_response_save_optional]),
 )
 def test_step_response_save(grizzly_fixture: GrizzlyFixture, response_target: ResponseTarget, step_impl: Callable[..., None]) -> None:
     behave = grizzly_fixture.behave.context
     grizzly = grizzly_fixture.grizzly
-    request = cast(RequestTask, grizzly.scenario.tasks()[0])
-    kwargs: dict[str, Any] = {
+    request = cast('RequestTask', grizzly.scenario.tasks()[0])
+    kwargs: StrDict = {
         'context': behave,
         'target': response_target,
         'expression': '$.test.value',
@@ -113,21 +114,25 @@ def test_step_response_save(grizzly_fixture: GrizzlyFixture, response_target: Re
 
     step_impl(**kwargs)
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='variable "" has not been declared'),
-        ANY(AssertionError, message='variable "test" has not been declared'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='variable "" has not been declared'),
+            ANY(AssertionError, message='variable "test" has not been declared'),
+        ],
+    }
 
     try:
         grizzly.scenario.variables['test'] = 'none'
 
         step_impl(**kwargs)
 
-        assert behave.exceptions == {behave.scenario.name: [
-            ANY(AssertionError, message='variable "" has not been declared'),
-            ANY(AssertionError, message='variable "test" has not been declared'),
-            ANY(AssertionError, message='content type is not set for latest request'),
-        ]}
+        assert behave.exceptions == {
+            behave.scenario.name: [
+                ANY(AssertionError, message='variable "" has not been declared'),
+                ANY(AssertionError, message='variable "test" has not been declared'),
+                ANY(AssertionError, message='content type is not set for latest request'),
+            ],
+        }
 
         request.response.content_type = TransformerContentType.JSON
         step_impl(**kwargs)
@@ -145,8 +150,8 @@ def test_step_response_save(grizzly_fixture: GrizzlyFixture, response_target: Re
 @pytest.mark.parametrize('response_target', ResponseTarget)
 def test_step_response_validate(grizzly_fixture: GrizzlyFixture, response_target: ResponseTarget) -> None:
     behave = grizzly_fixture.behave.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    request = cast(RequestTask, grizzly.scenario.tasks()[0])
+    grizzly = cast('GrizzlyContext', behave.grizzly)
+    request = cast('RequestTask', grizzly.scenario.tasks()[0])
 
     assert behave.exceptions == {}
 
@@ -159,10 +164,12 @@ def test_step_response_validate(grizzly_fixture: GrizzlyFixture, response_target
 
     step_response_validate(behave, response_target, '$.test.value', True, '.*test')  # noqa: FBT003
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='expression is empty'),
-        ANY(AssertionError, message='content type is not set for latest request'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='expression is empty'),
+            ANY(AssertionError, message='content type is not set for latest request'),
+        ],
+    }
 
     request.response.content_type = TransformerContentType.JSON
     step_response_validate(behave, response_target, '$.test.value', True, '.*test')  # noqa: FBT003
@@ -174,13 +181,16 @@ def test_step_response_validate(grizzly_fixture: GrizzlyFixture, response_target
     assert len(request.response.handlers.payload) == handlers_payload_count
 
 
-@pytest.mark.parametrize('request_type', [
-    RequestTask, HttpClientTask,
-])
-def test_step_response_allow_status_codes(grizzly_fixture: GrizzlyFixture, request_type: type[Union[RequestTask, HttpClientTask]]) -> None:
-
+@pytest.mark.parametrize(
+    'request_type',
+    [
+        RequestTask,
+        HttpClientTask,
+    ],
+)
+def test_step_response_allow_status_codes(grizzly_fixture: GrizzlyFixture, request_type: type[RequestTask | HttpClientTask]) -> None:
     behave = grizzly_fixture.behave.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     behave.scenario = grizzly.scenario.behave
     grizzly.scenario.tasks.clear()
 
@@ -219,7 +229,7 @@ def test_step_response_allow_status_codes(grizzly_fixture: GrizzlyFixture, reque
 
 def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -234,10 +244,12 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
 
     step_response_allow_status_codes_table(behave)
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='step table is missing'),
-        ANY(AssertionError, message='there are no request tasks in the scenario'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='step table is missing'),
+            ANY(AssertionError, message='there are no request tasks in the scenario'),
+        ],
+    }
 
     request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
     grizzly.scenarios.create(behave_fixture.create_scenario('test'))
@@ -246,11 +258,13 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     # more rows in data table then there are requests
     step_response_allow_status_codes_table(behave)
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='step table is missing'),
-        ANY(AssertionError, message='there are no request tasks in the scenario'),
-        ANY(AssertionError, message='step table has more rows than there are request tasks'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='step table is missing'),
+            ANY(AssertionError, message='there are no request tasks in the scenario'),
+            ANY(AssertionError, message='step table has more rows than there are request tasks'),
+        ],
+    }
 
     request = RequestTask(RequestMethod.GET, name='test-get', endpoint='/api/test')
     grizzly.scenario.tasks.add(request)
@@ -258,12 +272,14 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     # step table column "code" does not exist
     step_response_allow_status_codes_table(behave)
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='step table is missing'),
-        ANY(AssertionError, message='there are no request tasks in the scenario'),
-        ANY(AssertionError, message='step table has more rows than there are request tasks'),
-        ANY(AssertionError, message='step table does not have column "status"'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='step table is missing'),
+            ANY(AssertionError, message='there are no request tasks in the scenario'),
+            ANY(AssertionError, message='step table has more rows than there are request tasks'),
+            ANY(AssertionError, message='step table does not have column "status"'),
+        ],
+    }
 
     request = RequestTask(RequestMethod.GET, name='no-code', endpoint='/api/test')
     grizzly.scenario.tasks().insert(0, request)
@@ -281,9 +297,9 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     behave.table = Table([column_name], rows=rows)
 
     step_response_allow_status_codes_table(behave)
-    assert cast(RequestTask, grizzly.scenario.tasks()[0]).response.status_codes == [200]
-    assert cast(RequestTask, grizzly.scenario.tasks()[1]).response.status_codes == [400]
-    assert cast(RequestTask, grizzly.scenario.tasks()[2]).response.status_codes == [200, 302]
+    assert cast('RequestTask', grizzly.scenario.tasks()[0]).response.status_codes == [200]
+    assert cast('RequestTask', grizzly.scenario.tasks()[1]).response.status_codes == [400]
+    assert cast('RequestTask', grizzly.scenario.tasks()[2]).response.status_codes == [200, 302]
 
     grizzly.scenario.tasks.clear()
 
@@ -302,14 +318,14 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     grizzly.scenario.tasks().insert(0, request)
 
     step_response_allow_status_codes_table(behave)
-    assert cast(RequestTask, grizzly.scenario.tasks()[0]).response.status_codes == [200]
-    assert cast(RequestTask, grizzly.scenario.tasks()[1]).response.status_codes == [400]
-    assert cast(RequestTask, grizzly.scenario.tasks()[2]).response.status_codes == [200, 302]
+    assert cast('RequestTask', grizzly.scenario.tasks()[0]).response.status_codes == [200]
+    assert cast('RequestTask', grizzly.scenario.tasks()[1]).response.status_codes == [400]
+    assert cast('RequestTask', grizzly.scenario.tasks()[2]).response.status_codes == [200, 302]
 
 
 def test_step_response_content_type(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -323,10 +339,12 @@ def test_step_response_content_type(behave_fixture: BehaveFixture) -> None:
 
     step_response_content_type(behave, TransformerContentType.JSON)
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='there are no tasks in the scenario'),
-        ANY(AssertionError, message='latest task in scenario is not a request task'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='there are no tasks in the scenario'),
+            ANY(AssertionError, message='latest task in scenario is not a request task'),
+        ],
+    }
 
     request: RequestTask = RequestTask(RequestMethod.POST, 'test-request', endpoint='queue:INCOMMING.MESSAGE')
 
@@ -342,11 +360,13 @@ def test_step_response_content_type(behave_fixture: BehaveFixture) -> None:
 
     step_response_content_type(behave, TransformerContentType.UNDEFINED)
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='there are no tasks in the scenario'),
-        ANY(AssertionError, message='latest task in scenario is not a request task'),
-        ANY(AssertionError, message='it is not allowed to set UNDEFINED with this step'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='there are no tasks in the scenario'),
+            ANY(AssertionError, message='latest task in scenario is not a request task'),
+            ANY(AssertionError, message='it is not allowed to set UNDEFINED with this step'),
+        ],
+    }
 
     request = RequestTask(RequestMethod.POST, 'test-request', endpoint='queue:INCOMING.MESSAGE | content_type="application/xml"')
 

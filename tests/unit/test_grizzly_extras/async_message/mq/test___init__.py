@@ -1,4 +1,5 @@
 """Unit test of grizzly_extras.async_message.mq."""
+
 from __future__ import annotations
 
 import subprocess
@@ -98,6 +99,7 @@ class TestAsyncMessageQueueHandler:
 
     def test_disconnect(self, mocker: MockerFixture) -> None:
         from grizzly_extras.async_message.mq import handlers
+
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
         handler.qmgr = pymqi.QueueManager(None)
 
@@ -164,16 +166,18 @@ class TestAsyncMessageQueueHandler:
         with pytest.raises(AsyncMessageError, match='no context'):
             handlers[request['action']](handler, request)
 
-        request.update({
-            'context': {
-                'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SYS.CONN',
-                'username': 'bob',
-                'password': 'secret',
-                'channel': 'SYS.CONN',
-                'connection': 'mq.example.com(1414)',
-                'queue_manager': 'QM1',
+        request.update(
+            {
+                'context': {
+                    'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SYS.CONN',
+                    'username': 'bob',
+                    'password': 'secret',
+                    'channel': 'SYS.CONN',
+                    'connection': 'mq.example.com(1414)',
+                    'queue_manager': 'QM1',
+                },
             },
-        })
+        )
 
         response = handlers[request['action']](handler, request)
         assert response.get('message', None) == 're-used connection'
@@ -193,8 +197,7 @@ class TestAsyncMessageQueueHandler:
 
         assert response['message'] == 'connected'
         assert handler.message_wait == 0
-        assert handler.qmgr is not None
-
+        assert handler.qmgr == ANY(pymqi.QueueManager)
 
         pymqi_sco_spy.assert_called_once_with(ANY(pymqi.SCO))
 
@@ -221,10 +224,12 @@ class TestAsyncMessageQueueHandler:
         pymqi_connect_with_options_spy.reset_mock()
         pymqi_cd_setitem_spy = mocker.spy(pymqi.CD, '__setitem__')
 
-        request['context'].update({
-            'key_file': '/test/key',
-            'message_wait': 10,
-        })
+        request['context'].update(
+            {
+                'key_file': '/test/key',
+                'message_wait': 10,
+            },
+        )
 
         handler.qmgr = None
 
@@ -232,7 +237,7 @@ class TestAsyncMessageQueueHandler:
 
         assert response['message'] == 'connected'
         assert handler.message_wait == 10
-        assert handler.qmgr is not None
+        assert handler.qmgr == ANY(pymqi.QueueManager)
 
         pymqi_sco_spy.assert_called_once_with(
             ANY(pymqi.SCO),
@@ -266,10 +271,12 @@ class TestAsyncMessageQueueHandler:
         pymqi_cd_setitem_spy.reset_mock()
         pymqi_connect_with_options_spy.reset_mock()
 
-        request['context'].update({
-            'ssl_cipher': 'rot13',
-            'cert_label': 'test_certificate_label',
-        })
+        request['context'].update(
+            {
+                'ssl_cipher': 'rot13',
+                'cert_label': 'test_certificate_label',
+            },
+        )
 
         handler.qmgr = None
 
@@ -277,7 +284,7 @@ class TestAsyncMessageQueueHandler:
 
         assert response['message'] == 'connected'
         assert handler.message_wait == 10
-        assert handler.qmgr is not None
+        assert handler.qmgr == ANY(pymqi.QueueManager)
 
         pymqi_sco_spy.assert_called_once_with(
             ANY(pymqi.SCO),
@@ -358,13 +365,15 @@ class TestAsyncMessageQueueHandler:
         with pytest.raises(AsyncMessageError, match='no endpoint specified'):
             handler._request(request)
 
-        request.update({
-            'action': 'PUT',
-            'context': {
-                'endpoint': 'queue:TEST.QUEUE',
+        request.update(
+            {
+                'action': 'PUT',
+                'context': {
+                    'endpoint': 'queue:TEST.QUEUE',
+                },
+                'payload': 'test payload',
             },
-            'payload': 'test payload',
-        })
+        )
 
         handler.header_type = None
         response = handler._request(request)
@@ -413,13 +422,15 @@ class TestAsyncMessageQueueHandler:
 
         handler.message_wait = 0
 
-        request.update({
-            'action': 'GET',
-            'context': {
-                'endpoint': 'queue:TEST.QUEUE',
-                'message_wait': 10,
+        request.update(
+            {
+                'action': 'GET',
+                'context': {
+                    'endpoint': 'queue:TEST.QUEUE',
+                    'message_wait': 10,
+                },
             },
-        })
+        )
 
         create_gmo_spy = mocker.spy(handler, '_create_gmo')
 
@@ -441,7 +452,9 @@ class TestAsyncMessageQueueHandler:
         handler_queue_context.reset_mock()
 
         mocked_pymqi_get.assert_called_once_with(
-            None, ANY(pymqi.MD), ANY(pymqi.GMO),
+            None,
+            ANY(pymqi.MD),
+            ANY(pymqi.GMO),
         )
         mocked_pymqi_get.reset_mock()
 
@@ -454,7 +467,7 @@ class TestAsyncMessageQueueHandler:
             return_value=(
                 b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
                 b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>'
-                b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+                b"<ContentLength dt='i8'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00"
             ),
         )
 
@@ -478,7 +491,9 @@ class TestAsyncMessageQueueHandler:
         handler_queue_context.reset_mock()
 
         mocked_pymqi_get.assert_called_once_with(
-            13337, ANY(pymqi.MD), ANY(pymqi.GMO),
+            13337,
+            ANY(pymqi.MD),
+            ANY(pymqi.GMO),
         )
         mocked_pymqi_get.reset_mock()
 
@@ -539,7 +554,7 @@ class TestAsyncMessageQueueHandler:
                 (
                     b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
                     b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>'
-                    b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+                    b"<ContentLength dt='i8'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00"
                 ),
             ],
         )
@@ -571,7 +586,7 @@ class TestAsyncMessageQueueHandler:
                 return self.payload
 
         queue_messages = {
-            "id1": DummyMessage(
+            'id1': DummyMessage(
                 """
                 <root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
                 <actors>
@@ -585,8 +600,9 @@ class TestAsyncMessageQueueHandler:
                     <foo:singer id="6">Ray Charles</foo:singer>
                 </foo:singers>
                 </root>
-                """),
-            "id2": DummyMessage(
+                """,
+            ),
+            'id2': DummyMessage(
                 """
                 <root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
                 <actors>
@@ -600,12 +616,13 @@ class TestAsyncMessageQueueHandler:
                     <foo:singer id="9">Ray Charles</foo:singer>
                 </foo:singers>
                 </root>
-                """),
+                """,
+            ),
         }
 
         queue_msg_ids = [
-            "id1",
-            "id2",
+            'id1',
+            'id2',
         ]
 
         # Mocked representation of pymqi Queue
@@ -708,7 +725,7 @@ class TestAsyncMessageQueueHandler:
 
         # Invalid XML
         tmp_xml = queue_messages['id1'].payload
-        queue_messages['id1'].payload = "xxx"
+        queue_messages['id1'].payload = 'xxx'
         request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='3']"
         with pytest.raises(AsyncMessageError, match='failed to transform input as XML'):
             response = handlers[request['action']](handler, request)
@@ -783,7 +800,7 @@ class TestAsyncMessageQueueHandler:
 
         # Test Json
         queue_messages = {
-            "id1": DummyMessage(
+            'id1': DummyMessage(
                 """
                 {
                     "actors": [
@@ -797,8 +814,9 @@ class TestAsyncMessageQueueHandler:
                         { "id": "6", "name": "Ray Charles" }
                     ]
                 }
-                """),
-            "id2": DummyMessage(
+                """,
+            ),
+            'id2': DummyMessage(
                 """
                 {
                     "actors": [
@@ -812,10 +830,11 @@ class TestAsyncMessageQueueHandler:
                         { "id": "9", "name": "Ray Charles" }
                     ]
                 }
-                """),
+                """,
+            ),
         }
 
-        request['context']['content_type'] = "json"
+        request['context']['content_type'] = 'json'
 
         # Match second message
         request['context']['endpoint'] = "queue:theendpoint, expression: $.singers[?(@.id='9')]"
@@ -845,11 +864,11 @@ class TestAsyncMessageQueueHandler:
 
         # invalid content type
         request['context']['endpoint'] = "queue:theendpoint, expression: $.singers[?(@.id='NOTEXIST')]"
-        request['context']['content_type'] = "garbage"
+        request['context']['content_type'] = 'garbage'
         with pytest.raises(ValueError, match='is an unknown response content type'):
             handlers[request['action']](handler, request)
 
-        request['context']['content_type'] = "json"
+        request['context']['content_type'] = 'json'
         json_transformer = transformer.available[TransformerContentType.JSON]
         del transformer.available[TransformerContentType.JSON]
 
@@ -859,7 +878,7 @@ class TestAsyncMessageQueueHandler:
         transformer.available.update({TransformerContentType.JSON: json_transformer})
 
         # invalid expression
-        request['context']['endpoint'] = "queue:theendpoint, expression: json_blah"
+        request['context']['endpoint'] = 'queue:theendpoint, expression: json_blah'
         with pytest.raises(AsyncMessageError, match='unable to parse'):
             handlers[request['action']](handler, request)
 
@@ -897,7 +916,7 @@ class TestAsyncMessageQueueHandler:
 
         request['payload'] = 'test'
 
-        response = cast(AsyncMessageRequest, handlers[request['action']](handler, request))
+        response = cast('AsyncMessageRequest', handlers[request['action']](handler, request))
 
         assert response['action'] != 'SEND'
         assert response['action'] == 'PUT'
@@ -925,7 +944,7 @@ class TestAsyncMessageQueueHandler:
 
         request['payload'] = None
 
-        response = cast(AsyncMessageRequest, handlers[request['action']](handler, request))
+        response = cast('AsyncMessageRequest', handlers[request['action']](handler, request))
 
         assert response['action'] != 'RECEIVE'
         assert response['action'] == 'GET'

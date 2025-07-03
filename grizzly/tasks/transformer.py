@@ -31,6 +31,7 @@ then have the request type `TRNSF`.
 * `min_matches` _int_ - minimum number of matches that the expression should return, `-1` as value will allow any number of matches (default `1`)
 
 """
+
 from __future__ import annotations
 
 from time import perf_counter

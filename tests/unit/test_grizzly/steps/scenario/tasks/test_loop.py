@@ -1,4 +1,5 @@
 """Unit tests of grizzly.steps.scenario.tasks.loop."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -60,7 +61,9 @@ def test_step_task_loop(behave_fixture: BehaveFixture) -> None:
     assert getattr(grizzly.scenario.tasks.tmp, 'loop', '') is None
 
     step_task_loop_end(behave)
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='LoopTask: foobar has not been initialized'),
-        ANY(AssertionError, message='there are no open loop, you need to create one before closing it'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='LoopTask: foobar has not been initialized'),
+            ANY(AssertionError, message='there are no open loop, you need to create one before closing it'),
+        ],
+    }

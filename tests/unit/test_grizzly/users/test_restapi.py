@@ -1,11 +1,12 @@
 """Unit tests for grizzly.users.restapi."""
+
 from __future__ import annotations
 
 import json
 from contextlib import suppress
 from hashlib import sha256
 from time import time
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import gevent
 import pytest
@@ -16,7 +17,7 @@ from locust.exception import ResponseError
 from grizzly.auth.aad import AAD
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
-from grizzly.types import GrizzlyResponse, RequestMethod
+from grizzly.types import GrizzlyResponse, RequestMethod, StrDict
 from grizzly.types.locust import StopUser
 from grizzly.users import AsyncRequests, GrizzlyUser, RestApiUser
 from grizzly_extras.azure.aad import AzureAadCredential
@@ -84,6 +85,7 @@ class TestRestApiUser:
     @pytest.mark.skip(reason='needs credentials, should run explicitly manually')
     def test_get_oauth_authorization_real(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         import logging
+
         with caplog.at_level(logging.DEBUG):
             parent = grizzly_fixture(user_type=RestApiUser, host='')
             assert isinstance(parent.user, RestApiUser)
@@ -109,7 +111,7 @@ class TestRestApiUser:
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0 OS/10.0.19045',
                 },
             }
-            parent.user.host = cast(dict, parent.user.__context__)['host']
+            parent.user.host = cast('dict', parent.user.__context__)['host']
             parent.user.session_started = time()
 
             fire = mocker.spy(parent.user.environment.events.request, 'fire')
@@ -155,14 +157,17 @@ class TestRestApiUser:
         response_context_manager = create_mocked_fast_response_context_manager(content='{"success": false}', status_code=999)
         assert parent.user._get_error_message(response_context_manager) == '{"success": false}'
 
-        response_context_manager = create_mocked_fast_response_context_manager(content="""<html>
+        response_context_manager = create_mocked_fast_response_context_manager(
+            content="""<html>
     <head>
         <title>  what a bummer </title>
     </head>
     <body>
         <h1>meep</h1>
     </body>
-</html>""", status_code=999)
+</html>""",
+            status_code=999,
+        )
         assert parent.user._get_error_message(response_context_manager) == 'what a bummer'
 
         text_mock = mocker.patch('locust.contrib.fasthttp.FastResponse.text', new_callable=mocker.PropertyMock)
@@ -173,7 +178,7 @@ class TestRestApiUser:
         parent = grizzly_fixture(user_type=RestApiUser)
         assert isinstance(parent.user, RestApiUser)
 
-        request = cast(RequestTask, parent.user._scenario.tasks()[-1])
+        request = cast('RequestTask', parent.user._scenario.tasks()[-1])
 
         request_spy = mocker.patch.object(parent.user, '_request')
 
@@ -234,7 +239,7 @@ class TestRestApiUser:
         parent = grizzly_fixture(user_type=RestApiUser)
         assert isinstance(parent.user, RestApiUser)
 
-        request = cast(RequestTask, parent.user._scenario.tasks()[-1])
+        request = cast('RequestTask', parent.user._scenario.tasks()[-1])
         request.source = 'hello'
 
         request_spy = mocker.patch.object(parent.user, '_request')
@@ -279,15 +284,18 @@ class TestRestApiUser:
         response_spy = response_magic.__enter__.return_value
         response_spy.request_meta = {}
 
-        request = cast(RequestTask, parent.user._scenario.tasks()[-1])
+        request = cast('RequestTask', parent.user._scenario.tasks()[-1])
         request.async_request = is_async_request
 
         remote_variables = {
-            'variables': transform(grizzly_fixture.grizzly.scenario, {
-                'AtomicIntegerIncrementer.messageID': 1,
-                'AtomicDate.now': '',
-                'messageID': 137,
-            }),
+            'variables': transform(
+                grizzly_fixture.grizzly.scenario,
+                {
+                    'AtomicIntegerIncrementer.messageID': 1,
+                    'AtomicDate.now': '',
+                    'messageID': 137,
+                },
+            ),
         }
 
         parent.user.add_context(remote_variables)
@@ -325,7 +333,7 @@ class TestRestApiUser:
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, '{"foo": "bar"}')
 
-        expected_parameters: dict[str, Any] = {
+        expected_parameters: StrDict = {
             'headers': request.metadata,
         }
 
@@ -433,9 +441,11 @@ class TestRestApiUser:
         }
         request.source = 'foobar'
         request.response.content_type = TransformerContentType.MULTIPART_FORM_DATA
-        expected_parameters.update({
-            'files': {'foobar': ('foobar.txt', request.source)},
-        })
+        expected_parameters.update(
+            {
+                'files': {'foobar': ('foobar.txt', request.source)},
+            },
+        )
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, 'success')
 
@@ -503,6 +513,6 @@ class TestRestApiUser:
         assert parent.user.__context_change_history__ == set()
         expected_cache_key = sha256(b'bob:foobar').hexdigest()
 
-        assert parent.user.__cached_auth__ == {expected_cache_key: SOME(AzureAadCredential, username='bob', password='foobar')}  # noqa: S106
+        assert parent.user.__cached_auth__ == {expected_cache_key: SOME(AzureAadCredential, username='bob', password='foobar')}
 
         assert 'Authorization' not in parent.user.metadata

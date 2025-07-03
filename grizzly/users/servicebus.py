@@ -89,23 +89,23 @@ Then receive request "topic-recv" from endpoint "topic:shared-topic, subscriptio
 And set response content type to "application/xml"
 ```
 """
+
 from __future__ import annotations
 
 import logging
 from contextlib import contextmanager, suppress
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 from urllib.parse import parse_qs, urlparse
 
 import zmq.green as zmq
 from zmq import sugar as ztypes
 
 from grizzly.tasks import RequestTask
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType, StrDict
 from grizzly.types.locust import Environment, StopUser
 from grizzly.utils import has_parameter, has_template
 from grizzly.utils.protocols import zmq_disconnect
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
 from grizzly_extras.text import bool_caster
 
@@ -115,27 +115,30 @@ if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Generator
 
     from grizzly.testdata.communication import GrizzlyDependencies
+    from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 
 MAX_LENGTH = 65
 
 
-@grizzlycontext(context={
-    'message': {
-        'wait': None,
-    },
-    'auth': {
-        'tenant': None,
-        'user': {
-            'username': None,
-            'password': None,
+@grizzlycontext(
+    context={
+        'message': {
+            'wait': None,
+        },
+        'auth': {
+            'tenant': None,
+            'user': {
+                'username': None,
+                'password': None,
+            },
         },
     },
-})
+)
 class ServiceBusUser(GrizzlyUser):
     __dependencies__: ClassVar[GrizzlyDependencies] = {'async-messaged'}
 
     am_context: AsyncMessageContext
-    worker_id: Optional[str]
+    worker_id: str | None
     zmq_context = zmq.Context()
     zmq_client: ztypes.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
@@ -261,10 +264,12 @@ class ServiceBusUser(GrizzlyUser):
 
         _, cache_endpoint = description.split('=', 1)
 
-        context = cast(AsyncMessageContext, dict(self.am_context))
-        context.update({
-            'endpoint': cache_endpoint,
-        })
+        context = cast('AsyncMessageContext', dict(self.am_context))
+        context.update(
+            {
+                'endpoint': cache_endpoint,
+            },
+        )
 
         request: AsyncMessageRequest = {
             'action': RequestType.DISCONNECT.name,
@@ -287,10 +292,12 @@ class ServiceBusUser(GrizzlyUser):
 
         arguments = parse_arguments(task.endpoint, ':')
 
-        request_context = cast(AsyncMessageContext, dict(self.am_context))
-        request_context.update({
-            'endpoint': cache_endpoint,
-        })
+        request_context = cast('AsyncMessageContext', dict(self.am_context))
+        request_context.update(
+            {
+                'endpoint': cache_endpoint,
+            },
+        )
 
         request: AsyncMessageRequest = {
             'action': RequestType.HELLO.name,
@@ -330,37 +337,41 @@ class ServiceBusUser(GrizzlyUser):
         self.hellos.add(description)
 
     @contextmanager
-    def request_context(self, task: RequestTask, request: AsyncMessageRequest) -> Generator[dict[str, Any], None, None]:
+    def request_context(self, task: RequestTask, request: AsyncMessageRequest) -> Generator[StrDict, None, None]:
         name = task.name
 
         if len(name) > MAX_LENGTH:
             name = f'{name[:MAX_LENGTH]}...'
 
-        request.update({
-            'worker': self.worker_id,
-            'client': id(self),
-        })
+        request.update(
+            {
+                'worker': self.worker_id,
+                'client': id(self),
+            },
+        )
 
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
         request['context'].update({'connection': connection})
-        context: dict[str, Any] = {
+        context: dict = {
             'metadata': None,
             'payload': None,
         }
 
         request['context']['content_type'] = task.response.content_type.name.lower()
 
-        response: Optional[AsyncMessageResponse] = None
-        exception: Optional[Exception] = None
+        response: AsyncMessageResponse | None = None
+        exception: Exception | None = None
 
         try:
             yield context
 
             response = async_message_request(self.zmq_client, request)
-            context.update({
-                'metadata': response.get('metadata', None),
-                'payload': response.get('payload', None),
-            })
+            context.update(
+                {
+                    'metadata': response.get('metadata', None),
+                    'payload': response.get('payload', None),
+                },
+            )
         except Exception as e:
             exception = e
         finally:
@@ -381,7 +392,7 @@ class ServiceBusUser(GrizzlyUser):
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         self.say_hello(request)
 
-        request_context = cast(AsyncMessageContext, dict(self.am_context))
+        request_context = cast('AsyncMessageContext', dict(self.am_context))
         consume = bool_caster((request.arguments or {}).get('consume', 'False'))
         verbose = bool_caster((request.arguments or {}).get('verbose', 'False'))
         forward = bool_caster((request.arguments or {}).get('forward', 'False'))

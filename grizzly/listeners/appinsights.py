@@ -18,15 +18,17 @@ endpoint = tostring(customDimensions["endpoint"])
 | render timechart;
 ```
 """
+
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlparse
 
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types import StrDict
     from grizzly.types.locust import Environment
 
 stdlogger = logging.getLogger(__name__)
@@ -63,7 +65,7 @@ class ApplicationInsightsListener:
         name: str,
         response_time: Any,
         response_length: int,
-        exception: Optional[Any] = None,
+        exception: Any = None,
         **_kwargs: Any,
     ) -> None:
         try:
@@ -73,11 +75,19 @@ class ApplicationInsightsListener:
                 response_time = int(round(response_time, 0))
 
             custom_dimensions = self._create_custom_dimensions_dict(
-                request_type, result, response_time, response_length, name,
+                request_type,
+                result,
+                response_time,
+                response_length,
+                name,
             )
 
             message_to_log = '{}: {} {} Response time: {} Number of Threads: {}'.format(
-                result, str(request_type), str(name), str(response_time), custom_dimensions['thread_count'],
+                result,
+                str(request_type),
+                str(name),
+                str(response_time),
+                custom_dimensions['thread_count'],
             )
 
             if exception is not None:
@@ -88,8 +98,14 @@ class ApplicationInsightsListener:
             stdlogger.error('failed to write metric for "%s %s"', request_type, name)  # noqa: TRY400
 
     def _create_custom_dimensions_dict(
-        self, method: str, result: str, response_time: int, response_length: int, endpoint: str, exception: Optional[Any] = None,
-    ) -> dict[str, Any]:
+        self,
+        method: str,
+        result: str,
+        response_time: int,
+        response_length: int,
+        endpoint: str,
+        exception: Any = None,
+    ) -> StrDict:
         return {
             'method': method,
             'result': result,

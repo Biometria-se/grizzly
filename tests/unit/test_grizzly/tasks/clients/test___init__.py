@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.clients."""
+
 from __future__ import annotations
 
 import logging
@@ -23,6 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover
 @pytest.mark.parametrize('log_prefix', [False, True])
 def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture, *, log_prefix: bool) -> None:
     try:
+
         @client('test')
         class TestClientTask(ClientTask):
             __scenario__ = grizzly_fixture.grizzly.scenario

@@ -1,13 +1,14 @@
 """End-to-end tests of grizzly.steps.scenario.response."""
+
 from __future__ import annotations
 
 from itertools import product
 from typing import TYPE_CHECKING, Any, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.types import ResponseTarget
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from grizzly.types.behave import Context
     from tests.fixtures import End2EndFixture
 
@@ -19,7 +20,7 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
         from grizzly.events.response_handler import SaveHandlerAction
         from grizzly.tasks import RequestTask
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         grizzly.scenario.tasks().pop()  # latest task is a dummy task
 
         rows = list(context.table)
@@ -85,7 +86,7 @@ def test_e2e_step_response_save_optional(e2e_fixture: End2EndFixture) -> None:
         from grizzly.events.response_handler import SaveHandlerAction
         from grizzly.tasks import RequestTask
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         grizzly.scenario.tasks().pop()  # latest task is a dummy task
 
         rows = list(context.table)
@@ -156,7 +157,7 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
         from grizzly.events.response_handler import SaveHandlerAction
         from grizzly.tasks import RequestTask
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         grizzly.scenario.tasks().pop()  # latest task is a dummy task
 
         rows = list(context.table)
@@ -226,7 +227,7 @@ def test_e2e_step_response_validate(e2e_fixture: End2EndFixture) -> None:
         if on_master(context):
             return
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         stats = grizzly.state.locust.environment.stats
 
         expectations = [
@@ -245,7 +246,7 @@ def test_e2e_step_response_validate(e2e_fixture: End2EndFixture) -> None:
         from grizzly.events.response_handler import ValidationHandlerAction
         from grizzly.tasks import RequestTask
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         grizzly.scenario.tasks().pop()  # latest task is a dummy task
 
         rows = list(context.table)
@@ -281,10 +282,12 @@ def test_e2e_step_response_validate(e2e_fixture: End2EndFixture) -> None:
     scenario: list[str] = []
 
     for target, condition in parameterize:
-        table.append({
-            'target': target.name.lower(),
-            'condition': condition,
-        })
+        table.append(
+            {
+                'target': target.name.lower(),
+                'condition': condition,
+            },
+        )
 
         scenario += [
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/echo | content_type=json"',
@@ -311,7 +314,7 @@ def test_e2e_step_allow_status_codes(e2e_fixture: End2EndFixture) -> None:
     def validator(context: Context) -> None:
         from grizzly.tasks import RequestTask
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         grizzly.scenario.tasks().pop()  # latest task is a dummy task
 
         rows = list(context.table)
@@ -355,7 +358,7 @@ def test_e2e_step_allow_status_codes_table(e2e_fixture: End2EndFixture) -> None:
     def validator(context: Context) -> None:
         from grizzly.tasks import RequestTask
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         grizzly.scenario.tasks().pop()
 
@@ -391,16 +394,19 @@ def test_e2e_step_allow_status_codes_table(e2e_fixture: End2EndFixture) -> None:
 
 def test_e2e_step_response_content_type(e2e_fixture: End2EndFixture) -> None:
     content_types = [
-        'json', 'application/json',
-        'xml', 'application/xml',
-        'plain', 'text/plain',
+        'json',
+        'application/json',
+        'xml',
+        'application/xml',
+        'plain',
+        'text/plain',
     ]
 
     def validator(context: Context) -> None:
         from grizzly.tasks import RequestTask
         from grizzly_extras.transformer import TransformerContentType
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         grizzly.scenario.tasks.pop()
 
         rows = list(context.table)

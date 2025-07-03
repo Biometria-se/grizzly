@@ -1,15 +1,18 @@
 """@anchor pydoc:grizzly.steps.scenario.tasks.clients Clients
 This module contains step implementations for the {@pylink grizzly.tasks.clients} tasks.
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.steps._helpers import get_task_client
 from grizzly.types import RequestDirection, RequestMethod
 from grizzly.types.behave import Context, then
 from grizzly.utils import has_template
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @then('{method:Method} from "{endpoint}" with name "{name}" and save response payload in "{payload_variable}" and metadata in "{metadata_variable}"')
@@ -34,19 +37,21 @@ def step_task_client_from_endpoint_payload_metadata(context: Context, method: Re
         metadata_variable (str): name of, initialized, variable where response metadata will be saved in
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     assert method.direction == RequestDirection.FROM, 'chosen request method does not match direction "from"'
 
-    grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
-        RequestDirection.FROM,
-        endpoint,
-        name,
-        payload_variable=payload_variable,
-        metadata_variable=metadata_variable,
-        text=context.text,
-        method=method,
-    ))
+    grizzly.scenario.tasks.add(
+        get_task_client(grizzly, endpoint)(
+            RequestDirection.FROM,
+            endpoint,
+            name,
+            payload_variable=payload_variable,
+            metadata_variable=metadata_variable,
+            text=context.text,
+            method=method,
+        ),
+    )
 
 
 @then('{method:Method} from "{endpoint}" with name "{name}" and save response payload in "{variable}"')
@@ -70,19 +75,21 @@ def step_task_client_from_endpoint_payload(context: Context, method: RequestMeth
         variable (str): name of, initialized, variable where response payload will be saved in
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     assert method.direction == RequestDirection.FROM, 'chosen request method does not match direction "from"'
 
-    grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
-        RequestDirection.FROM,
-        endpoint,
-        name,
-        payload_variable=variable,
-        metadata_variable=None,
-        text=context.text,
-        method=method,
-    ))
+    grizzly.scenario.tasks.add(
+        get_task_client(grizzly, endpoint)(
+            RequestDirection.FROM,
+            endpoint,
+            name,
+            payload_variable=variable,
+            metadata_variable=None,
+            text=context.text,
+            method=method,
+        ),
+    )
 
 
 @then('{method:Method} "{source}" to "{endpoint}" with name "{name}" as "{destination}"')
@@ -111,16 +118,18 @@ def step_task_client_to_endpoint_file_destination(context: Context, method: Requ
     assert not has_template(source), 'source file cannot be a template'
     assert method.direction == RequestDirection.TO, 'chosen request method does not match direction "to"'
 
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
-    grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
-        RequestDirection.TO,
-        endpoint,
-        name,
-        source=source,
-        destination=destination,
-        method=method,
-    ))
+    grizzly.scenario.tasks.add(
+        get_task_client(grizzly, endpoint)(
+            RequestDirection.TO,
+            endpoint,
+            name,
+            source=source,
+            destination=destination,
+            method=method,
+        ),
+    )
 
 
 @then('{method:Method} "{source}" to "{endpoint}" with name "{name}"')
@@ -148,16 +157,18 @@ def step_task_client_to_endpoint_file(context: Context, method: RequestMethod, s
     assert not has_template(source), 'source file cannot be a template'
     assert method.direction == RequestDirection.TO, 'chosen request method does not match direction "to"'
 
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
-    grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
-        RequestDirection.TO,
-        endpoint,
-        name,
-        source=source,
-        destination=None,
-        method=method,
-    ))
+    grizzly.scenario.tasks.add(
+        get_task_client(grizzly, endpoint)(
+            RequestDirection.TO,
+            endpoint,
+            name,
+            source=source,
+            destination=None,
+            method=method,
+        ),
+    )
 
 
 @then('{method:Method} to "{endpoint}" with name "{name}"')
@@ -187,13 +198,15 @@ def step_task_client_to_endpoint_text(context: Context, method: RequestMethod, e
     assert len(context.text) > 0, 'step text cannot be an empty string'
     assert method.direction == RequestDirection.TO, 'chosen request method does not match direction "to"'
 
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
-    grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
-        RequestDirection.TO,
-        endpoint,
-        name,
-        source=context.text,
-        destination=None,
-        method=method,
-    ))
+    grizzly.scenario.tasks.add(
+        get_task_client(grizzly, endpoint)(
+            RequestDirection.TO,
+            endpoint,
+            name,
+            source=context.text,
+            destination=None,
+            method=method,
+        ),
+    )

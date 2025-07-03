@@ -22,18 +22,19 @@ And value for variable "AtomicCsvWriter.output" is "output.csv | headers='foo,ba
 And value for variable "AtomicCsvWriter.output" is "{{ foo_value }}, {{ bar_value }}"
 ```
 """
+
 from __future__ import annotations
 
 from csv import DictWriter
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 from uuid import uuid4
 
 from gevent.fileobject import FileObjectThread
 
 from grizzly.events import GrizzlyEventDecoder, event, events
-from grizzly.types import bool_type, list_type
+from grizzly.types import StrDict, bool_type, list_type
 from grizzly.types.locust import Environment, MasterRunner, Message
 from grizzly_extras.arguments import parse_arguments, split_value
 
@@ -45,6 +46,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 open_files: dict[str, FileObjectThread] = {}
+
 
 def atomiccsvwriter__base_type__(value: str) -> str:
     """Validate values that `AtomicCsvWriter` can be initialized with."""
@@ -62,12 +64,12 @@ def atomiccsvwriter__base_type__(value: str) -> str:
         message = f'AtomicCsvWriter: {e!s}'
         raise ValueError(message) from e
 
-    for argument, value in arguments.items():
-        if argument not in AtomicCsvWriter.arguments:
-            message = f'AtomicCsvWriter: argument {argument} is not allowed'
+    for k, v in arguments.items():
+        if k not in AtomicCsvWriter.arguments:
+            message = f'AtomicCsvWriter: argument {k} is not allowed'
             raise ValueError(message)
 
-        AtomicCsvWriter.arguments[argument](value)
+        AtomicCsvWriter.arguments[k](v)
 
     if 'headers' not in arguments:
         message = 'AtomicCsvWriter: argument headers is required'
@@ -96,18 +98,18 @@ class CsvMessageDecoder(GrizzlyEventDecoder):
         return_value: Any,  # noqa: ARG002
         exception: Exception | None,
         **kwargs: Any,
-    ) -> tuple[dict[str, Any], dict[str, str | None]]:
+    ) -> tuple[StrDict, dict[str, str | None]]:
         if tags is None:
             tags = {}
 
-        message = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
+        message = cast('Any', args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg))
 
         tags = {
             'filename': message.data['destination'],
             **tags,
         }
 
-        metrics: dict[str, Any] = {
+        metrics: StrDict = {
             'error': None,
         }
 
@@ -116,14 +118,15 @@ class CsvMessageDecoder(GrizzlyEventDecoder):
 
         return metrics, tags
 
+
 @event(events.user_event, tags={'type': 'testdata::atomiccsvwriter'}, decoder=CsvMessageDecoder(arg='msg'))
 def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
     """Receive messages containing CSV data.
     Write the data to a CSV file.
     """
     with AtomicCsvWriter.semaphore():
-        data = cast(dict, msg.data)
-        destination_file = cast(str, data['destination'])
+        data = cast('StrDict', msg.data)
+        destination_file = cast('str', data['destination'])
         headers = list(data['row'].keys())
         context_root = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
 
@@ -151,8 +154,8 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
     __dependencies__: ClassVar[GrizzlyDependencies] = {('atomiccsvwriter', atomiccsvwriter_message_handler)}
     __initialized: bool = False
 
-    _settings: dict[str, dict[str, Any]]
-    arguments: ClassVar[dict[str, Any]] = {'headers': list_type, 'overwrite': bool_type}
+    _settings: dict[str, StrDict]
+    arguments: ClassVar[StrDict] = {'headers': list_type, 'overwrite': bool_type}
 
     def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: str, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
@@ -188,17 +191,17 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
 
         instances = cls._instances.get(cls, {})
         for scenario in instances:
-            instance = cast(AtomicCsvWriter, cls.get(scenario))
+            instance = cast('AtomicCsvWriter', cls.get(scenario))
             variables = list(instance._settings.keys())
 
             for variable in variables:
                 del instance._settings[variable]
 
-    def __getitem__(self, variable: str) -> Optional[str]:  # pragma: no cover
+    def __getitem__(self, variable: str) -> str | None:  # pragma: no cover
         message = f'{self.__class__.__name__} has not implemented "__getitem__"'
         raise NotImplementedError(message)
 
-    def __setitem__(self, variable: str, value: Optional[str]) -> None:
+    def __setitem__(self, variable: str, value: str | None) -> None:
         """Set/write CSV row, by sending a message to master."""
         if value is None or isinstance(self.grizzly.state.locust, MasterRunner):
             return

@@ -14,6 +14,7 @@ If `endpoint` is a template variable which includes the scheme, the scheme for t
 correct `grizzly.tasks.client` implementation is used. The additional scheme will be removed when the request is
 performed.
 """
+
 from __future__ import annotations
 
 import traceback
@@ -25,13 +26,13 @@ from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
 from time import perf_counter as time
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast, final
+from typing import TYPE_CHECKING, ClassVar, cast, final
 from urllib.parse import unquote, urlparse
 
 from grizzly.exceptions import StopScenario
 from grizzly.tasks import GrizzlyMetaRequestTask, grizzlytask, template
 from grizzly.testdata.utils import resolve_variable
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType, StrDict
 from grizzly.utils import merge_dicts, normalize
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
@@ -57,17 +58,17 @@ class ClientTask(GrizzlyMetaRequestTask):
         RequestDirection.FROM: '<-',
         RequestDirection.TO: '->',
     }
-    _context: ClassVar[dict[str, Any]] = {}
+    _context: ClassVar[dict] = {}
 
     host: str
     direction: RequestDirection
     endpoint: str
-    name: Optional[str]
-    payload_variable: Optional[str]
-    metadata_variable: Optional[str]
-    source: Optional[str]
-    destination: Optional[str]
-    _text: Optional[str]
+    name: str | None
+    payload_variable: str | None
+    metadata_variable: str | None
+    source: str | None
+    destination: str | None
+    _text: str | None
     method: RequestMethod
     arguments: dict[str, str]
 
@@ -77,14 +78,14 @@ class ClientTask(GrizzlyMetaRequestTask):
         self,
         direction: RequestDirection,
         endpoint: str,
-        name: Optional[str] = None,
+        name: str | None = None,
         /,
-        payload_variable: Optional[str] = None,
-        metadata_variable: Optional[str] = None,
-        source: Optional[str] = None,
-        destination: Optional[str] = None,
-        text: Optional[str] = None,
-        method: Optional[RequestMethod] = None,
+        payload_variable: str | None = None,
+        metadata_variable: str | None = None,
+        source: str | None = None,
+        destination: str | None = None,
+        text: str | None = None,
+        method: RequestMethod | None = None,
     ) -> None:
         super().__init__(timeout=None)
 
@@ -96,14 +97,14 @@ class ClientTask(GrizzlyMetaRequestTask):
         self._scenario = copy(self.__scenario__)
         self._scenario._tasks = self.__scenario__._tasks
 
-        endpoint = cast(str, resolve_variable(self._scenario, endpoint, try_template=False))
+        endpoint = cast('str', resolve_variable(self._scenario, endpoint, try_template=False))
 
         try:
             parsed = urlparse(endpoint)
             proto_sep = endpoint.index('://') + 3
             # if `proto_sep` is followed by the start of a jinja template, we should remove the specified protocol, since it will
             # be part of the rendered template
-            if proto_sep != endpoint.rindex('://') + 3 or (endpoint[proto_sep:proto_sep + 2] == '{{' and '}}' in endpoint):
+            if proto_sep != endpoint.rindex('://') + 3 or (endpoint[proto_sep : proto_sep + 2] == '{{' and '}}' in endpoint):
                 endpoint = endpoint[proto_sep:]
         except ValueError:
             pass
@@ -187,7 +188,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         pass
 
     # SOW: see https://github.com/python/mypy/issues/5936#issuecomment-1429175144
-    def text_fget(self) -> Optional[str]:
+    def text_fget(self) -> str | None:
         return self._text
 
     def text_fset(self, _: str) -> None:
@@ -198,7 +199,7 @@ class ClientTask(GrizzlyMetaRequestTask):
     # EOW
 
     @property
-    def variable_template(self) -> Optional[str]:
+    def variable_template(self) -> str | None:
         if self.payload_variable is None or ('{{' in self.payload_variable and '}}' in self.payload_variable):
             return self.payload_variable
 
@@ -252,11 +253,11 @@ class ClientTask(GrizzlyMetaRequestTask):
         raise NotImplementedError(message)
 
     @contextmanager
-    def action(self, parent: GrizzlyScenario, action: Optional[str] = None, *, suppress: bool = False) -> Generator[dict[str, Any], None, None]:
-        exception: Optional[Exception] = None
+    def action(self, parent: GrizzlyScenario, action: str | None = None, *, suppress: bool = False) -> Generator[StrDict, None, None]:
+        exception: Exception | None = None
         response_length = 0
         start_time = time()
-        meta: dict[str, Any] = {}
+        meta: StrDict = {}
 
         try:
             # get metadata back from actual implementation
@@ -298,18 +299,22 @@ class ClientTask(GrizzlyMetaRequestTask):
 
                 meta.get('request', {}).update({'time': response_time})
 
-                request_log: dict[str, Any] = {
+                request_log: StrDict = {
                     'stacktrace': None,
                     'response': meta.get('response'),
                     'request': meta.get('request'),
                 }
 
                 if exception is not None:
-                    request_log.update({'stacktrace': traceback.format_exception(
-                        type(exception),
-                        value=exception,
-                        tb=exception.__traceback__,
-                    )})
+                    request_log.update(
+                        {
+                            'stacktrace': traceback.format_exception(
+                                type(exception),
+                                value=exception,
+                                tb=exception.__traceback__,
+                            ),
+                        },
+                    )
 
                 log_file.write_text(jsondumps(request_log, indent=2))
 
@@ -330,7 +335,7 @@ class client:
         self.schemes = schemes
 
     def __call__(self, impl: type[ClientTask]) -> type[ClientTask]:
-        available = {scheme: impl for scheme in self.schemes}
+        available = dict.fromkeys(self.schemes, impl)
         impl._schemes = self.schemes
         client.available.update(available)
 
@@ -343,8 +348,8 @@ from .messagequeue import MessageQueueClientTask
 from .servicebus import ServiceBusClientTask
 
 __all__ = [
-    'HttpClientTask',
     'BlobStorageClientTask',
+    'HttpClientTask',
     'MessageQueueClientTask',
     'ServiceBusClientTask',
 ]

@@ -1,4 +1,5 @@
 """Unit tests for grizzly.users.messagequeue."""
+
 from __future__ import annotations
 
 import subprocess
@@ -33,7 +34,7 @@ if TYPE_CHECKING:  # pragma: no cover
 MqScenarioFixture = tuple[MessageQueueUser, GrizzlyContextScenario, Environment]
 
 
-@pytest.fixture()
+@pytest.fixture
 def mq_parent(grizzly_fixture: GrizzlyFixture) -> GrizzlyScenario:
     parent = grizzly_fixture(
         host='mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1',
@@ -215,7 +216,7 @@ class TestMessageQueueUser:
         with pytest.raises(ValueError, match='MessageQueueUser_001 key file /my/key does not exist'):
             user = test_cls(environment=environment)
 
-        kdb_file = (grizzly_fixture.test_context / 'requests' / 'key.kdb')
+        kdb_file = grizzly_fixture.test_context / 'requests' / 'key.kdb'
         kdb_file.parent.mkdir(exist_ok=True)
         kdb_file.touch()
         test_cls.__context__['auth'].update({'key_file': 'requests/key'})
@@ -314,6 +315,7 @@ class TestMessageQueueUser:
                 stderr=subprocess.STDOUT,
             )
             from gevent import sleep as gsleep
+
             gsleep(2)
 
             MessageQueueUser._context = {
@@ -370,6 +372,7 @@ class TestMessageQueueUser:
                 stderr=subprocess.STDOUT,
             )
             from gevent import sleep as gsleep
+
             gsleep(2)
 
             MessageQueueUser._context = {
@@ -435,24 +438,29 @@ class TestMessageQueueUser:
         }
 
         remote_variables = {
-            'variables': transform(grizzly.scenario, {
-                'AtomicIntegerIncrementer.messageID': 31337,
-                'AtomicDate.now': '',
-                'messageID': 137,
-                'payload_variable': '',
-                'metadata_variable': '',
-            }),
+            'variables': transform(
+                grizzly.scenario,
+                {
+                    'AtomicIntegerIncrementer.messageID': 31337,
+                    'AtomicDate.now': '',
+                    'messageID': 137,
+                    'payload_variable': '',
+                    'metadata_variable': '',
+                },
+            ),
         }
 
-        grizzly.scenario.variables.update({
-            'payload_variable': '',
-            'metadata_variable': '',
-        })
+        grizzly.scenario.variables.update(
+            {
+                'payload_variable': '',
+                'metadata_variable': '',
+            },
+        )
 
         request_event_spy = mocker.spy(mq_parent.user.environment.events.request, 'fire')
         response_event_spy = mocker.spy(mq_parent.user.events.request, 'fire')
 
-        request = cast(RequestTask, mq_parent.user._scenario.tasks()[-1])
+        request = cast('RequestTask', mq_parent.user._scenario.tasks()[-1])
         request.endpoint = 'queue:test-queue'
         request.method = RequestMethod.GET
         request.source = None
@@ -643,7 +651,8 @@ class TestMessageQueueUser:
                 'metadata': pymqi.MD().get(),
                 'payload': test_payload,
                 'message': 'no implementation for POST',
-            } for _ in range(3)
+            }
+            for _ in range(3)
         ]
 
         with suppress(KeyError):
@@ -819,11 +828,14 @@ class TestMessageQueueUser:
         }
 
         remote_variables = {
-            'variables': transform(mq_parent.user._scenario, {
-                'AtomicIntegerIncrementer.messageID': 31337,
-                'AtomicDate.now': '',
-                'messageID': 137,
-            }),
+            'variables': transform(
+                mq_parent.user._scenario,
+                {
+                    'AtomicIntegerIncrementer.messageID': 31337,
+                    'AtomicDate.now': '',
+                    'messageID': 137,
+                },
+            ),
         }
 
         # always throw error when disconnecting, it is ignored
@@ -834,7 +846,7 @@ class TestMessageQueueUser:
 
         request_event_spy = mocker.spy(mq_parent.user.environment.events.request, 'fire')
 
-        template = cast(RequestTask, mq_parent.user._scenario.tasks()[-1])
+        template = cast('RequestTask', mq_parent.user._scenario.tasks()[-1])
         template.endpoint = 'queue:TEST.QUEUE'
 
         mq_parent.user.add_context(remote_variables)
@@ -915,7 +927,8 @@ class TestMessageQueueUser:
                     'metadata': pymqi.MD().get(),
                     'payload': request.source,
                     'message': 'no implementation for POST',
-                } for _ in range(3)
+                }
+                for _ in range(3)
             ],
         )
 

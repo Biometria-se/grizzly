@@ -1,4 +1,5 @@
 """RPC client and server for synchronized testdata."""
+
 from __future__ import annotations
 
 import logging
@@ -10,7 +11,7 @@ from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, Protocol, TypedDict, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Protocol, TypedDict, cast
 from uuid import uuid4
 
 from dateutil.parser import parse as date_parser
@@ -31,7 +32,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
-    from grizzly.types import TestdataType
+    from grizzly.types import StrDict, TestdataType
     from grizzly.types.locust import Environment
 
 
@@ -74,9 +75,9 @@ class AsyncTimer:
 
             error = f'cannot complete timer for id "{self.tid}" and version "{self.version}", missing {missing_timestamp} timestamp'
         else:
-            duration = int((cast(datetime, self.stop) - cast(datetime, self.start)).total_seconds() * 1000)
-            started = cast(datetime, self.start).isoformat()
-            finished = cast(datetime, self.stop).isoformat()
+            duration = int((cast('datetime', self.stop) - cast('datetime', self.start)).total_seconds() * 1000)
+            started = cast('datetime', self.start).isoformat()
+            finished = cast('datetime', self.stop).isoformat()
 
         if duration < 0:
             logger.warning('duration for "%s" between stop %s and start %s was weird, %d ms', self.name, self.stop, self.start, duration)
@@ -93,6 +94,7 @@ class AsyncTimer:
                 '__fields_request_finished__': finished,
             },
         )
+
 
 class AsyncTimersConsumer:
     scenario: GrizzlyScenario
@@ -125,13 +127,17 @@ class AsyncTimersConsumer:
 
         return timestamp
 
-    def on_report_to_master(self, client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG002
+    def on_report_to_master(self, client_id: str, data: StrDict) -> None:  # noqa: ARG002
         with self.semaphore:
             # append this producers timers that should be started and stopped
-            data.update({'async_timers': {
-                'start': [*data.get('async_timers', {}).get('start', []), *self._start],
-                'stop': [*data.get('async_timers', {}).get('stop', []), *self._stop],
-            }})
+            data.update(
+                {
+                    'async_timers': {
+                        'start': [*data.get('async_timers', {}).get('start', []), *self._start],
+                        'stop': [*data.get('async_timers', {}).get('stop', []), *self._stop],
+                    },
+                },
+            )
 
             self.logger.debug('reported start for %d timers and stop for %d timers to master', len(self._start), len(self._stop))
 
@@ -155,13 +161,13 @@ class AsyncTimersConsumer:
 
     def start(self, data: dict[str, str]) -> None:
         if isinstance(self.scenario.grizzly.state.locust, LocalRunner):
-            cast(TestdataProducer, self.scenario.grizzly.state.producer).async_timers.toggle('start', data)
+            cast('TestdataProducer', self.scenario.grizzly.state.producer).async_timers.toggle('start', data)
         else:
             self._start.append(data)
 
     def stop(self, data: dict[str, str]) -> None:
         if isinstance(self.scenario.grizzly.state.locust, LocalRunner):
-            producer = cast(TestdataProducer, self.scenario.grizzly.state.producer)
+            producer = cast('TestdataProducer', self.scenario.grizzly.state.producer)
             producer.async_timers.toggle('stop', data)
         else:
             self._stop.append(data)
@@ -195,7 +201,7 @@ class AsyncTimersProducer:
 
         return data['name'], data['tid'], data['version'], timestamp
 
-    def on_worker_report(self, client_id: str, data: dict[str, Any]) -> None:
+    def on_worker_report(self, client_id: str, data: StrDict) -> None:
         async_timers = data.get('async_timers', {})
 
         async_timers_start = async_timers.get('start', [])
@@ -249,14 +255,14 @@ class KeystoreDecoder(GrizzlyEventDecoder):
         return_value: Any,  # noqa: ARG002
         exception: Exception | None,
         **kwargs: Any,
-    ) -> tuple[dict[str, Any], dict[str, str | None]]:
-        request = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
+    ) -> tuple[StrDict, dict[str, str | None]]:
+        request = cast('StrDict', args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg))
 
-        key = request.get('key')
+        key: str | None = request.get('key')
 
         extra_tags = {}
 
-        if '::' in key:
+        if key is not None and '::' in key:
             """Last suffix (which is prefixed with '::') is considered a unique identifier"""
             key, extra_tag = key.rsplit('::', 1)
             extra_tags.update({'unique_id': extra_tag})
@@ -273,7 +279,7 @@ class KeystoreDecoder(GrizzlyEventDecoder):
         if remove is not None:
             tags.update({'remove': remove})
 
-        metrics: dict[str, Any] = {'error': None}
+        metrics: StrDict = {'error': None}
 
         if exception is not None:
             metrics.update({'error': str(exception)})
@@ -289,8 +295,8 @@ class TestdataDecoder(GrizzlyEventDecoder):
         return_value: Any,
         exception: Exception | None,
         **kwargs: Any,
-    ) -> tuple[dict[str, Any], dict[str, str | None]]:
-        request = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
+    ) -> tuple[StrDict, dict[str, str | None]]:
+        request = cast('StrDict', args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg))
 
         tags = {
             'action': (return_value or {}).get('action'),
@@ -298,12 +304,13 @@ class TestdataDecoder(GrizzlyEventDecoder):
             **(tags or {}),
         }
 
-        metrics: dict[str, Any] = {'error': None}
+        metrics: StrDict = {'error': None}
 
         if exception is not None:
             metrics.update({'error': str(exception)})
 
         return metrics, tags
+
 
 class TestdataConsumer:
     # need so pytest doesn't raise PytestCollectionWarning
@@ -316,7 +323,7 @@ class TestdataConsumer:
     identifier: str
     stopped: bool
     poll_interval: float
-    response: dict[str, Any]
+    response: StrDict
     events: GrizzlyEvents
     async_timers: AsyncTimersConsumer
 
@@ -342,12 +349,11 @@ class TestdataConsumer:
 
         cls._responses[uid].set(response)
 
-
     @event(events.testdata_request, tags={'type': 'consumer'}, decoder=TestdataDecoder(arg='request'))
-    def _testdata_request(self, *, request: dict[str, Any]) -> dict[str, Any] | None:
+    def _testdata_request(self, *, request: StrDict) -> StrDict | None:
         return self._request({'message': 'testdata', **request})
 
-    def testdata(self) -> dict[str, Any] | None:
+    def testdata(self) -> StrDict | None:
         request = {
             'identifier': self.identifier,
         }
@@ -370,7 +376,7 @@ class TestdataConsumer:
 
         self.logger.debug('testdata received: %r', data)
 
-        variables: dict[str, Any] | None = None
+        variables: StrDict | None = None
         if 'variables' in data:
             variables = transform(self.scenario.user._scenario, data['variables'], objectify=True)
             del data['variables']
@@ -380,7 +386,7 @@ class TestdataConsumer:
         if variables is not None:
             data['variables'] = variables
 
-        return cast(dict[str, Any], data)
+        return data
 
     def keystore_get(self, key: str, *, remove: bool) -> Any | None:
         request = {
@@ -443,7 +449,7 @@ class TestdataConsumer:
 
         self._keystore_request(request=request)
 
-    def _keystore_pop_poll(self, request: dict[str, Any]) -> str | None:
+    def _keystore_pop_poll(self, request: StrDict) -> str | None:
         response = self._keystore_request(request=request)
         value: str | None = (response or {}).get('data', None)
 
@@ -488,12 +494,12 @@ class TestdataConsumer:
         self._keystore_request(request=request)
 
     @event(events.keystore_request, tags={'type': 'consumer'}, decoder=KeystoreDecoder(arg='request'))
-    def _keystore_request(self, *, request: dict[str, Any]) -> dict[str, Any] | None:
+    def _keystore_request(self, *, request: StrDict) -> StrDict | None:
         request.update({'identifier': self.identifier})
 
         return self._request({'message': 'keystore', **request})
 
-    def _request(self, request: dict[str, str]) -> dict[str, Any] | None:
+    def _request(self, request: dict[str, str]) -> StrDict | None:
         with self.semaphore:
             uid = id(self.scenario.user)  # user id (unique instance)
             rid = str(uuid4())  # request id
@@ -506,7 +512,7 @@ class TestdataConsumer:
 
             # waits for async result
             try:
-                return cast(Optional[dict[str, Any]], self._responses[uid].get(timeout=10.0))
+                return cast('StrDict | None', self._responses[uid].get(timeout=10.0))
             finally:
                 # remove request as pending
                 del self._responses[uid]
@@ -525,7 +531,7 @@ class TestdataProducer:
     scenarios_iteration: dict[str, int]
     testdata: TestdataType
     has_persisted: bool
-    keystore: dict[str, Any]
+    keystore: StrDict
     runner: MasterRunner | LocalRunner
     grizzly: GrizzlyContext
     async_timers: AsyncTimersProducer
@@ -552,7 +558,8 @@ class TestdataProducer:
 
         self.keystore = {}
 
-        from grizzly.context import grizzly
+        from grizzly.context import grizzly  # noqa: PLC0415
+
         self.grizzly = grizzly
 
         self.async_timers = AsyncTimersProducer(self.grizzly, self.semaphore)
@@ -569,10 +576,10 @@ class TestdataProducer:
             return
 
         try:
-            variables_state: dict[str, dict[str, str | dict[str, Any]]] = {}
+            variables_state: dict[str, dict[str, str | StrDict]] = {}
 
             for scenario_name, testdata in self.testdata.items():
-                variable_state: dict[str, str | dict[str, Any]] = {}
+                variable_state: dict[str, str | StrDict] = {}
                 for key, variable in testdata.items():
                     if '.' not in key or variable == '__on_consumer__':
                         continue
@@ -600,7 +607,7 @@ class TestdataProducer:
     def stop(self) -> None:
         self.persist_data()
 
-    def _remove_key(self, key: str, response: dict[str, Any]) -> None:
+    def _remove_key(self, key: str, response: StrDict) -> None:
         try:
             del self.keystore[key]
         except:
@@ -609,9 +616,9 @@ class TestdataProducer:
             response.update({'error': message})
 
     @event(events.keystore_request, tags={'type': 'producer'}, decoder=KeystoreDecoder(arg='request'))
-    def _handle_request_keystore(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0915, PLR0912, C901
+    def _handle_request_keystore(self, *, request: StrDict) -> StrDict:  # noqa: PLR0915, PLR0912, C901
         response = request
-        key: str | None  = response.get('key', None)
+        key: str | None = response.get('key', None)
 
         if key is None:
             message = 'key is not present in request'
@@ -692,9 +699,9 @@ class TestdataProducer:
         return response
 
     @event(events.testdata_request, tags={'type': 'producer'}, decoder=TestdataDecoder(arg='request'))
-    def _handle_request_testdata(self, *, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0912
+    def _handle_request_testdata(self, *, request: StrDict) -> StrDict:  # noqa: PLR0912
         scenario_name = request.get('identifier', '')
-        response: dict[str, Any] = {
+        response: StrDict = {
             'action': 'stop',
         }
 
@@ -705,16 +712,16 @@ class TestdataProducer:
                 if scenario_name not in self.scenarios_iteration and scenario.iterations > 0:
                     self.scenarios_iteration[scenario_name] = 0
 
-                if not (
-                    scenario_name in self.scenarios_iteration
-                    and self.scenarios_iteration[scenario_name] < scenario.iterations
-                ) or scenario_name not in self.scenarios_iteration:
+                if (
+                    not (scenario_name in self.scenarios_iteration and self.scenarios_iteration[scenario_name] < scenario.iterations)
+                    or scenario_name not in self.scenarios_iteration
+                ):
                     return response
 
                 testdata = self.testdata.get(scenario_name, {})
                 response['action'] = 'consume'
-                data: dict[str, Any] = {'variables': {}}
-                loaded_variable_datatypes: dict[str, Any] = {}
+                data: StrDict = {'variables': {}}
+                loaded_variable_datatypes: StrDict = {}
 
                 for key, variable in testdata.items():
                     if '.' in key and variable != '__on_consumer__':
@@ -804,12 +811,12 @@ class GrizzlyMessage(TypedDict):
 
 
 class GrizzlyMessageResponse(GrizzlyMessage):
-    response: dict[str, Any]
+    response: StrDict
 
 
 class GrizzlyMessageRequest(GrizzlyMessage):
     cid: str
-    request: dict[str, Any]
+    request: StrDict
 
 
 class GrizzlyMessageMapping(TypedDict):
@@ -832,10 +839,10 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def create_response(cls, environment: Environment, key: int, request: dict[str, Any]) -> dict[str, Any]: ...
+    def create_response(cls, environment: Environment, key: int, request: StrDict) -> StrDict: ...
 
     @classmethod
-    def send_request(cls, consumer: GrizzlyContextAware, request: dict[str, Any], *, timeout: float = 10.0) -> dict[str, Any]:
+    def send_request(cls, consumer: GrizzlyContextAware, request: StrDict, *, timeout: float = 10.0) -> StrDict:
         assert not isinstance(consumer.grizzly.state.locust, MasterRunner)
 
         message_type = cls.__message_types__['request']
@@ -853,7 +860,7 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
         consumer.grizzly.state.locust.send_message(message_type, {'uid': uid, 'cid': consumer.grizzly.state.locust.client_id, 'rid': rid, 'request': request})
 
         try:
-            response = cast(dict[str, Any], cls._responses[uid].get(timeout=timeout))
+            response = cast('StrDict', cls._responses[uid].get(timeout=timeout))
             error = response.get('error', None)
 
             if error is None:
@@ -866,16 +873,16 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
 
     @classmethod
     def handle_response(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG003
-        data = cast(GrizzlyMessageResponse, msg.data)
+        data = cast('GrizzlyMessageResponse', msg.data)
         uid = data['uid']
         response = data['response']
 
         cls._responses[uid].set(response)
 
     @classmethod
-    def get_key(cls, value: dict[str, Any]) -> int:
-        key_value: dict[str, Any] = {}
-        for k, v in  value.items():
+    def get_key(cls, value: StrDict) -> int:
+        key_value: StrDict = {}
+        for k, v in value.items():
             k_v = cls.get_key(v) if isinstance(v, dict) else v
 
             key_value.update({k: k_v})
@@ -886,7 +893,7 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
     def handle_request(cls, environment: Environment, msg: Message, **_kwargs: Any) -> None:
         message_type = cls.__message_types__['request']
         logger.debug('got %s: %r', msg.data, message_type)
-        data = cast(GrizzlyMessageRequest, msg.data)
+        data = cast('GrizzlyMessageRequest', msg.data)
         cid = data['cid']  # (worker) client id
         uid = data['uid']  # user id (user instance)
         rid = data['rid']  # request id
@@ -917,4 +924,4 @@ class GrizzlyMessageHandler(metaclass=ABCMeta):
         environment.runner.send_message(message_type, {'uid': uid, 'rid': rid, 'response': response}, client_id=cid)
 
 
-GrizzlyDependencies = set[Union[str, type[GrizzlyMessageHandler], tuple[str, MessageHandler]]]
+GrizzlyDependencies = set[str | type[GrizzlyMessageHandler] | tuple[str, MessageHandler]]

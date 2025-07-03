@@ -1,19 +1,22 @@
 """@anchor pydoc:grizzly.steps.scenario.user User
 This module contains step implementations that describes a {@pylink grizzly.users}.
 """
+
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.locust import FixedUsersDispatcher
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types.behave import Context, given
 from grizzly.utils import has_template
 
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
+
 
 def _setup_user(context: Context, user_class_name: str, host: str, *, weight: str | None = None, user_count: str | None = None, tag: str | None = None) -> None:
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     if not user_class_name.endswith('User'):
         user_class_name = f'{user_class_name}User'

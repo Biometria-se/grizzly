@@ -1,4 +1,5 @@
 """Unit tests of grizzly.steps.scenario.user."""
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -7,19 +8,19 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from grizzly.context import GrizzlyContext
 from grizzly.locust import FixedUsersDispatcher
 from grizzly.steps import *
 from grizzly.steps.scenario.user import _setup_user
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import BehaveFixture
 
 
 def test__setup_user_validation(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     with pytest.raises(AssertionError, match='cannot combine fixed user count with user weights'):
@@ -33,7 +34,7 @@ def test__setup_user_validation(behave_fixture: BehaveFixture) -> None:
 
 def test_step_user_type_count_tag(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert hasattr(grizzly.scenario, 'user')
@@ -52,7 +53,7 @@ def test_step_user_type_count_tag(behave_fixture: BehaveFixture) -> None:
 
 def test_setup_user_type_count(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert hasattr(grizzly.scenario, 'user')
@@ -72,7 +73,7 @@ def test_setup_user_type_count(behave_fixture: BehaveFixture) -> None:
 
 def test_step_user_type(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -119,7 +120,7 @@ def test_step_user_type(behave_fixture: BehaveFixture) -> None:
 
 def test_step_user_type_with_weight(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -146,18 +147,22 @@ def test_step_user_type_with_weight(behave_fixture: BehaveFixture) -> None:
 
     step_user_type_with_weight(behave, 'RestApi', '0', 'http://localhost:8000')
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='weight value -1 resolved to -1, which is not valid'),
-        ANY(AssertionError, message='weight value 0 resolved to 0, which is not valid'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='weight value -1 resolved to -1, which is not valid'),
+            ANY(AssertionError, message='weight value 0 resolved to 0, which is not valid'),
+        ],
+    }
 
     step_user_type_with_weight(behave, 'RestApi', '{{ weight }}', 'http://localhost:8000')
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='weight value -1 resolved to -1, which is not valid'),
-        ANY(AssertionError, message='weight value 0 resolved to 0, which is not valid'),
-        ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nweight'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='weight value -1 resolved to -1, which is not valid'),
+            ANY(AssertionError, message='weight value 0 resolved to 0, which is not valid'),
+            ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nweight'),
+        ],
+    }
 
     grizzly.scenario.variables['weight'] = 3
     step_user_type_with_weight(behave, 'RestApi', '{{ weight }}', 'http://localhost:8000')
@@ -166,9 +171,11 @@ def test_step_user_type_with_weight(behave_fixture: BehaveFixture) -> None:
     grizzly.scenario.variables['weight'] = 0
     step_user_type_with_weight(behave, 'RestApi', '{{ weight }}', 'http://localhost:8000')
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='weight value -1 resolved to -1, which is not valid'),
-        ANY(AssertionError, message='weight value 0 resolved to 0, which is not valid'),
-        ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nweight'),
-        ANY(AssertionError, message='weight value {{ weight }} resolved to 0, which is not valid'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='weight value -1 resolved to -1, which is not valid'),
+            ANY(AssertionError, message='weight value 0 resolved to 0, which is not valid'),
+            ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nweight'),
+            ANY(AssertionError, message='weight value {{ weight }} resolved to 0, which is not valid'),
+        ],
+    }

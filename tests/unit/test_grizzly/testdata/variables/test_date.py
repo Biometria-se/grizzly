@@ -1,4 +1,5 @@
 """Unit tests of grizzly.testdata.variables.date."""
+
 from __future__ import annotations
 
 from contextlib import suppress

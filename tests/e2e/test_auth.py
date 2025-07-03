@@ -1,4 +1,5 @@
 """End-to-end tests of grizzly.auth.aad."""
+
 from __future__ import annotations
 
 from textwrap import dedent
@@ -6,9 +7,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from grizzly.context import GrizzlyContext
-
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from grizzly.types.behave import Context
     from tests.fixtures import End2EndFixture
 
@@ -19,16 +19,18 @@ def test_e2e_auth_user_token(e2e_fixture: End2EndFixture) -> None:
 
     def before_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
         from grizzly_extras.azure.aad import AzureAadCredential
+
         AzureAadCredential.provider_url_template = f'http://{e2e_fixture.host}/{{tenant}}{e2e_fixture.webserver.auth_provider_uri}'
 
     e2e_fixture.add_before_feature(before_feature)
 
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
+
         if on_master(context):
             return
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         stats = grizzly.state.locust.environment.stats
 
@@ -74,7 +76,8 @@ def test_e2e_auth_user_token(e2e_fixture: End2EndFixture) -> None:
         return '\n'.join(steps)
 
     try:
-        feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test auth
+        feature_file = e2e_fixture.create_feature(
+            dedent(f"""Feature: test auth
         Background: common configuration
             Given "2" users
             And spawn rate is "2" users per second
@@ -96,7 +99,8 @@ def test_e2e_auth_user_token(e2e_fixture: End2EndFixture) -> None:
             And repeat for "3" iterations
             Then get from "http://{e2e_fixture.host}/api/echo" with name "httpclient-echo" and save response payload in "foobar"
             {add_metadata()}
-        """))
+        """),
+        )
 
         # patch so that we use our own webserver and not tries to test against real
 

@@ -1,4 +1,5 @@
 """Unit tests of grizzly.listeners.influxdb."""
+
 from __future__ import annotations
 
 import logging
@@ -7,7 +8,7 @@ import socket
 from datetime import datetime, timezone
 from json import dumps as jsondumps
 from platform import node as get_hostname
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import pytest
@@ -27,10 +28,11 @@ if TYPE_CHECKING:  # pragma: no cover
     from influxdb_client import InfluxDBClient  # type: ignore[attr-defined]
     from pytest_mock import MockerFixture
 
+    from grizzly.types import StrDict
     from tests.fixtures import GrizzlyFixture, LocustFixture
 
 
-@pytest.fixture()
+@pytest.fixture
 def patch_influxdblistener(mocker: MockerFixture) -> Callable[[], None]:
     def wrapper() -> None:
         mocker.patch(
@@ -107,7 +109,7 @@ class TestInfluxDbV1:
 
     def test_read(self, mocker: MockerFixture) -> None:
         class ResultContainer:
-            raw: dict[str, Any]
+            raw: StrDict
 
         influx = InfluxDbV1('https://influx.example.com', 1237, 'testdb').connect()
 
@@ -115,7 +117,7 @@ class TestInfluxDbV1:
             def query(_instance: InfluxDBClient, _query: str) -> ResultContainer:
                 results = ResultContainer()
                 results.raw = {
-                    'series': [{key: 'test' for key in columns}],
+                    'series': [dict.fromkeys(columns, 'test')],
                 }
 
                 return results
@@ -136,7 +138,7 @@ class TestInfluxDbV1:
 
             result = influx.read(table, columns)
 
-            assert result[0] == {key: 'test' for key in columns}
+            assert result[0] == dict.fromkeys(columns, 'test')
 
         test_query('testtable', ['col1', 'col2'])
         test_query('monitor', ['cpu_idle', 'cpu_user', 'cpu_system'])
@@ -163,10 +165,10 @@ class TestInfluxDbV1:
 
         influx.write([])
 
-        def generate_write_error(content: dict[str, Any], code: Optional[int] = 500) -> None:
+        def generate_write_error(content: StrDict, code: int | None = 500) -> None:
             raw_content = jsondumps(content)
 
-            def write_error(_instance: InfluxDBClient, _values: list[dict[str, Any]]) -> None:
+            def write_error(_instance: InfluxDBClient, _values: list[StrDict]) -> None:
                 raise InfluxDBClientError(raw_content, code)
 
             mocker.patch(
@@ -233,9 +235,6 @@ class TestInfluxDbV2:
         influx.__exit__(None, None, None)
 
     def test_read(self, mocker: MockerFixture) -> None:
-        class ResultContainer:
-            raw: dict[str, Any]
-
         query_api_mock = mocker.MagicMock(spec=QueryApi)
         mocker.patch(
             'grizzly.listeners.influxdb.InfluxDBClientV2.query_api',
@@ -253,7 +252,7 @@ class TestInfluxDbV2:
         from(bucket: "testdb")
         |> range(start: -1h)
         |> filter(fn: (r) => r._measurement == "{table}")
-        |> filter(fn: (r) => {" or ".join(f'r._field == "{field}"' for field in columns)})
+        |> filter(fn: (r) => {' or '.join(f'r._field == "{field}"' for field in columns)})
         """
 
         mocker.patch(
@@ -264,11 +263,10 @@ class TestInfluxDbV2:
         influx = InfluxDbV2('https://influx.example.com', 1237, 'org', 'testdb').connect()
 
         result = influx.read(table, columns)
-        assert "some_key" in result
+        assert 'some_key' in result
 
         query_api_mock.query.assert_called_once_with(flux_query, org='org')
         influx.__exit__(None, None, None)
-
 
     def test_write(self, mocker: MockerFixture) -> None:
         write_api_mock = mocker.MagicMock(spec=WriteApi)
@@ -293,7 +291,7 @@ class TestInfluxDbV2:
 
         influx.write([])
 
-        def generate_write_error(raw_content: str|None, code: Optional[int] = 500) -> None:
+        def generate_write_error(raw_content: str | None, code: int | None = 500) -> None:
             write_api_mock.write.side_effect = [ApiException(reason=raw_content, status=code)]
 
         generate_write_error(None, None)
@@ -309,6 +307,7 @@ class TestInfluxDbV2:
             influx.write([])
 
         influx.__exit__(None, None, None)
+
 
 class TestInfluxDblistener:
     @pytest.mark.usefixtures('patch_influxdblistener')
@@ -402,7 +401,7 @@ class TestInfluxDblistener:
                     'environment': 'local',
                     'testplan': 'unittest-plan',
                     'hostname': get_hostname(),
-                    'user_class': f'User{j+1}',
+                    'user_class': f'User{j + 1}',
                     'description': 'unittesting',
                     'profile': 'unittest-profile',
                 }
@@ -432,7 +431,7 @@ class TestInfluxDblistener:
         finally:
             listener._finished = False
 
-        def write(_: InfluxDbV2, events: list[dict[str, Any]]) -> None:
+        def write(_: InfluxDbV2, events: list[StrDict]) -> None:
             assert len(events) == 1
             event = events[-1]
             assert event.get('measurement', None) == 'request'
@@ -483,12 +482,15 @@ class TestInfluxDblistener:
             'https://influx.test.com:1242/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
-        listener._override_event(event, {
-            '__tags_foo__': 'foo',
-            '__time__': '2024-07-08T10:52:01Z',
-            '__fields_request_started__': '2024-07-08T10:52:01Z',
-            '__fields_request_finished__': '2024-07-08T10:54:00Z',
-        })
+        listener._override_event(
+            event,
+            {
+                '__tags_foo__': 'foo',
+                '__time__': '2024-07-08T10:52:01Z',
+                '__fields_request_started__': '2024-07-08T10:52:01Z',
+                '__fields_request_finished__': '2024-07-08T10:54:00Z',
+            },
+        )
 
         assert event == {
             'measurement': 'request',
@@ -569,7 +571,7 @@ class TestInfluxDblistener:
                     (
                         f"<class '{self.__class__.__module__}.{self.__class__.__name__}."
                         f"{inspect.stack()[0][3]}.<locals>.{ClassWithNoRepr.__name__}'>"
-                        " (and it has no string representation)"
+                        ' (and it has no string representation)'
                     ),
                 ),
             ]
@@ -694,7 +696,11 @@ class TestInfluxDblistener:
 
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test_request_exception(
-        self, locust_fixture: LocustFixture, mocker: MockerFixture, caplog: LogCaptureFixture, patch_influxdblistener: Callable[[], None],
+        self,
+        locust_fixture: LocustFixture,
+        mocker: MockerFixture,
+        caplog: LogCaptureFixture,
+        patch_influxdblistener: Callable[[], None],
     ) -> None:
         patch_influxdblistener()
         listener = InfluxDbListener(

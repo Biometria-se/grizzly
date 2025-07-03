@@ -1,15 +1,16 @@
 """End-to-end tests of grizzly.steps.scenario.setup."""
+
 from __future__ import annotations
 
 import textwrap
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from grizzly.context import GrizzlyContext
-
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
+    from grizzly.types import StrDict
     from grizzly.types.behave import Context
     from tests.fixtures import End2EndFixture
 
@@ -29,8 +30,8 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
 
         from grizzly.utils import merge_dicts
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
-        expected_total: dict[str, Any] = {}
+        grizzly = cast('GrizzlyContext', context.grizzly)
+        expected_total: StrDict = {}
         first_row = next(iter(context.table)).as_dict()
         expected_host = first_row['expected']
 
@@ -81,21 +82,28 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
 
 
 # no easy way to rewrite without parameterize without rewriting End2EndFixture...
-@pytest.mark.parametrize('iterations', [
-    '10', '1', '{{ leveranser * 0.25 }}',
-])
+@pytest.mark.parametrize(
+    'iterations',
+    [
+        '10',
+        '1',
+        '{{ leveranser * 0.25 }}',
+    ],
+)
 def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str) -> None:
     def validate_iterations(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         data = next(iter(context.table)).as_dict()
 
         iterations = int(data['iterations'].replace('{{ leveranser * 0.25 }}', '25'))
 
         assert grizzly.scenario.iterations == iterations, f'{grizzly.scenario.iterations} != {iterations}'
 
-    table: list[dict[str, str]] = [{
-        'iterations': iterations,
-    }]
+    table: list[dict[str, str]] = [
+        {
+            'iterations': iterations,
+        },
+    ]
 
     suffix = 's'
     with suppress(Exception):
@@ -126,7 +134,7 @@ def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
     def validate_iterations(context: Context) -> None:
         from grizzly.utils import has_template
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         data = next(iter(context.table)).as_dict()
         pace = data['pace']
 
@@ -136,9 +144,11 @@ def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
             for scenario in grizzly.scenarios:
                 assert pace in scenario.orphan_templates, f'"{pace}" not in {scenario.orphan_templates}'
 
-    table: list[dict[str, str]] = [{
-        'pace': pace,
-    }]
+    table: list[dict[str, str]] = [
+        {
+            'pace': pace,
+        },
+    ]
 
     e2e_fixture.add_validator(validate_iterations, table=table)
 
@@ -160,7 +170,7 @@ def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
 
 def test_e2e_step_set_variable_alias(e2e_fixture: End2EndFixture) -> None:
     def validate_variable_alias(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         grizzly.scenario.tasks.pop()
 
         alias = grizzly.scenario.variables.alias
@@ -185,10 +195,12 @@ def test_e2e_step_set_variable_alias(e2e_fixture: End2EndFixture) -> None:
         ],
     )
 
-    (e2e_fixture.root / 'features' / 'requests' / 'users.csv').write_text(textwrap.dedent(
-        """username,password
+    (e2e_fixture.root / 'features' / 'requests' / 'users.csv').write_text(
+        textwrap.dedent(
+            """username,password
 grizzly,secret""",
-    ))
+        ),
+    )
 
     rc, output = e2e_fixture.execute(feature_file)
 
@@ -201,7 +213,7 @@ grizzly,secret""",
 
 def test_e2e_step_setup_log_all_requests(e2e_fixture: End2EndFixture) -> None:
     def validate_log_all_requests(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         assert grizzly.scenario.context.get('log_all_requests', False)
 
@@ -220,7 +232,7 @@ def test_e2e_step_setup_log_all_requests(e2e_fixture: End2EndFixture) -> None:
 
 def test_e2e_setup_metadata(e2e_fixture: End2EndFixture) -> None:
     def validate_metadata(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         assert grizzly.scenario.variables.get('nested_value', None) == 10, 'nested_value variable is not 10'
 
         metadata = grizzly.scenario.context.get('metadata', None)
@@ -251,7 +263,7 @@ def test_e2e_setup_failed_any_the_task(e2e_fixture: End2EndFixture) -> None:
     def validate_failure_handling(context: Context) -> None:
         from grizzly.exceptions import RestartIteration, RestartScenario, RetryTask, StopUser, TaskTimeoutError
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         assert grizzly.scenario.failure_handling == {
             None: RestartScenario,

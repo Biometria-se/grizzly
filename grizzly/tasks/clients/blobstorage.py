@@ -58,12 +58,13 @@ bs[s]://<username>:<password>@<AccountName>/<Container># Tenant=<tenant>[&Overwr
 
 The MIME type of an uploaded file will automagically be guessed based on the [rendered] destination file extension.
 """
+
 from __future__ import annotations
 
 import logging
 from mimetypes import guess_type as mimetype_guess
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, quote, urlparse
 
 from azure.storage.blob import BlobServiceClient, ContentSettings
@@ -93,14 +94,14 @@ class BlobStorageClientTask(ClientTask):
         self,
         direction: RequestDirection,
         endpoint: str,
-        name: Optional[str] = None,
+        name: str | None = None,
         /,
-        payload_variable: Optional[str] = None,
-        metadata_variable: Optional[str] = None,
-        source: Optional[str] = None,
-        destination: Optional[str] = None,
-        text: Optional[str] = None,
-        method: Optional[RequestMethod] = None,
+        payload_variable: str | None = None,
+        metadata_variable: str | None = None,
+        source: str | None = None,
+        destination: str | None = None,
+        text: str | None = None,
+        method: RequestMethod | None = None,
     ) -> None:
         super().__init__(
             direction,
@@ -160,7 +161,7 @@ class BlobStorageClientTask(ClientTask):
             if not account_url.endswith('.blob.core.windows.net'):
                 account_url = f'{account_url}.blob.core.windows.net'
 
-            credential = AzureAadCredential(username, cast(str, password), tenant, AuthMethod.USER, host=account_url)
+            credential = AzureAadCredential(username, cast('str', password), tenant, AuthMethod.USER, host=account_url)
             self.service_client = BlobServiceClient(account_url=account_url, credential=credential)
 
         self.overwrite = bool_type(fragments.get('Overwrite', ['False'])[0])
@@ -170,7 +171,7 @@ class BlobStorageClientTask(ClientTask):
         raise NotImplementedError(message)
 
     def request_to(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        source = parent.user.render(cast(str, self.source))
+        source = parent.user.render(cast('str', self.source))
 
         destination = parent.user.render(self.destination) if self.destination is not None else Path(source).name
 
@@ -189,11 +190,15 @@ class BlobStorageClientTask(ClientTask):
 
             source = parent.user.render(source_file.read_text())
 
-            meta.update({'request': {
-                'url': f'{destination}@{self.container}',
-                'payload': source,
-                'metadata': None,
-            }})
+            meta.update(
+                {
+                    'request': {
+                        'url': f'{destination}@{self.container}',
+                        'payload': source,
+                        'metadata': None,
+                    },
+                },
+            )
 
             with self.service_client.get_blob_client(container=self.container, blob=destination) as blob_client:
                 blob_client.upload_blob(source, content_settings=content_settings, overwrite=self.overwrite)

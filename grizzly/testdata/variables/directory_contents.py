@@ -32,15 +32,16 @@ And put request "{{ AtomicDirectoryContents.files }}" with name "put-file" to en
 
 First request will provide `file1.bin`, second `file2.bin` etc.
 """
+
 from __future__ import annotations
 
 from contextlib import suppress
 from os import environ
 from pathlib import Path
 from secrets import randbelow
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
-from grizzly.types import bool_type
+from grizzly.types import StrDict, bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
@@ -87,9 +88,9 @@ class AtomicDirectoryContents(AtomicVariable[str]):
     __initialized: bool = False
 
     _files: dict[str, list[str]]
-    _settings: dict[str, dict[str, Any]]
+    _settings: dict[str, StrDict]
     _requests_context_root: Path
-    arguments: ClassVar[dict[str, Any]] = {'repeat': bool_type, 'random': bool_type}
+    arguments: ClassVar[StrDict] = {'repeat': bool_type, 'random': bool_type}
 
     def __init__(
         self,
@@ -137,7 +138,7 @@ class AtomicDirectoryContents(AtomicVariable[str]):
 
         instances = cls._instances.get(cls, {})
         for scenario in instances:
-            instance = cast(AtomicDirectoryContents, cls.get(scenario))
+            instance = cast('AtomicDirectoryContents', cls.get(scenario))
             variables = list(instance._files.keys())
 
             for variable in variables:
@@ -146,16 +147,12 @@ class AtomicDirectoryContents(AtomicVariable[str]):
 
     def _create_file_queue(self, directory: str) -> list[str]:
         parent_part = len(str(self._requests_context_root)) + 1
-        queue = [
-            str(path)[parent_part:]
-            for path in (self._requests_context_root / directory).rglob('*')
-            if path.is_file()
-        ]
+        queue = [str(path)[parent_part:] for path in (self._requests_context_root / directory).rglob('*') if path.is_file()]
         queue.sort()
 
         return queue
 
-    def __getitem__(self, variable: str) -> Optional[str]:
+    def __getitem__(self, variable: str) -> str | None:
         with self.semaphore():
             self._get_value(variable)
 

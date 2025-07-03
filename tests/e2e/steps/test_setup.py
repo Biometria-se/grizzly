@@ -1,18 +1,18 @@
 """End-to-end tests of grizzly.steps.setup."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
-
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from grizzly.types.behave import Context, Feature
     from tests.fixtures import End2EndFixture
 
 
 def test_e2e_step_setup_variable_value_ask(e2e_fixture: End2EndFixture) -> None:
     def validate_variables(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         assert grizzly.scenario.variables['background_variable'] == 'foo-background-value'
         assert grizzly.scenario.variables['scenario_variable'] == 'bar-scenario-value'
@@ -31,10 +31,13 @@ def test_e2e_step_setup_variable_value_ask(e2e_fixture: End2EndFixture) -> None:
 
     assert feature_file == 'features/test_e2e_step_setup_variable_value_ask.feature'
 
-    rc, output = e2e_fixture.execute(feature_file, testdata={
-        'background_variable': 'foo-background-value',
-        'scenario_variable': 'bar-scenario-value',
-    })
+    rc, output = e2e_fixture.execute(
+        feature_file,
+        testdata={
+            'background_variable': 'foo-background-value',
+            'scenario_variable': 'bar-scenario-value',
+        },
+    )
 
     try:
         assert rc == 0
@@ -46,7 +49,7 @@ def test_e2e_step_setup_variable_value_ask(e2e_fixture: End2EndFixture) -> None:
 
 def test_e2e_step_setup_variable_value(e2e_fixture: End2EndFixture) -> None:
     def validate_variables(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         assert grizzly.scenario.variables['AtomicCsvWriter.output'] == "output.csv | headers='foo, bar'"
         assert grizzly.scenario.variables['leveranser'] == 10
@@ -91,7 +94,7 @@ def test_e2e_step_scenario_variable_value(e2e_fixture: End2EndFixture) -> None:
         from os import environ
         from pathlib import Path
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         assert grizzly.scenario.variables.get('testdata_variable', None) == 'hello world!'
         assert grizzly.scenario.variables.get('int_value', None) == 10
@@ -119,11 +122,15 @@ def test_e2e_step_scenario_variable_value(e2e_fixture: End2EndFixture) -> None:
         persist_root = context_root / 'persistent'
         persist_root.mkdir(exist_ok=True)
         persist_file = persist_root / f'{Path(feature.filename).stem}.json'
-        persist_file.write_text(jsondumps({
-            'IteratorScenario_001': {
-                'AtomicIntegerIncrementer.persistent': '10 | step=13, persist=True',
-            },
-        }))
+        persist_file.write_text(
+            jsondumps(
+                {
+                    'IteratorScenario_001': {
+                        'AtomicIntegerIncrementer.persistent': '10 | step=13, persist=True',
+                    },
+                },
+            ),
+        )
 
     e2e_fixture.add_before_feature(before_feature)
 

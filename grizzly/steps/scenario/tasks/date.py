@@ -1,13 +1,16 @@
 """@anchor pydoc:grizzly.steps.scenario.tasks.date Date
 This module contains step implementations for the {@pylink grizzly.tasks.date} task.
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import DateTask
 from grizzly.types.behave import Context, then
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @then('parse date "{value}" and save in variable "{variable}"')
@@ -38,10 +41,12 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
         variable (str): name of, initialized, variable where response will be saved in
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     assert variable in grizzly.scenario.variables, f'variable {variable} has not been initialized'
 
-    grizzly.scenario.tasks.add(DateTask(
-        value=value,
-        variable=variable,
-    ))
+    grizzly.scenario.tasks.add(
+        DateTask(
+            value=value,
+            variable=variable,
+        ),
+    )

@@ -1,4 +1,5 @@
 """Unit tests for grizzly.users.dummy."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

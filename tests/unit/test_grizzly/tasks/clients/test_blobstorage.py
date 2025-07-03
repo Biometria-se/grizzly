@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.clients.blobstorage."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
@@ -6,7 +7,6 @@ from typing import TYPE_CHECKING, cast
 import pytest
 from azure.storage.blob import BlobClient, ContentSettings
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks.clients import BlobStorageClientTask
 from grizzly.testdata import GrizzlyVariables
 from grizzly.types import RequestDirection
@@ -16,6 +16,7 @@ from tests.helpers import ANY, SOME
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
@@ -106,7 +107,9 @@ class TestBlobStorageClientTask:
         ]:
             assert getattr(task, attr) == value
         blob_service_client_mock.assert_not_called()
-        blob_service_client_mock.from_connection_string.assert_called_once_with(conn_str='DefaultEndpointsProtocol=http;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net')
+        blob_service_client_mock.from_connection_string.assert_called_once_with(
+            conn_str='DefaultEndpointsProtocol=http;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net',
+        )
         blob_service_client_mock.reset_mock()
 
         task = BlobStorageClientTask(
@@ -130,7 +133,9 @@ class TestBlobStorageClientTask:
             assert getattr(task, attr) == value
 
         blob_service_client_mock.assert_not_called()
-        blob_service_client_mock.from_connection_string.assert_called_once_with(conn_str='DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net')
+        blob_service_client_mock.from_connection_string.assert_called_once_with(
+            conn_str='DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net',
+        )
         blob_service_client_mock.reset_mock()
 
         with pytest.raises(ValueError, match='asdf is not a valid boolean'):
@@ -251,7 +256,7 @@ class TestBlobStorageClientTask:
             credential=SOME(
                 AzureAadCredential,
                 username='username',
-                password='password',  # noqa: S106
+                password='password',
                 tenant='example.com',
                 auth_method=AuthMethod.USER,
                 host='http://my-storage.blob.core.windows.net',
@@ -289,7 +294,7 @@ class TestBlobStorageClientTask:
             credential=SOME(
                 AzureAadCredential,
                 username='username',
-                password='password',  # noqa: S106
+                password='password',
                 tenant='example.com',
                 auth_method=AuthMethod.USER,
                 host='https://my-storage.blob.core.windows.net',
@@ -316,7 +321,7 @@ class TestBlobStorageClientTask:
 
     def test_request_from(self, behave_fixture: BehaveFixture, grizzly_fixture: GrizzlyFixture) -> None:
         behave = behave_fixture.context
-        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly = cast('GrizzlyContext', behave.grizzly)
         grizzly.scenario.variables['test'] = 'none'
 
         BlobStorageClientTask.__scenario__ = grizzly.scenario
@@ -337,16 +342,20 @@ class TestBlobStorageClientTask:
         upload_blob_mock = mocker.patch('azure.storage.blob._blob_service_client.BlobClient.upload_blob', autospec=True)
 
         grizzly = grizzly_fixture.grizzly
-        grizzly.scenario.variables.update({
-            'test': 'hello world',
-            'source': 'source.json',
-            'destination': 'destination.json',
-        })
-        grizzly.state.configuration.update({
-            'storage.account': 'my-storage',
-            'storage.account_key': 'aaaa+bbb/64=',
-            'storage.container': 'my-container',
-        })
+        grizzly.scenario.variables.update(
+            {
+                'test': 'hello world',
+                'source': 'source.json',
+                'destination': 'destination.json',
+            },
+        )
+        grizzly.state.configuration.update(
+            {
+                'storage.account': 'my-storage',
+                'storage.account_key': 'aaaa+bbb/64=',
+                'storage.container': 'my-container',
+            },
+        )
 
         BlobStorageClientTask.__scenario__ = grizzly.scenario
 

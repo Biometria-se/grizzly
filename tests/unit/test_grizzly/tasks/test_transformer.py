@@ -1,4 +1,5 @@
 """Unit tests for grizzly.tasks.transformer."""
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -28,7 +29,10 @@ class TestTransformerTask:
 
         with pytest.raises(AssertionError, match='test_variable has not been initialized'):
             TransformerTask(
-                variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
+                variable='test_variable',
+                expression='$.',
+                content_type=TransformerContentType.JSON,
+                content='',
             )
 
         grizzly.scenario.variables.update({'test_variable': 'none'})
@@ -39,13 +43,19 @@ class TestTransformerTask:
         try:
             with pytest.raises(AssertionError, match='could not find a transformer for JSON'):
                 TransformerTask(
-                    variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
+                    variable='test_variable',
+                    expression='$.',
+                    content_type=TransformerContentType.JSON,
+                    content='',
                 )
         finally:
             transformer.available.update({TransformerContentType.JSON: json_transformer})
 
         task_factory = TransformerTask(
-            variable='test_variable', expression='$.result.value', content_type=TransformerContentType.JSON, content='',
+            variable='test_variable',
+            expression='$.result.value',
+            content_type=TransformerContentType.JSON,
+            content='',
         )
 
         assert task_factory.__template_attributes__ == {'content', 'expression'}
@@ -70,11 +80,13 @@ class TestTransformerTask:
             variable='test_variable',
             expression='$.result.value',
             content_type=TransformerContentType.JSON,
-            content=jsondumps({
-                'result': {
-                    'value': 'hello world!',
+            content=jsondumps(
+                {
+                    'result': {
+                        'value': 'hello world!',
+                    },
                 },
-            }),
+            ),
         )
 
         task = task_factory()
@@ -89,19 +101,23 @@ class TestTransformerTask:
 
         parent.user.set_variable('payload_url', 'none')
         parent.user._scenario.variables.update({'payload_url': 'none'})
-        content = jsondumps({
-            "entityType": "contract",
-            "entityConcreteType": "contract",
-            "entityId": "C000001",
-            "entityVersion": 1,
-            "entityStatus": "Created",
-            "entityStatusChangedAtUtc": "2021-03-10T07:03:00Z",
-            "format": "json",
-            "payloads": [{
-                "url": "https://mystorageaccount.blob.core.windows.net/mycontainer/myfile",
-                "expiresAtUtc": "2021-03-20T09:13:26.000000Z",
-            }],
-        })
+        content = jsondumps(
+            {
+                'entityType': 'contract',
+                'entityConcreteType': 'contract',
+                'entityId': 'C000001',
+                'entityVersion': 1,
+                'entityStatus': 'Created',
+                'entityStatusChangedAtUtc': '2021-03-10T07:03:00Z',
+                'format': 'json',
+                'payloads': [
+                    {
+                        'url': 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile',
+                        'expiresAtUtc': '2021-03-20T09:13:26.000000Z',
+                    },
+                ],
+            },
+        )
         task_factory = TransformerTask(
             variable='payload_url',
             expression='$.payloads[0].url',
@@ -117,10 +133,12 @@ class TestTransformerTask:
 
         assert parent.user.variables.get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
 
-        parent.user.variables.update({
-            'payload_url': None,
-            'payload': content,
-        })
+        parent.user.variables.update(
+            {
+                'payload_url': None,
+                'payload': content,
+            },
+        )
 
         task_factory = TransformerTask(
             variable='payload_url',
@@ -141,11 +159,13 @@ class TestTransformerTask:
             variable='test_variable',
             expression='$.result.name',
             content_type=TransformerContentType.JSON,
-            content=jsondumps({
-                'result': {
-                    'value': 'hello world!',
+            content=jsondumps(
+                {
+                    'result': {
+                        'value': 'hello world!',
+                    },
                 },
-            }),
+            ),
         )
         task = task_factory()
         parent.user._scenario.failure_handling.update({None: RestartScenario})
@@ -167,11 +187,13 @@ class TestTransformerTask:
             variable='test_variable',
             expression='$.result.name | min_matches=0',
             content_type=TransformerContentType.JSON,
-            content=jsondumps({
-                'result': {
-                    'value': 'hello world!',
+            content=jsondumps(
+                {
+                    'result': {
+                        'value': 'hello world!',
+                    },
                 },
-            }),
+            ),
         )
         task = task_factory()
         parent.user._scenario.failure_handling.update({None: RestartScenario})
@@ -186,20 +208,25 @@ class TestTransformerTask:
             variable='test_variable',
             expression='$.result[?value="hello world!"]',
             content_type=TransformerContentType.JSON,
-            content=jsondumps({
-                'result': [
-                    {'value': 'hello world!'},
-                    {'value': 'hello world!'},
-                    {'value': 'hello world!'},
-                ],
-            }),
+            content=jsondumps(
+                {
+                    'result': [
+                        {'value': 'hello world!'},
+                        {'value': 'hello world!'},
+                        {'value': 'hello world!'},
+                    ],
+                },
+            ),
         )
         task = task_factory()
         task(parent)
 
-        assert parent.user.variables['test_variable'] == """{"value": "hello world!"}
+        assert (
+            parent.user.variables['test_variable']
+            == """{"value": "hello world!"}
 {"value": "hello world!"}
 {"value": "hello world!"}"""
+        )
 
         parent.user._scenario.variables.update({'test_bool': 'none'})
         parent.user.variables.update({'test_bool': 'none'})
@@ -207,9 +234,11 @@ class TestTransformerTask:
             variable='test_bool',
             expression='$.success',
             content_type=TransformerContentType.JSON,
-            content=jsondumps({
-                'success': True,
-            }),
+            content=jsondumps(
+                {
+                    'success': True,
+                },
+            ),
         )
         assert task_factory.min_matches == 1
         task = task_factory()
@@ -273,6 +302,9 @@ class TestTransformerTask:
 
         task(parent)
 
-        assert parent.user.variables['child_elem'] == """<actor id="7">Christian Bale</actor>
+        assert (
+            parent.user.variables['child_elem']
+            == """<actor id="7">Christian Bale</actor>
 <actor id="8">Liam Neeson</actor>
 <actor id="9">Michael Caine</actor>"""
+        )

@@ -1,4 +1,5 @@
 """Unit tests of grizzly.steps.scenario.tasks.conditional."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
@@ -13,11 +14,11 @@ from grizzly.steps import (
     step_task_request_text_with_name_endpoint,
     step_task_wait_between_constant,
 )
-from grizzly.tasks import ConditionalTask
 from grizzly.types import RequestDirection, RequestMethod
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.tasks import ConditionalTask
     from tests.fixtures import BehaveFixture
 
 
@@ -99,7 +100,7 @@ def test_step_task_conditional_end(behave_fixture: BehaveFixture) -> None:
     step_task_conditional_end(behave)
 
     assert len(grizzly.scenario.tasks()) == 1
-    conditional = cast(ConditionalTask, grizzly.scenario.tasks()[-1])
+    conditional = cast('ConditionalTask', grizzly.scenario.tasks()[-1])
 
     assert conditional.name == 'conditional-1'
     assert conditional.condition == '{{ value | int == 10 }}'

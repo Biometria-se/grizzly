@@ -1,14 +1,17 @@
 """@anchor pydoc:grizzly.steps.scenario.tasks.transformer Transformer
 This module contains step implementations for the {@pylink grizzly.tasks.transformer} task.
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import TransformerTask
 from grizzly.types.behave import Context, register_type, then
 from grizzly_extras.transformer import TransformerContentType
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 register_type(
     ContentType=TransformerContentType.from_string,
@@ -41,10 +44,12 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
         variable (str): name of variable to save value to, must have been initialized
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.tasks.add(TransformerTask(
-        content=content,
-        content_type=content_type,
-        expression=expression,
-        variable=variable,
-    ))
+    grizzly = cast('GrizzlyContext', context.grizzly)
+    grizzly.scenario.tasks.add(
+        TransformerTask(
+            content=content,
+            content_type=content_type,
+            expression=expression,
+            variable=variable,
+        ),
+    )

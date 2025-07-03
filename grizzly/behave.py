@@ -1,4 +1,5 @@
 """Grizzly hooks into behave."""
+
 from __future__ import annotations
 
 import logging
@@ -9,7 +10,7 @@ from os import environ
 from pathlib import Path
 from textwrap import indent
 from time import perf_counter as time
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import setproctitle as proc
 from behave.reporter.summary import SummaryReporter
@@ -25,7 +26,7 @@ from .types.behave import Context, Feature, Scenario, Status, Step
 from .utils import fail_direct, in_correct_section
 from .utils.protocols import mq_client_logs
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.testdata.communication import AsyncTimer
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ def before_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: A
 
     destroy_variables()
 
-    from grizzly import context as grizzly_context
+    from grizzly import context as grizzly_context  # noqa: PLC0415
 
     grizzly_context.grizzly = GrizzlyContext()
 
@@ -80,12 +81,12 @@ def before_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: A
             grizzly_scenario.variables.persistent.update(persistent.get(grizzly_scenario.class_name, {}))
 
 
-def after_feature_master(return_code: int, status: Optional[Status], context: Context, feature: Feature) -> int:
+def after_feature_master(return_code: int, status: Status | None, context: Context, feature: Feature) -> int:
     """Master should validate locust request statistics to determine if feature was successful or not."""
     if on_worker(context):
         return return_code
 
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     if not hasattr(grizzly.state, 'locust'):
         return 0
@@ -95,7 +96,7 @@ def after_feature_master(return_code: int, status: Optional[Status], context: Co
     if status is None:
         status = Status.failed
 
-    for behave_scenario in cast(list[Scenario], feature.scenarios):
+    for behave_scenario in cast('list[Scenario]', feature.scenarios):
         grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)
         if grizzly_scenario is None:
             continue
@@ -129,7 +130,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
 
     # all scenarios has been processed, let's run locust
     if feature.status == Status.passed and not has_exceptions:
-        status: Optional[Status] = None
+        status: Status | None = None
 
         try:
             return_code = locustrun(context)
@@ -161,7 +162,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
     # show start and stop date time
     stopped = datetime.now().astimezone()
 
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     if grizzly.state.producer is not None and len(grizzly.state.producer.async_timers.timers) > 0:
         feature.set_status('failed')
@@ -181,7 +182,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
                 reporter.stream.write(f'- {name} ({len(timers)}):\n')
 
                 for timer in timers:
-                    reporter.stream.write(f'  * {timer.tid} (version {timer.version}): {cast(datetime, timer.start).isoformat()}\n')
+                    reporter.stream.write(f'  * {timer.tid} (version {timer.version}): {cast("datetime", timer.start).isoformat()}\n')
 
         if len(timer_group['stopped']) > 0:
             reporter.stream.write('\nThe following asynchronous timers has not been started:\n')
@@ -190,12 +191,12 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
                 reporter.stream.write(f'- {name} ({len(timers)}):\n')
 
                 for timer in timers:
-                    reporter.stream.write(f'  * {timer.tid} (version {timer.version}): {cast(datetime, timer.stop).isoformat()}\n')
+                    reporter.stream.write(f'  * {timer.tid} (version {timer.version}): {cast("datetime", timer.stop).isoformat()}\n')
 
     if has_exceptions:
         buffer: list[str] = []
 
-        for scenario_name, exceptions in cast(dict[Optional[str], list[AssertionError]], context.exceptions).items():
+        for scenario_name, exceptions in cast('dict[str | None, list[AssertionError]]', context.exceptions).items():
             if scenario_name is not None:
                 buffer.append(f'Scenario: {scenario_name}')
             else:
@@ -221,7 +222,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
 
 
 def before_scenario(context: Context, scenario: Scenario, *_args: Any, **_kwargs: Any) -> None:
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     grizzly.scenarios.select(scenario)
 
@@ -256,7 +257,7 @@ def before_scenario(context: Context, scenario: Scenario, *_args: Any, **_kwargs
 
 
 def after_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     # first scenario is done, do not process background for any (possible) other scenarios
     if not grizzly.state.background_done:
@@ -264,13 +265,9 @@ def after_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:
 
     assert grizzly.scenario.tasks.tmp.async_group is None, f'async request group "{grizzly.scenario.tasks.tmp.async_group.name}" has not been closed'
     assert grizzly.scenario.tasks.tmp.loop is None, f'loop task "{grizzly.scenario.tasks.tmp.loop.name}" has not been closed'
-
-    open_timers = {name: timer for name, timer in grizzly.scenario.tasks.tmp.timers.items() if timer is not None}
-    assert not len(open_timers) > 0, f'timers {", ".join(open_timers.keys())} has not been closed'
-
     assert grizzly.scenario.tasks.tmp.conditional is None, f'conditional "{grizzly.scenario.tasks.tmp.conditional.name}" has not been closed'
 
-    for scenario_name, exceptions in cast(dict[Optional[str], list[StepError]], context.exceptions).items():
+    for scenario_name, exceptions in cast('dict[str | None, list[StepError]]', context.exceptions).items():
         if scenario_name != context.scenario.name:
             continue
 
@@ -292,7 +289,7 @@ def before_step(context: Context, step: Step, *_args: Any, **_kwargs: Any) -> No
 def after_step(context: Context, step: Step, *_args: Any, **_kwargs: Any) -> None:
     # grizzly does not have any functionality that should run after every step, but added for
     # clarity of what can be overloaded
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     if len(grizzly.scenario.tasks._tmp.__stack__) == 0:
         task_index = len(grizzly.scenario.tasks)

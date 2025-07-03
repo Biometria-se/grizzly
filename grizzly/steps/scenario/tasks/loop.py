@@ -1,13 +1,16 @@
 """@anchor pydoc:grizzly.steps.scenario.tasks.loop Loop
 This module contains step implementations for the {@pylink grizzly.tasks.loop} task.
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import LoopTask
 from grizzly.types.behave import Context, then
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @then('loop "{values}" as variable "{variable}" with name "{name}"')
@@ -26,7 +29,7 @@ def step_task_loop_start(context: Context, values: str, variable: str, name: str
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     assert grizzly.scenario.tasks.tmp.loop is None, f'loop task "{grizzly.scenario.tasks.tmp.loop.name}" is already open, close it first'
 
@@ -53,7 +56,7 @@ def step_task_loop_end(context: Context) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     assert grizzly.scenario.tasks.tmp.loop is not None, 'there are no open loop, you need to create one before closing it'
 

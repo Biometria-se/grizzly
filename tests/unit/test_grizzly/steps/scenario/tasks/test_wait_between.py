@@ -1,12 +1,13 @@
 """Unit tests of grizzly.steps.scenario.tasks.wait_between."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
 from grizzly.steps import step_task_wait_between_constant, step_task_wait_between_random
-from grizzly.tasks import WaitBetweenTask
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.tasks import WaitBetweenTask
     from tests.fixtures import BehaveFixture
 
 
@@ -21,7 +22,7 @@ def test_step_task_wait_between_random(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks()) == 1
 
-    task = cast(WaitBetweenTask, grizzly.scenario.tasks()[-1])
+    task = cast('WaitBetweenTask', grizzly.scenario.tasks()[-1])
     assert task.min_time == '1.4'
     assert task.max_time == '1.7'
 
@@ -31,7 +32,7 @@ def test_step_task_wait_between_random(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks()) == 2
 
-    task = cast(WaitBetweenTask, grizzly.scenario.tasks()[-1])
+    task = cast('WaitBetweenTask', grizzly.scenario.tasks()[-1])
     assert task.min_time == '30'
     assert task.max_time == '20'
 
@@ -39,7 +40,7 @@ def test_step_task_wait_between_random(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks()) == 3
 
-    task = cast(WaitBetweenTask, grizzly.scenario.tasks()[-1])
+    task = cast('WaitBetweenTask', grizzly.scenario.tasks()[-1])
     assert task.min_time == '{{ min_wait_time }}'
     assert task.max_time == '20'
     assert task.get_templates() == ['{{ min_wait_time }}']
@@ -56,7 +57,7 @@ def test_step_task_wait_between_constant(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks()) == 1
 
-    task = cast(WaitBetweenTask, grizzly.scenario.tasks()[-1])
+    task = cast('WaitBetweenTask', grizzly.scenario.tasks()[-1])
     assert task.min_time == '10'
     assert task.max_time is None
 
@@ -66,7 +67,7 @@ def test_step_task_wait_between_constant(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks()) == 2
 
-    task = cast(WaitBetweenTask, grizzly.scenario.tasks()[-1])
+    task = cast('WaitBetweenTask', grizzly.scenario.tasks()[-1])
     assert task.min_time == '10'
     assert task.max_time is None
 
@@ -74,7 +75,7 @@ def test_step_task_wait_between_constant(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks()) == 3
 
-    task = cast(WaitBetweenTask, grizzly.scenario.tasks()[-1])
+    task = cast('WaitBetweenTask', grizzly.scenario.tasks()[-1])
     assert task.min_time == '{{ wait_time }}'
     assert task.max_time is None
     assert task.get_templates() == ['{{ wait_time }}']

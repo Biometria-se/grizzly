@@ -1,4 +1,5 @@
 """Any import from a grizzly module should intialize version (grizzly and locust) variables."""
+
 from gevent import monkey
 
 monkey.patch_all()

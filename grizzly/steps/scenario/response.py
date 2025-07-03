@@ -12,13 +12,13 @@ Valid for: {@pylink grizzly.steps.scenario.response.step_response_save_matches},
 
 * `as_json` _bool_ (optional): always return matches as a JSON list, by default if there's a single match it will be returned as a string (default: `False`)
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import parse
 
-from grizzly.context import GrizzlyContext
 from grizzly.steps._helpers import add_request_response_status_codes, add_save_handler, add_validation_handler
 from grizzly.tasks import RequestTask
 from grizzly.tasks.clients import HttpClientTask
@@ -26,6 +26,9 @@ from grizzly.types import ResponseTarget
 from grizzly.types.behave import Context, register_type, then, when
 from grizzly_extras.text import permutation
 from grizzly_extras.transformer import TransformerContentType
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @parse.with_pattern(r'is( not)?', regex_group_count=1)
@@ -81,7 +84,7 @@ def step_response_save_matches_optional(context: Context, target: ResponseTarget
         default_value (str): value to set if there is no match
 
     """
-    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, variable, default_value=default_value)
+    add_save_handler(cast('GrizzlyContext', context.grizzly), target, expression, match_with, variable, default_value=default_value)
 
 
 @then('save response {target:ResponseTarget} "{expression}" that matches "{match_with}" in variable "{variable}"')
@@ -122,7 +125,7 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
         variable (str): name of the already initialized variable to save the value in
 
     """
-    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, variable, default_value=None)
+    add_save_handler(cast('GrizzlyContext', context.grizzly), target, expression, match_with, variable, default_value=None)
 
 
 @then('save optional response {target:ResponseTarget} "{expression}" in variable "{variable}" with default value "{default_value}"')
@@ -152,8 +155,7 @@ def step_response_save_optional(context: Context, target: ResponseTarget, expres
         default_value (str): value to set if there is no match
 
     """
-    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, '.*', variable, default_value=default_value)
-
+    add_save_handler(cast('GrizzlyContext', context.grizzly), target, expression, '.*', variable, default_value=default_value)
 
 
 @then('save response {target:ResponseTarget} "{expression}" in variable "{variable}"')
@@ -181,7 +183,7 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
         variable (str): name of the already initialized variable to save the value in
 
     """
-    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, '.*', variable, default_value=None)
+    add_save_handler(cast('GrizzlyContext', context.grizzly), target, expression, '.*', variable, default_value=None)
 
 
 @when('response {target:ResponseTarget} "{expression}" {condition:Condition} "{match_with}" fail request')
@@ -208,7 +210,7 @@ def step_response_validate(context: Context, target: ResponseTarget, expression:
         match_with (str): static value or a regular expression
 
     """
-    add_validation_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, condition=condition)
+    add_validation_handler(cast('GrizzlyContext', context.grizzly), target, expression, match_with, condition=condition)
 
 
 @then('allow response status codes "{status_list}"')
@@ -231,7 +233,7 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
         status_list (str): comma separated list of integers
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     assert len(grizzly.scenario.tasks()) > 0, 'there are no requests in the scenario'
 
     request = grizzly.scenario.tasks()[-1]
@@ -271,7 +273,7 @@ def step_response_allow_status_codes_table(context: Context) -> None:
     """
     assert context.table is not None, 'step table is missing'
 
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     tasks = grizzly.scenario.tasks()
     number_of_requests = len(grizzly.scenario.tasks(RequestTask, HttpClientTask))
@@ -317,7 +319,7 @@ def step_response_content_type(context: Context, content_type: TransformerConten
     """
     assert content_type != TransformerContentType.UNDEFINED, 'it is not allowed to set UNDEFINED with this step'
 
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     assert len(grizzly.scenario.tasks()) > 0, 'there are no tasks in the scenario'
 
     request = grizzly.scenario.tasks()[-1]

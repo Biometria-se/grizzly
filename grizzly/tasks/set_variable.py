@@ -15,10 +15,10 @@ This task does not have any request statistics entries.
 
 * `value` _value_ - value of the variable being set, must be a template
 """
+
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import create_context_variable, read_file
@@ -28,6 +28,8 @@ from grizzly.utils import has_template, is_file
 from . import GrizzlyTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import MutableMapping
+
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.testdata.variables import AtomicVariable
 
@@ -38,8 +40,8 @@ class SetVariableTask(GrizzlyTask):
     value: str
     variable_type: VariableType
 
-    _variable_instance: Optional[MutableMapping[str, Any]] = None
-    _variable_instance_type: Optional[type[AtomicVariable]] = None
+    _variable_instance: MutableMapping[str, Any] | None = None
+    _variable_instance_type: type[AtomicVariable] | None = None
     _variable_key: str
 
     def __init__(self, variable: str, value: str, variable_type: VariableType) -> None:
@@ -90,7 +92,7 @@ class SetVariableTask(GrizzlyTask):
             if self.variable_type == VariableType.VARIABLES:
                 # Atomic variables that has support for __setitem__
                 if self._variable_instance is None and self._variable_instance_type is not None:
-                    self._variable_instance = cast(MutableMapping[str, Any], self._variable_instance_type.get(parent.user._scenario))
+                    self._variable_instance = cast('MutableMapping[str, Any]', self._variable_instance_type.get(parent.user._scenario))
 
                 if self._variable_instance is not None:
                     self._variable_instance[self._variable_key] = value

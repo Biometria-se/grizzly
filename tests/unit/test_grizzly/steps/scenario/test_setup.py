@@ -1,4 +1,5 @@
 """Unit tests for grizzly.steps.scenario.setup."""
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -6,9 +7,8 @@ from os import environ
 from typing import TYPE_CHECKING, cast
 
 import pytest
-from parse import compile
+from parse import compile as parse_compile
 
-from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario, RetryTask, StepError, StopUser
 from grizzly.steps import *
 from grizzly.tasks.clients import HttpClientTask
@@ -18,11 +18,12 @@ from tests.helpers import ANY
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
 def test_parse_iteration_gramatical_number() -> None:
-    p = compile(
+    p = parse_compile(
         'run for {iteration:d} {iteration_number:IterationGramaticalNumber}',
         extra_types={'IterationGramaticalNumber': parse_iteration_gramatical_number},
     )
@@ -37,7 +38,7 @@ def test_parse_iteration_gramatical_number() -> None:
 
 
 def test_parse_failure_type() -> None:
-    p = compile('yeehaw "{failure_type:FailureType}"', extra_types={'FailureType': parse_failure_type})
+    p = parse_compile('yeehaw "{failure_type:FailureType}"', extra_types={'FailureType': parse_failure_type})
 
     assert p.parse('yeehaw "RuntimeError"')['failure_type'] is RuntimeError
     assert p.parse('yeehaw "RestartScenario"')['failure_type'] is RestartScenario
@@ -45,7 +46,7 @@ def test_parse_failure_type() -> None:
 
 
 def test_failure_action_from_step_expression() -> None:
-    p = compile('{failure_action:FailureAction}', extra_types={'FailureAction': FailureAction.from_step_expression})
+    p = parse_compile('{failure_action:FailureAction}', extra_types={'FailureAction': FailureAction.from_step_expression})
 
     assert p.parse('stop user')['failure_action'] is FailureAction.STOP_USER
     assert p.parse('restart scenario')['failure_action'] is FailureAction.RESTART_SCENARIO
@@ -57,7 +58,7 @@ def test_failure_action_from_step_expression() -> None:
 
 def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -108,7 +109,7 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
 
 def test_step_setup_pace(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -132,7 +133,7 @@ def test_step_setup_pace(behave_fixture: BehaveFixture) -> None:
 
 def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
     behave_fixture.create_step('test step', in_background=False, context=behave)
@@ -151,10 +152,12 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
 
     step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='variable AtomicIntegerIncrementer.test has not been declared'),
-        ANY(AssertionError, message='alias for variable AtomicIntegerIncrementer.test already exists: auth.refresh_time'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='variable AtomicIntegerIncrementer.test has not been declared'),
+            ANY(AssertionError, message='alias for variable AtomicIntegerIncrementer.test already exists: auth.refresh_time'),
+        ],
+    }
 
     def setitem(self: GrizzlyVariables, key: str, value: GrizzlyVariableType) -> None:
         super(GrizzlyVariables, self).__setitem__(key, value)
@@ -166,27 +169,31 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
 
     step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='variable AtomicIntegerIncrementer.test has not been declared'),
-        ANY(AssertionError, message='alias for variable AtomicIntegerIncrementer.test already exists: auth.refresh_time'),
-        ANY(AssertionError, message='variable AtomicCsvReader.users has not been declared'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='variable AtomicIntegerIncrementer.test has not been declared'),
+            ANY(AssertionError, message='alias for variable AtomicIntegerIncrementer.test already exists: auth.refresh_time'),
+            ANY(AssertionError, message='variable AtomicCsvReader.users has not been declared'),
+        ],
+    }
 
     step_setup_variable_value(behave, 'AtomicCsvReader.users', 'users.csv')
     step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
     step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='variable AtomicIntegerIncrementer.test has not been declared'),
-        ANY(AssertionError, message='alias for variable AtomicIntegerIncrementer.test already exists: auth.refresh_time'),
-        ANY(AssertionError, message='variable AtomicCsvReader.users has not been declared'),
-        ANY(AssertionError, message='alias for variable AtomicCsvReader.users.username already exists: auth.user.username'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='variable AtomicIntegerIncrementer.test has not been declared'),
+            ANY(AssertionError, message='alias for variable AtomicIntegerIncrementer.test already exists: auth.refresh_time'),
+            ANY(AssertionError, message='variable AtomicCsvReader.users has not been declared'),
+            ANY(AssertionError, message='alias for variable AtomicCsvReader.users.username already exists: auth.user.username'),
+        ],
+    }
 
 
 def test_step_setup_log_all_requests(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert 'log_all_requests' not in grizzly.scenario.context
@@ -198,7 +205,7 @@ def test_step_setup_log_all_requests(behave_fixture: BehaveFixture) -> None:
 
 def test_step_setup_metadata(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert grizzly.scenario.context.get('metadata', None) is None
@@ -244,7 +251,7 @@ def test_step_setup_metadata(behave_fixture: BehaveFixture) -> None:
 
 def test_step_setup_any_failed_task_default(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario
     behave_fixture.create_step('test step', in_background=False, context=behave)
@@ -261,18 +268,20 @@ def test_step_setup_any_failed_task_default(behave_fixture: BehaveFixture) -> No
 
     step_setup_any_failed_task_default(behave, FailureAction.RETRY_TASK)
 
-    assert behave.exceptions == {grizzly.scenario.name: [
-        ANY(StepError),
-    ]}
+    assert behave.exceptions == {
+        grizzly.scenario.name: [
+            ANY(StepError),
+        ],
+    }
 
-    exception = cast(StepError, behave.exceptions[grizzly.scenario.name][0])
+    exception = cast('StepError', behave.exceptions[grizzly.scenario.name][0])
 
     assert exception.error == 'retry task should not be used as the default behavior, only use it for specific failures'
 
 
 def test_step_setup_any_failed_task_custom(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert grizzly.scenario.failure_handling == {}
@@ -319,11 +328,13 @@ def test_step_setup_the_failed_task_default(grizzly_fixture: GrizzlyFixture) -> 
 
     step_setup_the_failed_task_default(behave, FailureAction.RETRY_TASK)
 
-    assert behave.exceptions == {grizzly.scenario.name: [
-        ANY(StepError),
-    ]}
+    assert behave.exceptions == {
+        grizzly.scenario.name: [
+            ANY(StepError),
+        ],
+    }
 
-    exception = cast(StepError, behave.exceptions[grizzly.scenario.name][0])
+    exception = cast('StepError', behave.exceptions[grizzly.scenario.name][0])
 
     assert exception.error == 'retry task should not be used as the default behavior, only use it for specific failures'
     behave.exceptions.clear()
@@ -333,11 +344,13 @@ def test_step_setup_the_failed_task_default(grizzly_fixture: GrizzlyFixture) -> 
 
     step_setup_the_failed_task_default(behave, FailureAction.RESTART_SCENARIO)
 
-    assert behave.exceptions == {grizzly.scenario.name: [
-        ANY(StepError),
-    ]}
+    assert behave.exceptions == {
+        grizzly.scenario.name: [
+            ANY(StepError),
+        ],
+    }
 
-    exception = cast(StepError, behave.exceptions[grizzly.scenario.name][0])
+    exception = cast('StepError', behave.exceptions[grizzly.scenario.name][0])
 
     assert exception.error == 'scenario does not have any tasks'
 
@@ -379,10 +392,12 @@ def test_step_setup_the_failed_task_custom(grizzly_fixture: GrizzlyFixture) -> N
 
     step_setup_the_failed_task_custom(behave, '504 gateway timeout', FailureAction.RESTART_SCENARIO)
 
-    assert behave.exceptions == {grizzly.scenario.name: [
-        ANY(StepError),
-    ]}
+    assert behave.exceptions == {
+        grizzly.scenario.name: [
+            ANY(StepError),
+        ],
+    }
 
-    exception = cast(StepError, behave.exceptions[grizzly.scenario.name][0])
+    exception = cast('StepError', behave.exceptions[grizzly.scenario.name][0])
 
     assert exception.error == 'scenario does not have any tasks'

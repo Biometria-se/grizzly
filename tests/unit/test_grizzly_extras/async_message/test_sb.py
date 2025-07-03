@@ -1,4 +1,5 @@
 """Unit tests for grizzly_extras.async_message.sb."""
+
 from __future__ import annotations
 
 import logging
@@ -126,7 +127,11 @@ class TestAsyncServiceBusHandler:
             'my-sbns.servicebus.windows.net',
             credential=SOME(
                 AzureAadCredential,
-                username='bob@example.com', password='secret', tenant='example.com', auth_method=AuthMethod.USER, host='sb://my-sbns',  # noqa: S106
+                username='bob@example.com',
+                password='secret',
+                tenant='example.com',
+                auth_method=AuthMethod.USER,
+                host='sb://my-sbns',
             ),
             transport_type=TransportType.AmqpOverWebsocket,
         )
@@ -138,7 +143,11 @@ class TestAsyncServiceBusHandler:
             'my-sbns.servicebus.windows.net',
             credential=SOME(
                 AzureAadCredential,
-                username='bob@example.com', password='secret', tenant='example.com', auth_method=AuthMethod.USER, host='sb://my-sbns',  # noqa: S106
+                username='bob@example.com',
+                password='secret',
+                tenant='example.com',
+                auth_method=AuthMethod.USER,
+                host='sb://my-sbns',
             ),
         )
         service_bus_mgmt_client_mock.reset_mock()
@@ -155,7 +164,11 @@ class TestAsyncServiceBusHandler:
             'my-sbns.servicebus.windows.net',
             credential=SOME(
                 AzureAadCredential,
-                username='bob@example.com', password='secret', tenant='example.com', auth_method=AuthMethod.USER, host='sb://my-sbns',  # noqa: S106
+                username='bob@example.com',
+                password='secret',
+                tenant='example.com',
+                auth_method=AuthMethod.USER,
+                host='sb://my-sbns',
             ),
             transport_type=TransportType.AmqpOverWebsocket,
         )
@@ -181,7 +194,11 @@ class TestAsyncServiceBusHandler:
             'my-sbns.servicebus.windows.net',
             credential=SOME(
                 AzureAadCredential,
-                username='bob@example.com', password='secret', tenant='example.com', auth_method=AuthMethod.USER, host='sb://my-sbns',  # noqa: S106
+                username='bob@example.com',
+                password='secret',
+                tenant='example.com',
+                auth_method=AuthMethod.USER,
+                host='sb://my-sbns',
             ),
         )
         service_bus_mgmt_client_mock.reset_mock()
@@ -525,8 +542,8 @@ class TestAsyncServiceBusHandler:
         assert AsyncServiceBusHandler.from_message(None) == (None, None)
 
         message = ServiceBusMessage('a message')
-        message.raw_amqp_message.properties = None
-        message.raw_amqp_message.header = None
+        message.raw_amqp_message._properties = None
+        message.raw_amqp_message._header = None
         assert AsyncServiceBusHandler.from_message(message) == ({}, 'a message')
 
         message = ServiceBusMessage(b'a message')
@@ -642,9 +659,15 @@ class TestAsyncServiceBusHandler:
         topic_spy.assert_called_once_with(client_identifier='asdf-asdf-asdf', topic_name='test-topic', subscription_name='test-subscription')
         topic_spy.reset_mock()
 
-        receiver = handler.get_receiver_instance(dict({'wait': '100'}, **handler.get_endpoint_arguments(
-            'receiver', 'topic:test-topic, subscription:test-subscription, expression:$.foo.bar',
-        )))
+        receiver = handler.get_receiver_instance(
+            dict(
+                {'wait': '100'},
+                **handler.get_endpoint_arguments(
+                    'receiver',
+                    'topic:test-topic, subscription:test-subscription, expression:$.foo.bar',
+                ),
+            ),
+        )
 
         queue_spy.assert_not_called()
         topic_spy.assert_called_once_with(client_identifier='asdf-asdf-asdf', topic_name='test-topic', subscription_name='test-subscription', max_wait_time=100)
@@ -715,10 +738,12 @@ class TestAsyncServiceBusHandler:
         sender_instance_spy.return_value.__enter__.assert_not_called()
         receiver_instance_spy.assert_not_called()
 
-        request['context'].update({
-            'connection': 'receiver',
-            'endpoint': 'topic:test-topic, subscription:test-subscription',
-        })
+        request['context'].update(
+            {
+                'connection': 'receiver',
+                'endpoint': 'topic:test-topic, subscription:test-subscription',
+            },
+        )
 
         with caplog.at_level(logging.WARNING):
             assert handlers[request['action']](handler, request) == {
@@ -807,11 +832,13 @@ class TestAsyncServiceBusHandler:
         handler._sender_cache.clear()
         handler._receiver_cache.clear()
         receiver_instance_spy.side_effect = None
-        request['context'].update({
-            'connection': 'receiver',
-            'endpoint': 'topic:test-topic, subscription:test-subscription',
-            'forward': True,
-        })
+        request['context'].update(
+            {
+                'connection': 'receiver',
+                'endpoint': 'topic:test-topic, subscription:test-subscription',
+                'forward': True,
+            },
+        )
 
         with caplog.at_level(logging.WARNING):
             assert handlers[request['action']](handler, request) == {
@@ -854,12 +881,14 @@ class TestAsyncServiceBusHandler:
         }
 
         def setup_handler(handler: AsyncServiceBusHandler, request: AsyncMessageRequest) -> None:
-            handler._arguments.update({
-                f'{request["context"]["connection"]}={request["context"]["endpoint"]}': handler.get_endpoint_arguments(
-                    request['context']['connection'],
-                    request['context']['endpoint'],
-                ),
-            })
+            handler._arguments.update(
+                {
+                    f'{request["context"]["connection"]}={request["context"]["endpoint"]}': handler.get_endpoint_arguments(
+                        request['context']['connection'],
+                        request['context']['endpoint'],
+                    ),
+                },
+            )
 
             endpoint = request['context']['endpoint']
 
@@ -924,10 +953,12 @@ class TestAsyncServiceBusHandler:
 
         # receiver request
         request['action'] = 'RECEIVE'
-        request['context'].update({
-            'connection': 'receiver',
-            'endpoint': 'topic:test-topic, subscription:test-subscription',
-        })
+        request['context'].update(
+            {
+                'connection': 'receiver',
+                'endpoint': 'topic:test-topic, subscription:test-subscription',
+            },
+        )
 
         setup_handler(handler, request)
 
@@ -998,7 +1029,6 @@ class TestAsyncServiceBusHandler:
         _hello_mock.assert_called_once_with(request, force=True)
         assert caplog.messages[-1] == 'connection unexpectedly closed, reconnecting'
 
-
     def test_request_expression(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
 
@@ -1023,30 +1053,40 @@ class TestAsyncServiceBusHandler:
             cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
             key = f'{request["context"]["connection"]}={cache_endpoint}'
-            handler._arguments.update({
-                key: handler.get_endpoint_arguments(
-                    request['context']['connection'],
-                    request['context']['endpoint'],
-                ),
-            })
+            handler._arguments.update(
+                {
+                    key: handler.get_endpoint_arguments(
+                        request['context']['connection'],
+                        request['context']['endpoint'],
+                    ),
+                },
+            )
 
-            handler._arguments[key]['content_type'] = cast(str, request['context']['content_type'])
+            handler._arguments[key]['content_type'] = cast('str', request['context']['content_type'])
             handler._arguments[key]['consume'] = f'{request["context"].get("consume", False)}'
             handler._receiver_cache[cache_endpoint] = receiver_instance_mock.return_value
 
         setup_handler(handler, request)
-        message1 = ServiceBusMessage(jsondumps({
-            'document': {
-                'name': 'not-test',
-                'id': 10,
-            },
-        }))
-        message2 = ServiceBusMessage(jsondumps({
-            'document': {
-                'name': 'test',
-                'id': 13,
-            },
-        }))
+        message1 = ServiceBusMessage(
+            jsondumps(
+                {
+                    'document': {
+                        'name': 'not-test',
+                        'id': 10,
+                    },
+                },
+            ),
+        )
+        message2 = ServiceBusMessage(
+            jsondumps(
+                {
+                    'document': {
+                        'name': 'test',
+                        'id': 13,
+                    },
+                },
+            ),
+        )
         receiver_instance_mock.return_value.__iter__.side_effect = [
             iter([message1, message2]),
         ]
@@ -1103,12 +1143,16 @@ class TestAsyncServiceBusHandler:
 
         setattr(handler, 'from_message', from_message)  # noqa: B010
 
-        message3 = ServiceBusMessage(jsondumps({
-            'document': {
-                'name': 'not-test',
-                'id': 14,
-            },
-        }))
+        message3 = ServiceBusMessage(
+            jsondumps(
+                {
+                    'document': {
+                        'name': 'not-test',
+                        'id': 14,
+                    },
+                },
+            ),
+        )
 
         receiver_instance_mock.return_value.__iter__.side_effect = [
             iter([message1, message3]),
@@ -1147,17 +1191,29 @@ class TestAsyncServiceBusHandler:
 
         assert response.get('payload', None) == jsondumps({'document': {'name': 'test', 'id': 13}})
 
-        message1 = ServiceBusMessage(jsondumps({
-            'name': 'bob',
-        }))
+        message1 = ServiceBusMessage(
+            jsondumps(
+                {
+                    'name': 'bob',
+                },
+            ),
+        )
 
-        message2 = ServiceBusMessage(jsondumps({
-            'name': 'alice',
-        }))
+        message2 = ServiceBusMessage(
+            jsondumps(
+                {
+                    'name': 'alice',
+                },
+            ),
+        )
 
-        message3 = ServiceBusMessage(jsondumps({
-            'name': 'mallory',
-        }))
+        message3 = ServiceBusMessage(
+            jsondumps(
+                {
+                    'name': 'mallory',
+                },
+            ),
+        )
 
         receiver_instance_mock.return_value.__iter__.side_effect = [
             iter([message1, message2, message3]),

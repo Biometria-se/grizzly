@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.wait_explicit."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -28,6 +29,7 @@ class TestExplicitWaitTask:
         assert callable(task)
 
         import grizzly.tasks.wait_explicit
+
         gsleep_spy = mocker.patch.object(grizzly.tasks.wait_explicit, 'gsleep', autospec=True)
         request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 

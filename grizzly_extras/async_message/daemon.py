@@ -1,6 +1,7 @@
 """Daemon implementation that handles are requests.
 Based on ZMQ PUB/SUB, where each request type is handled to a worker which is for a specific client.
 """
+
 from __future__ import annotations
 
 import logging
@@ -12,7 +13,7 @@ from multiprocessing import Process
 from signal import SIGINT, SIGTERM, Signals, signal
 from threading import Event
 from time import sleep
-from typing import TYPE_CHECKING, Literal, Optional, Union, cast
+from typing import TYPE_CHECKING, Literal, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -37,9 +38,9 @@ if TYPE_CHECKING:  # pragma: no cover
 class ThreadPoolExecutor(futures.ThreadPoolExecutor):
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> Literal[False]:
         self.shutdown(wait=False, cancel_futures=True)
         return False
@@ -50,11 +51,11 @@ class Worker:
     identity: str
     context: ztypes.Context
 
-    integration: Optional[AsyncMessageHandler]
+    integration: AsyncMessageHandler | None
 
     _event: Event
 
-    def __init__(self, context: ztypes.Context, identity: str, event: Optional[Event] = None) -> None:
+    def __init__(self, context: ztypes.Context, identity: str, event: Event | None = None) -> None:
         self.logger = logging.getLogger(f'worker::{identity}')
         self.identity = identity
         self.context = context
@@ -65,7 +66,6 @@ class Worker:
         self.socket.connect('inproc://workers')
         self.socket.send_string(LRU_READY)
 
-
     def _create_integration(self, request: AsyncMessageRequest) -> AsyncMessageHandler:
         integration_url = request.get('context', {}).get('url', None)
         if integration_url is None:
@@ -75,11 +75,13 @@ class Worker:
         parsed = urlparse(integration_url)
 
         if parsed.scheme in ['mq', 'mqs']:
-            from .mq import AsyncMessageQueueHandler
+            from .mq import AsyncMessageQueueHandler  # noqa: PLC0415
+
             return AsyncMessageQueueHandler(self.identity, event=self._event)
 
         if parsed.scheme == 'sb':
-            from .sb import AsyncServiceBusHandler
+            from .sb import AsyncServiceBusHandler  # noqa: PLC0415
+
             return AsyncServiceBusHandler(self.identity, event=self._event)
 
         message = f'integration for {parsed.scheme}:// is not implemented'
@@ -104,13 +106,13 @@ class Worker:
                     continue
 
                 request = cast(
-                    AsyncMessageRequest,
+                    'AsyncMessageRequest',
                     jsonloads(request_proto[-1].decode()),
                 )
 
                 request_request_id = request.get('request_id', None)
 
-                response: Optional[AsyncMessageResponse] = None
+                response: AsyncMessageResponse | None = None
 
                 try:
                     if request['worker'] != self.identity:
@@ -151,14 +153,14 @@ class Worker:
 
 
 def create_router_socket(context: ztypes.Context) -> ztypes.Socket:
-    socket = cast(ztypes.Socket, context.socket(zmq.ROUTER))
+    socket = cast('ztypes.Socket', context.socket(zmq.ROUTER))
     socket.setsockopt(zmq.LINGER, 0)
     socket.setsockopt(zmq.ROUTER_HANDOVER, 1)
 
     return socket
 
 
-def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
+def router(run_daemon: Event) -> None:  # noqa: C901, PLR0912, PLR0915
     logger = logging.getLogger('router')
     logger.debug('starting')
 
@@ -261,12 +263,12 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
                         continue
 
                     request_id = frontend_response[0]
-                    payload = cast(AsyncMessageRequest, jsonloads(frontend_response[-1].decode()))
+                    payload = cast('AsyncMessageRequest', jsonloads(frontend_response[-1].decode()))
 
                     request_worker_id = payload.get('worker', None)
                     request_client_id = str(payload.get('client', None))
                     request_request_id = payload.get('request_id', None)
-                    client_key: Optional[str] = None
+                    client_key: str | None = None
 
                     logger.debug(
                         'frontend: received message %s from %d to %s',
@@ -351,12 +353,13 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0915
     if not run_daemon.is_set():
         run_daemon.set()
 
+
 def main() -> int:
     logger = logging.getLogger('main')
     run_daemon = Event()
     process = Process(target=router, args=(run_daemon,))
 
-    def signal_handler(signum: Union[int, Signals], _frame: Optional[FrameType]) -> None:
+    def signal_handler(signum: int | Signals, _frame: FrameType | None) -> None:
         if run_daemon.is_set():
             return
 

@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.clients.messagequeue."""
+
 from __future__ import annotations
 
 import logging
@@ -17,7 +18,7 @@ from zmq.error import Again as ZMQAgain
 from grizzly.exceptions import RestartScenario
 from grizzly.scenarios import IteratorScenario
 from grizzly.tasks.clients import MessageQueueClientTask
-from grizzly.types import RequestDirection, pymqi
+from grizzly.types import RequestDirection, StrDict, pymqi
 from grizzly_extras.async_message import AsyncMessageError
 from tests.helpers import ANY
 
@@ -120,10 +121,13 @@ class TestMessageQueueClientTask:
         zmq_context: ztypes.Context | None = None
         try:
             MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
-            task_factory = MessageQueueClientTask(RequestDirection.FROM, (
-                'mqs://mq_username:mq_password@mq.example.com:1415/queue:INCOMING.MESSAGES?QueueManager=QM01&Channel=IN.CHAN'
-                '&wait=133&heartbeat=432&KeyFile=/tmp/mq_keys&SslCipher=NUL&CertLabel=something'
-            ))
+            task_factory = MessageQueueClientTask(
+                RequestDirection.FROM,
+                (
+                    'mqs://mq_username:mq_password@mq.example.com:1415/queue:INCOMING.MESSAGES?QueueManager=QM01&Channel=IN.CHAN'
+                    '&wait=133&heartbeat=432&KeyFile=/tmp/mq_keys&SslCipher=NUL&CertLabel=something'
+                ),
+            )
             zmq_context = task_factory._zmq_context
 
             assert create_client_mocked.call_count == 0
@@ -157,7 +161,10 @@ class TestMessageQueueClientTask:
                 task_factory.create_context()
 
             task_factory.endpoint = 'mqs://mq.example.io/topic:INCOMING.MSG'
-            with pytest.raises(AssertionError, match='MessageQueueClientTask: QueueManager and Channel must be specified in the query string of "mqs://mq.example.io/topic:INCOMING.MSG"'):
+            with pytest.raises(
+                AssertionError,
+                match='MessageQueueClientTask: QueueManager and Channel must be specified in the query string of "mqs://mq.example.io/topic:INCOMING.MSG"',
+            ):
                 task_factory.create_context()
 
             task_factory.endpoint = 'mqs://mq.example.io/topic:INCOMING.MSG?Channel=TCP.IN'
@@ -320,32 +327,34 @@ class TestMessageQueueClientTask:
                 send_json_mock = mocker.patch.object(client, 'send_json')
                 recv_json_mock.side_effect = [ZMQAgain, None]
 
-                meta: dict[str, Any] = {}
+                meta: StrDict = {}
                 with pytest.raises(AsyncMessageError, match='no response'):
                     task_factory.connect(111111, client, meta)
                 assert meta.get('response_length') == 0
                 assert meta.get('action') == 'topic:INCOMING.MSG'
                 assert meta.get('direction') == '<->'
 
-                send_json_mock.assert_called_once_with({
-                    'action': 'CONN',
-                    'client': 111111,
-                    'context': {
-                        'url': task_factory.endpoint,
-                        'connection': 'mq.example.io(1414)',
-                        'queue_manager': 'QM01',
-                        'channel': 'TCP.IN',
-                        'username': 'mq_username',
-                        'password': 'mq_password',
-                        'key_file': 'mq_username',
-                        'cert_label': 'mq_username',
-                        'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
-                        'message_wait': None,
-                        'heartbeat_interval': None,
-                        'header_type': None,
+                send_json_mock.assert_called_once_with(
+                    {
+                        'action': 'CONN',
+                        'client': 111111,
+                        'context': {
+                            'url': task_factory.endpoint,
+                            'connection': 'mq.example.io(1414)',
+                            'queue_manager': 'QM01',
+                            'channel': 'TCP.IN',
+                            'username': 'mq_username',
+                            'password': 'mq_password',
+                            'key_file': 'mq_username',
+                            'cert_label': 'mq_username',
+                            'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
+                            'message_wait': None,
+                            'heartbeat_interval': None,
+                            'header_type': None,
+                        },
+                        'request_id': 'foobar',
                     },
-                    'request_id': 'foobar',
-                })
+                )
                 assert recv_json_mock.call_count == 2
                 _, kwargs = recv_json_mock.call_args_list[-1]
                 assert kwargs.get('flags', None) == zmq.NOBLOCK
@@ -359,8 +368,8 @@ class TestMessageQueueClientTask:
 
                 assert send_json_mock.call_count == 2
                 assert recv_json_mock.call_count == 3
-                assert meta.get('response_length', None) == 0
-                assert meta.get('action', None) == 'topic:INCOMING.MSG'
+                assert meta.get('response_length') == 0
+                assert meta.get('action') == 'topic:INCOMING.MSG'
 
                 meta = {}
                 message = {'success': True, 'message': 'hello there', 'worker': 'aaaa-bbbb-cccc-dddd'}
@@ -370,8 +379,8 @@ class TestMessageQueueClientTask:
 
                 assert send_json_mock.call_count == 3
                 assert recv_json_mock.call_count == 4
-                assert meta.get('response_length', None) == 0
-                assert meta.get('action', None) == 'topic:INCOMING.MSG'
+                assert meta.get('response_length') == 0
+                assert meta.get('action') == 'topic:INCOMING.MSG'
                 assert task_factory._worker.get(333333, None) == 'aaaa-bbbb-cccc-dddd'
 
                 zmq_context.destroy()
@@ -392,25 +401,27 @@ class TestMessageQueueClientTask:
                 task_factory.connect(444444, client, meta)
 
                 recv_json_mock.assert_called_once()
-                send_json_mock.assert_called_once_with({
-                    'action': 'CONN',
-                    'client': 444444,
-                    'context': {
-                        'url': task_factory.endpoint,
-                        'connection': 'mq.example.io(1414)',
-                        'queue_manager': 'QM01',
-                        'channel': 'TCP.IN',
-                        'username': 'mq_username',
-                        'password': 'mq_password',
-                        'key_file': 'mq_username',
-                        'cert_label': 'mq_username',
-                        'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
-                        'message_wait': None,
-                        'heartbeat_interval': None,
-                        'header_type': 'rfh2',
+                send_json_mock.assert_called_once_with(
+                    {
+                        'action': 'CONN',
+                        'client': 444444,
+                        'context': {
+                            'url': task_factory.endpoint,
+                            'connection': 'mq.example.io(1414)',
+                            'queue_manager': 'QM01',
+                            'channel': 'TCP.IN',
+                            'username': 'mq_username',
+                            'password': 'mq_password',
+                            'key_file': 'mq_username',
+                            'cert_label': 'mq_username',
+                            'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
+                            'message_wait': None,
+                            'heartbeat_interval': None,
+                            'header_type': 'rfh2',
+                        },
+                        'request_id': 'foobar',
                     },
-                    'request_id': 'foobar',
-                })
+                )
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()
@@ -455,28 +466,30 @@ class TestMessageQueueClientTask:
             assert task_factory._worker.get(id(parent.user), None) == 'dddd-eeee-ffff-9999'
             assert send_json_mock.call_count == 2
             args, kwargs = send_json_mock.call_args_list[-1]
-            assert args == ({
-                'action': 'GET',
-                'worker': 'dddd-eeee-ffff-9999',
-                'client': id(parent.user),
-                'context': {
-                    'url': 'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
-                    'connection': 'mq.example.io(1414)',
-                    'queue_manager': 'QM01',
-                    'channel': 'TCP.IN',
-                    'username': 'mq_username',
-                    'password': 'mq_password',
-                    'key_file': 'mq_username',
-                    'cert_label': 'mq_username',
-                    'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
-                    'message_wait': None,
-                    'heartbeat_interval': None,
-                    'header_type': None,
-                    'endpoint': 'topic:INCOMING.MSG',
+            assert args == (
+                {
+                    'action': 'GET',
+                    'worker': 'dddd-eeee-ffff-9999',
+                    'client': id(parent.user),
+                    'context': {
+                        'url': 'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
+                        'connection': 'mq.example.io(1414)',
+                        'queue_manager': 'QM01',
+                        'channel': 'TCP.IN',
+                        'username': 'mq_username',
+                        'password': 'mq_password',
+                        'key_file': 'mq_username',
+                        'cert_label': 'mq_username',
+                        'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
+                        'message_wait': None,
+                        'heartbeat_interval': None,
+                        'header_type': None,
+                        'endpoint': 'topic:INCOMING.MSG',
+                    },
+                    'payload': None,
+                    'request_id': 'foobar',
                 },
-                'payload': None,
-                'request_id': 'foobar',
-            },)
+            )
             assert kwargs == {}
             send_json_mock.reset_mock()
             assert recv_json_mock.call_count == 3
@@ -503,28 +516,30 @@ class TestMessageQueueClientTask:
 
             assert parent.user.variables.get('mq-client-var', None) == 'none'
             assert parent.user.variables.get('mq-client-metadata', None) == 'none'
-            send_json_mock.assert_called_once_with({
-                'action': 'GET',
-                'worker': 'dddd-eeee-ffff-9999',
-                'client': id(parent.user),
-                'context': {
-                    'url': 'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
-                    'connection': 'mq.example.io(1414)',
-                    'queue_manager': 'QM01',
-                    'channel': 'TCP.IN',
-                    'username': 'mq_username',
-                    'password': 'mq_password',
-                    'key_file': 'mq_username',
-                    'cert_label': 'mq_username',
-                    'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
-                    'message_wait': None,
-                    'heartbeat_interval': None,
-                    'header_type': None,
-                    'endpoint': 'topic:INCOMING.MSG, max_message_size:13337',
+            send_json_mock.assert_called_once_with(
+                {
+                    'action': 'GET',
+                    'worker': 'dddd-eeee-ffff-9999',
+                    'client': id(parent.user),
+                    'context': {
+                        'url': 'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
+                        'connection': 'mq.example.io(1414)',
+                        'queue_manager': 'QM01',
+                        'channel': 'TCP.IN',
+                        'username': 'mq_username',
+                        'password': 'mq_password',
+                        'key_file': 'mq_username',
+                        'cert_label': 'mq_username',
+                        'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
+                        'message_wait': None,
+                        'heartbeat_interval': None,
+                        'header_type': None,
+                        'endpoint': 'topic:INCOMING.MSG, max_message_size:13337',
+                    },
+                    'payload': None,
+                    'request_id': 'foobar',
                 },
-                'payload': None,
-                'request_id': 'foobar',
-            })
+            )
             send_json_mock.reset_mock()
             assert recv_json_mock.call_count == 4
 
@@ -658,28 +673,30 @@ class TestMessageQueueClientTask:
             assert recv_json_mock.call_count == 2
             assert send_json_mock.call_count == 2
             args, kwargs = send_json_mock.call_args_list[-1]
-            assert args == ({
-                'action': 'PUT',
-                'worker': 'dddd-eeee-ffff-9999',
-                'client': id(parent.user),
-                'context': {
-                    'url': 'mqs://mq_username:mq_password@mq.example.io/queue:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
-                    'connection': 'mq.example.io(1414)',
-                    'queue_manager': 'QM01',
-                    'channel': 'TCP.IN',
-                    'username': 'mq_username',
-                    'password': 'mq_password',
-                    'key_file': 'mq_username',
-                    'cert_label': 'mq_username',
-                    'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
-                    'message_wait': None,
-                    'heartbeat_interval': None,
-                    'header_type': None,
-                    'endpoint': 'queue:INCOMING.MSG',
+            assert args == (
+                {
+                    'action': 'PUT',
+                    'worker': 'dddd-eeee-ffff-9999',
+                    'client': id(parent.user),
+                    'context': {
+                        'url': 'mqs://mq_username:mq_password@mq.example.io/queue:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
+                        'connection': 'mq.example.io(1414)',
+                        'queue_manager': 'QM01',
+                        'channel': 'TCP.IN',
+                        'username': 'mq_username',
+                        'password': 'mq_password',
+                        'key_file': 'mq_username',
+                        'cert_label': 'mq_username',
+                        'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
+                        'message_wait': None,
+                        'heartbeat_interval': None,
+                        'header_type': None,
+                        'endpoint': 'queue:INCOMING.MSG',
+                    },
+                    'payload': source,
+                    'request_id': 'foobar',
                 },
-                'payload': source,
-                'request_id': 'foobar',
-            },)
+            )
             assert kwargs == {}
             send_json_mock.reset_mock()
 
@@ -705,28 +722,30 @@ class TestMessageQueueClientTask:
             task(parent)
 
             assert recv_json_mock.call_count == 3
-            send_json_mock.assert_called_once_with({
-                'action': 'PUT',
-                'worker': 'dddd-eeee-ffff-9999',
-                'client': id(parent.user),
-                'context': {
-                    'url': 'mqs://mq_username:mq_password@mq.example.io/queue:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
-                    'connection': 'mq.example.io(1414)',
-                    'queue_manager': 'QM01',
-                    'channel': 'TCP.IN',
-                    'username': 'mq_username',
-                    'password': 'mq_password',
-                    'key_file': 'mq_username',
-                    'cert_label': 'mq_username',
-                    'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
-                    'message_wait': None,
-                    'heartbeat_interval': None,
-                    'header_type': None,
-                    'endpoint': 'queue:INCOMING.MSG',
+            send_json_mock.assert_called_once_with(
+                {
+                    'action': 'PUT',
+                    'worker': 'dddd-eeee-ffff-9999',
+                    'client': id(parent.user),
+                    'context': {
+                        'url': 'mqs://mq_username:mq_password@mq.example.io/queue:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
+                        'connection': 'mq.example.io(1414)',
+                        'queue_manager': 'QM01',
+                        'channel': 'TCP.IN',
+                        'username': 'mq_username',
+                        'password': 'mq_password',
+                        'key_file': 'mq_username',
+                        'cert_label': 'mq_username',
+                        'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
+                        'message_wait': None,
+                        'heartbeat_interval': None,
+                        'header_type': None,
+                        'endpoint': 'queue:INCOMING.MSG',
+                    },
+                    'payload': source_file.read_text(),
+                    'request_id': 'foobar',
                 },
-                'payload': source_file.read_text(),
-                'request_id': 'foobar',
-            })
+            )
             send_json_mock.reset_mock()
 
             fire_spy.assert_called_once_with(

@@ -1,10 +1,11 @@
 """Utilities used by grizzly_extras.async_message."""
+
 from __future__ import annotations
 
 import logging
 from contextlib import suppress
 from time import perf_counter, sleep
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
 import zmq.green as zmq
@@ -19,7 +20,7 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-def tohex(value: Union[int, str, bytes, bytearray, Any]) -> str:
+def tohex(value: Any) -> str:
     if isinstance(value, str):
         return ''.join(f'{ord(c):02x}' for c in value)
 
@@ -45,14 +46,14 @@ def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -
 
     logger.debug('async_message_request::send_json: sent %r', request_metadata)
 
-    response: Optional[AsyncMessageResponse] = None
+    response: AsyncMessageResponse | None = None
     count = 0
 
     start = perf_counter()
     while True:
         count += 1
         try:
-            response = cast(Optional[AsyncMessageResponse], client.recv_json(flags=zmq.NOBLOCK))
+            response = cast('AsyncMessageResponse | None', client.recv_json(flags=zmq.NOBLOCK))
             break
         except ZMQAgain:
             exception: Exception | None = None
@@ -80,7 +81,7 @@ def async_message_request(client: ztypes.Socket, request: AsyncMessageRequest) -
         msg = 'no response'
         raise AsyncMessageError(msg)
 
-    message = response.get('message', None)
+    message = response.get('message')
 
     if not response['success']:
         if message == 'abort':

@@ -1,10 +1,11 @@
 """Abstract load user that handles responses."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from contextlib import suppress
 from json import dumps as jsondumps
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from locust.exception import ResponseError
 
@@ -14,8 +15,9 @@ from grizzly_extras.transformer import PlainTransformer, TransformerContentType,
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
-    from grizzly.types import GrizzlyResponse, HandlerContextType
+    from grizzly.types import GrizzlyResponse, HandlerContextType, StrDict
     from grizzly.users import GrizzlyUser
+
 
 class ResponseHandlerAction(ABC):
     def __init__(self, /, expression: str, match_with: str, expected_matches: str = '1', *, as_json: bool = False) -> None:
@@ -39,7 +41,7 @@ class ResponseHandlerAction(ABC):
         user: GrizzlyUser,
         *,
         condition: bool = False,
-    ) -> tuple[Optional[str], str, str]:
+    ) -> tuple[str | None, str, str]:
         """Contains common logic for both save and validation handlers.
 
         Args:
@@ -138,7 +140,7 @@ class ValidationHandlerAction(ResponseHandlerAction):
 
 
 class SaveHandlerAction(ResponseHandlerAction):
-    def __init__(self, variable: str, /, expression: str, match_with: str, expected_matches: str = '1', *, as_json: bool = False, default_value: Optional[str] = None) -> None:
+    def __init__(self, variable: str, /, expression: str, match_with: str, expected_matches: str = '1', *, as_json: bool = False, default_value: str | None = None) -> None:
         super().__init__(
             expression=expression,
             match_with=match_with,
@@ -171,7 +173,7 @@ class ResponseHandler(GrizzlyEventHandlerClass):
         name: str,
         context: GrizzlyResponse,
         request: RequestTask,
-        exception: Optional[Exception] = None,
+        exception: Exception | None = None,
         **_kwargs: Any,
     ) -> None:
         if getattr(request, 'response', None) is None:
@@ -187,8 +189,8 @@ class ResponseHandler(GrizzlyEventHandlerClass):
         if len(handlers.payload) < 1 and len(handlers.metadata) < 1:
             return
 
-        response_metadata: Optional[dict[str, Any]]
-        response_payload: Optional[str]
+        response_metadata: StrDict | None
+        response_payload: str | None
 
         response_metadata, response_payload = context
 

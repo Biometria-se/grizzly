@@ -10,6 +10,7 @@ the full namespace has to be specified as `user_class_name` in the scenarios {@p
 
 There are examples of this in the {@link framework.example}.
 """
+
 from __future__ import annotations
 
 import logging
@@ -25,7 +26,7 @@ from logging import Logger
 from os import environ
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, TypeVar, cast, final
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar, cast, final
 
 from gevent.event import Event
 from locust.event import EventHook
@@ -35,7 +36,7 @@ from locust.user.users import User, UserMeta
 from grizzly.events import GrizzlyEventHook, RequestLogger, ResponseHandler
 from grizzly.exceptions import RestartScenario, StopScenario
 from grizzly.testdata import GrizzlyVariables
-from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
+from grizzly.types import GrizzlyResponse, RequestType, ScenarioState, StrDict
 from grizzly.types.locust import Environment, StopUser
 from grizzly.utils import has_template, merge_dicts
 from grizzly_extras.async_message import AsyncMessageError
@@ -60,9 +61,9 @@ class GrizzlyUserMeta(UserMeta):
 
 
 class grizzlycontext:
-    context: dict[str, Any]
+    context: StrDict
 
-    def __init__(self, *, context: dict[str, Any]) -> None:
+    def __init__(self, *, context: StrDict) -> None:
         self.context = context
 
     def __call__(self, cls: type[GrizzlyUser]) -> type[GrizzlyUser]:
@@ -80,19 +81,21 @@ class GrizzlyUserEvents:
         self.state = EventHook()
 
 
-@grizzlycontext(context={
-    'log_all_requests': False,
-    'metadata': None,
-})
+@grizzlycontext(
+    context={
+        'log_all_requests': False,
+        'metadata': None,
+    },
+)
 class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     __dependencies__: ClassVar[GrizzlyDependencies] = set()
     __scenario__: ClassVar[GrizzlyContextScenario]  # reference to grizzly scenario this user is part of
-    __context__: ClassVar[dict[str, Any]] = {}
+    __context__: ClassVar[StrDict] = {}
 
-    _context: dict[str, Any]
+    _context: dict
     _context_root: Path
     _scenario: GrizzlyContextScenario  # copy of scenario for this user instance
-    _scenario_state: Optional[ScenarioState]
+    _scenario_state: ScenarioState | None
 
     logger: Logger
 
@@ -101,7 +104,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     abort: Event
     environment: Environment
     grizzly: GrizzlyContext
-    sticky_tag: Optional[str] = None
+    sticky_tag: str | None = None
     variables: GrizzlyVariables
     consumer: TestdataConsumer
 
@@ -126,11 +129,12 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         self.events.request.add_listener(RequestLogger(self))
         self.events.state.add_listener(self.on_state)
 
-        self.variables = GrizzlyVariables(**{key: None for key in self._scenario.variables})
+        self.variables = GrizzlyVariables(**dict.fromkeys(self._scenario.variables))
 
         environment.events.quitting.add_listener(self.on_quitting)
 
-        from grizzly.context import grizzly
+        from grizzly.context import grizzly  # noqa: PLC0415
+
         self.grizzly = grizzly
 
     def failure_handler(self, exception: Exception | None, *, task: GrizzlyTask | None = None) -> None:
@@ -139,7 +143,9 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             return
 
         # failure action has already been decided, let it through
-        from grizzly.types import FailureAction
+        # fugly, but needed to not get cyclic dependencies...
+        from grizzly.types import FailureAction  # noqa: PLC0415
+
         if isinstance(exception, FailureAction.get_failure_exceptions()):
             raise exception
 
@@ -168,7 +174,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
     def on_quitting(self, *_args: Any, **kwargs: Any) -> None:
         # if it already has been called with True, do not change it back to False
-        if not self.abort.is_set() and cast(bool, kwargs.get('abort', False)):
+        if not self.abort.is_set() and cast('bool', kwargs.get('abort', False)):
             self.abort.set()
 
     def on_start(self) -> None:
@@ -183,7 +189,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     def on_state(self, *, state: ScenarioState) -> None:
         pass
 
-    def render(self, template: str, variables: Optional[dict[str, Any]] = None) -> str:
+    def render(self, template: str, variables: StrDict | None = None) -> str:
         if not has_template(template):
             return template
 
@@ -193,18 +199,18 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         return self._scenario.jinja2.from_string(template).render(**self.variables, **variables)
 
     @property
-    def metadata(self) -> dict[str, Any]:
+    def metadata(self) -> StrDict:
         return self._context.get('metadata', None) or {}
 
     @metadata.setter
-    def metadata(self, value: dict[str, Any]) -> None:
+    def metadata(self, value: StrDict) -> None:
         if self._context.get('metadata', None) is None:
             self._context['metadata'] = {}
 
         self._context['metadata'].update(value)
 
     @property
-    def scenario_state(self) -> Optional[ScenarioState]:
+    def scenario_state(self) -> ScenarioState | None:
         return self._scenario_state
 
     @scenario_state.setter
@@ -226,7 +232,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             self._state = LOCUST_STATE_RUNNING
             return False
 
-        return cast(bool, super().stop(force=force))
+        return cast('bool', super().stop(force=force))
 
     @abstractmethod
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:  # pragma: no cover
@@ -236,9 +242,9 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     @final
     def request(self, request: RequestTask) -> GrizzlyResponse:
         """Perform a request and handle all the common logic that should execute before and after a user request."""
-        metadata: Optional[dict[str, Any]] = None
-        payload: Optional[Any] = None
-        exception: Optional[Exception] = None
+        metadata: StrDict | None = None
+        payload: Any = None
+        exception: Exception | None = None
         response_length = 0
 
         start_time = perf_counter()
@@ -318,7 +324,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
         try:
             name = self.render(request_template.name)
-            source: Optional[str] = None
+            source: str | None = None
             request.name = f'{self._scenario.identifier} {name}'
             request.endpoint = self.render(request_template.endpoint)
 
@@ -354,10 +360,10 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         else:
             return request
 
-    def context(self) -> dict[str, Any]:
+    def context(self) -> StrDict:
         return self._context
 
-    def add_context(self, context: dict[str, Any]) -> None:
+    def add_context(self, context: StrDict) -> None:
         for variable, value in context.get('variables', {}).items():
             self.set_variable(variable, value)
 
@@ -381,10 +387,10 @@ from .restapi import RestApiUser
 from .servicebus import ServiceBusUser
 
 __all__ = [
-    'RestApiUser',
-    'MessageQueueUser',
-    'ServiceBusUser',
     'BlobStorageUser',
-    'IotHubUser',
     'DummyUser',
+    'IotHubUser',
+    'MessageQueueUser',
+    'RestApiUser',
+    'ServiceBusUser',
 ]

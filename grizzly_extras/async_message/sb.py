@@ -1,11 +1,12 @@
 """ServiceBus handler implementation for async-messaged."""
+
 from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Iterable
 from contextlib import suppress
 from time import perf_counter, sleep, time
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
@@ -42,7 +43,7 @@ __all__ = [
 
 handlers: dict[str, AsyncMessageRequestHandler] = {}
 
-GenericCacheValue = Union[ServiceBusSender, ServiceBusReceiver]
+GenericCacheValue = ServiceBusSender | ServiceBusReceiver
 GenericCache = dict[str, GenericCacheValue]
 GenericInstance = Callable[..., GenericCacheValue]
 
@@ -53,8 +54,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
     _arguments: dict[str, dict[str, str]]
     _subscriptions: list[AsyncMessageRequest]
 
-    _client: Optional[ServiceBusClient] = None
-    mgmt_client: Optional[ServiceBusAdministrationClient] = None
+    _client: ServiceBusClient | None = None
+    mgmt_client: ServiceBusAdministrationClient | None = None
 
     def __init__(self, worker: str, event: Event | None = None) -> None:
         super().__init__(worker, event)
@@ -122,13 +123,13 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         if endpoint_type == 'queue':
             sender_arguments.update({'queue_name': endpoint_name})
             sender_type = cast(
-                Callable[..., ServiceBusSender],
+                'Callable[..., ServiceBusSender]',
                 self.client.get_queue_sender,
             )
         else:
             sender_arguments.update({'topic_name': endpoint_name})
             sender_type = cast(
-                Callable[..., ServiceBusSender],
+                'Callable[..., ServiceBusSender]',
                 self.client.get_topic_sender,
             )
 
@@ -140,7 +141,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         subscription_name = arguments.get('subscription')
         message_wait = arguments.get('wait')
 
-        receiver_arguments: dict[str, Any] = {
+        receiver_arguments: dict = {
             'client_identifier': self.worker,
         }
         receiver_type: Callable[..., ServiceBusReceiver]
@@ -149,29 +150,26 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             receiver_arguments.update({'max_wait_time': int(message_wait)})
 
         if endpoint_type == 'queue':
-            receiver_type = cast(Callable[..., ServiceBusReceiver], self.client.get_queue_receiver)
+            receiver_type = cast('Callable[..., ServiceBusReceiver]', self.client.get_queue_receiver)
             receiver_arguments.update({'queue_name': endpoint_name})
         else:
-            receiver_type = cast(Callable[..., ServiceBusReceiver], self.client.get_subscription_receiver)
-            receiver_arguments.update({
-                'topic_name': endpoint_name,
-                'subscription_name': subscription_name,
-            })
+            receiver_type = cast('Callable[..., ServiceBusReceiver]', self.client.get_subscription_receiver)
+            receiver_arguments.update(
+                {
+                    'topic_name': endpoint_name,
+                    'subscription_name': subscription_name,
+                },
+            )
 
         return receiver_type(**receiver_arguments)
 
     @classmethod
-    def from_message(cls, message: Optional[ServiceBusMessage]) -> tuple[Optional[dict[str, Any]], Optional[str]]:
-        def to_dict(obj: Optional[DictMixin]) -> dict[str, Any]:
+    def from_message(cls, message: ServiceBusMessage | None) -> tuple[dict | None, str | None]:
+        def to_dict(obj: DictMixin | None) -> dict:
             if obj is None:
                 return {}
 
-            result: dict[str, Any] = {}
-
-            for key, value in obj.items():
-                result[key] = value
-
-            return result
+            return dict(obj.items())
 
         if message is None:
             return None, None
@@ -263,9 +261,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         cache: GenericCache
 
         if instance_type == 'sender':
-            cache = cast(GenericCache, self._sender_cache)
+            cache = cast('GenericCache', self._sender_cache)
         elif instance_type == 'receiver':
-            cache = cast(GenericCache, self._receiver_cache)
+            cache = cast('GenericCache', self._receiver_cache)
         else:
             message = f'"{instance_type}" is not a valid value for context.connection'
             raise AsyncMessageError(message)
@@ -295,7 +293,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         return response
 
     @register(handlers, 'SUBSCRIBE')
-    def subscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: PLR0915, PLR0912
+    def subscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: PLR0915
         context = request.get('context', None)
         if context is None:
             message = 'no context in request'
@@ -328,7 +326,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             message = 'no mgmt client found'
             raise AsyncMessageError(message)
 
-        topic: Optional[TopicProperties] = None
+        topic: TopicProperties | None = None
 
         if should_forward:
             with suppress(ResourceNotFoundError):
@@ -352,7 +350,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         try:
             self.mgmt_client.get_subscription(topic_name=topic_name, subscription_name=subscription_name)
         except ResourceNotFoundError:
-            subscription_args: dict[str, Any] = {
+            subscription_args: dict = {
                 'topic_name': topic_name,
                 'subscription_name': subscription_name,
             }
@@ -439,7 +437,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             message = 'no mgmt client found'
             raise AsyncMessageError(message)
 
-        topic: Optional[TopicProperties] = None
+        topic: TopicProperties | None = None
 
         try:
             topic = self.mgmt_client.get_topic(topic_name=topic_name)
@@ -523,7 +521,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 message = 'no tenant in context'
                 raise AsyncMessageError(message)
 
-            password = cast(str, password)
+            password = cast('str', password)
 
             url_parsed = urlparse(url)
             fully_qualified_namespace = f'{url_parsed.hostname}'
@@ -575,11 +573,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         get_instance: GenericInstance
 
         if instance_type == 'sender':
-            cache = cast(GenericCache, self._sender_cache)
-            get_instance = cast(GenericInstance, self.get_sender_instance)
+            cache = cast('GenericCache', self._sender_cache)
+            get_instance = cast('GenericInstance', self.get_sender_instance)
         elif instance_type == 'receiver':
-            cache = cast(GenericCache, self._receiver_cache)
-            get_instance = cast(GenericInstance, self.get_receiver_instance)
+            cache = cast('GenericCache', self._receiver_cache)
+            get_instance = cast('GenericInstance', self.get_receiver_instance)
         else:
             message = f'"{instance_type}" is not a valid value for context.connection'
             raise AsyncMessageError(message)
@@ -649,8 +647,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         self.logger.info('handling %s request towards %s', action, cache_endpoint)
 
-        message: Optional[ServiceBusMessage] = None
-        metadata: Optional[dict[str, Any]] = None
+        message: ServiceBusMessage | None = None
+        metadata: dict | None = None
         payload = request.get('payload', None)
 
         if instance_type not in ['receiver', 'sender']:
@@ -730,7 +728,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                     if expression is not None:
                         try:
-                            content_type = TransformerContentType.from_string(cast(str, request.get('context', {})['content_type']))
+                            content_type = TransformerContentType.from_string(cast('str', request.get('context', {})['content_type']))
                             transform = transformer.available[content_type]
                             get_values = transform.parser(expression)
                         except Exception as e:
@@ -765,7 +763,12 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             self.logger.log(
                                 log_level,
                                 'matched message id %s for request id %s on %s, expression=%s, matches=%r, payload=%s',
-                                message.message_id, request_id, cache_endpoint, expression, values, transformed_payload,
+                                message.message_id,
+                                request_id,
+                                cache_endpoint,
+                                expression,
+                                values,
+                                transformed_payload,
                             )
 
                             # message matching expression found, return it
@@ -790,7 +793,10 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                         self.logger.log(
                                             log_level,
                                             'abandoning message id %s for request id %s on %s, %d',
-                                            message.message_id, request_id, cache_endpoint, message._raw_amqp_message.header.delivery_count,
+                                            message.message_id,
+                                            request_id,
+                                            cache_endpoint,
+                                            message._raw_amqp_message.header.delivery_count,
                                         )
                                         receiver.abandon_message(message)
                                         message = None
@@ -804,7 +810,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                 if message_wait > 0 and (perf_counter() - wait_start) >= message_wait:
                                     self.logger.warning(
                                         'giving up in read loop for request id %s, since it took more than %d seconds, might still be messages on %s',
-                                        request_id, cache_endpoint, message_wait,
+                                        request_id,
+                                        cache_endpoint,
+                                        message_wait,
                                     )
                                     raise StopIteration
 
@@ -926,5 +934,5 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             'response_length': response_length,
         }
 
-    def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
+    def get_handler(self, action: str) -> AsyncMessageRequestHandler | None:
         return handlers.get(action)

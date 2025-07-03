@@ -1,4 +1,5 @@
 """Unit tests of grizzly_extras.async_message.daemon."""
+
 from __future__ import annotations
 
 import logging
@@ -22,10 +23,13 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
 
 
-@pytest.mark.parametrize(('scheme', 'implementation'), [
-    ('mq', 'AsyncMessageQueueHandler'),
-    ('sb', 'AsyncServiceBusHandler'),
-])
+@pytest.mark.parametrize(
+    ('scheme', 'implementation'),
+    [
+        ('mq', 'AsyncMessageQueueHandler'),
+        ('sb', 'AsyncServiceBusHandler'),
+    ],
+)
 def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, implementation: str) -> None:
     context_mock = mocker.MagicMock()
     worker_mock = mocker.MagicMock()
@@ -35,7 +39,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
 
     def mock_recv_multipart(message: AsyncMessageRequest) -> None:
         def build_zmq_message(_message: AsyncMessageRequest) -> list[bytes]:
-            worker = cast(str, _message.get('worker', ''))
+            worker = cast('str', _message.get('worker', ''))
             return [
                 worker.encode(),
                 b'',
@@ -60,17 +64,21 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
     event_mock.is_set.side_effect = [False, False, False, False, False, True]
     Worker(context_mock, 'ID-12345', event=event_mock).run()
 
-    worker_mock.send_multipart.assert_called_once_with([
-        b'ID-54321',
-        b'',
-        jsondumps({
-            'request_id': 'None',
-            'worker': 'ID-12345',
-            'response_time': 0,
-            'success': False,
-            'message': 'got ID-54321, expected ID-12345',
-        }).encode(),
-    ])
+    worker_mock.send_multipart.assert_called_once_with(
+        [
+            b'ID-54321',
+            b'',
+            jsondumps(
+                {
+                    'request_id': 'None',
+                    'worker': 'ID-12345',
+                    'response_time': 0,
+                    'success': False,
+                    'message': 'got ID-54321, expected ID-12345',
+                },
+            ).encode(),
+        ],
+    )
     worker_mock.send_multipart.reset_mock()
 
     mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': 'http://www.example.com'}})
@@ -78,17 +86,21 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
     event_mock.is_set.side_effect = [False, False, False, False, False, True]
     Worker(context_mock, 'ID-12345', event=event_mock).run()
 
-    worker_mock.send_multipart.assert_called_once_with([
-        b'ID-12345',
-        b'',
-        jsondumps({
-            'request_id': 'None',
-            'worker': 'ID-12345',
-            'response_time': 0,
-            'success': False,
-            'message': 'integration for http:// is not implemented',
-        }).encode(),
-    ])
+    worker_mock.send_multipart.assert_called_once_with(
+        [
+            b'ID-12345',
+            b'',
+            jsondumps(
+                {
+                    'request_id': 'None',
+                    'worker': 'ID-12345',
+                    'response_time': 0,
+                    'success': False,
+                    'message': 'integration for http:// is not implemented',
+                },
+            ).encode(),
+        ],
+    )
     worker_mock.send_multipart.reset_mock()
 
     integration_spy = mocker.patch(
@@ -97,27 +109,8 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
     )
 
     mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': f'{scheme}://example.com'}})
-    mock_handle_response({
-        'request_id': 'None',
-        'worker': 'ID-12345',
-        'success': True,
-        'payload': 'hello world',
-        'metadata': {
-            'some': 'metadata',
-        },
-        'response_time': 439,
-    })
-
-    event_mock.is_set.side_effect = [False, False, False, False, False, False, True]
-    Worker(context_mock, 'ID-12345', event=event_mock).run()
-
-    integration_spy.assert_called_once_with('ID-12345', event=event_mock)
-    integration_spy.reset_mock()
-
-    worker_mock.send_multipart.assert_called_once_with([
-        b'ID-12345',
-        b'',
-        jsondumps({
+    mock_handle_response(
+        {
             'request_id': 'None',
             'worker': 'ID-12345',
             'success': True,
@@ -126,23 +119,50 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
                 'some': 'metadata',
             },
             'response_time': 439,
-        }).encode(),
-    ])
+        },
+    )
+
+    event_mock.is_set.side_effect = [False, False, False, False, False, False, True]
+    Worker(context_mock, 'ID-12345', event=event_mock).run()
+
+    integration_spy.assert_called_once_with('ID-12345', event=event_mock)
+    integration_spy.reset_mock()
+
+    worker_mock.send_multipart.assert_called_once_with(
+        [
+            b'ID-12345',
+            b'',
+            jsondumps(
+                {
+                    'request_id': 'None',
+                    'worker': 'ID-12345',
+                    'success': True,
+                    'payload': 'hello world',
+                    'metadata': {
+                        'some': 'metadata',
+                    },
+                    'response_time': 439,
+                },
+            ).encode(),
+        ],
+    )
     worker_mock.send_multipart.reset_mock()
 
     worker = Worker(context_mock, 'F00B4R')
 
     mock_recv_multipart({'worker': 'F00B4R', 'context': {'url': f'{scheme}://example.com'}})
-    mock_handle_response({
-        'request_id': 'None',
-        'worker': 'F00B4R',
-        'success': True,
-        'payload': 'foo bar',
-        'metadata': {
-            'some': 'metadata',
+    mock_handle_response(
+        {
+            'request_id': 'None',
+            'worker': 'F00B4R',
+            'success': True,
+            'payload': 'foo bar',
+            'metadata': {
+                'some': 'metadata',
+            },
+            'response_time': 1337,
         },
-        'response_time': 1337,
-    })
+    )
     caplog.clear()
 
     worker.run()

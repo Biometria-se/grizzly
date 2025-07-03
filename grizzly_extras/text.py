@@ -1,6 +1,7 @@
 """@anchor pydoc:grizzly_extras.text
 Utilities related to handling text.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -8,7 +9,7 @@ from contextlib import suppress
 from enum import Enum, EnumMeta
 from json import JSONDecodeError
 from json import loads as jsonloads
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from dateutil.parser import ParserError
 from dateutil.parser import parse as date_parse
@@ -41,9 +42,9 @@ class permutation:
     See {@pylink grizzly_extras.text.PermutationEnum.__vector__} for an explanation of possible values and their meaning.
     """
 
-    vector: Optional[tuple[bool, bool]]
+    vector: tuple[bool, bool] | None
 
-    def __init__(self, *, vector: Optional[tuple[bool, bool]]) -> None:
+    def __init__(self, *, vector: tuple[bool, bool] | None) -> None:
         self.vector = vector
 
     def __call__(self, func: Callable[[str], Any]) -> Callable[[str], Any]:
@@ -64,7 +65,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     [`grizzly-ls`](https://github.com/Biometria-se/grizzly-lsp) can make educated suggestions on possible step expressions.
     """
 
-    __vector__: Optional[tuple[bool, bool]]
+    __vector__: tuple[bool, bool] | None
     """
     This class variable represents `(x, y)` dimensions on how the values can expand in a step expression.
 
@@ -146,7 +147,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     """
 
     @classmethod
-    def get_vector(cls) -> Optional[tuple[bool, bool]]:
+    def get_vector(cls) -> tuple[bool, bool] | None:
         return getattr(cls, '__vector__', None)
 
     @classmethod
@@ -161,14 +162,14 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
         raise NotImplementedError(message)  # pragma: no cover
 
 
-
 def has_sequence(sequence: str, value: str) -> bool:
     """Test string for a sequence of characters, and that it only occurs once in the string."""
     return sequence in value and value.index(sequence) == value.rindex(sequence)
 
+
 def has_separator(separator: str, value: str) -> bool:
     """Test string for separator, which is not connected to any other operators."""
-    operators = ["=", "|"]
+    operators = ['=', '|']
 
     try:
         left_index = value.index(separator)

@@ -6,13 +6,14 @@ from typing import TYPE_CHECKING, cast
 from behave import given, then
 from custom import Task
 
-from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 from grizzly.testdata.utils import create_context_variable
 from grizzly.utils import merge_dicts
 
 if TYPE_CHECKING:  # pragma: no cover
     from behave.runner import Context
+
+    from grizzly.context import GrizzlyContext
 
 
 @given('also log successful requests')
@@ -31,7 +32,7 @@ def step_log_all_requests(context: Context) -> None:
     And log all requests
     ```
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     context_variable = create_context_variable(grizzly.scenario, 'log_all_requests', 'True')
     grizzly.scenario.context = merge_dicts(grizzly.scenario.context, context_variable)
 
@@ -44,5 +45,5 @@ def step_send_message(context: Context, data: str) -> None:
     "example_message" from the server to the client, which will trigger the callback registered
     in `before_feature` in the projects `environment.py`.
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.tasks.add(Task(data))

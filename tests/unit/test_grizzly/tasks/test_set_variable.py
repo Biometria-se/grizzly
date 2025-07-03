@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.set_variable."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

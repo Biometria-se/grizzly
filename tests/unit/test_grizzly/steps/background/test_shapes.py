@@ -1,21 +1,22 @@
 """Unit tests of grizzly.steps.background.shapes."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-from parse import compile
+from parse import compile as parse_compile
 
-from grizzly.context import GrizzlyContext
 from grizzly.locust import FixedUsersDispatcher, UsersDispatcher
 from grizzly.steps import *
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import BehaveFixture
 
 
 def test_parse_user_gramatical_number() -> None:
-    p = compile(
+    p = parse_compile(
         'we have {user:d} {user_number:UserGramaticalNumber}',
         extra_types={'UserGramaticalNumber': parse_user_gramatical_number},
     )
@@ -31,7 +32,7 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
     step_impl = step_shapes_user_count
 
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
     assert grizzly.setup.user_count is None
@@ -87,7 +88,7 @@ def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
     step_impl = step_shapes_spawn_rate
 
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
     assert grizzly.setup.spawn_rate is None

@@ -1,15 +1,18 @@
 """@anchor pydoc:grizzly.steps.scenario.tasks.until Until
 This module contains step implementations for the {@pylink grizzly.tasks.until} task.
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.steps._helpers import add_request_task, get_task_client
 from grizzly.tasks import UntilRequestTask
 from grizzly.types import RequestDirection, RequestMethod
 from grizzly.types.behave import Context, register_type, then
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 register_type(
     Method=RequestMethod.from_string,
@@ -39,7 +42,7 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
 
     request_tasks = add_request_task(context, method=method, source=context.text, name=name, endpoint=endpoint, in_scenario=False)
 
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     assert grizzly.scenario.tasks.tmp.async_group is None, f'until tasks cannot be in an async request group, close group {grizzly.scenario.tasks.tmp.async_group.name} first'
 
@@ -48,10 +51,12 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
         for key, value in substitues.items():
             condition_rendered = condition_rendered.replace(f'{{{{ {key} }}}}', value)
 
-        grizzly.scenario.tasks.add(UntilRequestTask(
-            request=request_task,
-            condition=condition_rendered,
-        ))
+        grizzly.scenario.tasks.add(
+            UntilRequestTask(
+                request=request_task,
+                condition=condition_rendered,
+            ),
+        )
 
 
 @then('get from "{endpoint}" with name "{name}" until "{condition}"')
@@ -76,7 +81,7 @@ def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: s
         condition (str): JSON or XPath expression for specific value in response payload
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     client_request = get_task_client(grizzly, endpoint)(
         RequestDirection.FROM,
@@ -86,7 +91,9 @@ def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: s
         method=RequestMethod.GET,
     )
 
-    grizzly.scenario.tasks.add(UntilRequestTask(
-        request=client_request,
-        condition=condition,
-    ))
+    grizzly.scenario.tasks.add(
+        UntilRequestTask(
+            request=client_request,
+            condition=condition,
+        ),
+    )

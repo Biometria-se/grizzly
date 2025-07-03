@@ -1,4 +1,5 @@
 """Behave types frequently used in grizzly."""
+
 from __future__ import annotations
 
 import logging
@@ -21,7 +22,7 @@ logger = logging.getLogger('behave.step')
 def step_wrapper(step_func: Callable[[str], StepFunctionWrapperType], pattern: str) -> StepFunctionWrapperType:
     @wraps(step_func)
     def wrapper(func: StepFunctionType) -> StepFunctionType:
-        return cast(StepFunctionType, step_func(pattern)(error_handler(func)))
+        return cast('StepFunctionType', step_func(pattern)(error_handler(func)))
 
     return wrapper
 
@@ -40,14 +41,16 @@ def error_handler(func: StepFunctionType) -> StepFunctionType:
 
             exception = StepError(e, context.step).with_traceback(e.__traceback__) if isinstance(e, AssertionError) else e
 
-            cast(dict[str, list[Exception]], context.exceptions).update({
-                context.scenario.name: [*context.exceptions.get(context.scenario.name, []), exception],
-            })
+            cast('dict[str, list[Exception]]', context.exceptions).update(
+                {
+                    context.scenario.name: [*context.exceptions.get(context.scenario.name, []), exception],
+                },
+            )
 
             if not isinstance(e, AssertionError):
                 raise
 
-    return cast(StepFunctionType, wrapper)
+    return cast('StepFunctionType', wrapper)
 
 
 register_type = behave.register_type
@@ -68,13 +71,13 @@ def when(pattern: str) -> StepFunctionWrapperType:
 __all__ = [
     'Context',
     'Feature',
-    'Scenario',
-    'Step',
-    'Status',
-    'Table',
     'Row',
-    'register_type',
+    'Scenario',
+    'Status',
+    'Step',
+    'Table',
     'given',
+    'register_type',
     'then',
     'when',
 ]

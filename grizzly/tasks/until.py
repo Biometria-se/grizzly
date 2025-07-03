@@ -38,13 +38,14 @@ ordinary {@pylink grizzly.tasks.request} or {@pylink grizzly.tasks.clients} task
 
 * `expected_matches` _int_ (optional): number of matches that the expression should match (default `1`)
 """
+
 from __future__ import annotations
 
 import json
 import logging
 from contextlib import suppress
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from gevent import sleep as gsleep
 
@@ -73,7 +74,7 @@ class UntilRequestTask(GrizzlyTask):
     request: GrizzlyMetaRequestTask
     condition: str
 
-    transform: Optional[type[Transformer]]
+    transform: type[Transformer] | None
     matcher: Callable[[Any], list[str]]
 
     retries: int
@@ -97,7 +98,7 @@ class UntilRequestTask(GrizzlyTask):
             self.condition, until_arguments = split_value(self.condition)
 
             if '{{' in until_arguments and '}}' in until_arguments:
-                until_arguments = cast(str, resolve_variable(self.grizzly.scenario, until_arguments, guess_datatype=False))
+                until_arguments = cast('str', resolve_variable(self.grizzly.scenario, until_arguments, guess_datatype=False))
 
             arguments = parse_arguments(until_arguments)
 
@@ -117,7 +118,7 @@ class UntilRequestTask(GrizzlyTask):
             message = f'could not find a transformer for {self.request.content_type.name}'
             raise TypeError(message)
 
-        transform = cast(Transformer, self.transform)
+        transform = cast('Transformer', self.transform)
 
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:  # noqa: C901, PLR0912, PLR0915
@@ -132,7 +133,7 @@ class UntilRequestTask(GrizzlyTask):
             parser = transform.parser(condition_rendered)
             number_of_matches = 0
             retry = 0
-            exception: Optional[Exception] = None
+            exception: Exception | None = None
             response_length = 0
 
             # when doing the until task, disable that the wrapped task will throw an exception
@@ -217,7 +218,8 @@ class UntilRequestTask(GrizzlyTask):
                         task_name,
                         endpoint_rendered,
                         number_of_matches,
-                        condition_rendered, retry,
+                        condition_rendered,
+                        retry,
                         response_time,
                         payload_formatted,
                     )

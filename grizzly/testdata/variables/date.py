@@ -27,17 +27,18 @@ This can then be used in a template:
 }
 ```
 """
+
 from __future__ import annotations
 
 from contextlib import suppress
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dateparse
 from dateutil.relativedelta import relativedelta
 
-from grizzly.types import ZoneInfo, ZoneInfoNotFoundError
+from grizzly.types import StrDict, ZoneInfo, ZoneInfoNotFoundError
 from grizzly.utils import parse_timespan
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
@@ -48,7 +49,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
 
 
-def atomicdate__base_type__(value: str) -> str:  # noqa: PLR0912
+def atomicdate__base_type__(value: str) -> str:
     """Validate values that `AtomicDate` can be initialized with."""
     if not isinstance(value, str):
         message = f'AtomicDate: {value} ({type(value)}) is not a string'  # type: ignore[unreachable]
@@ -98,11 +99,11 @@ def atomicdate__base_type__(value: str) -> str:  # noqa: PLR0912
         return value
 
 
-class AtomicDate(AtomicVariable[Union[str, datetime]]):
+class AtomicDate(AtomicVariable[str | datetime]):
     __base_type__ = atomicdate__base_type__
     __initialized: bool = False
-    _settings: dict[str, dict[str, Any]]
-    arguments: ClassVar[dict[str, Any]] = {'format': str, 'timezone': str, 'offset': int}
+    _settings: dict[str, StrDict]
+    arguments: ClassVar[StrDict] = {'format': str, 'timezone': str, 'offset': int}
 
     _special_variables: ClassVar[set[str]] = {'now'}
 
@@ -116,9 +117,9 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
     ) -> None:
         with self.semaphore(outer=outer_lock):
             initial_value: str
-            timezone: Optional[ZoneInfo] = None
+            timezone: ZoneInfo | None = None
             date_format = '%Y-%m-%d %H:%M:%S'
-            offset: Optional[dict[str, int]] = None
+            offset: dict[str, int] | None = None
 
             safe_value = self.__class__.__base_type__(value)
 
@@ -143,9 +144,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
                 'offset': offset,
             }
 
-            date_value: Union[str, datetime]
-
-            date_value = 'now' if initial_value is None or len(initial_value) < 1 or initial_value == 'now' else dateparse(initial_value)
+            date_value: str | datetime = 'now' if initial_value is None or len(initial_value) < 1 or initial_value == 'now' else dateparse(initial_value)
 
             super().__init__(scenario=scenario, variable=variable, value=date_value, outer_lock=True)
 
@@ -163,12 +162,12 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
 
         instances = cls._instances.get(cls, {})
         for scenario in instances:
-            instance = cast(AtomicDate, cls.get(scenario))
+            instance = cast('AtomicDate', cls.get(scenario))
             variables = list(instance._settings.keys())
             for variable in variables:
                 del instance._settings[variable]
 
-    def __getitem__(self, variable: str) -> Optional[str]:
+    def __getitem__(self, variable: str) -> str | None:
         with self.semaphore():
             value = self._get_value(variable)
 

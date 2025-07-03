@@ -1,9 +1,10 @@
 """Unit tests of grizzly.testdata.variables.csv_reader."""
+
 from __future__ import annotations
 
 import json
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -11,7 +12,7 @@ from grizzly.testdata.variables import AtomicJsonReader
 from grizzly.testdata.variables.json_reader import atomicjsonreader__base_type__
 
 if TYPE_CHECKING:  # pragma: no cover
-
+    from grizzly.types import StrDict
     from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture
 
 
@@ -59,9 +60,9 @@ class TestAtomicJsonReader:
         for count in range(1, 4):
             file = f'{count}.json'
             with (test_context / file).open('w') as fd:
-                data: list[dict[str, Any]] = []
+                data: list[StrDict] = []
                 for row in range(1, count + 1):
-                    item: dict[str, Any] = {}
+                    item: StrDict = {}
                     for column in range(1, count + 1):
                         item.update({f'header{column}{count}': f'value{column}{row}{count}'})
                     data.append(item)

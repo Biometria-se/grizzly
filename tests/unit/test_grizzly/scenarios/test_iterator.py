@@ -1,11 +1,12 @@
 """Unit tests for grizzly.scenarios.iterator."""
+
 from __future__ import annotations
 
 import logging
 from contextlib import suppress
 from os import environ
 from types import FunctionType
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from gevent.lock import Semaphore
@@ -18,8 +19,7 @@ from grizzly.scenarios import IteratorScenario
 from grizzly.tasks import ExplicitWaitTask, LogMessageTask, grizzlytask
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
-from grizzly.types import ScenarioState
-from grizzly.types.locust import LocalRunner
+from grizzly.types import ScenarioState, StrDict
 from tests.helpers import ANY, RequestCalled, TestTask, regex
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -27,6 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.types.locust import LocalRunner
     from tests.fixtures import GrizzlyFixture
 
 
@@ -138,14 +139,14 @@ class TestIterationScenario:
         assert isinstance(parent, IteratorScenario)
         assert not parent._prefetch
 
-        parent.__class__._consumer = TestdataConsumer(cast(LocalRunner, grizzly.state.locust), parent)
+        parent.__class__._consumer = TestdataConsumer(cast('LocalRunner', grizzly.state.locust), parent)
 
         on_iteration_mock = mocker.patch.object(parent, 'on_iteration', return_value=None)
         request_fire_mock = mocker.patch.object(parent.user.environment.events.request, 'fire', return_value=None)
         spawning_complete_mock = mocker.patch.object(grizzly.state, 'spawning_complete', spec=Semaphore)
 
-        def mock_request(data: Optional[dict[str, Any]]) -> None:
-            def testdata_request(self: TestdataConsumer) -> Optional[dict[str, Any]]:  # noqa: ARG001
+        def mock_request(data: StrDict | None) -> None:
+            def testdata_request(self: TestdataConsumer) -> StrDict | None:  # noqa: ARG001
                 if data is None or data == {}:
                     return None
 
@@ -192,15 +193,17 @@ class TestIterationScenario:
         request_fire_mock.reset_mock()
         spawning_complete_mock.assert_not_called()
 
-        mock_request({
-            'variables': {
-                'AtomicIntegerIncrementer.messageID': 1337,
-                'AtomicCsvReader.test': {
-                    'header1': 'value1',
-                    'header2': 'value2',
+        mock_request(
+            {
+                'variables': {
+                    'AtomicIntegerIncrementer.messageID': 1337,
+                    'AtomicCsvReader.test': {
+                        'header1': 'value1',
+                        'header2': 'value2',
+                    },
                 },
             },
-        })
+        )
 
         # called from on_start
         grizzly.setup.wait_for_spawning_complete = 10
@@ -225,15 +228,17 @@ class TestIterationScenario:
 
         # without waiting for spawning complete
         grizzly.setup.wait_for_spawning_complete = None
-        mock_request({
-            'variables': {
-                'AtomicIntegerIncrementer.messageID': 1338,
-                'AtomicCsvReader.test': {
-                    'header1': 'value3',
-                    'header2': 'value4',
+        mock_request(
+            {
+                'variables': {
+                    'AtomicIntegerIncrementer.messageID': 1338,
+                    'AtomicCsvReader.test': {
+                        'header1': 'value3',
+                        'header2': 'value4',
+                    },
                 },
             },
-        })
+        )
 
         # called from Iterator.run, first actual iteration
         parent.iterator()
@@ -255,15 +260,17 @@ class TestIterationScenario:
         on_iteration_mock.reset_mock()
         spawning_complete_mock.assert_not_called()
 
-        mock_request({
-            'variables': {
-                'AtomicIntegerIncrementer.messageID': 1339,
-                'AtomicCsvReader.test': {
-                    'header1': 'value5',
-                    'header2': 'value6',
+        mock_request(
+            {
+                'variables': {
+                    'AtomicIntegerIncrementer.messageID': 1339,
+                    'AtomicCsvReader.test': {
+                        'header1': 'value5',
+                        'header2': 'value6',
+                    },
                 },
             },
-        })
+        )
 
         parent.iterator()
 
@@ -278,15 +285,17 @@ class TestIterationScenario:
         # with waiting for spawning complete
         grizzly.setup.wait_for_spawning_complete = 10
         parent._prefetch = True
-        mock_request({
-            'variables': {
-                'AtomicIntegerIncrementer.messageID': 1338,
-                'AtomicCsvReader.test': {
-                    'header1': 'value3',
-                    'header2': 'value4',
+        mock_request(
+            {
+                'variables': {
+                    'AtomicIntegerIncrementer.messageID': 1338,
+                    'AtomicCsvReader.test': {
+                        'header1': 'value3',
+                        'header2': 'value4',
+                    },
                 },
             },
-        })
+        )
 
         # called from Iterator.run, first actual iteration
         parent.iterator()
@@ -309,15 +318,17 @@ class TestIterationScenario:
         spawning_complete_mock.wait.assert_called_once_with(timeout=10)
         spawning_complete_mock.reset_mock()
 
-        mock_request({
-            'variables': {
-                'AtomicIntegerIncrementer.messageID': 1339,
-                'AtomicCsvReader.test': {
-                    'header1': 'value5',
-                    'header2': 'value6',
+        mock_request(
+            {
+                'variables': {
+                    'AtomicIntegerIncrementer.messageID': 1339,
+                    'AtomicCsvReader.test': {
+                        'header1': 'value5',
+                        'header2': 'value6',
+                    },
                 },
             },
-        })
+        )
 
         parent.iterator()
 
@@ -536,7 +547,6 @@ class TestIterationScenario:
 
         stats_log_error_mock.assert_not_called()
 
-
     def test_wait(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         parent = grizzly_fixture(scenario_type=IteratorScenario)
 
@@ -574,7 +584,7 @@ class TestIterationScenario:
 
         assert len(caplog.messages) == 2
         assert caplog.messages[-2] == "okay, I'm done with my running tasks now"
-        assert caplog.messages[-1] == "scenario state=ScenarioState.STOPPING -> ScenarioState.STOPPED"
+        assert caplog.messages[-1] == 'scenario state=ScenarioState.STOPPING -> ScenarioState.STOPPED'
         caplog.clear()
 
         parent.user._scenario_state = ScenarioState.STOPPED
@@ -595,7 +605,7 @@ class TestIterationScenario:
         assert not grizzly.state.spawning_complete.locked()
 
         # always assume that spawning is complete in unit test
-        side_effects: list[Optional[InterruptTaskSet]] = [
+        side_effects: list[InterruptTaskSet | None] = [
             InterruptTaskSet(reschedule=False),
             InterruptTaskSet(reschedule=True),
         ]
@@ -841,6 +851,7 @@ class TestIterationScenario:
                     if self.task_call_count == 0:
                         self.task_call_count += 1
                         from time import sleep
+
                         sleep(2.0)
 
                     if parent.user.variables.get('foo', None) is None:
@@ -885,12 +896,16 @@ class TestIterationScenario:
         scenario.on_start()  # create scenario.consumer, so we can patch request below
 
         # same as 1 iteration
-        mocker.patch.object(scenario._consumer, 'testdata', side_effect=[
-            {'variables': {'hello': 'world'}},
-            {'variables': {'hello': 'world'}},
-            {'variables': {'foo': 'bar'}},
-            None,
-        ])
+        mocker.patch.object(
+            scenario._consumer,
+            'testdata',
+            side_effect=[
+                {'variables': {'hello': 'world'}},
+                {'variables': {'hello': 'world'}},
+                {'variables': {'foo': 'bar'}},
+                None,
+            ],
+        )
         mocker.patch.object(scenario, 'on_start', return_value=None)
 
         with caplog.at_level(logging.DEBUG), pytest.raises(StopUser):
@@ -941,7 +956,7 @@ class TestIterationScenario:
             'task 13 of 13 executed: pace',
             "okay, I'm done with my running tasks now",
             'scenario state=ScenarioState.STOPPING -> ScenarioState.STOPPED',
-            "scenario_state=STOPPED, user_state=stopping, exception=StopUser()",
+            'scenario_state=STOPPED, user_state=stopping, exception=StopUser()',
             "stopping scenario with <class 'locust.exception.StopUser'>",
         ]
 
@@ -1005,11 +1020,15 @@ class TestIterationScenario:
             scenario.on_start()  # create scenario.consumer, so we can patch request below
 
             # same as 1 iteration
-            mocker.patch.object(scenario.consumer, 'testdata', side_effect=[
-                {'variables': {'hello': 'world'}},
-                {'variables': {'foo': 'bar'}},
-                None,
-            ])
+            mocker.patch.object(
+                scenario.consumer,
+                'testdata',
+                side_effect=[
+                    {'variables': {'hello': 'world'}},
+                    {'variables': {'foo': 'bar'}},
+                    None,
+                ],
+            )
             mocker.patch.object(scenario, 'on_start', return_value=None)
 
             with caplog.at_level(logging.DEBUG), pytest.raises(StopUser):
@@ -1051,10 +1070,7 @@ class TestIterationScenario:
                 "stopping scenario with <class 'locust.exception.StopUser'>",
             ]
 
-            actual_messages = [
-                message for message in caplog.messages
-                    if 'instance variable=' not in message
-            ]
+            actual_messages = [message for message in caplog.messages if 'instance variable=' not in message]
 
             for m in actual_messages:
                 print(f'{m=}')
@@ -1121,10 +1137,14 @@ class TestIterationScenario:
             scenario.on_start()  # create scenario.consumer, so we can patch request below
 
             # same as 1 iteration
-            testdata_mock = mocker.patch.object(scenario.consumer, 'testdata', side_effect=[
-                {'variables': {'hello': 'world'}},
-                None,
-            ])
+            testdata_mock = mocker.patch.object(
+                scenario.consumer,
+                'testdata',
+                side_effect=[
+                    {'variables': {'hello': 'world'}},
+                    None,
+                ],
+            )
             mocker.patch.object(scenario, 'on_start', return_value=None)
 
             with caplog.at_level(logging.DEBUG), pytest.raises(StopUser):
@@ -1164,10 +1184,7 @@ class TestIterationScenario:
                 "stopping scenario with <class 'locust.exception.StopUser'>",
             ]
 
-            actual_messages = [
-                message for message in caplog.messages
-                    if 'instance variable=' not in message
-            ]
+            actual_messages = [message for message in caplog.messages if 'instance variable=' not in message]
 
             for m in actual_messages:
                 print(f'{m=}')
@@ -1212,7 +1229,7 @@ class TestIterationScenario:
             task_2 = scenario.tasks[-2]
 
             assert isinstance(task_1, grizzlytask)
-            assert isinstance(task_2, grizzlytask)  # type: ignore[unreachable]
+            assert isinstance(task_2, grizzlytask)
             assert task_1 is not task_2
             assert task_1._on_stop is None
             assert task_2._on_stop is None
@@ -1257,7 +1274,7 @@ class TestIterationScenario:
         task_2 = scenario.tasks[-2]
 
         assert isinstance(task_1, grizzlytask)
-        assert isinstance(task_2, grizzlytask)  # type: ignore[unreachable]
+        assert isinstance(task_2, grizzlytask)
         assert task_1 is not task_2
 
         task_1_on_stop_spy = mocker.spy(task_1, '_on_stop')

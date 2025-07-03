@@ -1,13 +1,16 @@
 """@anchor pydoc:grizzly.steps.scenario.tasks.async_group Async group
 This module contains step implementations for the {@pylink grizzly.tasks.async_group} task.
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import AsyncRequestGroupTask
 from grizzly.types.behave import Context, given, then
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @given('an async request group with name "{name}"')
@@ -35,7 +38,7 @@ def step_task_async_group_start(context: Context, name: str) -> None:
     In this example, the `put` and `get` requests will run asynchronously, and both requests will block following requests until both are finished.
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     assert grizzly.scenario.tasks.tmp.async_group is None, f'async request group "{grizzly.scenario.tasks.tmp.async_group.name}" has not been closed'
 
@@ -65,7 +68,7 @@ def step_task_async_group_close(context: Context) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     async_group = grizzly.scenario.tasks.tmp.async_group
 
