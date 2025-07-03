@@ -33,7 +33,7 @@ jobs:
       run: python -m ruff check grizzly/ grizzly_extras/ tests/ example/
 
     - name: run ruff format
-      id: ruff-lint
+      id: ruff-format
       run: python -m ruff format --check grizzly/ grizzly_extras/ tests/ example/
 
     - name: run mypy
