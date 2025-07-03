@@ -36,6 +36,7 @@ Given value of variable "identification" is "foobar"
 Then push "processed" in keystore with value "{{ identification }} | render=True"
 ```
 """
+
 from __future__ import annotations
 
 from json import JSONDecodeError
@@ -52,6 +53,7 @@ from . import GrizzlyTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.types import StrDict
 
 Action = Literal['get', 'get_del', 'set', 'inc', 'dec', 'push', 'pop', 'del']
 
@@ -63,7 +65,7 @@ class KeystoreTask(GrizzlyTask):
     action_context: str | Any | None
     default_value: Any | None
 
-    arguments: dict[str, Any]
+    arguments: StrDict
 
     def __init__(self, key: str, action: Action, action_context: str | None, default_value: str | None = None) -> None:
         super().__init__(timeout=None)
@@ -77,16 +79,16 @@ class KeystoreTask(GrizzlyTask):
         if self.action_context is not None and isinstance(self.action_context, str) and has_separator('|', self.action_context):
             self.action_context, value_arguments = split_value(self.action_context)
             arguments = parse_arguments(value_arguments, unquote=True)
-            for key, value in arguments.items():
-                rendered_value = resolve_variable(self.grizzly.scenario, value)
-                self.arguments.update({key: rendered_value})
+            for k, v in arguments.items():
+                rendered_value = resolve_variable(self.grizzly.scenario, v)
+                self.arguments.update({k: rendered_value})
 
         if has_separator('|', self.key):
             self.key, key_arguments = split_value(self.key)
             arguments = parse_arguments(key_arguments, unquote=True)
-            for key, value in arguments.items():
-                rendered_value = resolve_variable(self.grizzly.scenario, value)
-                self.arguments.update({key: rendered_value})
+            for k, v in arguments.items():
+                rendered_value = resolve_variable(self.grizzly.scenario, v)
+                self.arguments.update({k: rendered_value})
 
         assert self.action in get_args(Action), f'"{self.action}" is not a valid action'
 
@@ -145,7 +147,7 @@ class KeystoreTask(GrizzlyTask):
 
                     if value is None and self.default_value is not None:
                         parent.consumer.keystore_set(key, self.default_value)
-                        value = cast(Any, self.default_value)
+                        value = cast('Any', self.default_value)
 
                     if value is not None and self.action_context is not None:
                         parent.user.set_variable(self.action_context, render(value))

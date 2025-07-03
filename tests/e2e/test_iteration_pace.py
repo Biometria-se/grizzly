@@ -1,12 +1,12 @@
 """End-to-end tests of grizzly.scenarios.iteration pace time."""
+
 from __future__ import annotations
 
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any, cast
 
-from grizzly.context import GrizzlyContext
-
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from grizzly.types.behave import Context
     from tests.fixtures import End2EndFixture
 
@@ -14,10 +14,11 @@ if TYPE_CHECKING:  # pragma: no cover
 def test_e2e_iteration_pace(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_worker
+
         if on_worker(context):
             return
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         stats = grizzly.state.locust.environment.stats
 
@@ -49,7 +50,8 @@ def test_e2e_iteration_pace(e2e_fixture: End2EndFixture) -> None:
         },
     }
 
-    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: Iteration Pace
+    feature_file = e2e_fixture.create_feature(
+        dedent(f"""Feature: Iteration Pace
     Background: common configuration
         Given "2" user
         And spawn rate is "1" user per second
@@ -70,7 +72,8 @@ def test_e2e_iteration_pace(e2e_fixture: End2EndFixture) -> None:
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "3" iteration
         Then log message "dummy"
-    """))
+    """),
+    )
 
     rc, output = e2e_fixture.execute(feature_file, env_conf=env_conf)
 

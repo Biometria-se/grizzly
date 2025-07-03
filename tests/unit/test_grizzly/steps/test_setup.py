@@ -1,4 +1,5 @@
 """Unit tests of grizzly.steps.setup."""
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -10,22 +11,22 @@ from typing import TYPE_CHECKING, cast
 import pytest
 
 from grizzly.auth import AAD
-from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 from grizzly.steps.setup import _execute_python_script
 from grizzly.tasks import SetVariableTask
-from grizzly.types import VariableType
+from grizzly.types import StrDict, VariableType
 from grizzly.users import RestApiUser
 from grizzly_extras.azure.aad import AzureAadCredential
 from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from grizzly.types.behave import Context as BehaveContext
     from tests.fixtures import BehaveFixture, GrizzlyFixture, MockerFixture
 
 
 def _assert_variable_value(self: BehaveContext, name: str, value: Any) -> None:
-    grizzly = cast(GrizzlyContext, self.grizzly)
+    grizzly = cast('GrizzlyContext', self.grizzly)
     default_value = '__NOT_DEFINED__' if value is not None else None
     for scenario in grizzly.scenarios:
         if self.step.in_background:
@@ -43,7 +44,7 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture, section: s
         in_background = section == 'Background'
         behave = behave_fixture.context
         behave.assert_variable_value = _assert_variable_value.__get__(behave, behave.__class__)
-        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly = cast('GrizzlyContext', behave.grizzly)
         grizzly.scenarios.create(behave_fixture.create_scenario('dummy-1'))
         grizzly.scenarios.create(behave_fixture.create_scenario('dummy-2'))
         grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -69,24 +70,28 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture, section: s
 
         step_setup_variable_value_ask(behave, name)
 
-        assert int(grizzly.scenario.variables.get(name, None)) == 1337
+        assert int(grizzly.scenario.variables.get(name, '')) == 1337
 
         step_setup_variable_value_ask(behave, name)
 
-        assert behave.exceptions == {behave.scenario.name: [
-            ANY(AssertionError, message='variable "AtomicIntegerIncrementer.messageID" does not have a value'),
-            ANY(AssertionError, message='variable "AtomicIntegerIncrementer.messageID" has already been set'),
-        ]}
+        assert behave.exceptions == {
+            behave.scenario.name: [
+                ANY(AssertionError, message='variable "AtomicIntegerIncrementer.messageID" does not have a value'),
+                ANY(AssertionError, message='variable "AtomicIntegerIncrementer.messageID" has already been set'),
+            ],
+        }
 
         environ['TESTDATA_VARIABLE_INCORRECT_QUOTED'] = '"incorrectly_quoted\''
 
         step_setup_variable_value_ask(behave, 'INCORRECT_QUOTED')
 
-        assert behave.exceptions == {behave.scenario.name: [
-            ANY(AssertionError, message='variable "AtomicIntegerIncrementer.messageID" does not have a value'),
-            ANY(AssertionError, message='variable "AtomicIntegerIncrementer.messageID" has already been set'),
-            ANY(AssertionError, message='incorrectly quoted'),
-        ]}
+        assert behave.exceptions == {
+            behave.scenario.name: [
+                ANY(AssertionError, message='variable "AtomicIntegerIncrementer.messageID" does not have a value'),
+                ANY(AssertionError, message='variable "AtomicIntegerIncrementer.messageID" has already been set'),
+                ANY(AssertionError, message='incorrectly quoted'),
+            ],
+        }
     finally:
         for key in environ:
             if key.startswith('TESTDATA_VARIABLE_'):
@@ -98,7 +103,7 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     in_background = section == 'Background'
     behave = behave_fixture.context
     behave.assert_variable_value = _assert_variable_value.__get__(behave, behave.__class__)
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('dummy-1'))
     grizzly.scenarios.create(behave_fixture.create_scenario('dummy-2'))
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -152,10 +157,12 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
 
     step_setup_variable_value(behave, 'incorrectly_quoted', '"error\'')
 
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nvalue'),
-        ANY(AssertionError, message='"error\' is incorrectly quoted'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nvalue'),
+            ANY(AssertionError, message='"error\' is incorrectly quoted'),
+        ],
+    }
     behave.exceptions.clear()
 
     grizzly.scenario.variables.persistent.update({'AtomicIntegerIncrementer.persistent': '10 | step=10, persist=True'})
@@ -177,9 +184,11 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
         assert task == SOME(SetVariableTask, variable='AtomicCsvWriter.output.foo', value='{{ foo_value }}')
     else:
         assert len(grizzly.scenario.tasks()) == 1
-        assert behave.exceptions == {grizzly.scenario.behave.name: [
-            ANY(AssertionError, message='cannot add runtime variables in `Background`-section'),
-        ]}
+        assert behave.exceptions == {
+            grizzly.scenario.behave.name: [
+                ANY(AssertionError, message='cannot add runtime variables in `Background`-section'),
+            ],
+        }
 
     behave.exceptions.clear()
 
@@ -195,9 +204,11 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
 
         step_setup_variable_value(behave, 'custom.variable.AtomicFooBar.value.foo', 'hello')
 
-        assert behave.exceptions == {behave.scenario.name: [
-            ANY(AssertionError, message="No module named 'custom'"),
-        ]}
+        assert behave.exceptions == {
+            behave.scenario.name: [
+                ANY(AssertionError, message="No module named 'custom'"),
+            ],
+        }
 
         behave.exceptions.clear()
 
@@ -226,15 +237,19 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
         grizzly.scenarios.select(prev_scenario)
         grizzly.scenario.tasks().clear()
         step_setup_variable_value(behave, 'AtomicIntegerIncrementer.persistent', '1 | step=10, persist=True')
-        assert behave.exceptions == {prev_scenario.name: [
-            ANY(AssertionError, message='variable AtomicIntegerIncrementer.persistent has already been initialized'),
-        ]}
+        assert behave.exceptions == {
+            prev_scenario.name: [
+                ANY(AssertionError, message='variable AtomicIntegerIncrementer.persistent has already been initialized'),
+            ],
+        }
 
         step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
-        assert behave.exceptions == {prev_scenario.name: [
-            ANY(AssertionError, message='variable AtomicIntegerIncrementer.persistent has already been initialized'),
-            ANY(AssertionError, message='variable dynamic_variable_value has already been initialized'),
-        ]}
+        assert behave.exceptions == {
+            prev_scenario.name: [
+                ANY(AssertionError, message='variable AtomicIntegerIncrementer.persistent has already been initialized'),
+                ANY(AssertionError, message='variable dynamic_variable_value has already been initialized'),
+            ],
+        }
 
         grizzly.scenario.tasks.add(LogMessageTask('dummy'))
 
@@ -245,11 +260,13 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
 
         step_setup_variable_value(behave, 'new_variable', 'foobar')
 
-        assert behave.exceptions == {behave.scenario.name: [
-            ANY(AssertionError, message='variable AtomicIntegerIncrementer.persistent has already been initialized'),
-            ANY(AssertionError, message='variable dynamic_variable_value has already been initialized'),
-            ANY(AssertionError, message='variable new_variable has already been initialized'),
-        ]}
+        assert behave.exceptions == {
+            behave.scenario.name: [
+                ANY(AssertionError, message='variable AtomicIntegerIncrementer.persistent has already been initialized'),
+                ANY(AssertionError, message='variable dynamic_variable_value has already been initialized'),
+                ANY(AssertionError, message='variable new_variable has already been initialized'),
+            ],
+        }
 
 
 def test_step_setup_execute_python_script_with_args(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
@@ -376,6 +393,7 @@ def test__execute_python_script_mock(grizzly_fixture: GrizzlyFixture, mocker: Mo
     scope = SOME(dict, context=context, args=['--foo=bar', '--bar', 'foo', '--baz'])
     exec_mock.assert_called_once_with("print('foobar')", scope, scope)
 
+
 def test__execute_python_script(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     context = behave_fixture.context
 
@@ -410,8 +428,10 @@ def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture
 
     assert grizzly.scenario.context == {
         'host': '',
-        'auth': {'user': {'username': 'bob', 'password': 'foobar'},
-    }}
+        'auth': {
+            'user': {'username': 'bob', 'password': 'foobar'},
+        },
+    }
     assert parent.user.__cached_auth__ == {}
     assert parent.user.__context_change_history__ == set()
 
@@ -440,13 +460,13 @@ def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture
         'Content-Type': 'application/json',
         'x-grizzly-user': 'RestApiUser_001',
     }
-    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='bob', password='foobar')  # noqa: S106
+    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='bob', password='foobar')
     assert parent.user.credential.username == 'bob'
     assert parent.user.credential.password == 'foobar'  # noqa: S105
 
     task_factory()(parent)
 
-    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='alice', password='foobar')  # noqa: S106
+    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='alice', password='foobar')
     assert parent.user.metadata == {
         'Content-Type': 'application/json',
         'x-grizzly-user': 'RestApiUser_001',
@@ -469,7 +489,7 @@ def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture
 
     task_factory()(parent)
 
-    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='alice', password='hello world')  # noqa: S106
+    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='alice', password='hello world')
     assert parent.user.metadata == {
         'Content-Type': 'application/json',
         'x-grizzly-user': 'RestApiUser_001',
@@ -487,7 +507,7 @@ def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture
     task_factory = grizzly.scenario.tasks().pop()
     task_factory()(parent)
 
-    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='bob', password='foobar')  # noqa: S106
+    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='bob', password='foobar')
     assert parent.user.credential == SOME(AzureAadCredential, username=credential_bob.username, password=credential_bob.password)
     assert parent.user.metadata == {
         'Content-Type': 'application/json',
@@ -495,15 +515,16 @@ def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture
     }
     assert parent.user.__context_change_history__ == set()
 
+
 @pytest.mark.parametrize('section', ['Scenario', 'Background'])
 def test_step_setup_set_context_variable_init(behave_fixture: BehaveFixture, section: str) -> None:
     in_background = section == 'Background'
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave_fixture.create_step('test step', in_background=in_background, context=behave)
 
-    def context() -> dict[str, Any]:
+    def context() -> StrDict:
         return grizzly.scenario.context if not in_background else grizzly.setup.global_context
 
     step_setup_set_context_variable(behave, 'token.url', 'test')

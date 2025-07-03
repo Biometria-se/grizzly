@@ -1,4 +1,5 @@
 """Unit tests for grizzly.users.base.grizzly_user."""
+
 from __future__ import annotations
 
 import logging
@@ -39,10 +40,12 @@ class TestGrizzlyUser:
 
         assert parent.user._scenario.failure_handling == {}
 
-        parent.user._scenario.failure_handling.update({
-            None: StopUser,
-            '504 gateway timeout': RetryTask,
-        })
+        parent.user._scenario.failure_handling.update(
+            {
+                None: StopUser,
+                '504 gateway timeout': RetryTask,
+            },
+        )
 
         parent.user.failure_handler(None)
 
@@ -74,10 +77,12 @@ class TestGrizzlyUser:
                 parent.user.failure_handler(exception())
 
         task = parent.user._scenario.tasks[-1]
-        task.failure_handling.update({
-            '504 gateway timeout': RestartIteration,
-            MemoryError: StopUser,
-        })
+        task.failure_handling.update(
+            {
+                '504 gateway timeout': RestartIteration,
+                MemoryError: StopUser,
+            },
+        )
 
         with pytest.raises(RestartIteration):
             parent.user.failure_handler(RuntimeError('504 gateway timeout'), task=task)
@@ -210,12 +215,14 @@ class TestGrizzlyUser:
 
         template.source = '{{ file_path }}'
 
-        user.variables.update({
-            'name': 'test-name',
-            'value': 'test-value',
-            'messageID': 1337,
-            'file_path': 'test/payload.j2.json',
-        })
+        user.variables.update(
+            {
+                'name': 'test-name',
+                'value': 'test-value',
+                'messageID': 1337,
+                'file_path': 'test/payload.j2.json',
+            },
+        )
 
         request = user.render_request(template)
 

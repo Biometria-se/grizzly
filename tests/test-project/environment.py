@@ -1,4 +1,5 @@
 """Sure thing."""  # noqa: INP001
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
@@ -65,4 +66,3 @@ def step_raise_exception(context: Context, exception: str) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     grizzly.scenario.tasks.add(RaiseExceptionTask(exception))
-

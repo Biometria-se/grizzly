@@ -73,12 +73,13 @@ value `35 | step=5, persist=True` will be read from the file and override what i
 
     4. ...
 """
+
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
-from grizzly.types import bool_type
+from grizzly.types import StrDict, bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
@@ -88,7 +89,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
 
 
-def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:
+def atomicintegerincrementer__base_type__(value: str | int) -> str:
     """Validate values that `AtomicRandomInteger` can be initialized with."""
     if isinstance(value, int):
         return str(value)
@@ -133,10 +134,10 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
     __base_type__ = atomicintegerincrementer__base_type__
 
     __initialized: bool = False
-    _steps: dict[str, Any]
-    arguments: ClassVar[dict[str, Any]] = {'step': int, 'persist': bool_type}
+    _steps: dict
+    arguments: ClassVar[StrDict] = {'step': int, 'persist': bool_type}
 
-    def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: Union[str, int], outer_lock: bool = False) -> None:
+    def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: str | int, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
             safe_value = self.__class__.__base_type__(value)
 
@@ -181,12 +182,12 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
 
         instances = cls._instances.get(cls, {})
         for scenario in instances:
-            instance = cast(AtomicIntegerIncrementer, cls.get(scenario))
+            instance = cast('AtomicIntegerIncrementer', cls.get(scenario))
             variables = list(instance._steps.keys())
             for variable in variables:
                 del instance._steps[variable]
 
-    def __getitem__(self, variable: str) -> Optional[int]:
+    def __getitem__(self, variable: str) -> int | None:
         with self.semaphore():
             value = self._get_value(variable)
 

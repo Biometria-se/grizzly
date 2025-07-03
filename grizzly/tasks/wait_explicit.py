@@ -9,6 +9,7 @@ This task executes a `gevent.sleep` and is used to manually create delays betwee
 
 * `time_expression` _str_ - float as string or a fractions of seconds to excplicitly sleep in the scenario, supports {@link framework.usage.variables.templating}
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any

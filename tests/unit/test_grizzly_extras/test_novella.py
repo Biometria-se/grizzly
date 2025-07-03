@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Union
-
 import pytest
 
 from grizzly_extras.novella import (
@@ -86,7 +84,7 @@ def test_make_human_readable() -> None:
 def test__create_nav_node(tmp_path_factory: pytest.TempPathFactory) -> None:
     test_context = tmp_path_factory.mktemp('test_context')
     try:
-        target: list[Union[str, dict[str, str]]] = []
+        target: list[str | dict[str, str]] = []
         # <!-- not a file
         node = test_context
         _create_nav_node(target, 'foobar', node)

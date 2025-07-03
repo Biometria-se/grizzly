@@ -6,7 +6,7 @@ import logging
 from collections.abc import Callable, Iterable
 from contextlib import suppress
 from time import perf_counter, sleep, time
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError

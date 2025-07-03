@@ -1,4 +1,5 @@
 """Unit tests of grizzly.testdata.ast."""
+
 from __future__ import annotations
 
 import logging
@@ -25,25 +26,27 @@ def test__parse_template(request_task: RequestTaskFixture, caplog: LogCaptureFix
     assert request.source is not None
 
     source = jsonloads(request.source)
-    source['result'].update({
-        'CsvRowValue1': '{{ AtomicCsvReader.test.header1 }}',
-        'CsvRowValue2': '{{ AtomicCsvReader.test.header2 }}',
-        'File': '{{ AtomicDirectoryContents.test }}',
-        'TestSubString': '{{ a_sub_string[:3] }}',
-        'TestString': '{{ a_string if undeclared_variable is not defined else "foo" }}',
-        'FooBar': '{{ (AtomicIntegerIncrementer.file_number | int) }}',
-        'Expression': '{{ expression == "True" if undeclared_variable is defined else "True" }}',
-        'Undefined': '{{ undeclared_variable if undeclared_variable is defined else "unknown" }}',
-        'UndefinedAdvanced': '{{ AtomicIntegerIncrementer.undefined if AtomicIntegerIncrementer.undefined is defined else "hello" }}',
-        'Content': '{{ some_weird_variable if some_weird_variable is defined else content }}',
-        'ModFilterStatic': '{{ "%08d" % (12312341234 | string)[:6] | int }}',
-        'ModCallDynamic': '{{ "%08d" % str(file_id1)[:6] | int }}',
-        'ModFilterDynamic': '{{ "%08d" % (file_id2 | string)[:6] | int }}',
-        'ModCallStatic': '{{ "%08d" % str(12312341234234)[:6] | int }}',
-        'ModFilterDynamicAtomic': '{{ "%08d" % (AtomicIntegerIncrementer.file_id1 | string)[:6] | int }}',
-        'ModCallDynamicAtomic': '{{ "%08d" % str(AtomicIntegerIncrementer.file_id2)[:6] | int }}',
-        'Call': '{{ AtomicRandomString.somevalue.replace("-", replacement_string) }}',
-    })
+    source['result'].update(
+        {
+            'CsvRowValue1': '{{ AtomicCsvReader.test.header1 }}',
+            'CsvRowValue2': '{{ AtomicCsvReader.test.header2 }}',
+            'File': '{{ AtomicDirectoryContents.test }}',
+            'TestSubString': '{{ a_sub_string[:3] }}',
+            'TestString': '{{ a_string if undeclared_variable is not defined else "foo" }}',
+            'FooBar': '{{ (AtomicIntegerIncrementer.file_number | int) }}',
+            'Expression': '{{ expression == "True" if undeclared_variable is defined else "True" }}',
+            'Undefined': '{{ undeclared_variable if undeclared_variable is defined else "unknown" }}',
+            'UndefinedAdvanced': '{{ AtomicIntegerIncrementer.undefined if AtomicIntegerIncrementer.undefined is defined else "hello" }}',
+            'Content': '{{ some_weird_variable if some_weird_variable is defined else content }}',
+            'ModFilterStatic': '{{ "%08d" % (12312341234 | string)[:6] | int }}',
+            'ModCallDynamic': '{{ "%08d" % str(file_id1)[:6] | int }}',
+            'ModFilterDynamic': '{{ "%08d" % (file_id2 | string)[:6] | int }}',
+            'ModCallStatic': '{{ "%08d" % str(12312341234234)[:6] | int }}',
+            'ModFilterDynamicAtomic': '{{ "%08d" % (AtomicIntegerIncrementer.file_id1 | string)[:6] | int }}',
+            'ModCallDynamicAtomic': '{{ "%08d" % str(AtomicIntegerIncrementer.file_id2)[:6] | int }}',
+            'Call': '{{ AtomicRandomString.somevalue.replace("-", replacement_string) }}',
+        },
+    )
 
     request.source = jsondumps(source)
     scenario = GrizzlyContextScenario(1, behave=request_task.behave_fixture.create_scenario('TestScenario'), grizzly=request_task.behave_fixture.grizzly)
@@ -243,14 +246,27 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
                 'value1',
                 'value2',
                 'value3',
-                'value40', 'value41',
-                'Atomic.test1', 'Atomic.test2', 'Atomic.test3',
+                'value40',
+                'value41',
+                'Atomic.test1',
+                'Atomic.test2',
+                'Atomic.test3',
                 'value6',
-                'value70', 'value71', 'value72',
-                'value80', 'value81', 'value82',
+                'value70',
+                'value71',
+                'value72',
+                'value80',
+                'value81',
+                'value82',
                 'value9',
-                'value110', 'value111', 'value112',
-                'value120', 'value121', 'value122', 'value123', 'value124',
+                'value110',
+                'value111',
+                'value112',
+                'value120',
+                'value121',
+                'value122',
+                'value123',
+                'value124',
             },
         }
 
@@ -343,7 +359,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
 
 def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptureFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     grizzly.scenario.tasks.clear()
     variables = get_template_variables(grizzly)
@@ -354,13 +370,13 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
     grizzly.scenario.tasks.add(
         RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post'),
     )
-    task = cast(RequestTask, grizzly.scenario.tasks()[-1])
+    task = cast('RequestTask', grizzly.scenario.tasks()[-1])
     task.source = '{{ AtomicRandomString.test[:2] }}{{ integer | string}}'
 
     grizzly.scenario.tasks.add(
         RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get/{{ __internal__.id }}/{{ __external_id__ }}'),
     )
-    task = cast(RequestTask, grizzly.scenario.tasks()[-1])
+    task = cast('RequestTask', grizzly.scenario.tasks()[-1])
     task.source = '{{ AtomicIntegerIncrementer.test }} {%- set hello = world -%}'
 
     grizzly.scenario.tasks.add(
@@ -370,7 +386,7 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
     grizzly.scenario.tasks.add(
         RequestTask(RequestMethod.GET, name='Test GET request', endpoint='/api/test/post'),
     )
-    task = cast(RequestTask, grizzly.scenario.tasks()[-1])
+    task = cast('RequestTask', grizzly.scenario.tasks()[-1])
     task.source = '{{ AtomicRandomString.id.replace("-", "")[:2] }}'
 
     grizzly.scenario.tasks.add(
@@ -378,16 +394,18 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
     )
 
     grizzly.scenario.orphan_templates.append('{{ foobar }}')
-    grizzly.scenario.variables.update({
-        'AtomicRandomString.test': '%s | upper="True"',
-        'AtomicRandomString.id': '%d%d%d',
-        'AtomicIntegerIncrementer.test': 2,
-        'foo': 'bar',
-        'env': 'none',
-        'foobar': 'barfoo',
-        'world': 'hello',
-        'integer': '0',
-    })
+    grizzly.scenario.variables.update(
+        {
+            'AtomicRandomString.test': '%s | upper="True"',
+            'AtomicRandomString.id': '%d%d%d',
+            'AtomicIntegerIncrementer.test': 2,
+            'foo': 'bar',
+            'env': 'none',
+            'foobar': 'barfoo',
+            'world': 'hello',
+            'integer': '0',
+        },
+    )
 
     with caplog.at_level(logging.WARNING):
         variables = get_template_variables(grizzly)
@@ -418,6 +436,7 @@ def test_get_template_variables(behave_fixture: BehaveFixture, caplog: LogCaptur
 
     assert caplog.messages == []
 
+
 def test_get_template_variables_expressions(grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
     grizzly = grizzly_fixture.grizzly
     grizzly.scenario.tasks.clear()
@@ -425,16 +444,18 @@ def test_get_template_variables_expressions(grizzly_fixture: GrizzlyFixture, cap
     grizzly.scenario.tasks().clear()
     grizzly.scenario.variables.clear()
 
-    bob_csv = (grizzly_fixture.test_context / 'requests' / 'bob.csv')
+    bob_csv = grizzly_fixture.test_context / 'requests' / 'bob.csv'
     bob_csv.parent.mkdir(exist_ok=True)
     bob_csv.touch()
 
-    grizzly.scenario.variables.update({
-        'foo': 'bar',
-        'bar': 'none',
-        'quirk': 'none',
-        'AtomicCsvReader.bob': 'bob.csv',
-    })
+    grizzly.scenario.variables.update(
+        {
+            'foo': 'bar',
+            'bar': 'none',
+            'quirk': 'none',
+            'AtomicCsvReader.bob': 'bob.csv',
+        },
+    )
     grizzly.scenario.orphan_templates.append('{% set bar = foo %}')
     grizzly.scenario.orphan_templates.append('{% if bar == "bar" %}foo{% endif %}')
     grizzly.scenario.orphan_templates.append('{% set quirk = AtomicCsvReader.bob.quirk if AtomicCsvReader.bob is defined else AtomicCsvReader.alice.quirk %}')
@@ -455,15 +476,17 @@ def test_get_template_variables___doc___example(grizzly_fixture: GrizzlyFixture,
     grizzly.scenario.tasks().clear()
     grizzly.scenario.variables.clear()
 
-    input_csv = (grizzly_fixture.test_context / 'requests' / 'input.csv')
+    input_csv = grizzly_fixture.test_context / 'requests' / 'input.csv'
     input_csv.parent.mkdir(exist_ok=True)
     input_csv.touch()
 
-    grizzly.scenario.variables.update({
-        'AtomicCsvReader.input': 'input.csv',
-        'AtomicIntegerIncrementer.id': '1',
-        'foobar': 'True',
-    })
+    grizzly.scenario.variables.update(
+        {
+            'AtomicCsvReader.input': 'input.csv',
+            'AtomicIntegerIncrementer.id': '1',
+            'foobar': 'True',
+        },
+    )
 
     grizzly.scenario.orphan_templates.append('{% set quirk = AtomicCsvReader.input.quirk if AtomicCsvReader.input is defined else "none" %}')
     grizzly.scenario.orphan_templates.append('{% set name = AtomicCsvReader.input.name if AtomicCsvReader.input is defined else "none" %}')

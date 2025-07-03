@@ -13,7 +13,7 @@ from pathlib import Path
 from platform import node as hostname
 from threading import Event
 from time import monotonic as time
-from typing import Any, Optional, TypedDict, final
+from typing import Any, TypedDict, final
 
 from grizzly_extras.transformer import JsonBytesEncoder
 

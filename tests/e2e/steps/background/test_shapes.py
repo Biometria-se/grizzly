@@ -1,26 +1,33 @@
 """End-to-end tests for grizzly.steps.background.shapes."""
+
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from grizzly.context import GrizzlyContext
 from grizzly.utils import has_template
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from grizzly.types.behave import Context
     from tests.fixtures import End2EndFixture
 
 
-@pytest.mark.parametrize('count', [
-    '5', '1', "{{ user_count }}",
-])
+@pytest.mark.parametrize(
+    'count',
+    [
+        '5',
+        '1',
+        '{{ user_count }}',
+    ],
+)
 def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> None:
     def validator(context: Context) -> None:
         from locust.dispatch import UsersDispatcher as WeightedUsersDispatcher
-        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        grizzly = cast('GrizzlyContext', context.grizzly)
         data = next(iter(context.table)).as_dict()
 
         user_count = int(data['user_count'].replace('{{ user_count }}', '10'))
@@ -42,7 +49,7 @@ def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> 
     e2e_fixture.add_validator(validator, table=table)
 
     background: list[str] = []
-    testdata: Optional[dict[str, str]] = None
+    testdata: dict[str, str] | None = None
 
     if has_template(count):
         background.append('Then ask for value of variable "user_count"')
@@ -64,12 +71,17 @@ def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> 
     assert rc == 0
 
 
-@pytest.mark.parametrize('rate', [
-    '1', '0.5', "{{ spawn_rate }}",
-])
+@pytest.mark.parametrize(
+    'rate',
+    [
+        '1',
+        '0.5',
+        '{{ spawn_rate }}',
+    ],
+)
 def test_e2e_step_shapes_spawn_rate(e2e_fixture: End2EndFixture, rate: str) -> None:
     def validator(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         data = next(iter(context.table)).as_dict()
 
         spawn_rate = float(data['spawn_rate'].replace('{{ spawn_rate }}', '0.01'))
@@ -85,7 +97,7 @@ def test_e2e_step_shapes_spawn_rate(e2e_fixture: End2EndFixture, rate: str) -> N
     e2e_fixture.add_validator(validator, table=table)
 
     background: list[str] = []
-    testdata: Optional[dict[str, str]] = None
+    testdata: dict[str, str] | None = None
 
     if has_template(rate):
         background.append('Then ask for value of variable "spawn_rate"')

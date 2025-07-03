@@ -1,4 +1,5 @@
 """Unit tests for grizzly.testdata.variable.csv_writer."""
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -48,26 +49,34 @@ def test_atomiccsvwriter_message_handler(grizzly_fixture: GrizzlyFixture) -> Non
 
         assert not destination_file.exists()
 
-        message = Message('atomiccsvwriter', data={
-            'destination': 'foobar.csv',
-            'row': {
-                'foo': 'hello',
-                'bar': 'world!',
+        message = Message(
+            'atomiccsvwriter',
+            data={
+                'destination': 'foobar.csv',
+                'row': {
+                    'foo': 'hello',
+                    'bar': 'world!',
+                },
             },
-        }, node_id=None)
+            node_id=None,
+        )
 
         atomiccsvwriter_message_handler(parent.user.environment, message)
 
         assert destination_file.exists()
         assert destination_file.read_text() == 'foo,bar\nhello,world!\n'
 
-        message = Message('atomiccsvwriter', data={
-            'destination': 'foobar.csv',
-            'row': {
-                'foo': 'bar',
-                'bar': 'foo',
+        message = Message(
+            'atomiccsvwriter',
+            data={
+                'destination': 'foobar.csv',
+                'row': {
+                    'foo': 'bar',
+                    'bar': 'foo',
+                },
             },
-        }, node_id=None)
+            node_id=None,
+        )
 
         atomiccsvwriter_message_handler(parent.user.environment, message)
 
@@ -76,6 +85,7 @@ def test_atomiccsvwriter_message_handler(grizzly_fixture: GrizzlyFixture) -> Non
         for open_file in open_files.values():
             with suppress(Exception):
                 open_file.close()
+
 
 class TestAtomicCsvWriter:
     def test___init__(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
@@ -169,11 +179,14 @@ class TestAtomicCsvWriter:
 
             t['output'] = 'hello, world'
 
-            send_message_mock.assert_called_once_with('atomiccsvwriter', {
-                'rid': ANYUUID(version=4),
-                'destination': 'output.csv',
-                'row': {'foo': 'hello', 'bar': 'world'},
-            })
+            send_message_mock.assert_called_once_with(
+                'atomiccsvwriter',
+                {
+                    'rid': ANYUUID(version=4),
+                    'destination': 'output.csv',
+                    'row': {'foo': 'hello', 'bar': 'world'},
+                },
+            )
             send_message_mock.reset_mock()
 
             with pytest.raises(ValueError, match='AtomicCsvWriter.output.foo is not a valid reference'):
@@ -184,11 +197,14 @@ class TestAtomicCsvWriter:
             t = AtomicCsvWriter(scenario=scenario2, variable='output', value='output.csv | headers="foo,bar"')
             t['output'] = 'world, hello'
 
-            send_message_mock.assert_called_once_with('atomiccsvwriter', {
-                'rid': ANYUUID(version=4),
-                'destination': 'output.csv',
-                'row': {'foo': 'world', 'bar': 'hello'},
-            })
+            send_message_mock.assert_called_once_with(
+                'atomiccsvwriter',
+                {
+                    'rid': ANYUUID(version=4),
+                    'destination': 'output.csv',
+                    'row': {'foo': 'world', 'bar': 'hello'},
+                },
+            )
             send_message_mock.reset_mock()
         finally:
             cleanup()

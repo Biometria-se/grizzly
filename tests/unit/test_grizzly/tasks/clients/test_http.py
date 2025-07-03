@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.clients.http."""
+
 from __future__ import annotations
 
 import logging
@@ -14,7 +15,6 @@ import pytest
 from requests import Response
 from requests.structures import CaseInsensitiveDict
 
-from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.types import RequestDirection
@@ -26,6 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import GrizzlyFixture
 
 
@@ -59,7 +60,7 @@ class TestHttpClientTask:
         parent = grizzly_fixture()
 
         behave = grizzly_fixture.behave.context
-        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly = cast('GrizzlyContext', behave.grizzly)
         grizzly.scenario.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
         parent.user._context.update({'test': 'was here'})
 
@@ -88,8 +89,8 @@ class TestHttpClientTask:
                 environ['GRIZZLY_LOG_DIR'] = 'foobar'
 
             behave = grizzly_fixture.behave.context
-            grizzly = cast(GrizzlyContext, behave.grizzly)
-            test_cls = type('HttpClientTestTask', (HttpClientTask, ), {'__scenario__': grizzly.scenario})
+            grizzly = cast('GrizzlyContext', behave.grizzly)
+            test_cls = type('HttpClientTestTask', (HttpClientTask,), {'__scenario__': grizzly.scenario})
 
             with pytest.raises(AssertionError, match='HttpClientTestTask: variable argument is not applicable for direction TO'):
                 test_cls(RequestDirection.TO, 'http://example.org', payload_variable='test')
@@ -349,17 +350,23 @@ class TestHttpClientTask:
         target_host = ''
         endpoint = ''
 
-        test_cls = type('HttpClientTestTask', (HttpClientTask,), {
-            '__scenario__': grizzly.scenario,
-        })
+        test_cls = type(
+            'HttpClientTestTask',
+            (HttpClientTask,),
+            {
+                '__scenario__': grizzly.scenario,
+            },
+        )
 
         with caplog.at_level(logging.DEBUG):
             task_factory = test_cls(RequestDirection.FROM, f'https://{target_host}/{endpoint}')
             task_factory.host = f'https://{target_host}'
             task_factory.environment = parent.user.environment
-            task_factory.metadata.update({
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0',
-            })
+            task_factory.metadata.update(
+                {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0',
+                },
+            )
             task_factory._context = {
                 target_host: {
                     'auth': {
@@ -388,7 +395,7 @@ class TestHttpClientTask:
     def test_request_to(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         grizzly = grizzly_fixture.grizzly
 
-        test_cls = type('HttpClientTestTask', (HttpClientTask, ), {'__scenario__': grizzly_fixture.grizzly.scenario})
+        test_cls = type('HttpClientTestTask', (HttpClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
         parent = grizzly_fixture()
 
         response = Response()
@@ -412,7 +419,7 @@ class TestHttpClientTask:
 
         parent.user.set_variable('foo', 'bar')
 
-        assert ({}, 'foobar') == task(parent)
+        assert task(parent) == ({}, 'foobar')
 
         requests_request_spy.assert_called_once_with(
             'PUT',
@@ -439,7 +446,7 @@ class TestHttpClientTask:
         response.headers = CaseInsensitiveDict({'x-foo-bar': 'test'})
         requests_request_spy.return_value = response
 
-        assert ({'x-foo-bar': 'test'}, 'foobar') == task(parent)
+        assert task(parent) == ({'x-foo-bar': 'test'}, 'foobar')
 
         requests_request_spy.assert_called_once_with(
             'PUT',
@@ -461,7 +468,7 @@ class TestHttpClientTask:
 
         task_factory.response.add_status_code(500)
 
-        assert ({'x-foo-bar': 'test'}, 'foobar') == task(parent)
+        assert task(parent) == ({'x-foo-bar': 'test'}, 'foobar')
 
         requests_request_spy.assert_called_once_with(
             'PUT',
@@ -484,13 +491,20 @@ class TestHttpClientTask:
         task_factory.response.add_status_code(-500)
 
         # make sure b64encode filter is loaded
-        from grizzly.testdata import filters  # noqa: F401
+        from grizzly.testdata import filters
 
-        task_factory = test_cls(RequestDirection.TO, 'http://example.org', 'test-put', source=jsondumps({
-            'files': [
-                {'bytes': '{{ file_content | b64encode }}', 'name': '{{ file_name }}'},
-            ],
-        }))
+        task_factory = test_cls(
+            RequestDirection.TO,
+            'http://example.org',
+            'test-put',
+            source=jsondumps(
+                {
+                    'files': [
+                        {'bytes': '{{ file_content | b64encode }}', 'name': '{{ file_name }}'},
+                    ],
+                },
+            ),
+        )
 
         task = task_factory()
 
@@ -501,13 +515,15 @@ class TestHttpClientTask:
         response.status_code = 200
         requests_request_spy.return_value = response
 
-        assert ({'x-foo-bar': 'test'}, 'foobar') == task(parent)
+        assert task(parent) == ({'x-foo-bar': 'test'}, 'foobar')
 
-        expected_data = jsondumps({
-            'files': [
-                {'bytes': b64encode(b'<hello>foobar</hello>').decode(), 'name': 'test.json'},
-            ],
-        })
+        expected_data = jsondumps(
+            {
+                'files': [
+                    {'bytes': b64encode(b'<hello>foobar</hello>').decode(), 'name': 'test.json'},
+                ],
+            },
+        )
         requests_request_spy.assert_called_once_with(
             'PUT',
             'http://example.org',
@@ -525,4 +541,3 @@ class TestHttpClientTask:
             exception=None,
         )
         request_fire_spy.reset_mock()
-

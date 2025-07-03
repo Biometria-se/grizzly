@@ -58,9 +58,10 @@ Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/t
 And set response content type to "application/json"
 ```
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 from grizzly_extras.text import has_separator
@@ -116,14 +117,14 @@ class RequestTask(GrizzlyMetaRequestTask):
     method: RequestMethod
     name: str
     endpoint: str
-    source: Optional[str]
-    arguments: Optional[dict[str, str]]
+    source: str | None
+    arguments: dict[str, str] | None
     metadata: dict[str, str]
     async_request: bool
 
     response: RequestTaskResponse
 
-    def __init__(self, method: RequestMethod, name: str, endpoint: str, source: Optional[str] = None) -> None:
+    def __init__(self, method: RequestMethod, name: str, endpoint: str, source: str | None = None) -> None:
         self.method = method
         self.name = name
         self.endpoint = endpoint
@@ -147,12 +148,8 @@ class RequestTask(GrizzlyMetaRequestTask):
                 content_type = TransformerContentType.from_string(unquote(self.arguments['content_type']))
                 del self.arguments['content_type']
 
-                if (
-                    content_type == TransformerContentType.MULTIPART_FORM_DATA
-                    and (
-                        'multipart_form_data_name' not in self.arguments
-                        or 'multipart_form_data_filename' not in self.arguments
-                    )
+                if content_type == TransformerContentType.MULTIPART_FORM_DATA and (
+                    'multipart_form_data_name' not in self.arguments or 'multipart_form_data_filename' not in self.arguments
                 ):
                     message = f'Content type multipart/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename: {self.endpoint}'
                     raise AssertionError(message)

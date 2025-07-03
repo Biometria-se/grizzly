@@ -1,4 +1,5 @@
 """Unit tests for grizzly.tasks.async_timer."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -10,7 +11,7 @@ from grizzly.tasks import AsyncTimerTask
 from grizzly.testdata.communication import TestdataConsumer
 from tests.helpers import SOME
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import GrizzlyFixture, MockerFixture
 
 
@@ -34,7 +35,7 @@ class TestAsyncTimerTask:
 
         expected_datetime = dateparser('2024-12-03 10:02:00.123456+0100')
         datetime_mock.now.return_value = expected_datetime
-        datetime_mock.strptime.side_effect=lambda *args, **kwargs: datetime.strptime(*args, **kwargs)  # noqa: DTZ007
+        datetime_mock.strptime.side_effect = lambda *args, **kwargs: datetime.strptime(*args, **kwargs)  # noqa: DTZ007
 
         # <!-- start
         task_factory = AsyncTimerTask('timer-1', 'foobar', '1', 'start')
@@ -64,10 +65,12 @@ class TestAsyncTimerTask:
         # <!-- stop, timestamp from MQ message properties
         expected_datetime = dateparser('2024-12-03 10:12:00.123456Z').replace(tzinfo=timezone.utc)
 
-        parent.user.variables.update({
-            'PutDate': '20241203',
-            'PutTime': '101200123456',
-        })
+        parent.user.variables.update(
+            {
+                'PutDate': '20241203',
+                'PutTime': '101200123456',
+            },
+        )
 
         task_factory = AsyncTimerTask('timer-2', 'foobar', '1', 'stop')
         task = task_factory()
@@ -77,5 +80,3 @@ class TestAsyncTimerTask:
         toggle_mock.assert_called_once_with('stop', 'timer-2', 'foobar', '1', expected_datetime)
         toggle_mock.reset_mock()
         # // -->
-
-

@@ -1,21 +1,24 @@
 """@anchor pydoc:grizzly.steps.scenario.setup Setup
 This module contains step implementations that setup the load test scenario with parameters that is going to be used in the scenario they are defined in.
 """
+
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import parse
 
 from grizzly.auth import GrizzlyHttpAuthClient
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import GrizzlyTask, RequestTask
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import FailureAction
 from grizzly.types.behave import Context, given, register_type, then, when
 from grizzly.utils import ModuleLoader, has_template
 from grizzly_extras.text import permutation
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @parse.with_pattern(r'(iteration[s]?)')
@@ -73,7 +76,7 @@ def step_setup_iterations(context: Context, value: str, *_args: Any, **_kwargs: 
         value (str): number of iterations of the scenario, can be a templatning string or a environment configuration variable
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     should_resolve = has_template(value) or value[0] == '$'
     iterations = max(int(round(float(resolve_variable(grizzly.scenario, value)), 0)), 0)
 
@@ -102,7 +105,7 @@ def step_setup_pace(context: Context, pace_time: str) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     if not has_template(pace_time):
         try:
@@ -137,7 +140,7 @@ def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -
         variable (str): an already initialized variable that should be renamed
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     base_variable = '.'.join(variable.split('.')[:2]) if variable.count('.') > 1 else variable
 
@@ -159,7 +162,7 @@ def step_setup_log_all_requests(context: Context) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.context['log_all_requests'] = True
 
 
@@ -178,7 +181,7 @@ def step_setup_the_failed_task_custom(context: Context, failure: type[Exception]
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     assert len(grizzly.scenario.tasks()) > 0, 'scenario does not have any tasks'
     grizzly.scenario.tasks()[-1].failure_handling.update({failure: failure_action.exception})
 
@@ -199,7 +202,7 @@ def step_setup_the_failed_task_default(context: Context, failure_action: Failure
     """
     assert failure_action.default_friendly, f'{failure_action.step_expression} should not be used as the default behavior, only use it for specific failures'
 
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     assert len(grizzly.scenario.tasks()) > 0, 'scenario does not have any tasks'
     grizzly.scenario.tasks()[-1].failure_handling.update({None: failure_action.exception})
 
@@ -218,7 +221,7 @@ def step_setup_any_failed_task_custom(context: Context, failure: type[Exception]
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.failure_handling.update({failure: failure_action.exception})
 
 
@@ -237,7 +240,7 @@ def step_setup_any_failed_task_default(context: Context, failure_action: Failure
     """
     assert failure_action.default_friendly, f'{failure_action.step_expression} should not be used as the default behavior, only use it for specific failures'
 
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.failure_handling.update({None: failure_action.exception})
 
 
@@ -271,10 +274,10 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     casted_value = resolve_variable(grizzly.scenario, value)
 
-    previous_task: Optional[GrizzlyTask] = None
+    previous_task: GrizzlyTask | None = None
     tasks = grizzly.scenario.tasks()
     if len(tasks) > 0:
         previous_task = tasks[-1]

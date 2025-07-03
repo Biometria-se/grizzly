@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.keystore."""
+
 from __future__ import annotations
 
 from json import loads as jsonloads
@@ -225,13 +226,15 @@ class TestKeystoreTask:
     'parcels': '{{ parcels }}'
 } | render=True"""
 
-        parent.user.variables.update({
-            'name': 'AMD RADEON 7900 XTX',
-            'location': 'Storage 2',
-            'receiver': 'Grizzly',
-            'product': 'GPU1337',
-            'parcels': 1,
-        })
+        parent.user.variables.update(
+            {
+                'name': 'AMD RADEON 7900 XTX',
+                'location': 'Storage 2',
+                'receiver': 'Grizzly',
+                'product': 'GPU1337',
+                'parcels': 1,
+            },
+        )
 
         expected, _ = value.replace("'", '"').split(' | ', 1)
         expected = jsonloads(parent.user.render(expected))
@@ -245,7 +248,6 @@ class TestKeystoreTask:
 
         consumer_mock.keystore_push.assert_called_once_with('foobar', expected)
         consumer_mock.reset_mock()
-
 
     def test___call__pop(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()

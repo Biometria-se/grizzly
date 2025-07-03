@@ -27,6 +27,7 @@ anything goes wrong when executing the task, the error will also visible in the 
 Any timers that has not been stopped when the load test is finished, will be listed in the behave failure summary, and the test will be marked
 as failed.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -34,7 +35,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from grizzly.tasks import GrizzlyTask, grizzlytask, template
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
 
 

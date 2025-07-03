@@ -14,6 +14,7 @@ This task does not have any request statistics entries.
 
 * `message` _str_ - message to log at `INFO` level, can be a template
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any

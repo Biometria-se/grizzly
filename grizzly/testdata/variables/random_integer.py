@@ -24,6 +24,7 @@ This can then be used in a template:
 
 `AtomicRandomInteger.weight` will then be anything between, and including, `10` and `30`.
 """
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -88,14 +89,14 @@ class AtomicRandomInteger(AtomicVariable[int]):
         instances = cls._instances.get(cls, {})
 
         for scenario in instances:
-            instance = cast(AtomicRandomInteger, cls.get(scenario))
+            instance = cast('AtomicRandomInteger', cls.get(scenario))
             variables = list(instance._max.keys())
             for variable in variables:
                 del instance._max[variable]
 
     def __getitem__(self, variable: str) -> int:
         with self.semaphore():
-            minimum = cast(int, self._get_value(variable))
+            minimum = cast('int', self._get_value(variable))
             maximum = self._max[variable]
 
             return choice(range(minimum, maximum))

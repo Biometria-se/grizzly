@@ -1,16 +1,19 @@
 """Grizzly native tempalting filters that can be used to manipulate variable values where they are used."""
+
 from __future__ import annotations
 
 import json
 from ast import literal_eval as ast_literal_eval
 from base64 import b64decode as base64_b64decode
 from base64 import b64encode as base64_b64encode
-from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Union
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from jinja2.filters import FILTERS
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Callable
+
+    from grizzly.types import StrDict
 
 
 class templatingfilter:
@@ -38,7 +41,7 @@ class templatingfilter:
 def _is_namedtuple(value: Any) -> bool:
     value_type = type(value)
     bases = value_type.__bases__
-    if len(bases) != 1 or bases[0] != tuple:
+    if len(bases) != 1 or bases[0] is not tuple:
         return False
 
     fields = getattr(value_type, '_fields', None)
@@ -52,7 +55,7 @@ def _is_namedtuple(value: Any) -> bool:
 
 
 @templatingfilter
-def fromtestdata(value: NamedTuple) -> dict[str, Any]:
+def fromtestdata(value: NamedTuple) -> StrDict:
     """Convert testdata object to a dictionary.
 
     Nested testdata is a `namedtuple` object, e.g. `AtomicCsvReader.test`, where column values are accessed with
@@ -79,7 +82,7 @@ def fromtestdata(value: NamedTuple) -> dict[str, Any]:
 
 
 @templatingfilter
-def stringify(value: Optional[Union[list[Any], dict[str, Any], str, int, float]]) -> str:
+def stringify(value: list | StrDict | str | float | None) -> str:
     """Convert python object to JSON string.
 
     Convert any (valid) python object to a JSON string.

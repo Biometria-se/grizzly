@@ -11,12 +11,13 @@ If the specified file already exist, new content will be appended to the existin
 
 * `file_name` _str_ - file name relative to `<context root>/requests`, can contain directory levels
 """
+
 from __future__ import annotations
 
 from base64 import b64decode
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from grizzly.testdata.utils import resolve_parameters
 from grizzly.utils import has_parameter, has_template
@@ -31,7 +32,7 @@ if TYPE_CHECKING:  # pragma: no cover
 class WriteFileTask(GrizzlyTask):
     content: str
     file_name: str
-    file: Optional[Path] = None
+    file: Path | None = None
     temp_file: bool
 
     def __init__(self, file_name: str, content: str, *, temp_file: bool = False) -> None:

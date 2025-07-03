@@ -1,6 +1,7 @@
 """Helper methods for protocols that are used by both users
 and tasks.
 """
+
 from __future__ import annotations
 
 import json
@@ -8,7 +9,7 @@ import re
 from datetime import datetime, timezone
 from http.cookiejar import Cookie
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Protocol, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 from urllib.parse import urlparse
 
 from dateutil.parser import ParserError
@@ -29,7 +30,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
 
 
-ALPN_PROTOCOLS = ["http/1.1"]
+ALPN_PROTOCOLS = ['http/1.1']
 
 
 class HttpCookieHolder(Protocol):
@@ -44,30 +45,32 @@ def http_populate_cookiejar(holder: HttpCookieHolder, cookies: dict[str, str], *
     holder.cookiejar.clear()
 
     for name, value in cookies.items():
-        holder.cookiejar.set_cookie(Cookie(
-            version=0,
-            name=name,
-            value=value,
-            port=None,
-            port_specified=False,
-            domain=domain,
-            domain_specified=True,
-            domain_initial_dot=False,
-            path='/',
-            path_specified=True,
-            secure=secure,
-            expires=None,
-            discard=False,
-            comment=None,
-            comment_url=None,
-            rest={},
-        ))
+        holder.cookiejar.set_cookie(
+            Cookie(
+                version=0,
+                name=name,
+                value=value,
+                port=None,
+                port_specified=False,
+                domain=domain,
+                domain_specified=True,
+                domain_initial_dot=False,
+                path='/',
+                path_specified=True,
+                secure=secure,
+                expires=None,
+                discard=False,
+                comment=None,
+                comment_url=None,
+                rest={},
+            ),
+        )
 
 
 def async_message_request_wrapper(parent: GrizzlyScenario, client: ztypes.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
     """Wrap `grizzly_extras.async_message.async_message_request` to make it easier to communicating with `async-messaged` from within `grizzly`."""
-    request_string: Optional[str] = None
-    request_rendered: Optional[str] = None
+    request_string: str | None = None
+    request_rendered: str | None = None
 
     try:
         request_string = json.dumps(request)
@@ -102,7 +105,7 @@ def mq_client_logs(context: Context) -> None:
     if not hasattr(context, 'started'):
         return
 
-    started = cast(datetime, context.started).astimezone(tz=timezone.utc)
+    started = cast('datetime', context.started).astimezone(tz=timezone.utc)
 
     amqerr_log_entries: list[tuple[datetime, str]] = []
     amqerr_fdc_files: list[tuple[datetime, str]] = []
@@ -115,7 +118,7 @@ def mq_client_logs(context: Context) -> None:
 
     for amqerr_log_file in log_directory.glob('AMQERR*.LOG'):
         with amqerr_log_file.open() as fd:
-            line: Optional[str] = None
+            line: str | None = None
 
             for line in fd:
                 while line and not re.match(r'^\s+Time\(', line):

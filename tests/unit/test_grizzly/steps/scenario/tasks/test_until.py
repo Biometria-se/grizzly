@@ -1,11 +1,11 @@
 """Unit tests of grizzly.steps.scenario.tasks.until."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from grizzly.context import GrizzlyContext
 from grizzly.steps import step_task_client_get_endpoint_until, step_task_request_with_name_endpoint_until
 from grizzly.tasks import UntilRequestTask
 from grizzly.tasks.clients import HttpClientTask
@@ -15,12 +15,13 @@ from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import BehaveFixture
 
 
 def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -31,19 +32,23 @@ def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixtur
 
     behave.text = 'foo bar'
     step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='this step is only valid for request methods with direction FROM'),
-        ANY(AssertionError, message='this step does not have support for step text'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='this step is only valid for request methods with direction FROM'),
+            ANY(AssertionError, message='this step does not have support for step text'),
+        ],
+    }
 
     behave.text = None
 
     step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='this step is only valid for request methods with direction FROM'),
-        ANY(AssertionError, message='this step does not have support for step text'),
-        ANY(AssertionError, message='content type must be specified for request'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='this step is only valid for request methods with direction FROM'),
+            ANY(AssertionError, message='this step does not have support for step text'),
+            ANY(AssertionError, message='content type must be specified for request'),
+        ],
+    }
 
     step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test | content_type=json', '$.`this`[?status="ready"]')
 
@@ -58,7 +63,7 @@ def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixtur
     step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/{{ endpoint }} | content_type=json', '$.`this`[?status="{{ endpoint }}"]')
 
     assert len(grizzly.scenario.tasks()) == 4
-    tasks = cast(list[UntilRequestTask], grizzly.scenario.tasks())
+    tasks = cast('list[UntilRequestTask]', grizzly.scenario.tasks())
 
     templates: list[str] = []
 
@@ -73,15 +78,17 @@ def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixtur
     templates += tasks[-3].get_templates()
 
     assert len(templates) == 2
-    assert sorted(templates) == sorted([
-        '$.`this`[?status="{{ variable }}"]',
-        '/api/{{ variable }}',
-    ])
+    assert sorted(templates) == sorted(
+        [
+            '$.`this`[?status="{{ variable }}"]',
+            '/api/{{ variable }}',
+        ],
+    )
 
 
 def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 

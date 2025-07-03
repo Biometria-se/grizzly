@@ -43,13 +43,14 @@ requests towards `www.example.com`.
 
 For more details, see {@pylink grizzly.auth.aad}.
 """
+
 from __future__ import annotations
 
 import logging
 from json import dumps as jsondumps
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from geventhttpclient import Session
 from locust.exception import CatchResponseError
@@ -57,7 +58,7 @@ from locust.exception import CatchResponseError
 from grizzly.auth import AAD, GrizzlyHttpAuthClient, RefreshTokenDistributor, refresh_token
 from grizzly.tasks import RequestTaskResponse
 from grizzly.testdata.utils import read_file
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, bool_type
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, StrDict, bool_type
 from grizzly.utils import has_template, is_file, merge_dicts
 from grizzly.utils.protocols import http_populate_cookiejar, ssl_context_factory
 from grizzly_extras.transformer import TransformerContentType
@@ -77,9 +78,9 @@ if TYPE_CHECKING:  # pragma: no cover
 class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     __dependencies__: ClassVar[GrizzlyDependencies] = {RefreshTokenDistributor}
 
-    arguments: dict[str, Any]
-    metadata: dict[str, Any]
-    session_started: Optional[float]
+    arguments: StrDict
+    metadata: StrDict
+    session_started: float | None
     host: str
     verify: bool
     response: RequestTaskResponse
@@ -89,14 +90,14 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         self,
         direction: RequestDirection,
         endpoint: str,
-        name: Optional[str] = None,
+        name: str | None = None,
         /,
-        payload_variable: Optional[str] = None,
-        metadata_variable: Optional[str] = None,
-        source: Optional[str] = None,
-        destination: Optional[str] = None,
-        text: Optional[str] = None,
-        method: Optional[RequestMethod] = None,
+        payload_variable: str | None = None,
+        metadata_variable: str | None = None,
+        source: str | None = None,
+        destination: str | None = None,
+        text: str | None = None,
+        method: RequestMethod | None = None,
     ) -> None:
         self.verify = True
 
@@ -155,9 +156,11 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         }
 
         if self.content_type != TransformerContentType.UNDEFINED:
-            self.metadata.update({
-                'Content-Type': self.content_type.value,
-            })
+            self.metadata.update(
+                {
+                    'Content-Type': self.content_type.value,
+                },
+            )
 
         self.session_started = None
         self.__class__._context = {
@@ -183,13 +186,13 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         metadata = self._context.get('metadata', None) or {}
         self.metadata.update(metadata)
 
-    def _handle_response(self, parent: GrizzlyScenario, meta: dict[str, Any], url: str, response: CompatResponse) -> GrizzlyResponse:
+    def _handle_response(self, parent: GrizzlyScenario, meta: StrDict, url: str, response: CompatResponse) -> GrizzlyResponse:
         text = response.text
         payload = text.decode() if isinstance(text, bytearray | bytes) else text
 
         metadata = {key: value for key, value in response.headers.items()}  # noqa: C416
 
-        exception: Optional[Exception] = None
+        exception: Exception | None = None
 
         if response.status_code not in self.response.status_codes or response.url != url:
             parent.logger.error('%s returned %d', response.url, response.status_code)
@@ -202,16 +205,18 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             if self.metadata_variable is not None:
                 parent.user.set_variable(self.metadata_variable, jsondumps(metadata))
 
-        meta.update({
-            'response_length': len(payload.encode()),
-            'response': {
-                'url': response.url,
-                'metadata': metadata,
-                'payload': payload,
-                'status': response.status_code,
+        meta.update(
+            {
+                'response_length': len(payload.encode()),
+                'response': {
+                    'url': response.url,
+                    'metadata': metadata,
+                    'payload': payload,
+                    'status': response.status_code,
+                },
+                'exception': exception,
             },
-            'exception': exception,
-        })
+        )
 
         return metadata, payload
 
@@ -220,12 +225,15 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         with self.action(parent) as meta:
             url = parent.user.render(self.endpoint)
 
-            meta.update({'request': {
-                'url': url,
-                'metadata': self.metadata,
-                'payload': None,
-            }})
-
+            meta.update(
+                {
+                    'request': {
+                        'url': url,
+                        'metadata': self.metadata,
+                        'payload': None,
+                    },
+                },
+            )
 
             with Session(
                 insecure=not self.verify,
@@ -240,7 +248,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
 
     @refresh_token(AAD)
     def request_to(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        source = parent.user.render(cast(str, self.source))
+        source = parent.user.render(cast('str', self.source))
 
         if has_template(source):
             source = parent.user.render(source)
@@ -248,11 +256,15 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         with self.action(parent) as meta:
             url = parent.user.render(self.endpoint)
 
-            meta.update({'request': {
-                'url': url,
-                'metadata': self.metadata,
-                'payload': source,
-            }})
+            meta.update(
+                {
+                    'request': {
+                        'url': url,
+                        'metadata': self.metadata,
+                        'payload': source,
+                    },
+                },
+            )
 
             with Session(insecure=not self.verify, network_timeout=self.timeout, ssl_context_factory=self.ssl_context_factory) as client:
                 http_populate_cookiejar(client, self.cookies, url=url)

@@ -1,4 +1,5 @@
 """Unit tests for grizzly.tasks.async_group."""
+
 from __future__ import annotations
 
 import logging
@@ -36,7 +37,7 @@ class TestAsyncRequestGroup:
 
     def test_add(self) -> None:
         task_factory = AsyncRequestGroupTask(name='test')
-        requests = cast(list[RequestTask], task_factory.tasks)
+        requests = cast('list[RequestTask]', task_factory.tasks)
         assert len(requests) == 0
 
         task_factory.add(RequestTask(RequestMethod.GET, name='test', endpoint='/api/test'))
@@ -61,18 +62,20 @@ class TestAsyncRequestGroup:
         task_factory.add(RequestTask(RequestMethod.GET, name=f'{name_template}-3', endpoint='/api/test'))
 
         assert len(task_factory.tasks) == 3
-        assert sorted(task_factory.get_templates()) == sorted([
-            'async-{{ name }}',
-            f'async-{{{{ name }}}}:{name_template}-1',
-            f'async-{{{{ name }}}}:{name_template}-2',
-            f'async-{{{{ name }}}}:{name_template}-3',
-        ])
+        assert sorted(task_factory.get_templates()) == sorted(
+            [
+                'async-{{ name }}',
+                f'async-{{{{ name }}}}:{name_template}-1',
+                f'async-{{{{ name }}}}:{name_template}-2',
+                f'async-{{{{ name }}}}:{name_template}-3',
+            ],
+        )
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         parent = grizzly_fixture()
 
         task_factory = AsyncRequestGroupTask(name='test-async-group')
-        requests = cast(list[RequestTask], task_factory.tasks)
+        requests = cast('list[RequestTask]', task_factory.tasks)
         task = task_factory()
 
         with pytest.raises(NotImplementedError, match='tests.helpers.TestUser_001 does not inherit AsyncRequests'):
@@ -170,7 +173,7 @@ class TestAsyncRequestGroup:
             parent.user._scenario.failure_handling.update({None: StopUser})
 
             with caplog.at_level(logging.DEBUG), pytest.raises(StopUser):
-                    task(parent)
+                task(parent)
 
             assert spawn_mock.call_count == 2
             assert settrace_mock.call_count == 2

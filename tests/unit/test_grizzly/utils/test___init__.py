@@ -1,4 +1,5 @@
 """Unit tests of grizzly.utils."""
+
 from __future__ import annotations
 
 from os import environ
@@ -52,7 +53,7 @@ class TestModuleLoader:
         user_class_name = 'RestApiUser'
         for user_package in ['', 'grizzly.users.', 'grizzly.users.restapi.']:
             user_class_name_value = f'{user_package}{user_class_name}'
-            user_class = cast(type[GrizzlyUser], ModuleLoader[GrizzlyUser].load('grizzly.users', user_class_name_value))  # type: ignore[redundant-cast]
+            user_class = cast('type[GrizzlyUser]', ModuleLoader[GrizzlyUser].load('grizzly.users', user_class_name_value))  # type: ignore[redundant-cast]
             user_class.__scenario__ = test_context.scenario
             user_class.host = test_context.scenario.context['host']
             assert user_class.__module__ == 'grizzly.users.restapi'
@@ -120,7 +121,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     user_class_type_1.host = 'http://localhost:8000'
 
     assert issubclass(user_class_type_1, RestApiUser | GrizzlyUser)
-    user_class_type_1 = cast(type[RestApiUser], user_class_type_1)
+    user_class_type_1 = cast('type[RestApiUser]', user_class_type_1)
     assert user_class_type_1.__name__ == f'grizzly.users.RestApiUser_{scenario.identifier}'
     assert user_class_type_1.weight == 1
     assert user_class_type_1.fixed_count == 0
@@ -221,7 +222,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     user_class_type_2.host = 'http://localhost:8001'
 
     assert issubclass(user_class_type_2, RestApiUser | GrizzlyUser)
-    user_class_type_2 = cast(type[RestApiUser], user_class_type_2)
+    user_class_type_2 = cast('type[RestApiUser]', user_class_type_2)
     assert user_class_type_2.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_2.weight == 1
     assert user_class_type_2.fixed_count == 100
@@ -444,6 +445,7 @@ def test_create_scenario_class_type(behave_fixture: BehaveFixture) -> None:
 
 def test_in_correct_section() -> None:
     from grizzly.steps import step_setup_iterations
+
     assert in_correct_section(step_setup_iterations, ['grizzly.steps.scenario'])
     assert not in_correct_section(step_setup_iterations, ['grizzly.steps.background'])
 
@@ -453,7 +455,7 @@ def test_in_correct_section() -> None:
     # force AttributeError, for when a step function isn't part of a module
     setattr(step_custom, '__module__', None)  # noqa: B010
 
-    assert in_correct_section(cast(FunctionType, step_custom), ['grizzly.steps.scenario'])
+    assert in_correct_section(cast('FunctionType', step_custom), ['grizzly.steps.scenario'])
 
 
 def test_parse_timespan() -> None:
@@ -568,10 +570,12 @@ def test_normalize() -> None:
 
 
 def test_flatten() -> None:
-    assert flatten({
-        'hello': {'world': {'foo': {'bar': 'foobar'}}},
-        'foo': {'bar': 'hello world!'},
-    }) == {
+    assert flatten(
+        {
+            'hello': {'world': {'foo': {'bar': 'foobar'}}},
+            'foo': {'bar': 'hello world!'},
+        },
+    ) == {
         'hello.world.foo.bar': 'foobar',
         'foo.bar': 'hello world!',
     }

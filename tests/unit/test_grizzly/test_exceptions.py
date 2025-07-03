@@ -1,4 +1,5 @@
 """Unit tests of grizzly.exceptions."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -8,7 +9,7 @@ import pytest
 
 from grizzly.exceptions import retry
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from unittest.mock import MagicMock
 
     from tests.fixtures import MockerFixture
@@ -65,4 +66,3 @@ def test_retry(mocker: MockerFixture) -> None:
     for i in range(uniform_mock.call_count):
         assert uniform_mock.call_args_list[i] == call(0.5, 1.5)
     uniform_mock.reset_mock()
-

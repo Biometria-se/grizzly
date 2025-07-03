@@ -1,9 +1,10 @@
 """Unit tests for grizzly.context."""
+
 from __future__ import annotations
 
 from contextlib import suppress
 from os import environ
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from gevent.lock import Semaphore
@@ -84,10 +85,10 @@ def test_load_configuration_file(tmp_path_factory: TempPathFactory) -> None:
 class TestGrizzlyContextSetup:
     def test(self, behave_fixture: BehaveFixture) -> None:
         behave = behave_fixture.context
-        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly = cast('GrizzlyContext', behave.grizzly)
         grizzly_setup = grizzly.setup
 
-        expected_properties: dict[str, Optional[tuple[Any, Any]]] = {
+        expected_properties: dict[str, tuple[Any, Any] | None] = {
             'log_level': ('INFO', 'DEBUG'),
             'user_count': (None, 10),
             'spawn_rate': (None, 2),
@@ -132,10 +133,10 @@ class TestGrizzlyContextSetupLocustMessages:
         assert isinstance(context, dict)
         assert context == {}
 
-        def callback(environment: Environment, msg: Message, *args: Any, **kwargs: Any) -> None:  # noqa: ARG001
+        def callback(environment: Environment, msg: Message, *args: Any, **kwargs: Any) -> None:
             pass
 
-        def callback_ack(environment: Environment, msg: Message, *args: Any, **kwargs: Any) -> None:  # noqa: ARG001
+        def callback_ack(environment: Environment, msg: Message, *args: Any, **kwargs: Any) -> None:
             pass
 
         context.register(MessageDirection.SERVER_CLIENT, 'test_message', callback)
@@ -228,7 +229,7 @@ class TestGrizzlyContextState:
 class TestGrizzlyContext:
     def test(self, behave_fixture: BehaveFixture) -> None:
         behave = behave_fixture.context
-        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly = cast('GrizzlyContext', behave.grizzly)
         assert isinstance(grizzly, GrizzlyContext)
 
         from grizzly.context import grizzly as second_grizzly
@@ -290,14 +291,17 @@ class TestGrizzlyContextScenarios:
 
 
 class TestGrizzlyContextScenario:
-    @pytest.mark.parametrize('index', [
-        1,
-        12,
-        99,
-        104,
-        999,
-        1004,
-    ])
+    @pytest.mark.parametrize(
+        'index',
+        [
+            1,
+            12,
+            99,
+            104,
+            999,
+            1004,
+        ],
+    )
     def test(self, index: int, behave_fixture: BehaveFixture) -> None:
         scenario = GrizzlyContextScenario(index, behave=behave_fixture.create_scenario('Test'), grizzly=behave_fixture.grizzly)
         identifier = f'{index:03}'
@@ -345,7 +349,7 @@ class TestGrizzlyContextScenario:
 
     def test_scenarios(self, behave_fixture: BehaveFixture) -> None:
         behave = behave_fixture.context
-        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly = cast('GrizzlyContext', behave.grizzly)
         assert len(grizzly.scenarios()) == 0
 
         grizzly.scenarios.create(behave_fixture.create_scenario('test1'))
@@ -442,14 +446,14 @@ class TestGrizzlyContextTasksTmp:
 
         grizzly.scenario.variables['loop_value'] = 'none'
 
-        loop = LoopTask('loop-1', '["hello", "world"]', "loop_value")
+        loop = LoopTask('loop-1', '["hello", "world"]', 'loop_value')
         tmp.loop = loop
 
         assert len(tmp.__stack__) == 1
         assert tmp.__stack__[-1] is loop
 
         with pytest.raises(AssertionError, match='loop is already in stack'):
-            tmp.loop = LoopTask('loop-2', '["hello", "world"]', "loop_value")
+            tmp.loop = LoopTask('loop-2', '["hello", "world"]', 'loop_value')
 
         assert len(tmp.__stack__) == 1
         assert tmp.__stack__[-1] is loop
@@ -554,7 +558,7 @@ class TestGrizzlyContextTasks:
 
         assert len(tasks()) == 1
 
-        tasks.tmp.loop = LoopTask('loop-1', '["hello", "world"]', "loop_value")
+        tasks.tmp.loop = LoopTask('loop-1', '["hello", "world"]', 'loop_value')
 
         assert len(tasks()) == 0
         assert len(tasks.tmp.__stack__) == 2

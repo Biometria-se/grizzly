@@ -6,7 +6,6 @@ import gzip
 import time
 import xml.etree.ElementTree as ET
 from struct import pack, unpack
-from typing import Optional
 
 try:
     import pymqi

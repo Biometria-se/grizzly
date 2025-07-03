@@ -137,8 +137,9 @@ indent-style = "space"
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "ANN101", "ANN102", "ANN401",
+    "ANN401",
     "BLE001",
+    "COM812",
     "D101", "D102", "D103", "D105", "D106", "D107", "D203", "D213", "D205", "D301", "D407", "D417",
     "DTZ005",
     "E722", "E402",
@@ -147,7 +148,7 @@ ignore = [
     "PD011",
     "PLR2004",
     "UP007", "UP006",
-    "Q000",
+    "Q000", "Q003",
     "S101", "S104", "S314", "S603", "S701",
     "SLF001",
     "T201",
@@ -158,6 +159,9 @@ ignore = [
 "script/**" = ["INP001", "D100"]
 "tests/unit/test_grizzly/test_locust_dispatch.py" = ["PT009", "PT027", "UP032", "D106"]
 "tests/**/*.py" = ["S106", "PLC0415"]
+"tests/unit/test_grizzly/tasks/clients/test_http.py" = ["F401"]
+"tests/test-project/**/*.py" = ["ALL"]
+"example/features/environment.py" = ["F401"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15

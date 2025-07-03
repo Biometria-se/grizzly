@@ -36,10 +36,11 @@ in the same example.
 
 In addition to this it is also possible to append milliseconds with `:ms` and remove all the seperators in the date and time with `:no-sep`.
 """  # noqa: E501
+
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dateparser
@@ -60,7 +61,7 @@ if TYPE_CHECKING:  # pragma: no cover
 class DateTask(GrizzlyTask):
     variable: str
     value: str
-    arguments: dict[str, Optional[str]]
+    arguments: dict[str, str | None]
 
     def __init__(self, variable: str, value: str) -> None:
         super().__init__(timeout=None)
@@ -102,11 +103,11 @@ class DateTask(GrizzlyTask):
             offset = self.arguments.get('offset', None)
             if offset is not None:
                 offset_rendered = parent.user.render(offset)
-                offset_params = cast(Any, parse_timespan(offset_rendered))
+                offset_params = cast('Any', parse_timespan(offset_rendered))
                 date_value += relativedelta(**offset_params)
 
             timezone_argument = self.arguments.get('timezone', None)
-            timezone: Optional[ZoneInfo] = None  # None in asttimezone == local time zone
+            timezone: ZoneInfo | None = None  # None in asttimezone == local time zone
             if timezone_argument is not None:
                 timezone_argument = parent.user.render(timezone_argument)
                 try:
@@ -115,7 +116,7 @@ class DateTask(GrizzlyTask):
                     message = f'"{timezone_argument}" is not a valid time zone'
                     raise ValueError(message) from e
 
-            date_format = cast(str, self.arguments.get('format', '%Y-%m-%d %H:%M:%S'))
+            date_format = cast('str', self.arguments.get('format', '%Y-%m-%d %H:%M:%S'))
 
             if date_format.startswith('ISO-8601'):
                 _, date_format = date_format.split(':', 1)

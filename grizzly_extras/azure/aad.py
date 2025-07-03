@@ -18,7 +18,7 @@ from os import environ
 from pathlib import Path
 from secrets import token_urlsafe
 from threading import Thread
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, TypedDict, cast
+from typing import TYPE_CHECKING, Any, ClassVar, TypedDict, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 

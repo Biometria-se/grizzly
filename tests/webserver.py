@@ -7,7 +7,7 @@ import json
 import logging
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import gevent
 from flask import Flask, jsonify, request

@@ -11,16 +11,15 @@ from datetime import datetime, timezone
 from functools import wraps
 from importlib import import_module
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, Union, cast
+from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar, cast
 from urllib.parse import urlparse
 
 from azure.core.credentials import AccessToken
 
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.testdata.communication import GrizzlyMessageHandler, GrizzlyMessageMapping
-from grizzly.types import GrizzlyResponse
+from grizzly.types import GrizzlyResponse, StrDict
 from grizzly.types.locust import StopUser
-from grizzly.users import GrizzlyUser
 from grizzly.utils import ModuleLoader, merge_dicts
 from grizzly_extras.azure.aad import AuthMethod, AuthType, AzureAadCredential
 
@@ -35,6 +34,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
     from grizzly.testdata import GrizzlyVariables
     from grizzly.types.locust import Environment
+    from grizzly.users import GrizzlyUser
 
 P = ParamSpec('P')
 
@@ -46,9 +46,9 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
     host: str
     environment: Environment
     credential: AzureAadCredential | None = None
-    metadata: dict[str, Any]
+    metadata: StrDict
     cookies: dict[str, str]
-    __context__: ClassVar[dict[str, Any]] = {
+    __context__: ClassVar[StrDict] = {
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
@@ -75,7 +75,7 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
     session_started: float | None
     grizzly: GrizzlyContext
     _scenario: GrizzlyContextScenario
-    _context: dict[str, Any]
+    _context: StrDict
 
     def add_metadata(self, key: str, value: str) -> None:
         if self._context.get('metadata', None) is None:
@@ -102,7 +102,7 @@ AuthenticatableFunc = TypeVar('AuthenticatableFunc', bound=Callable[..., Grizzly
 class refresh_token(Generic[P]):
     impl: type[RefreshToken]
 
-    def __init__(self, impl: Union[type[RefreshToken], str]) -> None:
+    def __init__(self, impl: type[RefreshToken] | str) -> None:
         if isinstance(impl, str):
             if impl.count('.') > 1:
                 module_name, class_name = impl.rsplit('.', 1)
@@ -119,7 +119,7 @@ class refresh_token(Generic[P]):
 
     def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:  # noqa: PLR0915
         @wraps(func)
-        def refresh_token(client: GrizzlyHttpAuthClient, arg: Union[RequestTask, GrizzlyScenario], *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:  # noqa: PLR0915, PLR0912
+        def refresh_token(client: GrizzlyHttpAuthClient, arg: RequestTask | GrizzlyScenario, *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:  # noqa: PLR0915, PLR0912
             request: RequestTask | None = None
 
             # make sure the client has a credential instance, if it is needed
@@ -239,7 +239,7 @@ class RefreshTokenDistributor(GrizzlyMessageHandler):
     _credentials: ClassVar[dict[int, AzureAadCredential]] = {}
 
     @classmethod
-    def create_response(cls, environment: Environment, key: int, request: dict[str, Any]) -> dict[str, Any]:  # noqa: ARG003
+    def create_response(cls, environment: Environment, key: int, request: StrDict) -> StrDict:  # noqa: ARG003
         if key not in cls._credentials:
             auth_method = AuthMethod.from_string(request['auth_method'])
 
@@ -280,7 +280,7 @@ class RefreshTokenDistributor(GrizzlyMessageHandler):
         module_name = client.credential.__class__.__module__
         class_name = client.credential.__class__.__name__
 
-        request: dict[str, Any] = {
+        request: StrDict = {
             'class_name': f'{module_name}.{class_name}',
             'username': client.credential.username,
             'password': client.credential.password,
@@ -311,8 +311,8 @@ class RefreshToken(metaclass=ABCMeta):
         auth_context = client._context.get('auth', None)
 
         if auth_context is not None:
-            auth_client: dict[str, Any] = auth_context.get('client', {})
-            auth_user: dict[str, Any] = auth_context.get('user', {})
+            auth_client: StrDict = auth_context.get('client', {})
+            auth_user: StrDict = auth_context.get('user', {})
 
             username: str | None = auth_user.get('username')
             password: str | None = auth_user.get('password') or auth_client.get('secret')

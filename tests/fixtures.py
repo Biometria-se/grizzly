@@ -32,7 +32,7 @@ from grizzly import context as grizzly_context
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.variables import destroy_variables
-from grizzly.types import RequestMethod
+from grizzly.types import RequestMethod, StrDict
 from grizzly.types.behave import Context as BehaveContext
 from grizzly.types.behave import Feature, Scenario, Step
 from grizzly.types.locust import Environment, LocalRunner
@@ -359,7 +359,7 @@ class GrizzlyFixture:
 
 class ResponseContextManagerFixture:
     # borrowed from geventhttpclient.client._build_request
-    def _build_request(self, method: str, request_url: str, body: str | None = '', headers: dict[str, Any] | None = None) -> str:  # noqa: ARG002
+    def _build_request(self, method: str, request_url: str, body: str | None = '', headers: StrDict | None = None) -> str:  # noqa: ARG002
         parsed = urlparse(request_url)
 
         request = method + ' ' + parsed.path + ' HTTP/1.1\r\n'
@@ -374,12 +374,12 @@ class ResponseContextManagerFixture:
         self,
         status_code: int,
         response_body: Any | None = None,
-        response_headers: dict[str, Any] | None = None,
+        response_headers: StrDict | None = None,
         request_method: str | None = None,
         request_body: Any | None = None,
-        request_headers: dict[str, Any] | None = None,
+        request_headers: StrDict | None = None,
         url: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: StrDict,
     ) -> FastResponseContextManager:
         name = kwargs['name']
 
@@ -993,7 +993,7 @@ def step_start_webserver(context: Context, port: int) -> None:
     def execute(
         self,
         feature_file: str,
-        env_conf: dict[str, Any] | None = None,
+        env_conf: StrDict | None = None,
         testdata: dict[str, str] | None = None,
         project_name: str | None = None,
         *,

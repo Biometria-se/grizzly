@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.date."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -7,12 +8,12 @@ from typing import TYPE_CHECKING, cast
 import pytest
 from dateutil.parser import parse as dateparser
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import DateTask
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import GrizzlyFixture
 
 
@@ -35,14 +36,16 @@ class TestDateTask:
         assert task_factory.__template_attributes__ == {'value', 'arguments'}
         templates = sorted(task_factory.get_templates())
         assert len(templates) == 2
-        assert templates == sorted([
-            '{{ datetime.now() }}',
-            '{{ timezone }}',
-        ])
+        assert templates == sorted(
+            [
+                '{{ datetime.now() }}',
+                '{{ timezone }}',
+            ],
+        )
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         behave = grizzly_fixture.behave.context
-        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly = cast('GrizzlyContext', behave.grizzly)
         grizzly.scenario.variables.update({'date_variable': 'none'})
 
         parent = grizzly_fixture()
@@ -104,11 +107,13 @@ class TestDateTask:
 
         assert parent.user.variables['date_variable'] == datetime.now().strftime('%Y')
 
-        parent.user.variables.update({
-            'to_year': '2022',
-            'to_month': '01',
-            'to_day': '18',
-        })
+        parent.user.variables.update(
+            {
+                'to_year': '2022',
+                'to_month': '01',
+                'to_day': '18',
+            },
+        )
 
         task_factory = DateTask('date_variable', '{{ to_year }}-{{ to_month }}-{{ to_day }} | format="%Y", offset=-1D')
         task = task_factory()

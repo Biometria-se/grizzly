@@ -123,22 +123,22 @@ Then put request "test/queue-message.j2.json" with name "gzipped-message" to end
 And metadata "filename" is "my_filename"
 ```
 """
+
 from __future__ import annotations
 
 import logging
 from contextlib import contextmanager, suppress
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import zmq.green as zmq
 from zmq import sugar as ztypes
 
 from grizzly.exceptions import StopScenario
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestType, StrDict
 from grizzly.utils import merge_dicts
 from grizzly.utils.protocols import zmq_disconnect
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
 
 from . import GrizzlyUser, grizzlycontext
@@ -149,6 +149,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
     from grizzly.testdata.communication import GrizzlyDependencies
     from grizzly.types.locust import Environment
+    from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 
 # no used here, but needed for sanity check
 try:
@@ -159,24 +160,26 @@ except:
     from grizzly_extras import dummy_pymqi as pymqi
 
 
-@grizzlycontext(context={
-    'auth': {
-        'username': None,
-        'password': None,
-        'key_file': None,
-        'cert_label': None,
-        'ssl_cipher': None,
+@grizzlycontext(
+    context={
+        'auth': {
+            'username': None,
+            'password': None,
+            'key_file': None,
+            'cert_label': None,
+            'ssl_cipher': None,
+        },
+        'message': {
+            'wait': None,
+            'header_type': None,
+        },
     },
-    'message': {
-        'wait': None,
-        'header_type': None,
-    },
-})
+)
 class MessageQueueUser(GrizzlyUser):
     __dependencies__: ClassVar[GrizzlyDependencies] = {'async-messaged'}
 
     am_context: AsyncMessageContext
-    worker_id: Optional[str]
+    worker_id: str | None
     zmq_context = zmq.Context()
     zmq_client: ztypes.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
@@ -223,10 +226,12 @@ class MessageQueueUser(GrizzlyUser):
             message = f'{self.__class__.__name__} needs Channel in the query string'
             raise ValueError(message)
 
-        self.am_context.update({
-            'queue_manager': unquote(params['QueueManager'][0]),
-            'channel': unquote(params['Channel'][0]),
-        })
+        self.am_context.update(
+            {
+                'queue_manager': unquote(params['QueueManager'][0]),
+                'channel': unquote(params['Channel'][0]),
+            },
+        )
 
         self.logger.debug('auth context: %r', self._context.get('auth', {}))
 
@@ -253,16 +258,18 @@ class MessageQueueUser(GrizzlyUser):
 
             key_file = key_file_path.resolve().with_suffix('').as_posix()
 
-        self.am_context.update({
-            'username': username,
-            'password': auth_context.get('password', None),
-            'key_file': key_file,
-            'cert_label': auth_context.get('cert_label', None) or username,
-            'ssl_cipher': auth_context.get('ssl_cipher', None) or 'ECDHE_RSA_AES_256_GCM_SHA384',
-            'message_wait': message_context.get('wait', None),
-            'heartbeat_interval': self._context.get('connection', {}).get('heartbeat_interval', None),
-            'header_type': header_type,
-        })
+        self.am_context.update(
+            {
+                'username': username,
+                'password': auth_context.get('password', None),
+                'key_file': key_file,
+                'cert_label': auth_context.get('cert_label', None) or username,
+                'ssl_cipher': auth_context.get('ssl_cipher', None) or 'ECDHE_RSA_AES_256_GCM_SHA384',
+                'message_wait': message_context.get('wait', None),
+                'heartbeat_interval': self._context.get('connection', {}).get('heartbeat_interval', None),
+                'header_type': header_type,
+            },
+        )
 
         self.worker_id = None
 
@@ -275,11 +282,13 @@ class MessageQueueUser(GrizzlyUser):
         super().on_start()
 
         try:
-            with self._request_context({
-                'action': RequestType.CONNECT(),
-                'client': id(self),
-                'context': self.am_context,
-            }):
+            with self._request_context(
+                {
+                    'action': RequestType.CONNECT(),
+                    'client': id(self),
+                    'context': self.am_context,
+                },
+            ):
                 self.zmq_client = self.zmq_context.socket(zmq.REQ)
                 self.zmq_client.setsockopt(zmq.LINGER, 0)
                 self.zmq_client.connect(self.zmq_url)
@@ -292,12 +301,14 @@ class MessageQueueUser(GrizzlyUser):
 
         with suppress(Exception):
             if self.worker_id is not None:
-                with self._request_context({
-                    'action': RequestType.DISCONNECT(),
-                    'worker': self.worker_id,
-                    'client': id(self),
-                    'context': self.am_context,
-                }):
+                with self._request_context(
+                    {
+                        'action': RequestType.DISCONNECT(),
+                        'worker': self.worker_id,
+                        'client': id(self),
+                        'context': self.am_context,
+                    },
+                ):
                     pass
 
         with suppress(Exception):
@@ -308,9 +319,9 @@ class MessageQueueUser(GrizzlyUser):
         super().on_stop()
 
     @contextmanager
-    def _request_context(self, am_request: AsyncMessageRequest) -> Generator[dict[str, Any], None, None]:
-        response: Optional[AsyncMessageResponse] = None
-        context: dict[str, Any] = {
+    def _request_context(self, am_request: AsyncMessageRequest) -> Generator[StrDict, None, None]:
+        response: AsyncMessageResponse | None = None
+        context: dict = {
             'metadata': None,
             'payload': None,
         }
@@ -326,20 +337,25 @@ class MessageQueueUser(GrizzlyUser):
         if self.worker_id is None and worker_id is not None:
             self.worker_id = worker_id
 
-        context.update({
-            'metadata': metadata,
-            'payload': payload,
-        })
+        context.update(
+            {
+                'metadata': metadata,
+                'payload': payload,
+            },
+        )
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        am_context = cast(AsyncMessageContext, merge_dicts(
-            cast(dict[str, Any], self.am_context),
-            {
-                'endpoint': request.endpoint,
-                'metadata': request.metadata,
-                'content_type': request.response.content_type.name.lower(),
-            },
-        ))
+        am_context = cast(
+            'AsyncMessageContext',
+            merge_dicts(
+                cast('StrDict', self.am_context),
+                {
+                    'endpoint': request.endpoint,
+                    'metadata': request.metadata,
+                    'content_type': request.response.content_type.name.lower(),
+                },
+            ),
+        )
         am_request: AsyncMessageRequest = {
             'action': request.method.name,
             'worker': self.worker_id,

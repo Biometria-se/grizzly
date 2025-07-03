@@ -1,4 +1,5 @@
 """Unit tests for grizzly.testdata.variables.random_integer."""
+
 from __future__ import annotations
 
 from contextlib import suppress

@@ -16,7 +16,7 @@ from pathlib import Path
 from re import Pattern
 from shutil import rmtree
 from types import MethodType, TracebackType
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 from uuid import UUID
 
@@ -28,11 +28,11 @@ from locust.contrib.fasthttp import ResponseContextManager as FastResponseContex
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.tasks import GrizzlyTask, RequestTask, grizzlytask, template
 from grizzly.testdata.variables import AtomicVariable
-from grizzly.types import GrizzlyResponse, RequestMethod
+from grizzly.types import GrizzlyResponse, RequestMethod, StrDict
 from grizzly.types.locust import Environment, Message
 from grizzly.users import GrizzlyUser
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Callable, Generator
 
 
@@ -252,7 +252,7 @@ class TestExceptionTask(GrizzlyTask):
         return task
 
 
-def check_arguments(kwargs: dict[str, Any]) -> tuple[bool, list[str]]:
+def check_arguments(kwargs: StrDict) -> tuple[bool, list[str]]:
     expected = ['request_type', 'name', 'response_time', 'response_length', 'context', 'exception']
     actual = list(kwargs.keys())
     expected.sort()
@@ -327,9 +327,11 @@ def run_command(command: list[str], env: dict[str, str] | None = None, cwd: str 
 def onerror(
     func: Callable,
     path: str,
-    exc_info: Union[  # noqa: ARG001
+    exc_info: BaseException  # noqa: ARG001
+    | tuple[
+        type[BaseException],
         BaseException,
-        tuple[type[BaseException], BaseException, TracebackType | None],
+        TracebackType | None,
     ],
 ) -> None:
     """Error handler for shutil.rmtree.
@@ -348,7 +350,7 @@ def onerror(
         raise  # noqa: PLE0704
 
 
-def rm_rf(path: Union[str, Path]) -> None:
+def rm_rf(path: str | Path) -> None:
     """Remove the path contents recursively, even if some elements
     are read-only.
     """
@@ -394,7 +396,7 @@ class regex:
         return len(value) > 1 and value[0] == '^' and value[-1] == '$'
 
     @staticmethod
-    def possible(value: str) -> Union[regex, str]:
+    def possible(value: str) -> regex | str:
         if regex.valid(value):
             return regex(value)
 

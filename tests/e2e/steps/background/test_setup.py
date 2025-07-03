@@ -1,28 +1,33 @@
 """End-to-end test cases for grizzly.steps.background.setup."""
+
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from grizzly.context import GrizzlyContext
 from tests.helpers import message_callback
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
+    from grizzly.types import StrDict
     from grizzly.types.behave import Context
     from tests.fixtures import End2EndFixture
 
 
-@pytest.mark.parametrize('url', [
-    'influxdb://grizzly:password@localhost/grizzly-statistics?Testplan=grizzly-statistics',
-    'influxdb2://token@localhost:31337/org:bucket?Testplan=grizzly-statistics',
-    'insights://localhost/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf',
-    'influxdb://$conf::statistics.username$:$conf::statistics.password$@localhost/$conf::statistics.database$?Testplan=grizzly-statistics',
-    'influxdb2://$conf::statistics.token$@localhost:31337/$conf::statistics.org$:$conf::statistics.bucket$?Testplan=grizzly-statistics',
-])
+@pytest.mark.parametrize(
+    'url',
+    [
+        'influxdb://grizzly:password@localhost/grizzly-statistics?Testplan=grizzly-statistics',
+        'influxdb2://token@localhost:31337/org:bucket?Testplan=grizzly-statistics',
+        'insights://localhost/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf',
+        'influxdb://$conf::statistics.username$:$conf::statistics.password$@localhost/$conf::statistics.database$?Testplan=grizzly-statistics',
+        'influxdb2://$conf::statistics.token$@localhost:31337/$conf::statistics.org$:$conf::statistics.bucket$?Testplan=grizzly-statistics',
+    ],
+)
 def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -> None:
-    env_conf: dict[str, Any] = {
+    env_conf: StrDict = {
         'configuration': {
             'statistics': {
                 'username': 'grizzly',
@@ -38,7 +43,7 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
     url = url.replace('localhost', e2e_fixture.host)
 
     def validator(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         data = next(iter(context.table)).as_dict()
 
         test_url = data.pop('url')
@@ -74,24 +79,29 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
     assert rc == 0
 
 
-@pytest.mark.parametrize('level', [
-    'INFO',
-    'DEBUG',
-    'WARNING',
-    'ERROR',
-])
+@pytest.mark.parametrize(
+    'level',
+    [
+        'INFO',
+        'DEBUG',
+        'WARNING',
+        'ERROR',
+    ],
+)
 def test_e2e_step_setup_log_level(e2e_fixture: End2EndFixture, level: str) -> None:
     def validator(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         data = next(iter(context.table)).as_dict()
 
         test_level = data.pop('level')
 
         assert grizzly.setup.log_level == test_level, f'{grizzly.setup.log_level} != {test_level}'
 
-    table: list[dict[str, str]] = [{
-        'level': level,
-    }]
+    table: list[dict[str, str]] = [
+        {
+            'level': level,
+        },
+    ]
 
     e2e_fixture.add_validator(validator, table=table)
 
@@ -107,23 +117,28 @@ def test_e2e_step_setup_log_level(e2e_fixture: End2EndFixture, level: str) -> No
     assert rc == 0
 
 
-@pytest.mark.parametrize('timespan', [
-    '10s',
-    '1h2m',
-    '40m2s',
-])
+@pytest.mark.parametrize(
+    'timespan',
+    [
+        '10s',
+        '1h2m',
+        '40m2s',
+    ],
+)
 def test_e2e_step_setup_run_time(e2e_fixture: End2EndFixture, timespan: str) -> None:
     def validator(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         data = next(iter(context.table)).as_dict()
 
         timespan = data.pop('timespan')
 
         assert grizzly.setup.timespan == timespan, f'{grizzly.setup.timespan} != {timespan}'
 
-    table: list[dict[str, str]] = [{
-        'timespan': timespan,
-    }]
+    table: list[dict[str, str]] = [
+        {
+            'timespan': timespan,
+        },
+    ]
 
     e2e_fixture.add_validator(validator, table=table)
 
@@ -139,10 +154,13 @@ def test_e2e_step_setup_run_time(e2e_fixture: End2EndFixture, timespan: str) -> 
     assert rc == 0
 
 
-@pytest.mark.parametrize(('from_node', 'to_node', 'message_type'), [
-    ('server', 'client', 'server_to_client'),
-    ('client', 'server', 'client_to_server'),
-])
+@pytest.mark.parametrize(
+    ('from_node', 'to_node', 'message_type'),
+    [
+        ('server', 'client', 'server_to_client'),
+        ('client', 'server', 'client_to_server'),
+    ],
+)
 def test_e2e_step_setup_message_type_callback(
     e2e_fixture: End2EndFixture,
     from_node: str,
@@ -151,7 +169,8 @@ def test_e2e_step_setup_message_type_callback(
 ) -> None:
     def validator(context: Context) -> None:
         from grizzly.types import MessageDirection
-        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        grizzly = cast('GrizzlyContext', context.grizzly)
         data = next(iter(context.table)).as_dict()
 
         direction = MessageDirection.from_string(data['direction'])
@@ -173,10 +192,12 @@ def test_e2e_step_setup_message_type_callback(
 {source}
 """)
 
-    table: list[dict[str, str]] = [{
-        'direction': f'{from_node}_{to_node}',
-        'message_type': message_type,
-    }]
+    table: list[dict[str, str]] = [
+        {
+            'direction': f'{from_node}_{to_node}',
+            'message_type': message_type,
+        },
+    ]
 
     e2e_fixture.add_validator(validator, table=table)
 
@@ -192,13 +213,16 @@ def test_e2e_step_setup_message_type_callback(
     assert rc == 0
 
 
-@pytest.mark.parametrize('timeout', [
-    None,
-    10.0,
-])
+@pytest.mark.parametrize(
+    'timeout',
+    [
+        None,
+        10.0,
+    ],
+)
 def test_e2e_step_setup_wait_spawning_complete(e2e_fixture: End2EndFixture, timeout: float | None) -> None:
     def validator(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         data = next(iter(context.table)).as_dict()
 
         timeout = data.pop('timeout')
@@ -207,9 +231,11 @@ def test_e2e_step_setup_wait_spawning_complete(e2e_fixture: End2EndFixture, time
 
         assert grizzly.setup.wait_for_spawning_complete == value, f'{grizzly.setup.wait_for_spawning_complete} != {value}'
 
-    table: list[dict[str, str]] = [{
-        'timeout': f'{timeout!r}',
-    }]
+    table: list[dict[str, str]] = [
+        {
+            'timeout': f'{timeout!r}',
+        },
+    ]
 
     e2e_fixture.add_validator(validator, table=table)
 

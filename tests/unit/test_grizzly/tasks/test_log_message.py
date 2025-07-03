@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.log_message."""
+
 from __future__ import annotations
 
 import logging

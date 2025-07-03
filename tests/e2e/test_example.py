@@ -1,10 +1,11 @@
 """End-to-end test of example/."""
+
 from __future__ import annotations
 
 from contextlib import suppress
 from pathlib import Path
 from shutil import copytree
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import yaml
 
@@ -13,7 +14,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def test_e2e_example(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
-    result: Optional[str] = None
+    result: str | None = None
 
     with Path('example/environments/example.yaml').open() as env_yaml_file:
         env_conf = yaml.full_load(env_yaml_file)
@@ -84,23 +85,20 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
         assert 'executing custom.User.request for 002 get-cat-facts and /facts?limit=' in result
 
         assert 'sending "client_server" from CLIENT' in result
-        assert "received from CLIENT" in result
+        assert 'received from CLIENT' in result
         assert "AtomicCustomVariable.foobar='foobar'" in result
 
         # check debugging and that task index -> step expression is correct
         # dog facts api
         assert '1 of 4 executed: iterator' in result
-        assert (
-            '2 of 4 executed: Then get request with name "get-dog-facts" from endpoint '
-            '"/api/v1/resources/dogs?number={{ AtomicRandomInteger.dog_facts_count }}'
-        ) in result
+        assert ('2 of 4 executed: Then get request with name "get-dog-facts" from endpoint "/api/v1/resources/dogs?number={{ AtomicRandomInteger.dog_facts_count }}') in result
         assert '3 of 4 executed: Then log message' in result
         assert '4 of 4 executed: pace' in result
 
         # cat facts api
         assert '1 of 6 executed: iterator' in result
         assert '2 of 6 executed: Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"' in result
-        assert '3 of 6 executed: And send message "{\'client\': \'server\'}"' in result
+        assert "3 of 6 executed: And send message \"{'client': 'server'}\"" in result
         assert '4 of 6 executed: Then log message "foo={{ foo | touppercase }}, bar={{ bar | touppercase }}"' in result
         assert '5 of 6 executed: Then log message' in result
         assert '6 of 6 executed: pace' in result
@@ -123,9 +121,10 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
         print(result)
         raise
 
+
 def test_e2e_example_dry_run(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
     try:
-        result: Optional[str] = None
+        result: str | None = None
 
         with Path('example/environments/example.yaml').open() as env_yaml_file:
             env_conf = yaml.full_load(env_yaml_file)
@@ -188,7 +187,7 @@ def test_e2e_example_dry_run(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0
         assert 'executing custom.User.request for 002 get-cat-facts and /facts?limit=' not in result
 
         assert 'sending "client_server" from CLIENT' not in result
-        assert "received from CLIENT" not in result
+        assert 'received from CLIENT' not in result
         assert "AtomicCustomVariable.foobar='foobar'" not in result
 
         # check debugging and that task index -> step expression is correct

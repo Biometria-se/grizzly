@@ -1,14 +1,14 @@
 """@anchor pydoc:grizzly.steps.setup Setup
 This module contains steps that can be in both `Background:` and `Scenario:` sections.
 """
+
 from __future__ import annotations
 
 from os import environ
 from pathlib import Path
 from shlex import split as shlex_split
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.locust import on_worker
 from grizzly.tasks import SetVariableTask
 from grizzly.testdata import GrizzlyVariables
@@ -16,6 +16,9 @@ from grizzly.testdata.utils import create_context_variable, resolve_variable
 from grizzly.types import VariableType
 from grizzly.types.behave import Context, Feature, given, then
 from grizzly.utils import has_template, merge_dicts
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @then('ask for value of variable "{name}"')
@@ -40,7 +43,7 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
         name (str): variable name used in templates
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     value = environ.get(f'TESTDATA_VARIABLE_{name}', None)
     assert value is not None, f'variable "{name}" does not have a value'
@@ -55,7 +58,7 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
                 assert name not in scenario.variables, f'variable "{name}" has already been set in scenario {scenario.name}'
                 resolved_value = resolve_variable(scenario, value, guess_datatype=True)
                 scenario.variables.update({name: resolved_value})
-                scenario.orphan_templates.append(f'{{{{ {name }}}}}')
+                scenario.orphan_templates.append(f'{{{{ {name}}}}}')
     except ValueError as e:
         raise AssertionError(e) from e
 
@@ -106,7 +109,7 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
         value (Any): initial value
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(name)
 
@@ -163,6 +166,7 @@ def _execute_python_script(context: Context, source: str, args: str | None) -> N
 
     exec(source, scope, scope)  # noqa: S102
 
+
 @then('execute python script "{script_path}" with arguments "{arguments}"')
 def step_setup_execute_python_script_with_args(context: Context, script_path: str, arguments: str) -> None:
     """Execute python script located in specified path, providing the specified arguments.
@@ -179,11 +183,11 @@ def step_setup_execute_python_script_with_args(context: Context, script_path: st
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     script_file = Path(script_path)
     if not script_file.exists():
-        feature = cast(Feature, context.feature)
+        feature = cast('Feature', context.feature)
         base_path = Path(feature.filename).parent if feature.filename not in [None, '<string>'] else Path.cwd()
         script_file = (base_path / script_path).resolve()
 
@@ -192,9 +196,10 @@ def step_setup_execute_python_script_with_args(context: Context, script_path: st
     if has_template(arguments):
         grizzly.scenario.orphan_templates.append(arguments)
 
-    arguments = cast(str, resolve_variable(grizzly.scenario, arguments, guess_datatype=False, try_file=False))
+    arguments = cast('str', resolve_variable(grizzly.scenario, arguments, guess_datatype=False, try_file=False))
 
     _execute_python_script(context, script_file.read_text(), arguments)
+
 
 @then('execute python script "{script_path}"')
 def step_setup_execute_python_script(context: Context, script_path: str) -> None:
@@ -213,13 +218,14 @@ def step_setup_execute_python_script(context: Context, script_path: str) -> None
     """
     script_file = Path(script_path)
     if not script_file.exists():
-        feature = cast(Feature, context.feature)
+        feature = cast('Feature', context.feature)
         base_path = Path(feature.filename).parent if feature.filename not in [None, '<string>'] else Path.cwd()
         script_file = (base_path / script_path).resolve()
 
     assert script_file.exists(), f'script {script_path} does not exist'
 
     _execute_python_script(context, script_file.read_text(), None)
+
 
 @then('execute python script')
 def step_setup_execute_python_script_inline(context: Context) -> None:
@@ -275,7 +281,7 @@ def step_setup_set_context_variable(context: Context, variable: str, value: str)
         value (str): value, data type will be guessed and casted
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     if len(grizzly.scenario.tasks) < 1:
         context_variable = create_context_variable(grizzly.scenario, variable, value)

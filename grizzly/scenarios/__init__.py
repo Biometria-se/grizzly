@@ -1,8 +1,9 @@
 """Core for all grizzly scenarios."""
+
 from __future__ import annotations
 
 from math import floor
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from gevent.event import Event
 from locust.exception import LocustError
@@ -12,7 +13,7 @@ from grizzly.exceptions import StopScenario, TaskTimeoutError
 from grizzly.gevent import GreenletFactory
 from grizzly.tasks import GrizzlyTask, grizzlytask
 from grizzly.testdata.communication import TestdataConsumer
-from grizzly.types import ScenarioState
+from grizzly.types import ScenarioState, StrDict
 from grizzly.types.locust import LocalRunner, StopUser, WorkerRunner
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -29,7 +30,7 @@ if TYPE_CHECKING:  # pragma: no cover
 class GrizzlyScenario(SequentialTaskSet):
     _consumer: ClassVar[TestdataConsumer | None] = None
     grizzly: GrizzlyContext
-    task_greenlet: Optional[Greenlet]
+    task_greenlet: Greenlet | None
     task_greenlet_factory: GreenletFactory
     abort: Event
 
@@ -44,7 +45,8 @@ class GrizzlyScenario(SequentialTaskSet):
         self.parent.environment.events.quitting.add_listener(self.on_quitting)
         self._task_index = 0
 
-        from grizzly.context import grizzly
+        from grizzly.context import grizzly  # noqa: PLC0415
+
         self.grizzly = grizzly
 
     @property
@@ -72,8 +74,8 @@ class GrizzlyScenario(SequentialTaskSet):
         cls.tasks.append(task_factory())
 
     @classmethod
-    def _escape_values(cls, values: dict[str, Any]) -> dict[str, Any]:
-        _values: dict[str, Any] = {}
+    def _escape_values(cls, values: StrDict) -> StrDict:
+        _values: StrDict = {}
 
         for key, value in values.items():
             _value = value.replace('"', '\\"') if isinstance(value, str) else value
@@ -95,7 +97,7 @@ class GrizzlyScenario(SequentialTaskSet):
         if self.__class__._consumer is None:
             self.__class__._consumer = TestdataConsumer(
                 scenario=self,
-                runner=cast(Union[LocalRunner, WorkerRunner], self.grizzly.state.locust),
+                runner=cast('LocalRunner | WorkerRunner', self.grizzly.state.locust),
             )
 
         self.user.consumer = self.__class__._consumer
@@ -106,7 +108,7 @@ class GrizzlyScenario(SequentialTaskSet):
 
         for task in self.tasks:
             if isinstance(task, grizzlytask):
-                try:  # type: ignore[unreachable]
+                try:
                     task.on_start(self)
                 except:
                     self.logger.exception('on_start failed for task %r', task)
@@ -117,12 +119,11 @@ class GrizzlyScenario(SequentialTaskSet):
 
         for task in self.tasks:
             if isinstance(task, grizzlytask):
-                try:  # type: ignore[unreachable]
+                try:
                     task.on_iteration(self)
                 except:
                     self.logger.exception('on_iteration failed for task %r', task)
                     raise StopUser from None
-
 
     def on_stop(self) -> None:
         """When locust test is stopping, all tasks on_stop methods must be called, even though
@@ -130,7 +131,7 @@ class GrizzlyScenario(SequentialTaskSet):
         """
         for task in self.tasks:
             if isinstance(task, grizzlytask):
-                try:  # type: ignore[unreachable]
+                try:
                     task.on_stop(self)
                 except Exception:
                     self.logger.exception('task on_stop failed')
@@ -149,7 +150,7 @@ class GrizzlyScenario(SequentialTaskSet):
             self.task_greenlet.kill(StopScenario, block=False)
             self.logger.debug('scenario killed task (greenlet)')
 
-    def get_next_task(self) -> Union[TaskSet, Callable]:
+    def get_next_task(self) -> TaskSet | Callable:
         """Use old way of getting task, so we can reset which task to start from."""
         if not self.tasks:
             message = 'No tasks defined. Use the @task decorator or set the "tasks" attribute of the SequentialTaskSet'

@@ -1,4 +1,5 @@
 """Abstract load user that handles logging request and responses."""
+
 from __future__ import annotations
 
 import json
@@ -7,7 +8,7 @@ import traceback
 from datetime import datetime, timedelta
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse, urlunparse
 
 from grizzly.events import GrizzlyEventHandlerClass
@@ -16,7 +17,7 @@ from grizzly_extras.transformer import JsonBytesEncoder
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
-    from grizzly.types import GrizzlyResponse
+    from grizzly.types import GrizzlyResponse, StrDict
     from grizzly.users import GrizzlyUser
 
 LOG_FILE_TEMPLATE = """[{{ request["time"] }}] -> {{ method }}{% if request["url"] != None %} {{ request["url"] }}{% endif %}:
@@ -40,7 +41,7 @@ payload:
 
 
 class RequestLogger(GrizzlyEventHandlerClass):
-    _context: dict[str, Any]
+    _context: StrDict
 
     log_dir: Path
 
@@ -56,7 +57,7 @@ class RequestLogger(GrizzlyEventHandlerClass):
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
     @classmethod
-    def _remove_secrets_attribute(cls, contents: Optional[Any]) -> Optional[Any]:
+    def _remove_secrets_attribute(cls, contents: Any) -> Any:
         if isinstance(contents, str):
             contents = re.sub(r'SharedAccessKey=[^;]+', 'SharedAccessKey=*** REMOVED ***', contents)
 
@@ -71,9 +72,9 @@ class RequestLogger(GrizzlyEventHandlerClass):
         self,
         request: RequestTask,
         context: GrizzlyResponse,
-        exception: Optional[Exception],
-        kwargs: dict[str, Any],
-    ) -> dict[str, Any]:
+        exception: Exception | None,
+        kwargs: StrDict,
+    ) -> StrDict:
         parsed = urlparse(self.user.host or '')
         sep = ''
         if (len(parsed.path) > 0 and parsed.path[-1] != '/' and request.endpoint[0] != '/') or (parsed.path == '' and request.endpoint[0] != '/'):
@@ -82,10 +83,10 @@ class RequestLogger(GrizzlyEventHandlerClass):
         parsed = parsed._replace(path=f'{parsed.path}{sep}{request.endpoint}')
         url = urlunparse(parsed)
 
-        request_metadata: Optional[dict[str, Any]] = None
-        request_payload: Optional[str] = None
-        response_metadata: Optional[dict[str, Any]] = None
-        response_payload: Optional[str] = None
+        request_metadata: StrDict | None = None
+        request_payload: str | None = None
+        response_metadata: StrDict | None = None
+        response_payload: str | None = None
 
         response_metadata, response_payload = context
         request_metadata = request.metadata
@@ -96,13 +97,15 @@ class RequestLogger(GrizzlyEventHandlerClass):
 
         response_time = kwargs.get('locust_request_meta', {}).get('response_time', None)
 
-        stacktrace: Optional[str] = None
+        stacktrace: str | None = None
         if exception is not None:
-            stacktrace = ''.join(traceback.format_exception(
-                type(exception),
-                value=exception,
-                tb=exception.__traceback__,
-            ))
+            stacktrace = ''.join(
+                traceback.format_exception(
+                    type(exception),
+                    value=exception,
+                    tb=exception.__traceback__,
+                ),
+            )
 
         return {
             'stacktrace': stacktrace,
@@ -127,7 +130,7 @@ class RequestLogger(GrizzlyEventHandlerClass):
         name: str,
         context: GrizzlyResponse,
         request: RequestTask,
-        exception: Optional[Exception] = None,
+        exception: Exception | None = None,
         **kwargs: Any,
     ) -> None:
         if getattr(request, 'response', None) is None:
@@ -140,7 +143,7 @@ class RequestLogger(GrizzlyEventHandlerClass):
 
         log_date = datetime.now().astimezone()
 
-        variables: dict[str, Any] = {
+        variables: StrDict = {
             'method': request.method.name,
             'stacktrace': None,
             'request': {

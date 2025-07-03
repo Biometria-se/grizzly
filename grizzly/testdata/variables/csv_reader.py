@@ -52,6 +52,7 @@ Second request:
 
 etc.
 """
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -59,9 +60,9 @@ from csv import DictReader
 from os import environ
 from pathlib import Path
 from secrets import randbelow
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
-from grizzly.types import bool_type
+from grizzly.types import StrDict, bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
@@ -84,12 +85,12 @@ def atomiccsvreader__base_type__(value: str) -> str:
             message = f'AtomicCsvReader: {e!s}'
             raise ValueError(message) from e
 
-        for argument, value in arguments.items():
-            if argument not in AtomicCsvReader.arguments:
-                message = f'AtomicCsvReader: argument {argument} is not allowed'
+        for k, v in arguments.items():
+            if k not in AtomicCsvReader.arguments:
+                message = f'AtomicCsvReader: argument {k} is not allowed'
                 raise ValueError(message)
 
-            AtomicCsvReader.arguments[argument](value)
+            AtomicCsvReader.arguments[k](v)
 
         value = f'{csv_file} | {csv_arguments}'
     else:
@@ -108,14 +109,14 @@ def atomiccsvreader__base_type__(value: str) -> str:
     return value
 
 
-class AtomicCsvReader(AtomicVariable[dict[str, Any]]):
+class AtomicCsvReader(AtomicVariable[StrDict]):
     __base_type__ = atomiccsvreader__base_type__
     __initialized: bool = False
 
-    _rows: dict[str, list[dict[str, Any]]]
-    _settings: dict[str, dict[str, Any]]
+    _rows: dict[str, list[StrDict]]
+    _settings: dict[str, StrDict]
     context_root: Path
-    arguments: ClassVar[dict[str, Any]] = {'repeat': bool_type, 'random': bool_type}
+    arguments: ClassVar[StrDict] = {'repeat': bool_type, 'random': bool_type}
 
     def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: str, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
@@ -153,12 +154,12 @@ class AtomicCsvReader(AtomicVariable[dict[str, Any]]):
             self._settings = {variable: settings}
             self.__initialized = True
 
-    def _create_row_queue(self, value: str) -> list[dict[str, Any]]:
+    def _create_row_queue(self, value: str) -> list[StrDict]:
         input_file = self.context_root / value
 
         with input_file.open() as fd:
             reader = DictReader(fd)
-            return [cast(dict[str, Any], row) for row in reader]
+            return [cast('StrDict', row) for row in reader]
 
     @classmethod
     def clear(cls: type[AtomicCsvReader]) -> None:
@@ -166,16 +167,16 @@ class AtomicCsvReader(AtomicVariable[dict[str, Any]]):
 
         instances = cls._instances.get(cls, {})
         for scenario in instances:
-            instance = cast(AtomicCsvReader, cls.get(scenario))
+            instance = cast('AtomicCsvReader', cls.get(scenario))
             variables = list(instance._rows.keys())
 
             for variable in variables:
                 del instance._rows[variable]
                 del instance._settings[variable]
 
-    def __getitem__(self, variable: str) -> Optional[dict[str, Any]]:
+    def __getitem__(self, variable: str) -> StrDict | None:
         with self.semaphore():
-            column: Optional[str] = None
+            column: str | None = None
 
             if '.' in variable:
                 [variable, column] = variable.rsplit('.', 1)

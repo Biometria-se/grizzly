@@ -1,6 +1,7 @@
 """@anchor pydoc:grizzly.listeners.influxdb InfluxDB
 Write metrics to InfluxDB.
 """
+
 from __future__ import annotations
 
 import json
@@ -9,7 +10,7 @@ import os
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from platform import node as get_hostname
-from typing import TYPE_CHECKING, Any, Literal, Optional, Protocol, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypedDict, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import gevent
@@ -26,7 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from influxdb_client.client.query_api import QueryApi
     from influxdb_client.client.write_api import WriteApi
 
-    from grizzly.types import Self
+    from grizzly.types import Self, StrDict
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +38,9 @@ class InfluxDbError(Exception):
 
 class InfluxDbPoint(TypedDict):
     measurement: str
-    tags: dict[str, Any]
+    tags: StrDict
     time: str
-    fields: dict[str, Any]
+    fields: StrDict
 
 
 class InfluxDb(Protocol):
@@ -58,10 +59,10 @@ class InfluxDbV1(InfluxDb):
     host: str
     port: int
     database: str
-    username: Optional[str]
-    password: Optional[str]
+    username: str | None
+    password: str | None
 
-    def __init__(self, host: str, port: int, database: str, username: Optional[str] = None, password: Optional[str] = None) -> None:
+    def __init__(self, host: str, port: int, database: str, username: str | None = None, password: str | None = None) -> None:
         self.host = host
         self.port = port
         self.database = database
@@ -87,9 +88,9 @@ class InfluxDbV1(InfluxDb):
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> Literal[True]:
         with suppress(Exception):
             self.client.__exit__(exc_type, exc, traceback)
@@ -111,7 +112,7 @@ class InfluxDbV1(InfluxDb):
         logger.debug('query: %s', query)
         result = self.client.query(query)
 
-        return cast(list[dict[str, Any]], result.raw['series'])
+        return cast('list[StrDict]', result.raw['series'])
 
     def write(self, values: list[InfluxDbPoint]) -> None:
         try:
@@ -141,7 +142,7 @@ class InfluxDbV2(InfluxDb):
     host: str
     port: int
     bucket: str
-    org : str
+    org: str
     token: str | None
 
     def __init__(self, host: str, port: int, org: str, bucket: str, token: str | None = None) -> None:
@@ -153,8 +154,8 @@ class InfluxDbV2(InfluxDb):
 
     def connect(self) -> Self:
         self.client = InfluxDBClientV2(
-            url=f"https://{self.host}:{self.port}",
-            token=cast(str, self.token),
+            url=f'https://{self.host}:{self.port}',
+            token=cast('str', self.token),
             org=self.org,
             enable_gzip=True,
         )
@@ -170,9 +171,9 @@ class InfluxDbV2(InfluxDb):
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> Literal[True]:
         with suppress(Exception):
             self.client.close()
@@ -193,17 +194,17 @@ class InfluxDbV2(InfluxDb):
 
         return True
 
-    def read(self, measurement: str, fields: list[str]) -> dict[str, Any]:
+    def read(self, measurement: str, fields: list[str]) -> StrDict:
         flux_query = f"""
         from(bucket: "{self.bucket}")
         |> range(start: -1h)
         |> filter(fn: (r) => r._measurement == "{measurement}")
-        |> filter(fn: (r) => {" or ".join(f'r._field == "{field}"' for field in fields)})
+        |> filter(fn: (r) => {' or '.join(f'r._field == "{field}"' for field in fields)})
         """
         logger.debug('Flux query: %s', flux_query)
         result = self.query_api.query(flux_query, org=self.org)
         # Convert FluxTable results to json, and to dict
-        return cast(dict[str, Any], json.loads(result.to_json()))
+        return cast('StrDict', json.loads(result.to_json()))
 
     def write(self, values: list[InfluxDbPoint]) -> None:
         try:
@@ -211,7 +212,7 @@ class InfluxDbV2(InfluxDb):
             logger.debug('successfully wrote %d points to bucket %s@%s:%d', len(values), self.bucket, self.host, self.port)
         except ApiException as e:
             code = e.status
-            message = e.reason if e.reason is not None else "<unknown>"
+            message = e.reason if e.reason is not None else '<unknown>'
 
             if e.status is not None:
                 message = f'{code}: {message}'
@@ -275,7 +276,8 @@ class InfluxDbListener:
         self.environment.events.usage_monitor.add_listener(self.usage_monitor)
         self.environment.events.quit.add_listener(self.on_quit)
 
-        from grizzly.context import grizzly
+        from grizzly.context import grizzly  # noqa: PLC0415
+
         self.grizzly = grizzly
         self.grizzly.events.keystore_request.add_listener(self.on_grizzly_event)
         self.grizzly.events.testdata_request.add_listener(self.on_grizzly_event)
@@ -362,7 +364,7 @@ class InfluxDbListener:
         with suppress(Exception):
             self.client.disconnect()
 
-    def _override_event(self, event: InfluxDbPoint, context: dict[str, Any]) -> None:
+    def _override_event(self, event: InfluxDbPoint, context: StrDict) -> None:
         # override values set in context
         for key, value in context.items():
             if not key.startswith('__') and not key.endswith('__'):
@@ -390,7 +392,7 @@ class InfluxDbListener:
 
                 event.update({override_key: value})  # type: ignore[misc]
 
-    def _create_event(self, timestamp: str, measurement: str, tags: dict[str, str | None], metrics: dict[str, Any]) -> None:
+    def _create_event(self, timestamp: str, measurement: str, tags: dict[str, str | None], metrics: StrDict) -> None:
         tags = {
             'testplan': self._testplan,
             'hostname': self._hostname,
@@ -412,9 +414,10 @@ class InfluxDbListener:
         self._events.append(event)
 
     def on_grizzly_event(
-        self, *,
+        self,
+        *,
         timestamp: str,
-        metrics: dict[str, Any],
+        metrics: StrDict,
         tags: dict[str, str | None],
         measurement: str,
     ) -> None:
@@ -425,9 +428,9 @@ class InfluxDbListener:
         request_type: str,
         name: str,
         result: str,
-        metrics: dict[str, Any],
-        context: dict[str, Any],
-        exception: Optional[Any] = None,
+        metrics: StrDict,
+        context: StrDict,
+        exception: Any = None,
     ) -> None:
         if exception is not None:
             if isinstance(exception, CatchResponseError):
@@ -436,9 +439,7 @@ class InfluxDbListener:
                 try:
                     metrics['exception'] = repr(exception)
                 except AttributeError:
-                    metrics['exception'] = (
-                        f'{exception.__class__} (and it has no string representation)'
-                    )
+                    metrics['exception'] = f'{exception.__class__} (and it has no string representation)'
         else:
             metrics['exception'] = None
 
@@ -465,10 +466,12 @@ class InfluxDbListener:
         timestamp_finished = datetime.now(timezone.utc)
         timestamp_started = timestamp = timestamp_finished - timedelta(milliseconds=metrics['response_time'])
 
-        metrics.update({
-            'request_started': timestamp_started.isoformat(),
-            'request_finished': timestamp_finished.isoformat(),
-        })
+        metrics.update(
+            {
+                'request_started': timestamp_started.isoformat(),
+                'request_finished': timestamp_finished.isoformat(),
+            },
+        )
 
         event: InfluxDbPoint = {
             'measurement': 'request',
@@ -491,8 +494,8 @@ class InfluxDbListener:
         name: str,
         response_time: Any,
         response_length: Any,
-        context: dict[str, Any],
-        exception: Optional[Any] = None,
+        context: StrDict,
+        exception: Any = None,
         **_kwargs: Any,
     ) -> None:
         try:
@@ -513,8 +516,8 @@ class InfluxDbListener:
         except Exception:
             self.logger.exception('failed to write metric for "%s %s"', request_type, name)
 
-    def _create_metrics(self, response_time: int, response_length: int) -> dict[str, Any]:
-        metrics: dict[str, Any] = {}
+    def _create_metrics(self, response_time: int, response_length: int) -> StrDict:
+        metrics: StrDict = {}
 
         metrics['response_time'] = response_time
         metrics['response_length'] = response_length if response_length >= 0 else None

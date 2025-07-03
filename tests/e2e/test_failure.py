@@ -1,12 +1,12 @@
 """End-to-end tests of how scenarios are handled on failures."""
+
 from __future__ import annotations
 
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any, cast
 
-from grizzly.context import GrizzlyContext
-
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from grizzly.types.behave import Context
     from tests.fixtures import End2EndFixture
 
@@ -14,10 +14,11 @@ if TYPE_CHECKING:  # pragma: no cover
 def test_e2e_scenario_failure_handling(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
+
         if on_master(context):
             return
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         stats = grizzly.state.locust.environment.stats
 
@@ -50,7 +51,8 @@ def test_e2e_scenario_failure_handling(e2e_fixture: End2EndFixture) -> None:
 
     start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
 
-    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test scenario failure handling
+    feature_file = e2e_fixture.create_feature(
+        dedent(f"""Feature: test scenario failure handling
     Background: common configuration
         Given "3" users
         And spawn rate is "3" user per second
@@ -80,7 +82,8 @@ def test_e2e_scenario_failure_handling(e2e_fixture: End2EndFixture) -> None:
         Then get request with name "default-get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
         When response payload "$.hello" is not "world" fail request
         Then get request with name "default-get3" from endpoint "/api/echo"
-    """))
+    """),
+    )
 
     log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
 
@@ -90,7 +93,7 @@ def test_e2e_scenario_failure_handling(e2e_fixture: End2EndFixture) -> None:
     rc, output = e2e_fixture.execute(feature_file)
 
     assert rc == 1
-    assert "HOOK-ERROR in after_feature: RuntimeError: locust test failed" in ''.join(output)
+    assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in ''.join(output)
 
     log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
 
@@ -105,7 +108,8 @@ def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
         start_webserver_step = ''
         offset = 0
 
-    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test behave failure
+    feature_file = e2e_fixture.create_feature(
+        dedent(f"""Feature: test behave failure
     Background: common configuration
         Given "3" users
         And spawn rate is "3" user per second
@@ -139,7 +143,8 @@ def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
         Then get request with name "get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
         When response payload "$.hello" is not "world" fail request
         Then get request with name "{{{{ get3 }}}}" from endpoint "/api/echo"
-    """))
+    """),
+    )
 
     rc, output = e2e_fixture.execute(feature_file)
 
@@ -147,8 +152,9 @@ def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
 
     result = ''.join(output)
 
-    assert "HOOK-ERROR in after_feature: RuntimeError: failed to prepare locust test" in result
-    assert f"""Failure summary:
+    assert 'HOOK-ERROR in after_feature: RuntimeError: failed to prepare locust test' in result
+    assert (
+        f"""Failure summary:
     Scenario: fails 1
         Then save response payload "$.hello.world" in variable "var1" # features/test_e2e_behave_failure.lock.feature:{(13 + offset)}
             ! variable "var1" has not been declared
@@ -159,16 +165,19 @@ def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
         Then save response metadata "$.Content-Type" in variable "var2" # features/test_e2e_behave_failure.lock.feature:{(23 + offset)}
             ! variable "var2" has not been declared
 
-Started : """ in result
+Started : """
+        in result
+    )
 
 
 def test_e2e_scenario_failure_handling_retry_task(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
+
         if on_master(context):
             return
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         stats = grizzly.state.locust.environment.stats
 
@@ -201,7 +210,8 @@ def test_e2e_scenario_failure_handling_retry_task(e2e_fixture: End2EndFixture) -
 
     start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
 
-    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test scenario failure handling
+    feature_file = e2e_fixture.create_feature(
+        dedent(f"""Feature: test scenario failure handling
     Background: common configuration
         Given "3" users
         And spawn rate is "3" user per second
@@ -231,7 +241,8 @@ def test_e2e_scenario_failure_handling_retry_task(e2e_fixture: End2EndFixture) -
         Then get request with name "default-get2" from endpoint "/api/until/hello?nth=2&wrong=504&right=200 | content_type=json"
         When the task fails with "504 not in [200]" restart scenario
         Then get request with name "default-get3" from endpoint "/api/echo"
-    """))
+    """),
+    )
 
     log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
 
@@ -241,7 +252,7 @@ def test_e2e_scenario_failure_handling_retry_task(e2e_fixture: End2EndFixture) -
     rc, output = e2e_fixture.execute(feature_file)
 
     assert rc == 1
-    assert "HOOK-ERROR in after_feature: RuntimeError: locust test failed" in ''.join(output)
+    assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in ''.join(output)
 
     log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
 
@@ -251,10 +262,11 @@ def test_e2e_scenario_failure_handling_retry_task(e2e_fixture: End2EndFixture) -
 def test_e2e_scenario_failure_handling_timeout(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
+
         if on_master(context):
             return
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         stats = grizzly.state.locust.environment.stats
 
@@ -274,7 +286,8 @@ def test_e2e_scenario_failure_handling_timeout(e2e_fixture: End2EndFixture) -> N
 
     start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
 
-    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test scenario failure handling
+    feature_file = e2e_fixture.create_feature(
+        dedent(f"""Feature: test scenario failure handling
     Background: common configuration
         Given "1" users
         And spawn rate is "1" user per second
@@ -286,7 +299,8 @@ def test_e2e_scenario_failure_handling_timeout(e2e_fixture: End2EndFixture) -> N
         When any task fail with "TaskTimeoutError" retry task
         Then get request with name "slow-get1" from endpoint "/api/sleep-once/10 | timeout=1.0"
         Then get request with name "fast-get2" from endpoint "/api/echo?foo=bar | content_type=json"
-    """))
+    """),
+    )
 
     log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
 
@@ -298,7 +312,7 @@ def test_e2e_scenario_failure_handling_timeout(e2e_fixture: End2EndFixture) -> N
     result = ''.join(output)
 
     assert rc == 1
-    assert "HOOK-ERROR in after_feature: RuntimeError: locust test failed" in result
+    assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
     assert "GET 001 slow-get1: TaskTimeoutError('task took more than 1.0 seconds')" in result
 
     log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
