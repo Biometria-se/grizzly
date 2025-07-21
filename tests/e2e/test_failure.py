@@ -97,7 +97,8 @@ def test_e2e_scenario_failure_handling(e2e_fixture: End2EndFixture) -> None:
 
     log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
 
-    assert len(log_files) == 3
+    actual_log_files = len(log_files)
+    assert actual_log_files == 3, 'number of log files does not match'
 
 
 def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:

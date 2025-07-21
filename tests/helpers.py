@@ -281,13 +281,13 @@ def get_property_decorated_attributes(target: Any) -> set[str]:
     }
 
 
-def run_command(command: list[str], env: dict[str, str] | None = None, cwd: str | None = None) -> tuple[int, list[str]]:
+def run_command(command: list[str], env: dict[str, str] | None = None, cwd: Path | None = None) -> tuple[int, list[str]]:
     output: list[str] = []
     if env is None:
         env = os.environ.copy()
 
     if cwd is None:
-        cwd = str(Path.cwd())
+        cwd = Path.cwd()
 
     process = subprocess.Popen(
         command,

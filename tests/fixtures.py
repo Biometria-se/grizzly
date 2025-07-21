@@ -637,7 +637,7 @@ def step_start_webserver(context: Context, port: int) -> None:
         # create virtualenv
         rc, output = run_command(
             ['python3', '-m', 'venv', virtual_env_path.name],
-            cwd=str(test_context),
+            cwd=test_context,
         )
 
         try:
@@ -666,7 +666,7 @@ def step_start_webserver(context: Context, port: int) -> None:
         # install grizzly-cli
         rc, output = run_command(
             ['python3', '-m', 'pip', 'install', 'git+https://github.com/biometria-se/grizzly-cli.git@main'],
-            cwd=str(test_context),
+            cwd=test_context,
             env=self._env,
         )
 
@@ -679,7 +679,7 @@ def step_start_webserver(context: Context, port: int) -> None:
         # create grizzly project
         rc, output = run_command(
             ['grizzly-cli', 'init', '--yes', project_name],
-            cwd=str(test_context),
+            cwd=test_context,
             env=self._env,
         )
 
@@ -728,7 +728,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             command = ['grizzly-cli', 'dist', '--project-name', self.root.name, 'build', '--no-cache', '--local-install']
             rc, output = run_command(
                 command,
-                cwd=str(self.cwd),
+                cwd=self.cwd,
                 env=self._env,
             )
             try:
@@ -745,7 +745,7 @@ def step_start_webserver(context: Context, port: int) -> None:
 
             rc, output = run_command(
                 ['python3', '-m', 'pip', 'install', grizzly_package],
-                cwd=str(self.test_tmp_dir.parent),
+                cwd=self.test_tmp_dir.parent,
                 env=self._env,
             )
 
@@ -778,7 +778,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             if self._distributed and not self.keep_files:
                 rc, output = run_command(
                     ['grizzly-cli', 'dist', '--project-name', self.root.name, 'clean'],
-                    cwd=str(self.root),
+                    cwd=self.root,
                     env=self._env,
                 )
 
@@ -950,11 +950,11 @@ def step_start_webserver(context: Context, port: int) -> None:
             fd.write('from typing import Any, cast\n\n')
             fd.write('from grizzly.types.behave import Context, Feature\n')
             fd.write('from grizzly.context import GrizzlyContext\n')
-            fd.write(
-                'from grizzly.behave import before_feature as grizzly_before_feature, after_feature as grizzly_after_feature, before_scenario, after_scenario, before_step\n\n',
-            )
+            fd.write('from grizzly.behave import before_feature as grizzly_before_feature\n')
+            fd.write('from grizzly.behave import after_feature as grizzly_after_feature\n')
+            fd.write('from grizzly.behave import before_scenario, after_scenario, before_step\n\n')
 
-            fd.write('def before_feature(context: Context, feature: Feature, *args: tuple[Any, ...], **kwargs: dict[str, Any]) -> None:\n')
+            fd.write('def before_feature(context: Context, feature: Feature, *args: Any, **kwargs: Any) -> None:\n')
             if len(self._before_features) > 0:
                 for feature_name in self._before_features:
                     fd.write(f'    if feature.name == "{feature_name}":\n')
@@ -971,7 +971,7 @@ def step_start_webserver(context: Context, port: int) -> None:
 
                 fd.write(source + '\n\n')
 
-            fd.write('def after_feature(context: Context, feature: Feature, *args: tuple[Any, ...], **kwargs: dict[str, Any]) -> None:\n')
+            fd.write('def after_feature(context: Context, feature: Feature, *args: Any, **kwargs: Any) -> None:\n')
             fd.write('    grizzly_after_feature(context, feature)\n\n')
             if len(self._after_features) > 0:
                 for feature_name in self._after_features:
@@ -1009,6 +1009,8 @@ def step_start_webserver(context: Context, port: int) -> None:
         if project_name is None:
             project_name = self.root.name
 
+        Path('/tmp/grizzly.log').unlink(missing_ok=True)  # noqa: S108
+
         with env_conf_fd as env_conf_file:
             command = [
                 'grizzly-cli',
@@ -1030,7 +1032,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             if env_conf is not None:
                 env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())
                 env_conf_file.flush()
-                env_conf_path = str(env_conf_file.name).replace(f'{self.root}/', '')
+                env_conf_path = str(env_conf_file.name).replace(f'{self.root.as_posix()}/', '')
                 command += ['-e', env_conf_path]
 
             if testdata is not None:
@@ -1039,37 +1041,27 @@ def step_start_webserver(context: Context, port: int) -> None:
 
             rc, output = run_command(
                 command,
-                cwd=str(self.root),
+                cwd=self.root,
                 env=self._env,
             )
 
-            if rc != 0:
-                print('-' * 100)
+            if rc != 0 and self._distributed:
+                validate_command = [*command[:2], '--validate-config', *command[2:]]
+                _, output = run_command(
+                    validate_command,
+                    cwd=self.root,
+                    env=self._env,
+                )
+                output = []
 
-                if self._distributed:
-                    # get docker compose project
-                    validate_command = [*command[:2], '--validate-config', *command[2:]]
-                    _, output = run_command(
-                        validate_command,
-                        cwd=str(self.root),
+                for container in ['master', 'worker']:
+                    command = ['docker', 'container', 'logs', f'{project_name}-{getuser()}-{container}-1']
+                    _, o = run_command(
+                        command,
+                        cwd=self.root,
                         env=self._env,
                     )
-                    print(''.join(output))
-                    print('-' * 100)
 
-                    output = []
-
-                    for container in ['master', 'worker']:
-                        command = ['docker', 'container', 'logs', f'{project_name}-{getuser()}-{container}-1']
-                        _, o = run_command(
-                            command,
-                            cwd=str(self.root),
-                            env=self._env,
-                        )
-
-                        output += o
-
-                print(''.join(output))
-                print('-' * 100)
+                    output += o
 
             return rc, output
