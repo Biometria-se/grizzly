@@ -52,6 +52,7 @@ def step_run_testtask(context: Context) -> None:
 
 There are examples of this in the {@link framework.example}.
 """
+
 from __future__ import annotations
 
 from abc import ABC, ABCMeta, abstractmethod
@@ -59,7 +60,7 @@ from collections.abc import Callable
 from inspect import getmro
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast, overload
+from typing import TYPE_CHECKING, Any, ClassVar, cast, overload
 
 from grizzly.utils import has_template
 
@@ -77,9 +78,9 @@ GrizzlyTaskOnType = Callable[['GrizzlyScenario'], None]
 class grizzlytask:
     __name__ = 'grizzlytask'
 
-    _on_start: Optional[OnGrizzlyTask] = None
-    _on_stop: Optional[OnGrizzlyTask] = None
-    _on_iteration: Optional[OnGrizzlyTask] = None
+    _on_start: OnGrizzlyTask | None = None
+    _on_stop: OnGrizzlyTask | None = None
+    _on_iteration: OnGrizzlyTask | None = None
 
     class OnGrizzlyTask:
         _on_func: GrizzlyTaskOnType
@@ -90,7 +91,7 @@ class grizzlytask:
         def __call__(self, parent: GrizzlyScenario) -> None:
             self._on_func(parent)
 
-    def __init__(self, task: GrizzlyTaskType, doc: Optional[str] = None) -> None:
+    def __init__(self, task: GrizzlyTaskType, doc: str | None = None) -> None:
         self._task = task
 
         if doc is None and task is not None:
@@ -124,12 +125,12 @@ class grizzlytask:
     def on_start(self, on_start: GrizzlyTaskOnType, /) -> None:  # pragma: no coverage
         ...
 
-    def on_start(self, arg: Union[GrizzlyTaskOnType, GrizzlyScenario], /) -> None:
+    def on_start(self, arg: GrizzlyTaskOnType | GrizzlyScenario, /) -> None:
         is_parent = self._is_parent(arg)
         if is_parent and self._on_start is not None:
             self._on_start(cast('GrizzlyScenario', arg))
         elif not is_parent and self._on_start is None:
-            self._on_start = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
+            self._on_start = self.OnGrizzlyTask(cast('GrizzlyTaskOnType', arg))
         else:  # decorated function does not exist, so don't do anything
             pass
 
@@ -141,12 +142,12 @@ class grizzlytask:
     def on_stop(self, on_start: GrizzlyTaskOnType, /) -> None:  # pragma: no coverage
         ...
 
-    def on_stop(self, arg: Union[GrizzlyTaskOnType, GrizzlyScenario], /) -> None:
+    def on_stop(self, arg: GrizzlyTaskOnType | GrizzlyScenario, /) -> None:
         is_parent = self._is_parent(arg)
         if is_parent and self._on_stop is not None:
             self._on_stop(cast('GrizzlyScenario', arg))
         elif not is_parent and self._on_stop is None:
-            self._on_stop = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
+            self._on_stop = self.OnGrizzlyTask(cast('GrizzlyTaskOnType', arg))
         else:  # decorated function does not exist, so don't do anything
             pass
 
@@ -158,12 +159,12 @@ class grizzlytask:
     def on_iteration(self, on_start: GrizzlyTaskOnType, /) -> None:  # pragma: no coverage
         ...
 
-    def on_iteration(self, arg: Union[GrizzlyTaskOnType, GrizzlyScenario], /) -> None:
+    def on_iteration(self, arg: GrizzlyTaskOnType | GrizzlyScenario, /) -> None:
         is_parent = self._is_parent(arg)
         if is_parent and self._on_iteration is not None:
             self._on_iteration(cast('GrizzlyScenario', arg))
         elif not is_parent and self._on_iteration is None:
-            self._on_iteration = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
+            self._on_iteration = self.OnGrizzlyTask(cast('GrizzlyTaskOnType', arg))
         else:  # decorated function does not exist, so don't do anything
             pass
 
@@ -183,8 +184,9 @@ class GrizzlyTask(ABC):
         self.timeout = timeout
         self.failure_handling = {}
 
-        from grizzly.context import grizzly
-        self.grizzly =  grizzly
+        from grizzly.context import grizzly  # noqa: PLC0415
+
+        self.grizzly = grizzly
 
     @abstractmethod
     def __call__(self) -> grizzlytask:
@@ -240,7 +242,7 @@ class GrizzlyTask(ABC):
 
 class GrizzlyMetaRequestTask(GrizzlyTask, metaclass=ABCMeta):
     content_type: TransformerContentType
-    name: Optional[str]
+    name: str | None
     endpoint: str
 
     def execute(self, _: GrizzlyScenario) -> GrizzlyResponse:
@@ -301,7 +303,6 @@ from .log_message import LogMessageTask
 from .loop import LoopTask
 from .request import RequestTask, RequestTaskHandlers, RequestTaskResponse
 from .set_variable import SetVariableTask
-from .timer import TimerTask
 from .transformer import TransformerTask
 from .until import UntilRequestTask
 from .wait_between import WaitBetweenTask
@@ -311,21 +312,20 @@ from .write_file import WriteFileTask
 from .async_group import AsyncRequestGroupTask
 
 __all__ = [
-    'RequestTaskHandlers',
-    'RequestTaskResponse',
-    'RequestTask',
-    'LogMessageTask',
-    'ExplicitWaitTask',
-    'TransformerTask',
-    'UntilRequestTask',
-    'DateTask',
     'AsyncRequestGroupTask',
     'AsyncTimerTask',
-    'TimerTask',
-    'WaitBetweenTask',
     'ConditionalTask',
-    'LoopTask',
-    'SetVariableTask',
+    'DateTask',
+    'ExplicitWaitTask',
     'KeystoreTask',
+    'LogMessageTask',
+    'LoopTask',
+    'RequestTask',
+    'RequestTaskHandlers',
+    'RequestTaskResponse',
+    'SetVariableTask',
+    'TransformerTask',
+    'UntilRequestTask',
+    'WaitBetweenTask',
     'WriteFileTask',
 ]

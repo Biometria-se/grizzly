@@ -98,6 +98,7 @@ If credential is to be used for authenticating, the following `endpoint` parts m
 * `<tenant>`
 
 """  # noqa: E501
+
 from __future__ import annotations
 
 import re
@@ -108,7 +109,7 @@ from json import dumps as jsondumps
 from pathlib import Path
 from platform import node as hostname
 from textwrap import dedent
-from typing import TYPE_CHECKING, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 from urllib.parse import parse_qs, quote_plus, unquote_plus, urlparse
 
 import zmq.green as zmq
@@ -131,9 +132,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @dataclass
 class State:
-    worker: Optional[str] = field(init=False, default=None)
+    worker: str | None = field(init=False, default=None)
     parent: GrizzlyScenario
-    _first_response: Optional[AsyncMessageResponse] = field(init=False, default=None)
+    _first_response: AsyncMessageResponse | None = field(init=False, default=None)
     client: ztypes.Socket
     context: AsyncMessageContext
 
@@ -143,12 +144,12 @@ class State:
         return id(self.parent.user)
 
     @property
-    def first_response(self) -> Optional[AsyncMessageResponse]:
+    def first_response(self) -> AsyncMessageResponse | None:
         """Return first response this task got."""
         return self._first_response
 
     @first_response.setter
-    def first_response(self, value: Optional[AsyncMessageResponse]) -> None:
+    def first_response(self, value: AsyncMessageResponse | None) -> None:
         self._first_response = value
         if value is not None:
             self.worker = value.get('worker', None)
@@ -170,14 +171,14 @@ class ServiceBusClientTask(ClientTask):
         self,
         direction: RequestDirection,
         endpoint: str,
-        name: Optional[str] = None,
+        name: str | None = None,
         /,
-        payload_variable: Optional[str] = None,
-        metadata_variable: Optional[str] = None,
-        source: Optional[str] = None,
-        destination: Optional[str] = None,
-        text: Optional[str] = None,
-        method: Optional[RequestMethod] = None,
+        payload_variable: str | None = None,
+        metadata_variable: str | None = None,
+        source: str | None = None,
+        destination: str | None = None,
+        text: str | None = None,
+        method: RequestMethod | None = None,
     ) -> None:
         super().__init__(
             direction,
@@ -193,6 +194,7 @@ class ServiceBusClientTask(ClientTask):
 
         # expression can contain characters which are not URL safe, e.g. ?
         # so we need to quote it first to make sure it does not mess up the URL parsing
+        expression: str | None = None
         match = re.search(r'expression:(.*?)(\/|;|#)', self.endpoint)
 
         if match:
@@ -210,7 +212,7 @@ class ServiceBusClientTask(ClientTask):
         parameters = parse_qs(parsed.fragment)
 
         try:
-            message_wait: Optional[int] = int(parameters.get('MessageWait', ['0'])[0])
+            message_wait: int | None = int(parameters.get('MessageWait', ['0'])[0])
             if message_wait is not None and message_wait < 1:
                 message_wait = None
         except ValueError as e:
@@ -320,7 +322,7 @@ class ServiceBusClientTask(ClientTask):
 
             state = State(
                 parent=parent,
-                client=cast(ztypes.Socket, self._zmq_context.socket(zmq.REQ)),
+                client=cast('ztypes.Socket', self._zmq_context.socket(zmq.REQ)),
                 context=context,
             )
             state.client.setsockopt(zmq.LINGER, 0)
@@ -470,12 +472,14 @@ class ServiceBusClientTask(ClientTask):
 
             response_length_source = ((response or {}).get('payload', None) or '').encode('utf-8')
 
-            meta.update({
-                'action': state.context['endpoint'],
-                'request': request.copy(),
-                'response_length': len(response_length_source),
-                'response': response,
-            })
+            meta.update(
+                {
+                    'action': state.context['endpoint'],
+                    'request': request.copy(),
+                    'response_length': len(response_length_source),
+                    'response': response,
+                },
+            )
 
         return response or {}
 
@@ -505,7 +509,7 @@ class ServiceBusClientTask(ClientTask):
     def request_to(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         state = self.get_state(parent)
 
-        source = parent.user.render(cast(str, self.source))
+        source = parent.user.render(cast('str', self.source))
         source_file = Path(self._context_root) / 'requests' / source
 
         if source_file.exists():

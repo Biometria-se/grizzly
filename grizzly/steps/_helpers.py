@@ -5,12 +5,11 @@ import logging
 import re
 from errno import ENAMETOOLONG
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Union, cast
+from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
 import jinja2 as j2
 
-from grizzly.context import GrizzlyContext
 from grizzly.events.response_handler import ResponseHandlerAction, SaveHandlerAction, ValidationHandlerAction
 from grizzly.tasks import RequestTask
 from grizzly.tasks.clients import ClientTask, HttpClientTask, client
@@ -22,6 +21,7 @@ from grizzly_extras.text import has_separator
 from grizzly_extras.transformer import TransformerContentType
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from grizzly.types.behave import Context, Row
 
 logger = logging.getLogger(__name__)
@@ -30,11 +30,11 @@ logger = logging.getLogger(__name__)
 def create_request_task(
     context: Context,
     method: RequestMethod,
-    source: Optional[str],
+    source: str | None,
     endpoint: str,
-    name: Optional[str] = None,
-    substitutes: Optional[dict[str, str]] = None,
-    content_type: Optional[TransformerContentType] = None,
+    name: str | None = None,
+    substitutes: dict[str, str] | None = None,
+    content_type: TransformerContentType | None = None,
 ) -> RequestTask:
     path = Path(context.config.base_dir) / 'requests'
 
@@ -78,7 +78,7 @@ def create_request_task(
     return request
 
 
-def add_request_response_status_codes(request: Union[RequestTask, HttpClientTask], status_list: str) -> None:
+def add_request_response_status_codes(request: RequestTask | HttpClientTask, status_list: str) -> None:
     for status in status_list.split(','):
         request.response.add_status_code(int(status.strip()))
 
@@ -86,23 +86,23 @@ def add_request_response_status_codes(request: Union[RequestTask, HttpClientTask
 def add_request_task(
     context: Context,
     method: RequestMethod,
-    source: Optional[str] = None,
-    name: Optional[str] = None,
-    endpoint: Optional[str] = None,
+    source: str | None = None,
+    name: str | None = None,
+    endpoint: str | None = None,
     *,
-    in_scenario: Optional[bool] = True,
+    in_scenario: bool | None = True,
 ) -> list[tuple[RequestTask, dict[str, str]]]:
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     scenario_tasks_count = len(grizzly.scenario.tasks())
 
     request_tasks: list[tuple[RequestTask, dict[str, str]]] = []
 
-    table: list[Optional[Row]]
-    content_type: Optional[TransformerContentType] = None
+    table: list[Row | None]
+    content_type: TransformerContentType | None = None
 
     if endpoint is not None and ('$env::' in endpoint or '$conf::' in endpoint):
-        endpoint = cast(str, resolve_variable(grizzly.scenario, endpoint, guess_datatype=False, try_template=False))
+        endpoint = cast('str', resolve_variable(grizzly.scenario, endpoint, guess_datatype=False, try_template=False))
 
     table = context.table if context.table is not None else [None]
 
@@ -158,9 +158,10 @@ def _add_response_handler(
     action: ResponseAction,
     expression: str,
     match_with: str,
-    variable: Optional[str] = None,
-    condition: Optional[bool] = None,
-    default_value: Optional[str] = None,
+    variable: str | None = None,
+    default_value: str | None = None,
+    *,
+    condition: bool | None = None,
 ) -> None:
     if variable is not None and variable not in grizzly.scenario.variables:
         message = f'variable "{variable}" has not been declared'
@@ -227,7 +228,7 @@ def _add_response_handler(
     add_listener(handler)
 
 
-def add_save_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, variable: str, default_value: Optional[str]) -> None:
+def add_save_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, variable: str, default_value: str | None) -> None:
     _add_response_handler(grizzly, target, ResponseAction.SAVE, expression=expression, match_with=match_with, variable=variable, default_value=default_value)
 
 

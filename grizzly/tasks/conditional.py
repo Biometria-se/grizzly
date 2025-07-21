@@ -30,10 +30,11 @@ the set for `condition` will have its own entry in the statistics, see respectiv
 
 * `condition` _str_: {@link framework.usage.variables.templating} string that must render `True` or `False`
 """
+
 from __future__ import annotations
 
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from gevent import sleep as gsleep
 
@@ -53,7 +54,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
     name: str
     condition: str
 
-    _pointer: Optional[bool]
+    _pointer: bool | None
 
     def __init__(self, name: str, condition: str) -> None:
         super().__init__(timeout=None)
@@ -65,7 +66,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
 
         self._pointer = None
 
-    def switch(self, pointer: Optional[bool]) -> None:
+    def switch(self, *, pointer: bool | None) -> None:
         """Change pointer to which tasks should be executed."""
         self._pointer = pointer
 
@@ -99,7 +100,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
             condition_rendered = parent.user.render(self.condition)
-            exception: Optional[Exception] = None
+            exception: Exception | None = None
             task_count = 0
 
             start = perf_counter()

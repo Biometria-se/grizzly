@@ -1,13 +1,14 @@
 """Unit tests of grizzly.steps."""
+
 from __future__ import annotations
 
-from parse import compile
+from parse import compile as parse_compile
 
 from grizzly.steps import parse_user_gramatical_number
 
 
 def test_parse_user_gramatical_number() -> None:
-    p = compile(
+    p = parse_compile(
         'we have {user:d} {user_number:UserGramaticalNumber}',
         extra_types={'UserGramaticalNumber': parse_user_gramatical_number},
     )

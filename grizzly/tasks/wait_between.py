@@ -25,9 +25,10 @@ This task does not have any request statistics entries.
 
 * `max_time` _float_ (optional) - maximum time to wait
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from locust import between, constant
 
@@ -42,9 +43,9 @@ if TYPE_CHECKING:  # pragma: no cover
 @template('min_time', 'max_time')
 class WaitBetweenTask(GrizzlyTask):
     min_time: str
-    max_time: Optional[str]
+    max_time: str | None
 
-    def __init__(self, min_time: str, max_time: Optional[str] = None) -> None:
+    def __init__(self, min_time: str, max_time: str | None = None) -> None:
         super().__init__(timeout=None)
 
         self.min_time = min_time
@@ -61,7 +62,7 @@ class WaitBetweenTask(GrizzlyTask):
                 parent.logger.exception(message)
                 raise StopUser from e
 
-            max_time: Optional[float] = None
+            max_time: float | None = None
 
             if self.max_time is not None:
                 max_time_rendered = parent.user.render(self.max_time)

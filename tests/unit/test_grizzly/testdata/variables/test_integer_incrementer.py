@@ -1,4 +1,5 @@
 """Unit test of grizzly.testdata.variables.integer_incrementer."""
+
 from __future__ import annotations
 
 import threading

@@ -1,4 +1,5 @@
 """Logic for grizzly specific events."""
+
 from __future__ import annotations
 
 import logging
@@ -8,13 +9,13 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import wraps
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Optional, Protocol, Union
+from typing import TYPE_CHECKING, Any, Protocol
 
 from locust.event import EventHook
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
-    from grizzly.types import GrizzlyResponse, P
+    from grizzly.types import GrizzlyResponse, P, StrDict
     from grizzly.users import GrizzlyUser
 
 
@@ -38,19 +39,20 @@ class GrizzlyEventHandlerClass(metaclass=ABCMeta):
         name: str,
         context: GrizzlyResponse,
         request: RequestTask,
-        exception: Optional[Exception] = None,
+        exception: Exception | None = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
-GrizzlyEventHandler = Union[GrizzlyEventHandlerFunc, GrizzlyEventHandlerClass]
+GrizzlyEventHandler = GrizzlyEventHandlerFunc | GrizzlyEventHandlerClass
 
 
 class GrizzlyInternalEventHandler(Protocol):
-    def __call__(self, *,
+    def __call__(
+        self,
+        *,
         timestamp: str,
-        metrics: dict[str, Any],
+        metrics: StrDict,
         tags: dict[str, str | None],
         measurement: str,
     ) -> None: ...
@@ -84,8 +86,8 @@ class GrizzlyInternalEventHook(GrizzlyEventHook):
         self.name = name
 
     def add_listener(
-            self,
-            handler: GrizzlyInternalEventHandler,  # type: ignore[override]
+        self,
+        handler: GrizzlyInternalEventHandler,  # type: ignore[override]
     ) -> None:
         return super().add_listener(handler)
 
@@ -94,7 +96,7 @@ class GrizzlyInternalEventHook(GrizzlyEventHook):
         *,
         reverse: bool = False,
         timestamp: str,
-        metrics: dict[str, Any],
+        metrics: StrDict,
         tags: dict[str, str | None],
         measurement: str | None,
     ) -> None:
@@ -106,11 +108,13 @@ class GrizzlyInternalEventHook(GrizzlyEventHook):
             measurement=measurement,
         )
 
+
 def grizzly_internal_event_hook_factory(name: str) -> Callable[[], GrizzlyInternalEventHook]:
     def wrapper() -> GrizzlyInternalEventHook:
         return GrizzlyInternalEventHook(name=name)
 
     return wrapper
+
 
 @dataclass
 class GrizzlyEvents:
@@ -140,19 +144,17 @@ class GrizzlyEventDecoder(metaclass=ABCMeta):
         return_value: Any,
         exception: Exception | None,
         **kwargs: Any,
-    ) -> tuple[dict[str, Any], dict[str, str | None]]:
-        ...
+    ) -> tuple[StrDict, dict[str, str | None]]: ...
 
 
 def event(
-        hook: GrizzlyInternalEventHook,
-        *,
-        decoder: GrizzlyEventDecoder | None = None,
-        measurement: str | None = None,
-        tags: dict[str, str | None] | None = None,
-    ) -> Callable[..., Any]:
-
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    hook: GrizzlyInternalEventHook,
+    *,
+    decoder: GrizzlyEventDecoder | None = None,
+    measurement: str | None = None,
+    tags: dict[str, str | None] | None = None,
+) -> Callable[..., Any]:
+    def decorator(func: Callable[P, Any]) -> Callable[P, Any]:
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Any:
             start = perf_counter()
@@ -197,6 +199,7 @@ def event(
         return wrapper
 
     return decorator
+
 
 from .request_logger import RequestLogger
 from .response_handler import ResponseHandler

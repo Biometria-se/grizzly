@@ -1,4 +1,5 @@
 """Unit tests of grizzly_extras.async_message.utils."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

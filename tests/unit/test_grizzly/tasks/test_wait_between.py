@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.wait_between."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -51,4 +52,3 @@ class TestWaitBetweenTask:
         task(parent)
 
         assert parent.wait_time() == 14.0
-

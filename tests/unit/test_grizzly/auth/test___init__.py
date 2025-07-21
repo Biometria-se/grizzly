@@ -1,9 +1,10 @@
 """Unit tests of grizzly.auth."""
+
 from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import call
 from uuid import uuid4
 
@@ -26,23 +27,24 @@ if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.types.locust import LocalRunner, WorkerRunner
     from tests.fixtures import GrizzlyFixture
 
 
 class DummyAuthCredential(AzureAadCredential):
-    def __init__(  # noqa: PLR0913
-            self,
-            username: Optional[str],
-            password: str,
-            tenant: str,
-            auth_method: AuthMethod,
-            /,
-            host: str,
-            redirect: str | None,
-            initialize: str | None,
-            otp_secret: str | None = None,
-            scope: str | None = None,
-            client_id: str = '04b07795-8ddb-461a-bbee-02f9e1bf7b46',
+    def __init__(
+        self,
+        username: str | None,
+        password: str,
+        tenant: str,
+        auth_method: AuthMethod,
+        /,
+        host: str,
+        redirect: str | None,
+        initialize: str | None,
+        otp_secret: str | None = None,
+        scope: str | None = None,
+        client_id: str = '04b07795-8ddb-461a-bbee-02f9e1bf7b46',
     ) -> None:
         self.username = username
         self.password = password
@@ -67,13 +69,13 @@ class DummyAuthCredential(AzureAadCredential):
             self._refreshed = self._access_token is not None and self._access_token.expires_on <= now
             self._access_token = AccessToken('dummy', expires_on=int(now + 3600))
 
-        return cast(AccessToken, self._access_token)
+        return self._access_token
 
     def get_oauth_authorization(self, *scopes: str, claims: str | None = None, tenant_id: str | None = None) -> AccessToken:  # noqa: ARG002
-        return cast(AccessToken, self._access_token)
+        return cast('AccessToken', self._access_token)
 
     def get_oauth_token(self, *, code: str | None = None, verifier: str | None = None, resource: str | None = None, tenant_id: str | None = None) -> AccessToken:  # noqa: ARG002
-        return cast(AccessToken, self._access_token)
+        return cast('AccessToken', self._access_token)
 
 
 class DummyAuth(RefreshToken):
@@ -108,9 +110,12 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
     assert isinstance(parent.user, RestApiUser)
 
     decorator: refresh_token[DummyAuth] = refresh_token(DummyAuth)
-    get_token_mock = mocker.patch('grizzly.auth.RefreshTokenDistributor.get_token', side_effect=[
-        (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
-    ])
+    get_token_mock = mocker.patch(
+        'grizzly.auth.RefreshTokenDistributor.get_token',
+        side_effect=[
+            (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
+        ],
+    )
 
     auth_context = parent.user.context()['auth']
 
@@ -129,7 +134,7 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
     parent.user._scenario.tasks.add(request_task)
 
     # no auth, no parent
-    original_auth_context = cast(dict, parent.user._context['auth']).copy()
+    original_auth_context = cast('dict', parent.user._context['auth']).copy()
     parent.user._context['auth'] = None
 
     parent.user.request(request_task)
@@ -184,7 +189,7 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
     assert caplog.messages == []
 
     # authorization is set, but it is time to refresh token
-    get_token_mock.side_effect=[
+    get_token_mock.side_effect = [
         (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), True),
     ]
     old_access_token = AccessToken('dummy', expires_on=int(datetime.now(tz=timezone.utc).timestamp() - 3600))
@@ -212,9 +217,12 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     refresh_token('AAD')
 
     decorator: refresh_token[DummyAuth] = refresh_token('tests.unit.test_grizzly.auth.test___init__.DummyAuth')
-    get_token_mock = mocker.patch('grizzly.auth.RefreshTokenDistributor.get_token', side_effect=[
-        (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
-    ])
+    get_token_mock = mocker.patch(
+        'grizzly.auth.RefreshTokenDistributor.get_token',
+        side_effect=[
+            (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
+        ],
+    )
 
     auth_context = parent.user.context()['auth']
 
@@ -243,11 +251,13 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     get_token_mock.assert_not_called()
 
     auth_context['client']['id'] = 'asdf'
-    auth_user_context.update({
-        'username': 'bob@example.com',
-        'password': 'HemligaArne',
-        'redirect_uri': '/authenticated',
-    })
+    auth_user_context.update(
+        {
+            'username': 'bob@example.com',
+            'password': 'HemligaArne',
+            'redirect_uri': '/authenticated',
+        },
+    )
 
     # AuthType.NONE since not tenant nor provider is set
     parent.user.request(request_task)
@@ -255,10 +265,12 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
 
     safe_del(parent.user.metadata, 'Authorization')
 
-    auth_context.update({
-        'refresh_time': 3000,
-        'tenant': 'example.com',
-    })
+    auth_context.update(
+        {
+            'refresh_time': 3000,
+            'tenant': 'example.com',
+        },
+    )
 
     # session is fresh, but no token set (first call)
     with caplog.at_level(logging.INFO):
@@ -286,7 +298,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     assert old_access_token is parent.user.credential._access_token
 
     # authorization is set, but it is time to refresh token
-    get_token_mock.side_effect=[
+    get_token_mock.side_effect = [
         (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), True),
     ]
     old_access_token = AccessToken('dummy', expires_on=int(datetime.now(tz=timezone.utc).timestamp() - 3600))
@@ -304,7 +316,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     assert 'bob@example.com refreshed user token until' in caplog.messages[-1]
 
     # change user -> new credential/access token
-    get_token_mock.side_effect=[
+    get_token_mock.side_effect = [
         (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), True),
     ]
     old_access_token = parent.user.credential._access_token
@@ -322,7 +334,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     }
 
     # new user in context, needs to get a new token
-    get_token_mock.side_effect=[
+    get_token_mock.side_effect = [
         (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), False),
     ]
     parent.user.request(request_task)
@@ -339,9 +351,12 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
     assert isinstance(parent.user, RestApiUser)
 
     decorator: refresh_token[DummyAuth] = refresh_token(DummyAuth)
-    get_token_mock = mocker.patch('grizzly.auth.RefreshTokenDistributor.get_token', side_effect=[
-        (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
-    ])
+    get_token_mock = mocker.patch(
+        'grizzly.auth.RefreshTokenDistributor.get_token',
+        side_effect=[
+            (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
+        ],
+    )
 
     def get(_: HttpClientTask, parent: GrizzlyScenario, *_args: Any, **_kwargs: Any) -> GrizzlyResponse:  # noqa: ARG001
         return None, None
@@ -379,27 +394,29 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
     get_token_mock.reset_mock()
 
     # auth in context
-    cast(dict, client._context).update({
-        rendered_host: {
-            'auth': {
-                'client': {
-                    'id': 'foobar',
+    cast('dict', client._context).update(
+        {
+            rendered_host: {
+                'auth': {
+                    'client': {
+                        'id': 'foobar',
+                    },
+                    'user': {
+                        'username': 'bob',
+                        'password': 'password',
+                        'redirect_uri': '/authenticated',
+                    },
+                    'provider': 'https://login.example.com/oauth2',
                 },
-                'user': {
-                    'username': 'bob',
-                    'password': 'password',
-                    'redirect_uri': '/authenticated',
-                },
-                'provider': 'https://login.example.com/oauth2',
             },
         },
-    })
+    )
 
     client.request_from(parent)
 
     get_token_mock.assert_called_once_with(client)
 
-    actual_context = cast(dict, client._context.copy())
+    actual_context = cast('dict', client._context.copy())
     safe_del(actual_context, rendered_host)
 
     assert actual_context == {
@@ -426,12 +443,17 @@ class TestRefreshTokenDistributor:
         environment = grizzly_fixture.behave.locust.environment
 
         uid = id('foo')
-        msg = Message('consume_token', {
-            'uid': uid,
-            'response': {
-                'foo': 'bar', 'hello': 'world',
+        msg = Message(
+            'consume_token',
+            {
+                'uid': uid,
+                'response': {
+                    'foo': 'bar',
+                    'hello': 'world',
+                },
             },
-        }, 'worker-1')
+            'worker-1',
+        )
         result = AsyncResult()
 
         try:
@@ -479,12 +501,16 @@ class TestRefreshTokenDistributor:
             'scope': None,
         }
 
-        msg = Message('produce_token', {
-            'cid': cid,
-            'uid': uid,
-            'rid': rid,
-            'request': request,
-        }, 'worker-1')
+        msg = Message(
+            'produce_token',
+            {
+                'cid': cid,
+                'uid': uid,
+                'rid': rid,
+                'request': request,
+            },
+            'worker-1',
+        )
 
         key1 = hash(frozenset(request.items()))
 
@@ -516,18 +542,20 @@ class TestRefreshTokenDistributor:
             send_message_mock.reset_mock()
 
             assert RefreshTokenDistributor._responses == {}
-            assert RefreshTokenDistributor._credentials == {key1: SOME(
-                AzureAadCredential,
-                username='foo@example.com',
-                password='s3cr3+',  # noqa: S106
-                tenant='example.com',
-                host='foo.example.com',
-                client_id=client_id,
-                redirect='https://foo.example.com/login-callback',
-                initialize=None,
-                otp_secret=None,
-                scope=None,
-            )}
+            assert RefreshTokenDistributor._credentials == {
+                key1: SOME(
+                    AzureAadCredential,
+                    username='foo@example.com',
+                    password='s3cr3+',
+                    tenant='example.com',
+                    host='foo.example.com',
+                    client_id=client_id,
+                    redirect='https://foo.example.com/login-callback',
+                    initialize=None,
+                    otp_secret=None,
+                    scope=None,
+                ),
+            }
             assert RefreshTokenDistributor.semaphores == {key1: ANY(Semaphore)}
 
             # use cached credential
@@ -550,18 +578,20 @@ class TestRefreshTokenDistributor:
             send_message_mock.reset_mock()
 
             assert RefreshTokenDistributor._responses == {}
-            assert RefreshTokenDistributor._credentials == {key1: SOME(
-                AzureAadCredential,
-                username='foo@example.com',
-                password='s3cr3+',  # noqa: S106
-                tenant='example.com',
-                host='foo.example.com',
-                client_id=client_id,
-                redirect='https://foo.example.com/login-callback',
-                initialize=None,
-                otp_secret=None,
-                scope=None,
-            )}
+            assert RefreshTokenDistributor._credentials == {
+                key1: SOME(
+                    AzureAadCredential,
+                    username='foo@example.com',
+                    password='s3cr3+',
+                    tenant='example.com',
+                    host='foo.example.com',
+                    client_id=client_id,
+                    redirect='https://foo.example.com/login-callback',
+                    initialize=None,
+                    otp_secret=None,
+                    scope=None,
+                ),
+            }
             assert RefreshTokenDistributor.semaphores == {key1: ANY(Semaphore)}
 
             # another credential
@@ -595,7 +625,7 @@ class TestRefreshTokenDistributor:
                 key1: SOME(
                     AzureAadCredential,
                     username='foo@example.com',
-                    password='s3cr3+',  # noqa: S106
+                    password='s3cr3+',
                     tenant='example.com',
                     host='foo.example.com',
                     client_id=client_id,
@@ -607,13 +637,13 @@ class TestRefreshTokenDistributor:
                 key2: SOME(
                     AzureAadCredential,
                     username='bar@example.com',
-                    password='qwerty',  # noqa: S106
+                    password='qwerty',
                     tenant='example.com',
                     host='foo.example.com',
                     client_id=client_id,
                     redirect='https://foo.example.com/login-callback',
                     initialize=None,
-                    otp_secret='aaaa',  # noqa: S106
+                    otp_secret='aaaa',
                     scope=None,
                 ),
             }
@@ -643,7 +673,7 @@ class TestRefreshTokenDistributor:
                 key1: SOME(
                     AzureAadCredential,
                     username='foo@example.com',
-                    password='s3cr3+',  # noqa: S106
+                    password='s3cr3+',
                     tenant='example.com',
                     host='foo.example.com',
                     client_id=client_id,
@@ -655,13 +685,13 @@ class TestRefreshTokenDistributor:
                 key2: SOME(
                     AzureAadCredential,
                     username='bar@example.com',
-                    password='qwerty',  # noqa: S106
+                    password='qwerty',
                     tenant='example.com',
                     host='foo.example.com',
                     client_id=client_id,
                     redirect='https://foo.example.com/login-callback',
                     initialize=None,
-                    otp_secret='aaaa',  # noqa: S106
+                    otp_secret='aaaa',
                     scope=None,
                 ),
             }
@@ -675,7 +705,6 @@ class TestRefreshTokenDistributor:
         parent = grizzly_fixture(user_type=RestApiUser)
         assert parent is not None
         assert isinstance(parent.user, RestApiUser)
-
 
         grizzly = grizzly_fixture.grizzly
 
@@ -695,7 +724,7 @@ class TestRefreshTokenDistributor:
             client_id=client_id,
             redirect='https://example.com/login-callback',
             initialize=None,
-            otp_secret='aaaa',  # noqa: S106
+            otp_secret='aaaa',
             scope=None,
         )
 
@@ -708,33 +737,40 @@ class TestRefreshTokenDistributor:
 
         assert send_message_mock.call_count == 2
 
-        assert send_message_mock.call_args_list[0] == call('produce_token', {
-            'uid': id(parent.user),
-            'cid': parent.user.grizzly.state.locust.client_id,  # type: ignore[union-attr]
-            'rid': ANY(str),
-            'request': {
-                'class_name': 'grizzly_extras.azure.aad.AzureAadCredential',
-                'username': parent.user.credential.username,
-                'password': parent.user.credential.password,
-                'tenant': parent.user.credential.tenant,
-                'auth_method': parent.user.credential.auth_method.name,
-                'host': parent.user.credential.host,
-                'client_id': parent.user.credential.client_id,
-                'redirect': parent.user.credential.redirect,
-                'initialize': parent.user.credential.initialize,
-                'otp_secret': parent.user.credential.otp_secret,
-                'scope': parent.user.credential.scope,
+        assert send_message_mock.call_args_list[0] == call(
+            'produce_token',
+            {
+                'uid': id(parent.user),
+                'cid': parent.user.grizzly.state.locust.client_id,  # type: ignore[union-attr]
+                'rid': ANY(str),
+                'request': {
+                    'class_name': 'grizzly_extras.azure.aad.AzureAadCredential',
+                    'username': parent.user.credential.username,
+                    'password': parent.user.credential.password,
+                    'tenant': parent.user.credential.tenant,
+                    'auth_method': parent.user.credential.auth_method.name,
+                    'host': parent.user.credential.host,
+                    'client_id': parent.user.credential.client_id,
+                    'redirect': parent.user.credential.redirect,
+                    'initialize': parent.user.credential.initialize,
+                    'otp_secret': parent.user.credential.otp_secret,
+                    'scope': parent.user.credential.scope,
+                },
             },
-        })
-        assert send_message_mock.call_args_list[1] == call('consume_token', {
-            'uid': id(parent.user),
-            'rid': ANY(str),
-            'response': {
-                'token': 'dummy',
-                'expires_on': expires_on,
-                'refreshed': False,
+        )
+        assert send_message_mock.call_args_list[1] == call(
+            'consume_token',
+            {
+                'uid': id(parent.user),
+                'rid': ANY(str),
+                'response': {
+                    'token': 'dummy',
+                    'expires_on': expires_on,
+                    'refreshed': False,
+                },
             },
-        }, client_id=parent.user.grizzly.state.locust.client_id)  # type: ignore[union-attr]
+            client_id=cast('LocalRunner | WorkerRunner', parent.user.grizzly.state.locust).client_id,
+        )
         send_message_mock.reset_mock()
 
         # get token ERROR
@@ -745,31 +781,36 @@ class TestRefreshTokenDistributor:
 
         assert send_message_mock.call_count == 2
 
-        assert send_message_mock.call_args_list[0] == call('produce_token', {
-            'uid': id(parent.user),
-            'cid': parent.user.grizzly.state.locust.client_id,  # type: ignore[union-attr]
-            'rid': ANY(str),
-            'request': {
-                'class_name': 'grizzly_extras.azure.aad.AzureAadCredential',
-                'username': parent.user.credential.username,
-                'password': parent.user.credential.password,
-                'tenant': parent.user.credential.tenant,
-                'auth_method': parent.user.credential.auth_method.name,
-                'host': parent.user.credential.host,
-                'client_id': parent.user.credential.client_id,
-                'redirect': parent.user.credential.redirect,
-                'initialize': parent.user.credential.initialize,
-                'otp_secret': parent.user.credential.otp_secret,
-                'scope': parent.user.credential.scope,
+        assert send_message_mock.call_args_list[0] == call(
+            'produce_token',
+            {
+                'uid': id(parent.user),
+                'cid': parent.user.grizzly.state.locust.client_id,  # type: ignore[union-attr]
+                'rid': ANY(str),
+                'request': {
+                    'class_name': 'grizzly_extras.azure.aad.AzureAadCredential',
+                    'username': parent.user.credential.username,
+                    'password': parent.user.credential.password,
+                    'tenant': parent.user.credential.tenant,
+                    'auth_method': parent.user.credential.auth_method.name,
+                    'host': parent.user.credential.host,
+                    'client_id': parent.user.credential.client_id,
+                    'redirect': parent.user.credential.redirect,
+                    'initialize': parent.user.credential.initialize,
+                    'otp_secret': parent.user.credential.otp_secret,
+                    'scope': parent.user.credential.scope,
+                },
             },
-        })
-        assert send_message_mock.call_args_list[1] == call('consume_token', {
-            'uid': id(parent.user),
-            'rid': ANY(str),
-            'response': {
-                'error': 'RuntimeError: failed to get token',
+        )
+        assert send_message_mock.call_args_list[1] == call(
+            'consume_token',
+            {
+                'uid': id(parent.user),
+                'rid': ANY(str),
+                'response': {
+                    'error': 'RuntimeError: failed to get token',
+                },
             },
-        }, client_id=parent.user.grizzly.state.locust.client_id)  # type: ignore[union-attr]
+            client_id=cast('LocalRunner | WorkerRunner', parent.user.grizzly.state.locust).client_id,
+        )
         send_message_mock.reset_mock()
-
-

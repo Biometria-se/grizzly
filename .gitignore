@@ -32,3 +32,4 @@ grizzly/__version__.py
 .pytest_tmp/
 tests/project
 tests/test-project/**/_*.feature
+example/environments/*.lock.yaml

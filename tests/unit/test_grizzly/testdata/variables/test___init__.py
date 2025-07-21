@@ -1,4 +1,5 @@
 """Unit tests of grizzly.testdata.variables."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -22,7 +23,7 @@ def test_destroy_variables(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVaria
         t2 = AtomicIntegerIncrementer(scenario=scenario2, variable='test2', value=1337)
         test1 = t1['test1']
         assert test1 is not None
-        assert test1[::len(test1) - 1] == 'AA'
+        assert test1[:: len(test1) - 1] == 'AA'
         assert t2['test2'] == 1337
 
         with pytest.raises(AttributeError, match='object already has attribute'):
@@ -37,7 +38,7 @@ def test_destroy_variables(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVaria
         t2 = AtomicIntegerIncrementer(scenario=scenario2, variable='test2', value=1337)
         test1 = t1['test1']
         assert test1 is not None
-        assert test1[::len(test1) - 1] == 'AA'
+        assert test1[:: len(test1) - 1] == 'AA'
         assert t2['test2'] == 1337
     finally:
         cleanup()

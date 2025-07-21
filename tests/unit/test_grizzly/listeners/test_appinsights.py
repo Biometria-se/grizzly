@@ -1,8 +1,9 @@
 """Unit tests of grizzly.listeners.appinsights."""
+
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -15,10 +16,11 @@ if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 
+    from grizzly.types import StrDict
     from tests.fixtures import LocustFixture
 
 
-@pytest.fixture()
+@pytest.fixture
 def patch_azureloghandler(mocker: MockerFixture) -> Callable[[], None]:
     def wrapper() -> None:
         mocker.patch(
@@ -71,15 +73,19 @@ class TestAppInsightsListener:
         patch_azureloghandler()
 
         def generate_logger_info(
-            request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None,
-        ) -> Callable[[logging.Handler, str, dict[str, Any]], None]:
+            request_type: str,
+            name: str,
+            response_time: float,
+            response_length: int,
+            exception: Any | None = None,
+        ) -> Callable[[logging.Handler, str, StrDict], None]:
             result = 'Success' if exception is None else 'Failure'
             expected_message = f'{result}: {request_type} {name} Response time: {int(round(response_time, 0))} Number of Threads: {""}'
 
             if exception is not None:
                 expected_message = f'{expected_message} Exception: {exception!s}'
 
-            def logger_info(_: logging.Handler, msg: str, extra: dict[str, Any]) -> None:
+            def logger_info(_: logging.Handler, msg: str, extra: StrDict) -> None:
                 assert msg == expected_message
                 assert extra is not None
                 custom_dimensions = extra.get('custom_dimensions')
@@ -123,7 +129,13 @@ class TestAppInsightsListener:
             listener = ApplicationInsightsListener(locust_fixture.environment, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf')
 
             expected_keys = [
-                'method', 'result', 'response_time', 'response_length', 'endpoint', 'testplan', 'exception',
+                'method',
+                'result',
+                'response_time',
+                'response_length',
+                'endpoint',
+                'testplan',
+                'exception',
             ]
 
             custom_dimensions = listener._create_custom_dimensions_dict('GET', 'Success', 133, 200, '/api/v1/test')

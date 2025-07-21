@@ -1,4 +1,5 @@
 """Module exposes all task related steps in grizzly.steps.scenario.tasks."""
+
 from .async_group import *  # noqa: I001
 from .async_timer import *
 from .clients import *
@@ -7,7 +8,6 @@ from .date import *
 from .keystore import *
 from .log_message import *
 from .loop import *
-from .timer import *
 from .transformer import *
 from .until import *  # needs to be before .request
 from .wait_between import *

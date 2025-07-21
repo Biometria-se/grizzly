@@ -1,10 +1,11 @@
 """IBM MQ handler implementation for async-messaged."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager, suppress
 from time import perf_counter as time
 from time import sleep
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageError, AsyncMessageHandler, AsyncMessageRequest, AsyncMessageRequestHandler, AsyncMessageResponse, register
@@ -32,14 +33,14 @@ handlers: dict[str, AsyncMessageRequestHandler] = {}
 
 
 class AsyncMessageQueueHandler(AsyncMessageHandler):
-    qmgr: Optional[pymqi.QueueManager] = None
+    qmgr: pymqi.QueueManager | None = None
 
     def __init__(self, worker: str, event: Event | None = None) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             pymqi.raise_for_error(self.__class__)
 
         super().__init__(worker, event)
-        self.header_type: Optional[str] = None
+        self.header_type: str | None = None
 
     def close(self) -> None:
         if self.qmgr is not None:
@@ -48,16 +49,13 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             self.qmgr = None
 
     @contextmanager
-    def queue_context(self, endpoint: str, *, browsing: Optional[bool] = False) -> Generator[pymqi.Queue, None, None]:
-        queue: Optional[pymqi.Queue] = None
+    def queue_context(self, endpoint: str, *, browsing: bool | None = False) -> Generator[pymqi.Queue, None, None]:
+        queue: pymqi.Queue | None = None
         if browsing:
             queue = pymqi.Queue(
-                self.qmgr, endpoint,
-                (
-                    pymqi.CMQC.MQOO_FAIL_IF_QUIESCING
-                    | pymqi.CMQC.MQOO_INPUT_SHARED
-                    | pymqi.CMQC.MQOO_BROWSE
-                ),
+                self.qmgr,
+                endpoint,
+                (pymqi.CMQC.MQOO_FAIL_IF_QUIESCING | pymqi.CMQC.MQOO_INPUT_SHARED | pymqi.CMQC.MQOO_BROWSE),
             )
         else:
             queue = pymqi.Queue(self.qmgr, endpoint)
@@ -67,7 +65,6 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         finally:
             with suppress(Exception):
                 queue.close()
-
 
     @register(handlers, 'DISC')
     def disconnect(self, _request: AsyncMessageRequest) -> AsyncMessageResponse:
@@ -138,8 +135,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             'message': 'connected',
         }
 
-    def _create_gmo(self, message_wait: Optional[int] = None, *, browsing: Optional[bool] = False) -> pymqi.GMO:
-        gmo: Optional[pymqi.GMO] = None
+    def _create_gmo(self, message_wait: int | None = None, *, browsing: bool | None = False) -> pymqi.GMO:
+        gmo: pymqi.GMO | None = None
         if message_wait is not None and message_wait > 0:
             gmo = pymqi.GMO(
                 Options=pymqi.CMQC.MQGMO_WAIT | pymqi.CMQC.MQGMO_FAIL_IF_QUIESCING,
@@ -168,7 +165,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
         return pymqi.MD()
 
-    def _find_message(self, queue_name: str, expression: str, content_type: TransformerContentType, message_wait: Optional[int]) -> Optional[bytearray]:
+    def _find_message(self, queue_name: str, expression: str, content_type: TransformerContentType, message_wait: int | None) -> bytearray | None:
         start_time = time()
 
         self.logger.debug('_find_message: searching %s for messages matching: %s, content_type %s', queue_name, expression, content_type.name.lower())
@@ -206,7 +203,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         if len(values) > 0:
                             # Found a matching message, return message id
                             self.logger.debug('_find_message: found matching message: %r after %d tries', md['MsgId'], retries)
-                            return cast(bytearray, md['MsgId'])
+                            return cast('bytearray', md['MsgId'])
 
                         gmo.Options = pymqi.CMQC.MQGMO_BROWSE_NEXT
 
@@ -235,20 +232,20 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
     def _get_content_type(self, request: AsyncMessageRequest) -> TransformerContentType:
         content_type: TransformerContentType = TransformerContentType.UNDEFINED
-        value: Optional[str] = request.get('context', {}).get('content_type', None)
+        value: str | None = request.get('context', {}).get('content_type', None)
         if value:
             content_type = TransformerContentType.from_string(value)
         return content_type
 
-    def _get_safe_message_descriptor(self, md: pymqi.MD) -> dict[str, Any]:
-        metadata: dict[str, Any] = md.get()
+    def _get_safe_message_descriptor(self, md: pymqi.MD) -> dict:
+        metadata: dict = md.get()
 
         if 'MsgId' in metadata:
             metadata['MsgId'] = tohex(metadata['MsgId'])
 
         return metadata
 
-    def _request(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: C901, PLR0915
+    def _request(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: C901, PLR0912, PLR0915
         if self.qmgr is None:
             msg = 'not connected'
             raise AsyncMessageError(msg)
@@ -269,9 +266,9 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         except ValueError as e:
             raise AsyncMessageError(str(e)) from e
 
-        queue_name = arguments.get('queue', None)
-        expression = arguments.get('expression', None)
-        max_message_size: Optional[int] = int(arguments.get('max_message_size', '0'))
+        queue_name: str = arguments['queue']
+        expression: str | None = arguments.get('expression', None)
+        max_message_size: int | None = int(arguments.get('max_message_size', '0'))
 
         if not max_message_size:
             max_message_size = None
@@ -289,7 +286,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         latest_retry_exception: Exception | None = None
 
         while retries < 5:
-            msg_id_to_fetch: Optional[bytearray] = None
+            msg_id_to_fetch: bytearray | None = None
             if action == 'GET' and expression is not None:
                 content_type = self._get_content_type(request)
                 start_time = time()
@@ -317,7 +314,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         request_payload = payload = request.get('payload', None)
                         if self.header_type:
                             if self.header_type == 'rfh2':
-                                rfh2_encoder = Rfh2Encoder(payload=cast(str, payload).encode(), queue_name=queue_name, metadata=metadata)
+                                rfh2_encoder = Rfh2Encoder(payload=cast('str', payload).encode(), queue_name=queue_name, metadata=metadata)
                                 request_payload = rfh2_encoder.get_message()
                             else:
                                 msg = f'Invalid header_type: {self.header_type}'
@@ -372,7 +369,9 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
                                 self.logger.warning(
                                     'got MQRC_TRUNCATED_MSG_FAILED while getting message, retries=%d, original_length=%d, attributes=%r',
-                                    retries, original_length, attributes,
+                                    retries,
+                                    original_length,
+                                    attributes,
                                 )
                                 if max_message_size is None:
                                     # Concurrency issue, retry
@@ -446,5 +445,5 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
         return self._request(request)
 
-    def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
+    def get_handler(self, action: str) -> AsyncMessageRequestHandler | None:
         return handlers.get(action)

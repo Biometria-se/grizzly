@@ -23,11 +23,12 @@ is the number of wrapped tasks. Each wrapped task will have its own entry in the
 
 * `variable` _str_: name of variable that a value from `input_list` will be accessible in
 """
+
 from __future__ import annotations
 
 from json import loads as jsonloads
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from gevent import sleep as gsleep
 
@@ -72,7 +73,7 @@ class LoopTask(GrizzlyTaskWrapper):
         def task(parent: GrizzlyScenario) -> Any:
             orig_value = parent.user.variables.get(self.variable, None)
             start = perf_counter()
-            exception: Optional[Exception] = None
+            exception: Exception | None = None
             task_count = len(self.tasks)
             response_length: int = 0
 

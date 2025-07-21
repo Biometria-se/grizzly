@@ -1,4 +1,5 @@
 """Unit tests for grizzly.tasks.loop."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -99,17 +100,19 @@ class TestLoopTask:
         for i in range(3):
             task_factory.add(TestTask(name=f'{{{{ foobar }}}}-test-{i}'))
 
-        assert sorted(task_factory.get_templates()) == sorted([
-            'test:{{ foobar }}-test-0',
-            'test:{{ foobar }}-test-1',
-            'test:{{ foobar }}-test-2',
-        ])
+        assert sorted(task_factory.get_templates()) == sorted(
+            [
+                'test:{{ foobar }}-test-0',
+                'test:{{ foobar }}-test-1',
+                'test:{{ foobar }}-test-2',
+            ],
+        )
 
         task = task_factory()
         total_task___call___count = 0
 
         for _task in task_factory.peek():
-            _task = cast(TestTask, _task)
+            _task = cast('TestTask', _task)
             total_task___call___count += _task.call_count
 
         assert total_task___call___count == len(task_factory.tasks)

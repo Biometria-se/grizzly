@@ -1,4 +1,5 @@
 """Unit tests for grizzly.steps.background.setup."""
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -6,19 +7,19 @@ from os import environ
 from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
-from parse import compile
+from parse import compile as parse_compile
 
-from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 from grizzly.types import MessageDirection
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import BehaveFixture
 
 
 def test_parse_message_direction() -> None:
-    p = compile(
+    p = parse_compile(
         'sending from {from:MessageDirection} to {to:MessageDirection}',
         extra_types={
             'MessageDirection': parse_message_direction,
@@ -39,7 +40,7 @@ def test_parse_message_direction() -> None:
 
 def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
+    grizzly = cast('GrizzlyContext', behave_fixture.context.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
     step_impl = step_setup_save_statistics
@@ -115,7 +116,7 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
 
 def test_step_setup_log_level(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
     step_impl = step_setup_log_level
@@ -132,7 +133,7 @@ def test_step_setup_log_level(behave_fixture: BehaveFixture) -> None:
 
 def test_step_setup_run_time(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     step_impl = step_setup_run_time
 
     assert grizzly.setup.timespan is None
@@ -144,7 +145,7 @@ def test_step_setup_run_time(behave_fixture: BehaveFixture) -> None:
 
 def test_step_setup_message_type_callback(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -171,9 +172,11 @@ def test_step_setup_message_type_callback(behave_fixture: BehaveFixture) -> None
     delattr(behave, 'exceptions')
 
     step_setup_message_type_callback(behave, 'tests.helpers.message_callback_incorrect_sig', 'foo_message', 'server', 'client')
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='tests.helpers.message_callback_incorrect_sig does not have grizzly.types.MessageCallback method signature: '),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='tests.helpers.message_callback_incorrect_sig does not have grizzly.types.MessageCallback method signature: '),
+        ],
+    }
     delattr(behave, 'exceptions')
 
     step_setup_message_type_callback(behave, 'tests.helpers.message_callback', 'foo_message', 'server', 'client')
@@ -189,7 +192,7 @@ def test_step_setup_message_type_callback(behave_fixture: BehaveFixture) -> None
 
 def test_step_setup_configuration_value(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -210,7 +213,7 @@ def test_step_setup_configuration_value(behave_fixture: BehaveFixture) -> None:
 
 def test_step_setup_wait_spawning_complete_timeout(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -223,7 +226,7 @@ def test_step_setup_wait_spawning_complete_timeout(behave_fixture: BehaveFixture
 
 def test_step_setup_wait_spawning_complete_indefinitely(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 

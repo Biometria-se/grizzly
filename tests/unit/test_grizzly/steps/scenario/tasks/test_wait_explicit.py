@@ -1,20 +1,21 @@
 """Unit tests of grizzly.steps.scenario.tasks.wait_explicit."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.steps import step_task_wait_explicit
 from grizzly.tasks import ExplicitWaitTask
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import BehaveFixture
 
 
 def test_step_task_wait_explicit(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 

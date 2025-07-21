@@ -1,10 +1,11 @@
 """Unit test of grizzly_extras.async_message.mq.rfh2."""
+
 from __future__ import annotations
 
 import time
-import xml.etree.ElementTree as XML  # noqa: N814
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -17,13 +18,13 @@ if TYPE_CHECKING:  # pragma: no cover
 rfh2_msg = (
     b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
     b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>'
-    b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+    b"<ContentLength dt='i8'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00"
 )
 # with header
 rfh2_msg2 = (
     b'RFH \x02\x00\x00\x00\x1c\x01\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
     b'P\x00\x00\x00<jms><Dst>queue:///OTHERQUEUE</Dst><Tms>1234567890123</Tms><Dlv>2</Dlv></jms>   |\x00\x00\x00<usr><some_name>some_value</some_name>'
-    b'<ContentEncoding>gzip</ContentEncoding><ContentLength dt=\'i8\'>32</ContentLength></usr>'
+    b"<ContentEncoding>gzip</ContentEncoding><ContentLength dt='i8'>32</ContentLength></usr>"
     b'\x1f\x8b\x08\x00\xbb54c\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
 )
 
@@ -48,10 +49,11 @@ class TestRfh2Decoder:
         # test normal flow
         d = Rfh2Decoder(rfh2_msg)
         assert len(d.name_value_parts) == 3
-        assert XML.tostring(d.name_value_parts[0], encoding='unicode', method='xml').endswith('<mcd><Msd>jms_bytes</Msd></mcd>')
-        assert XML.tostring(d.name_value_parts[1], encoding='unicode', method='xml').endswith('<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>')
-        assert XML.tostring(d.name_value_parts[2], encoding='unicode', method='xml')\
-            .endswith('<usr><ContentEncoding>gzip</ContentEncoding><ContentLength dt="i8">32</ContentLength></usr>')
+        assert ET.tostring(d.name_value_parts[0], encoding='unicode', method='xml').endswith('<mcd><Msd>jms_bytes</Msd></mcd>')
+        assert ET.tostring(d.name_value_parts[1], encoding='unicode', method='xml').endswith('<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>')
+        assert ET.tostring(d.name_value_parts[2], encoding='unicode', method='xml').endswith(
+            '<usr><ContentEncoding>gzip</ContentEncoding><ContentLength dt="i8">32</ContentLength></usr>',
+        )
 
         # test maxpos == -1
         d.name_values = b''
@@ -69,7 +71,7 @@ class TestRfh2Decoder:
         d.name_values = (
             b' \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
             b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jXX>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>'
-            b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+            b"<ContentLength dt='i8'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00"
         )
 
         with pytest.raises(ValueError, match='Failed to parse RFH2 name values'):
@@ -88,7 +90,7 @@ class TestRfh2Decoder:
         no_enc = (
             b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
             b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ZontentEncoding>gzip</ZontentEncoding>'
-            b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+            b"<ContentLength dt='i8'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00"
         )
         d = Rfh2Decoder(no_enc)
         assert d._get_usr_encoding() is None
@@ -97,7 +99,7 @@ class TestRfh2Decoder:
         no_enc = (
             b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
             b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<uzr><ContentEncoding>gzip</ContentEncoding>'
-            b'<ContentLength dt=\'i8\'>32</ContentLength></uzr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+            b"<ContentLength dt='i8'>32</ContentLength></uzr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00"
         )
         d = Rfh2Decoder(no_enc)
         assert d._get_usr_encoding() is None
@@ -109,7 +111,7 @@ class TestRfh2Decoder:
         assert payload == 'test payload'
 
         # test with non-gzip encoding
-        def mocked_get_usr_encoding(_: Rfh2Decoder) -> Optional[str]:
+        def mocked_get_usr_encoding(_: Rfh2Decoder) -> str | None:
             return 'vulcan'
 
         mocker.patch.object(

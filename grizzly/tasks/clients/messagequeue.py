@@ -70,13 +70,14 @@ All variables in the endpoint have support for {@link framework.usage.variables.
 
 * `MaxMessageSize` _int_ (optional) - maximum number of bytes a message can be for the client to accept it, default is `None` which implies that the client will throw `MQRC_TRUNCATED_MSG_FAILED`, adjust buffer and try again.
 """  # noqa: E501
+
 from __future__ import annotations
 
 from contextlib import contextmanager
 from json import dumps as jsondumps
 from pathlib import Path
 from platform import node as hostname
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import zmq.green as zmq
@@ -84,9 +85,8 @@ from zmq import sugar as ztypes
 from zmq.error import ZMQError
 
 from grizzly.testdata.utils import resolve_variable
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType, StrDict
 from grizzly.utils.protocols import zmq_disconnect
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
 
 from . import ClientTask, client
@@ -101,6 +101,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.testdata.communication import GrizzlyDependencies
+    from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 
 
 @client('mq', 'mqs')
@@ -113,20 +114,20 @@ class MessageQueueClientTask(ClientTask):
 
     endpoint_path: str
     context: AsyncMessageContext
-    max_message_size: Optional[int]
+    max_message_size: int | None
 
     def __init__(
         self,
         direction: RequestDirection,
         endpoint: str,
-        name: Optional[str] = None,
+        name: str | None = None,
         /,
-        payload_variable: Optional[str] = None,
-        metadata_variable: Optional[str] = None,
-        source: Optional[str] = None,
-        destination: Optional[str] = None,
-        text: Optional[str] = None,
-        method: Optional[RequestMethod] = None,
+        payload_variable: str | None = None,
+        metadata_variable: str | None = None,
+        source: str | None = None,
+        destination: str | None = None,
+        text: str | None = None,
+        method: RequestMethod | None = None,
     ) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             pymqi.raise_for_error(self.__class__)
@@ -155,7 +156,7 @@ class MessageQueueClientTask(ClientTask):
         self._zmq_context.destroy(linger=0)
 
     def create_context(self) -> None:  # noqa: PLR0915
-        endpoint = cast(str, resolve_variable(self._scenario, self.endpoint, guess_datatype=False))
+        endpoint = cast('str', resolve_variable(self._scenario, self.endpoint, guess_datatype=False))
         parsed = urlparse(endpoint)
 
         if (parsed.scheme or 'none') not in ['mq', 'mqs']:
@@ -174,8 +175,8 @@ class MessageQueueClientTask(ClientTask):
             message = f'{self.__class__.__name__}: QueueManager and Channel must be specified in the query string of "{self.endpoint}"'
             raise AssertionError(message)
 
-        username: Optional[str] = parsed.username
-        password: Optional[str] = parsed.password
+        username: str | None = parsed.username
+        password: str | None = parsed.password
         port = parsed.port or 1414
 
         params = parse_qs(parsed.query)
@@ -188,9 +189,9 @@ class MessageQueueClientTask(ClientTask):
 
         self.endpoint_path = parsed.path[1:]
 
-        key_file: Optional[str] = None
-        cert_label: Optional[str] = None
-        ssl_cipher: Optional[str] = None
+        key_file: str | None = None
+        cert_label: str | None = None
+        ssl_cipher: str | None = None
 
         if 'KeyFile' in params:
             key_file = unquote(params['KeyFile'][0])
@@ -225,28 +226,31 @@ class MessageQueueClientTask(ClientTask):
 
         self.endpoint = ''.join(endpoint_parts)
 
-        self.context = cast(AsyncMessageContext, {
-            'url': self.endpoint,
-            'connection': f'{parsed.hostname}({port})',
-            'queue_manager': queue_manager,
-            'channel': channel,
-            'username': username,
-            'password': password,
-            'key_file': key_file,
-            'cert_label': cert_label,
-            'ssl_cipher': ssl_cipher,
-            'message_wait': message_wait,
-            'heartbeat_interval': heartbeat_interval,
-            'header_type': header_type,
-        })
+        self.context = cast(
+            'AsyncMessageContext',
+            {
+                'url': self.endpoint,
+                'connection': f'{parsed.hostname}({port})',
+                'queue_manager': queue_manager,
+                'channel': channel,
+                'username': username,
+                'password': password,
+                'key_file': key_file,
+                'cert_label': cert_label,
+                'ssl_cipher': ssl_cipher,
+                'message_wait': message_wait,
+                'heartbeat_interval': heartbeat_interval,
+                'header_type': header_type,
+            },
+        )
 
     @contextmanager
     def create_client(self, parent: GrizzlyScenario) -> Generator[ztypes.Socket, None, None]:
-        client: Optional[ztypes.Socket] = None
+        client: ztypes.Socket | None = None
 
         try:
             client = cast(
-                ztypes.Socket,
+                'ztypes.Socket',
                 self._zmq_context.socket(zmq.REQ),
             )
             client.setsockopt(zmq.LINGER, 0)
@@ -260,7 +264,7 @@ class MessageQueueClientTask(ClientTask):
             if client is not None:
                 zmq_disconnect(client, destroy_context=False)
 
-    def connect(self, client_id: int, client: ztypes.Socket, meta: dict[str, Any]) -> None:
+    def connect(self, client_id: int, client: ztypes.Socket, meta: StrDict) -> None:
         request: AsyncMessageRequest = {
             'action': RequestType.CONNECT(),
             'client': client_id,
@@ -268,7 +272,7 @@ class MessageQueueClientTask(ClientTask):
         }
 
         meta.update({'action': self.endpoint_path, 'direction': '<->'})
-        response: Optional[AsyncMessageResponse] = None
+        response: AsyncMessageResponse | None = None
 
         try:
             response = async_message_request(client, request)
@@ -298,11 +302,13 @@ class MessageQueueClientTask(ClientTask):
                 raise RuntimeError(message)
 
             with self.action(parent) as meta:
-                request.update({
-                    'worker': worker,
-                    'client': client_id,
-                })
-                response: Optional[AsyncMessageResponse] = None
+                request.update(
+                    {
+                        'worker': worker,
+                        'client': client_id,
+                    },
+                )
+                response: AsyncMessageResponse | None = None
 
                 try:
                     response = async_message_request(client, request)
@@ -310,12 +316,14 @@ class MessageQueueClientTask(ClientTask):
                 finally:
                     response_length_source = ((response or {}).get('payload', None) or '').encode('utf-8')
 
-                    meta.update({
-                        'action': self.endpoint_path,
-                        'request': request.copy(),
-                        'response_length': len(response_length_source),
-                        'response': response,
-                    })
+                    meta.update(
+                        {
+                            'action': self.endpoint_path,
+                            'request': request.copy(),
+                            'response_length': len(response_length_source),
+                            'response': response,
+                        },
+                    )
 
                 payload = response.get('payload', None)
                 if payload is None or len(payload.encode()) < 1:
@@ -352,7 +360,7 @@ class MessageQueueClientTask(ClientTask):
         return metadata, payload
 
     def request_to(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        source = parent.user.render(cast(str, self.source))
+        source = parent.user.render(cast('str', self.source))
         source_file = Path(self._context_root) / 'requests' / source
 
         if source_file.exists():

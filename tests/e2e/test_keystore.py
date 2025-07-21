@@ -1,4 +1,5 @@
 """End-to-end tests of grizzly.tasks.keystore."""
+
 from __future__ import annotations
 
 from textwrap import dedent
@@ -24,7 +25,8 @@ def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
 
     e2e_fixture.add_after_feature(after_feature)
 
-    feature_file = e2e_fixture.create_feature(dedent("""Feature: test persistence
+    feature_file = e2e_fixture.create_feature(
+        dedent("""Feature: test persistence
     Background: common configuration
         Given "2" users
         And spawn rate is "2" user per second
@@ -56,7 +58,8 @@ def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
         Then pop "foobar::push" from keystore and save in variable "foobar_push3"
         Then remove "foobar::push" from keystore
         Then log message "foobar_push: {{ foobar_push1 }}, {{ foobar_push2 }}, {{ foobar_push3 }}"
-    """))
+    """),
+    )
 
     rc, output = e2e_fixture.execute(feature_file)
 
@@ -67,4 +70,4 @@ def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
     assert 'Exception ignored in' not in result
     assert "key_holder_1={'hello': 'world'}" in result
     assert "key_holder_2=hello, key_holder_3={'hello': 'world'}" in result
-    assert "foobar_push: 10, 20, 30" in result
+    assert 'foobar_push: 10, 20, 30' in result

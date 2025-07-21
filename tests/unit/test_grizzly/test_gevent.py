@@ -1,4 +1,5 @@
 """Unit tests of grizzly.gevent."""
+
 from __future__ import annotations
 
 import logging

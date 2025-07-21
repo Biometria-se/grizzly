@@ -1,4 +1,5 @@
 """End-to-end test of grizzly variables."""
+
 from __future__ import annotations
 
 from textwrap import dedent
@@ -10,7 +11,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def test_e2e_variables(e2e_fixture: End2EndFixture) -> None:
-    feature_file = e2e_fixture.create_feature(dedent("""Feature: variables
+    feature_file = e2e_fixture.create_feature(
+        dedent("""Feature: variables
     Background: common configuration
         Given spawn rate is "2" users per second
         And value for variable "background_variable" is "foobar"
@@ -37,7 +39,8 @@ def test_e2e_variables(e2e_fixture: End2EndFixture) -> None:
         Then log message "background_variable={{ background_variable }}"
         Then log message "Scenario 2::AtomicIntegerIncrementer.test={{ AtomicIntegerIncrementer.test }}"
         Then log message "Scenario 2::AtomicRandomString.scenario={{ AtomicRandomString.scenario }}"
-    """))
+    """),
+    )
 
     rc, output = e2e_fixture.execute(feature_file)
 
@@ -66,17 +69,22 @@ def test_e2e_variables_atomic_json_reader(e2e_fixture: End2EndFixture) -> None:
         test_json.parent.mkdir(exist_ok=True)
 
         with test_json.open('w') as fd:
-            json.dump([{'username': 'bob1', 'password': 'some-password'}, {'username': 'alice1', 'password': 'some-other-password'}, {'username': 'bob2', 'password': 'password'}], fd)  # noqa: E501
+            json.dump(
+                [{'username': 'bob1', 'password': 'some-password'}, {'username': 'alice1', 'password': 'some-other-password'}, {'username': 'bob2', 'password': 'password'}],
+                fd,
+            )
 
     e2e_fixture.add_before_feature(before_feature)
 
-    feature_file = e2e_fixture.test_steps(scenario=[
-        'Given repeat for "3" iterations',
-        'Given value for variable "AtomicJsonReader.test" is "test.json"',
-        'Then log message "object={{ AtomicJsonReader.test | fromtestdata | stringify }}"',
-        'Then log message "object.username={{ AtomicJsonReader.test.username }}"',
-        'Then log message "object.password={{ AtomicJsonReader.test.password }}"',
-    ])
+    feature_file = e2e_fixture.test_steps(
+        scenario=[
+            'Given repeat for "3" iterations',
+            'Given value for variable "AtomicJsonReader.test" is "test.json"',
+            'Then log message "object={{ AtomicJsonReader.test | fromtestdata | stringify }}"',
+            'Then log message "object.username={{ AtomicJsonReader.test.username }}"',
+            'Then log message "object.password={{ AtomicJsonReader.test.password }}"',
+        ],
+    )
 
     rc, output = e2e_fixture.execute(feature_file)
 

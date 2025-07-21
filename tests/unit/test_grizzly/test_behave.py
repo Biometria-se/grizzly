@@ -1,4 +1,5 @@
 """Unit tests for grizzly.behave."""
+
 from __future__ import annotations
 
 import subprocess
@@ -8,7 +9,7 @@ from datetime import datetime, timezone
 from json import dumps as jsondumps
 from os import environ
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from behave.configuration import Configuration
@@ -16,15 +17,13 @@ from behave.runner import Runner
 from pytest_mock import MockerFixture
 
 from grizzly.behave import after_feature, after_scenario, after_step, before_feature, before_scenario, before_step
-from grizzly.context import GrizzlyContext
 from grizzly.steps.background.setup import step_setup_save_statistics as step_background
 from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
 from grizzly.steps.setup import step_setup_variable_value_ask as step_both
-from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, LogMessageTask, LoopTask, TimerTask
+from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, LogMessageTask, LoopTask
 from grizzly.testdata.communication import TestdataProducer
 from grizzly.types import RequestType
 from grizzly.types.behave import Context, Feature, Status, Step
-from grizzly.types.locust import LocalRunner
 from tests.helpers import rm_rf
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -32,6 +31,8 @@ if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
     from pytest_mock import MockerFixture
 
+    from grizzly.context import GrizzlyContext
+    from grizzly.types.locust import LocalRunner
     from tests.fixtures import BehaveFixture, EnvFixture, GrizzlyFixture
 
 
@@ -48,10 +49,7 @@ def test_behave_no_pymqi_dependencies() -> None:
         [
             sys.executable,
             '-c',
-            (
-                'import grizzly.behave as gbehave;'
-                'print(f"{gbehave.pymqi.__name__=}");'
-            ),
+            ('import grizzly.behave as gbehave;print(f"{gbehave.pymqi.__name__=}");'),
         ],
         env=env,
         stderr=subprocess.STDOUT,
@@ -88,7 +86,7 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
         before_feature(context, feature)
 
         assert hasattr(context, 'grizzly')
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         assert environ.get('GRIZZLY_CONTEXT_ROOT', None) == str(context_root)
         assert environ.get('GRIZZLY_FEATURE_FILE', None) == 'test.feature'
         assert grizzly.scenario.variables.persistent == {}
@@ -103,7 +101,7 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
 
         assert hasattr(context, 'started')
         assert hasattr(context, 'grizzly')
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         assert grizzly.scenario.variables.persistent == {
             'foo': 'bar',
             'hello': 'world',
@@ -113,7 +111,7 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
 
         assert hasattr(context, 'started')
         assert hasattr(context, 'grizzly')
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
         assert grizzly.scenario.variables.persistent == {
             'foo': 'bar',
             'hello': 'world',
@@ -214,6 +212,7 @@ def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, c
     assert feature.duration > 0.0
     assert capture.err == ''
 
+
 @pytest.mark.skip(reason='unable to capture output from behave SummarReporter output')
 def test_after_feature_async_timers(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, capfd: CaptureFixture, env_fixture: EnvFixture) -> None:
     behave = grizzly_fixture.behave.context
@@ -226,7 +225,7 @@ def test_after_feature_async_timers(grizzly_fixture: GrizzlyFixture, mocker: Moc
     env_fixture('GRIZZLY_FEATURE_FILE', './test.feature')
     env_fixture('GRIZZLY_CONTEXT_ROOT', '.')
 
-    grizzly.state.producer = TestdataProducer(cast(LocalRunner, grizzly.state.locust), {})
+    grizzly.state.producer = TestdataProducer(cast('LocalRunner', grizzly.state.locust), {})
 
     mocker.patch(
         'grizzly.behave.locustrun',
@@ -271,7 +270,7 @@ def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -
         def step_local(self, context: Context, *args: Any, **kwargs: Any) -> None:
             pass
 
-    def find_match(step: Step, *_args: Any, **_kwargs: Any) -> Optional[MatchedStep]:
+    def find_match(step: Step, *_args: Any, **_kwargs: Any) -> MatchedStep | None:
         if step is None:
             return None
 
@@ -303,7 +302,7 @@ def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -
     assert len(behave.scenario.steps) == 5
     assert len(behave.scenario.background.steps) == 5
 
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.clear()
 
     assert len(grizzly.scenarios()) == 0
@@ -343,14 +342,6 @@ def test_after_scenario(behave_fixture: BehaveFixture) -> None:
         after_scenario(behave)
 
     grizzly.scenario.tasks.tmp.async_group = None
-
-    grizzly.scenario.tasks.tmp.timers['test-timer-1'] = TimerTask('test-timer-1')
-    grizzly.scenario.tasks.tmp.timers['test-timer-2'] = TimerTask('test-timer-2')
-
-    with pytest.raises(AssertionError, match='timers test-timer-1, test-timer-2 has not been closed'):
-        after_scenario(behave)
-
-    grizzly.scenario.tasks.tmp.timers.clear()
 
     grizzly.scenario.tasks.tmp.conditional = ConditionalTask(
         name='test-conditional-1',

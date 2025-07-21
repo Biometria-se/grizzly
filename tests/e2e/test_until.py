@@ -1,12 +1,12 @@
 """End-to-end tests of grizzly.tasks.until."""
+
 from __future__ import annotations
 
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any, cast
 
-from grizzly.context import GrizzlyContext
-
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from grizzly.types.behave import Context
     from tests.fixtures import End2EndFixture
 
@@ -14,10 +14,11 @@ if TYPE_CHECKING:  # pragma: no cover
 def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
+
         if on_master(context):
             return
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly = cast('GrizzlyContext', context.grizzly)
 
         stats = grizzly.state.locust.environment.stats
 
@@ -51,7 +52,8 @@ def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
         },
     }
 
-    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: UntilRequestTask
+    feature_file = e2e_fixture.create_feature(
+        dedent(f"""Feature: UntilRequestTask
     Background: common configuration
         Given "2" users
         And spawn rate is "2" user per second
@@ -68,7 +70,8 @@ def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
         And repeat for "1" iteration
         When any task fail stop user
         Then get from "http://$conf::test.host$/api/until/foofoo?nth=2&wrong=foobar&right=world&as_array=true | content_type=json" with name "http-client-task" until "$.`this`[?foofoo="world"] | retries=3, expected_matches=1"
-    """))  # noqa: E501
+    """),  # noqa: E501
+    )
 
     rc, _ = e2e_fixture.execute(feature_file, env_conf=env_conf)
 

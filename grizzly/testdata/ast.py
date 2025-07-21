@@ -1,8 +1,9 @@
 """Contains methods for handling AST operations when parsing templates."""
+
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from jinja2 import nodes as j2
 
@@ -47,9 +48,8 @@ class AstVariableSet(dict[GrizzlyContextScenario, set[str]]):
         self.__map__ = {}
         self.__init_map__ = {}
 
-
     def register(self, scenario: GrizzlyContextScenario, variable: str) -> None:
-        initialization_value =  GrizzlyVariables.get_initialization_value(variable)
+        initialization_value = GrizzlyVariables.get_initialization_value(variable)
 
         # map variable name with the value it was initialized with
         self.__map__.update({variable: initialization_value})
@@ -216,7 +216,7 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
     variables = AstVariableSet()
 
     def _getattr(node: j2.Node) -> Generator[list[str], None, None]:  # noqa: C901, PLR0912, PLR0915
-        attributes: Optional[list[str]] = None
+        attributes: list[str] | None = None
 
         if isinstance(node, j2.Getattr):
             child_node = getattr(node, 'node', None)
@@ -314,8 +314,8 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
         elif isinstance(node, j2.Concat):
             nodes = getattr(node, 'nodes', [])
 
-            for node in nodes:
-                yield from _getattr(node)
+            for n in nodes:
+                yield from _getattr(n)
         elif isinstance(node, j2.Test):
             name = getattr(node, 'name', None)
             child_node = getattr(node, 'node', None)
@@ -344,7 +344,7 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
         if attributes is not None:
             yield attributes
 
-    def _build_variable(attributes: list[str]) -> Optional[str]:
+    def _build_variable(attributes: list[str]) -> str | None:
         if len(attributes) == 0:
             return None
 
@@ -357,7 +357,6 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
             attributes = attributes[:-1]
 
         return '.'.join(attributes)
-
 
     for scenario, template_sources in templates.items():
         if scenario not in variables:
@@ -373,13 +372,8 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
             for body in getattr(parsed, 'body', []):
                 for attributes in _getattr(body):
                     variable = _build_variable(attributes)
-                    if (
-                        variable is None
-                        or (  # check if variable is has a dunder name, and ignore it (internal variable)
-                            len(variable) > 4
-                            and variable.startswith('__')
-                            and variable.index('__') != variable.rindex('__')
-                        )
+                    if variable is None or (  # check if variable is has a dunder name, and ignore it (internal variable)
+                        len(variable) > 4 and variable.startswith('__') and variable.index('__') != variable.rindex('__')
                     ):
                         continue
 

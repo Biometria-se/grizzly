@@ -8,15 +8,16 @@ When initializing the variable, the full namespace has to be specified as `name`
 
 There are examples of this in the {@link framework.example}.
 """
+
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar
 
 from gevent.lock import DummySemaphore, Semaphore
 
-from grizzly.types import bool_type
+from grizzly.types import StrDict, bool_type
 
 T = TypeVar('T')
 
@@ -33,23 +34,21 @@ class AbstractAtomicClass:
 
 
 class AtomicVariablePersist(metaclass=ABCMeta):
-    arguments: ClassVar[dict[str, Any]] = {'persist': bool_type}
+    arguments: ClassVar[StrDict] = {'persist': bool_type}
 
     @abstractmethod
-    def generate_initial_value(self, variable: str) -> str:
-        ...
+    def generate_initial_value(self, variable: str) -> str: ...
 
 
 class AtomicVariableSettable(metaclass=ABCMeta):
     __settable__ = True
 
     @abstractmethod
-    def __setitem__(self, key: str, value: Any) -> None:
-        ...
+    def __setitem__(self, key: str, value: Any) -> None: ...
 
 
 class AtomicVariable(Generic[T], AbstractAtomicClass):
-    __base_type__: Optional[Callable] = None
+    __base_type__: Callable | None = None
     __dependencies__: ClassVar[GrizzlyDependencies] = set()
     __on_consumer__ = False
 
@@ -57,13 +56,13 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
 
     _initialized: bool
     _scenario: GrizzlyContextScenario
-    _values: dict[str, Optional[T]]
+    _values: dict[str, T | None]
     _semaphore: Semaphore = Semaphore()
 
-    arguments: ClassVar[dict[str, Any]] = {}
+    arguments: ClassVar[StrDict] = {}
     grizzly: GrizzlyContext
 
-    def __new__(cls, *, scenario: GrizzlyContextScenario, variable: str, value: Optional[T] = None, outer_lock: bool = False) -> AtomicVariable[T]:  # noqa: ARG003
+    def __new__(cls, *, scenario: GrizzlyContextScenario, variable: str, value: T | None = None, outer_lock: bool = False) -> AtomicVariable[T]:  # noqa: ARG004
         if AbstractAtomicClass in cls.__bases__:
             message = f"Can't instantiate abstract class {cls.__name__}"
             raise TypeError(message)
@@ -76,7 +75,8 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
             instance._initialized = False
             instance._scenario = scenario
 
-            from grizzly.context import grizzly
+            from grizzly.context import grizzly  # noqa: PLC0415
+
             instance.grizzly = grizzly
 
             cls._instances[cls].update({scenario: instance})
@@ -127,15 +127,15 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
             _clear(scenario)
 
     @classmethod
-    def obtain(cls, *, scenario: GrizzlyContextScenario, variable: str, value: Optional[T] = None) -> AtomicVariable[T]:
+    def obtain(cls, *, scenario: GrizzlyContextScenario, variable: str, value: T | None = None) -> AtomicVariable[T]:
         with cls.semaphore():
-            instance: Optional[AtomicVariable[T]] = cls._instances.get(cls, {}).get(scenario, None)
+            instance: AtomicVariable[T] | None = cls._instances.get(cls, {}).get(scenario, None)
             if instance is not None and variable in instance._values:
                 return instance
 
             return cls(scenario=scenario, variable=variable, value=value, outer_lock=True)
 
-    def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: Optional[T] = None, outer_lock: bool = False) -> None:  # noqa: ARG002
+    def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: T | None = None, outer_lock: bool = False) -> None:  # noqa: ARG002
         with self.semaphore(outer=outer_lock):
             if self._initialized:
                 if variable not in self._values:
@@ -153,11 +153,11 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
     def semaphore(cls, *, outer: bool = False) -> Semaphore:
         return cls._semaphore if not outer else DummySemaphore()
 
-    def __getitem__(self, variable: str) -> Optional[T]:
+    def __getitem__(self, variable: str) -> T | None:
         with self.semaphore():
             return self._get_value(variable)
 
-    def __setitem__(self, variable: str, value: Optional[T]) -> None:  # pragma: no cover
+    def __setitem__(self, variable: str, value: T | None) -> None:  # pragma: no cover
         message = f'{self.__class__.__name__} has not implemented "__setitem__"'
         raise NotImplementedError(message)
 
@@ -165,7 +165,7 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
         with suppress(KeyError):
             del self._values[variable]
 
-    def _get_value(self, variable: str) -> Optional[T]:
+    def _get_value(self, variable: str) -> T | None:
         try:
             return self._values[variable]
         except KeyError as e:
@@ -199,13 +199,13 @@ from .random_integer import AtomicRandomInteger
 from .random_string import AtomicRandomString
 
 __all__ = [
-    'AtomicRandomInteger',
-    'AtomicIntegerIncrementer',
-    'AtomicDate',
-    'AtomicDirectoryContents',
     'AtomicCsvReader',
     'AtomicCsvWriter',
+    'AtomicDate',
+    'AtomicDirectoryContents',
+    'AtomicIntegerIncrementer',
     'AtomicJsonReader',
+    'AtomicRandomInteger',
     'AtomicRandomString',
     'destroy_variables',
 ]

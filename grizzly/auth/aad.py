@@ -95,6 +95,7 @@ And set context variable "auth.user.redirect_uri" to "/app-registrered-redirect-
 And set context variable "auth.user.otp_secret" to "asdfasdf"  # <-- `Secret key` from Step 8 in "Configure TOTP"
 ```
 """
+
 from __future__ import annotations
 
 from grizzly_extras.azure.aad import AzureAadCredential

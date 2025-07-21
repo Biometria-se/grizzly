@@ -1,9 +1,9 @@
 """Core grizzly listeners, that hooks on grizzly specific logic to locust."""
+
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Concatenate, Optional, cast
+from typing import TYPE_CHECKING, Any, Concatenate, cast
 from urllib.parse import urlparse
 
 from locust.stats import (
@@ -16,11 +16,13 @@ from locust.stats import (
 from typing_extensions import ParamSpec
 
 from grizzly.testdata.communication import GrizzlyDependencies, TestdataConsumer, TestdataProducer
-from grizzly.types import MessageDirection, RequestType, TestdataType
+from grizzly.types import MessageDirection, RequestType, StrDict, TestdataType
 from grizzly.types.behave import Status
 from grizzly.types.locust import Environment, LocustRunner, MasterRunner, Message, WorkerRunner
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+
     from grizzly.context import GrizzlyContext
 
 P = ParamSpec('P')
@@ -28,8 +30,8 @@ P = ParamSpec('P')
 logger = logging.getLogger(__name__)
 
 
-def init(grizzly: GrizzlyContext, dependencies: GrizzlyDependencies, testdata: Optional[TestdataType] = None) -> Callable[Concatenate[LocustRunner, P], None]:
-    def ginit(runner: LocustRunner, **_kwargs: P.kwargs) -> None:
+def init(grizzly: GrizzlyContext, dependencies: GrizzlyDependencies, testdata: TestdataType | None = None) -> Callable[Concatenate[LocustRunner, P], None]:
+    def ginit(runner: LocustRunner, *_args: P.args, **_kwargs: P.kwargs) -> None:
         # acquire lock, that will be released when all users has spawned (on_spawning_complete)
         grizzly.state.spawning_complete.acquire()
 
@@ -61,14 +63,13 @@ def init(grizzly: GrizzlyContext, dependencies: GrizzlyDependencies, testdata: O
             for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.CLIENT_SERVER, {}).items():
                 runner.register_message(message_type, callback, concurrent=True)
 
-
             for dependency in dependencies:
                 if not isinstance(dependency, type):
                     continue
 
                 runner.register_message(dependency.__message_types__['request'], dependency.handle_request, concurrent=True)
 
-    return cast(Callable[Concatenate[LocustRunner, P], None], ginit)
+    return cast('Callable[Concatenate[LocustRunner, P], None]', ginit)
 
 
 def init_statistics_listener(url: str) -> Callable[Concatenate[Environment, P], None]:
@@ -76,53 +77,52 @@ def init_statistics_listener(url: str) -> Callable[Concatenate[Environment, P], 
         parsed = urlparse(url)
 
         if parsed.scheme in ('influxdb', 'influxdb2'):
-            from .influxdb import InfluxDbListener
+            from .influxdb import InfluxDbListener  # noqa: PLC0415
+
             InfluxDbListener(
                 environment=environment,
                 url=url,
             )
         elif parsed.scheme == 'insights':
-            from .appinsights import ApplicationInsightsListener
+            from .appinsights import ApplicationInsightsListener  # noqa: PLC0415
+
             ApplicationInsightsListener(
                 environment=environment,
                 url=url,
             )
 
-    return cast(Callable[Concatenate[Environment, P], None], gstatistics_listener)
+    return cast('Callable[Concatenate[Environment, P], None]', gstatistics_listener)
 
 
 def locust_test_start() -> Callable[Concatenate[Environment, P], None]:
-    def gtest_start(environment: Environment, **_kwargs: P.kwargs) -> None:
+    def gtest_start(environment: Environment, *_args: P.args, **_kwargs: P.kwargs) -> None:
         if isinstance(environment.runner, MasterRunner):
-            num_connected_workers = (
-                len(environment.runner.clients.ready)
-                + len(environment.runner.clients.running)
-                + len(environment.runner.clients.spawning)
-            )
+            num_connected_workers = len(environment.runner.clients.ready) + len(environment.runner.clients.running) + len(environment.runner.clients.spawning)
 
             logger.debug('connected workers: %d', num_connected_workers)
 
-    return cast(Callable[Concatenate[Environment, P], None], gtest_start)
+    return cast('Callable[Concatenate[Environment, P], None]', gtest_start)
 
 
 def locust_test_stop(grizzly: GrizzlyContext) -> Callable[Concatenate[Environment, P], None]:
-    def gtest_stop(environment: Environment, **_kwargs: P.kwargs) -> None:  # noqa: ARG001
+    def gtest_stop(environment: Environment, *_args: P.args, **_kwargs: P.kwargs) -> None:  # noqa: ARG001
         if grizzly.state.producer is not None:
             grizzly.state.producer.on_test_stop()
 
-    return cast(Callable[Concatenate[Environment, P], None], gtest_stop)
+    return cast('Callable[Concatenate[Environment, P], None]', gtest_stop)
 
 
-def spawning_complete(grizzly: GrizzlyContext) -> Callable[..., None]:
-    def gspawning_complete(user_count: int, **_kwargs: Any) -> None:
+def spawning_complete(grizzly: GrizzlyContext) -> Callable[Concatenate[int, P], None]:
+    def gspawning_complete(user_count: int, *_args: P.args, **_kwargs: P.kwargs) -> None:
         logger.debug('spawning of %d users completed', user_count)
         grizzly.state.spawning_complete.release()
 
     return gspawning_complete
 
 
-def worker_report(client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG001
+def worker_report(client_id: str, data: StrDict) -> None:  # noqa: ARG001
     logger.debug('received worker_report from %s', client_id)
+
 
 def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) -> None:
     logger.info('received quit message from master: msg=%r', msg)
@@ -149,7 +149,7 @@ def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) 
 
 
 def validate_result(grizzly: GrizzlyContext) -> Callable[Concatenate[Environment, P], None]:
-    def gvalidate_result(environment: Environment, **_kwargs: P.kwargs) -> None:
+    def gvalidate_result(environment: Environment, *_args: P.args, **_kwargs: P.kwargs) -> None:
         # first, aggregate statistics per scenario
         scenario_stats: dict[str, RequestStats] = {}
 
@@ -178,7 +178,7 @@ def validate_result(grizzly: GrizzlyContext) -> Callable[Concatenate[Environment
                 expected = scenario.validation.fail_ratio
                 actual = stats.total.fail_ratio
                 if actual > expected:
-                    error_message = f'failure ration {int(actual*100)}% > {int(expected*100)}%'
+                    error_message = f'failure ration {int(actual * 100)}% > {int(expected * 100)}%'
                     logger.error('scenario "%s" (%s) failed due to %s', scenario.name, prefix, error_message)
                     environment.stats.log_error(
                         RequestType.SCENARIO(),
@@ -218,4 +218,4 @@ def validate_result(grizzly: GrizzlyContext) -> Callable[Concatenate[Environment
             if environment.process_exit_code == 1 and hasattr(scenario, 'behave') and scenario.behave is not None:
                 scenario.behave.set_status(Status.failed)
 
-    return cast(Callable[Concatenate[Environment, P], None], gvalidate_result)
+    return cast('Callable[Concatenate[Environment, P], None]', gvalidate_result)

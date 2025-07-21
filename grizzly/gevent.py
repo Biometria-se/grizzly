@@ -1,4 +1,5 @@
 """Additional custom gevent functionality."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -82,7 +83,14 @@ class GreenletFactory:
 
     @contextmanager
     def spawn_task(
-        self, scenario: GrizzlyScenario, task: Callable, index: int, total: int, description: str, *args: Any, **kwargs: Any,
+        self,
+        scenario: GrizzlyScenario,
+        task: Callable,
+        index: int,
+        total: int,
+        description: str,
+        *args: Any,
+        **kwargs: Any,
     ) -> Generator[Greenlet, None, None]:
         """Spawn a greenlet executing the function and wait for the function to finish.
         Get the result of the executed function, if there was an exception raised, it will be

@@ -1,4 +1,5 @@
 """End-to-end tests of grizzly persistent variables."""
+
 from __future__ import annotations
 
 from textwrap import dedent
@@ -43,7 +44,8 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
 
     start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
 
-    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test persistence
+    feature_file = e2e_fixture.create_feature(
+        dedent(f"""Feature: test persistence
     Background: common configuration
         Given "1" users
         And spawn rate is "1" user per second
@@ -57,7 +59,8 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
         Then get request with name "get1" from endpoint "/api/echo?persistent={{{{ AtomicIntegerIncrementer.persistent }}}}"
         Then log message "persistent={{{{ AtomicIntegerIncrementer.persistent }}}}"
         Then log message "foobar={{{{ key_holder }}}}"
-    """))
+    """),
+    )
 
     rc, output = e2e_fixture.execute(feature_file)
 

@@ -1,13 +1,16 @@
 """@anchor pydoc:grizzly.steps.scenario.tasks.conditional Conditional
 This module contains step implementations for the {@pylink grizzly.tasks.conditional} task.
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import ConditionalTask
 from grizzly.types.behave import Context, then, when
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @when('condition "{condition}" with name "{name}" is true, execute these tasks')
@@ -29,7 +32,7 @@ def step_task_conditional_if(context: Context, condition: str, name: str) -> Non
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     assert grizzly.scenario.tasks.tmp.conditional is None, f'cannot create a new conditional while "{grizzly.scenario.tasks.tmp.conditional.name}" is still open'
 
@@ -58,7 +61,7 @@ def step_task_conditional_else(context: Context) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     assert grizzly.scenario.tasks.tmp.conditional is not None, 'there are no open conditional, you need to create one first'
 
@@ -84,7 +87,7 @@ def step_task_conditional_end(context: Context) -> None:
     ```
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     assert grizzly.scenario.tasks.tmp.conditional is not None, 'there are no open conditional, you need to create one before closing it'
 

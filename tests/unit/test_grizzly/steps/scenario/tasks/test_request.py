@@ -1,12 +1,12 @@
 """Unit tests of grizzly.steps.scenario.tasks.request."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
 import pytest
-from parse import compile
+from parse import compile as parse_compile
 
-from grizzly.context import GrizzlyContext
 from grizzly.steps import (
     step_task_request_file_with_name,
     step_task_request_file_with_name_endpoint,
@@ -18,11 +18,12 @@ from grizzly.types import RequestDirection, RequestMethod
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import BehaveFixture
 
 
 def test_parse_method() -> None:
-    p = compile(
+    p = parse_compile(
         'value {method:Method} world',
         extra_types={
             'Method': RequestMethod.from_string,
@@ -40,7 +41,7 @@ def test_parse_method() -> None:
 
 
 def test_parse_direction() -> None:
-    p = compile(
+    p = parse_compile(
         'value {direction:Direction} world',
         extra_types={
             'Direction': RequestDirection.from_string,
@@ -60,7 +61,7 @@ def test_parse_direction() -> None:
 @pytest.mark.parametrize('method', RequestDirection.TO.methods)
 def test_step_task_request_file_with_name_endpoint(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     step_task_request_file_with_name_endpoint(behave, method, '{}', 'the_name', 'the_container')
@@ -69,7 +70,7 @@ def test_step_task_request_file_with_name_endpoint(behave_fixture: BehaveFixture
 @pytest.mark.parametrize('method', RequestDirection.FROM.methods)
 def test_step_task_request_file_with_name_endpoint_wrong_direction(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -81,7 +82,7 @@ def test_step_task_request_file_with_name_endpoint_wrong_direction(behave_fixtur
 @pytest.mark.parametrize('method', RequestDirection.TO.methods)
 def test_step_task_request_file_with_name(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -96,7 +97,7 @@ def test_step_task_request_file_with_name(behave_fixture: BehaveFixture, method:
 @pytest.mark.parametrize('method', RequestDirection.FROM.methods)
 def test_step_task_request_file_with_name_wrong_direction(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -108,7 +109,7 @@ def test_step_task_request_file_with_name_wrong_direction(behave_fixture: Behave
 @pytest.mark.parametrize('method', RequestDirection.TO.methods)
 def test_step_task_request_text_with_name_endpoint_to(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
     behave.text = '{}'
@@ -127,7 +128,7 @@ def test_step_task_request_text_with_name_endpoint_to(behave_fixture: BehaveFixt
 @pytest.mark.parametrize('method', RequestDirection.FROM.methods)
 def test_step_task_request_text_with_name_endpoint_from(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
     behave.text = '{}'
@@ -144,7 +145,7 @@ def test_step_task_request_text_with_name_endpoint_from(behave_fixture: BehaveFi
 @pytest.mark.parametrize('method', RequestDirection.FROM.methods)
 def test_step_task_request_text_with_name_endpoint_no_text(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
     behave.text = None
@@ -158,7 +159,7 @@ def test_step_task_request_text_with_name_endpoint_no_text(behave_fixture: Behav
 
 def test_step_task_request_text_with_name_endpoint_no_direction(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -169,7 +170,7 @@ def test_step_task_request_text_with_name_endpoint_no_direction(behave_fixture: 
 
 def test_step_task_request_text_with_name(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -182,17 +183,21 @@ def test_step_task_request_text_with_name(behave_fixture: BehaveFixture) -> None
 
     behave.text = None
     step_task_request_text_with_name(behave, RequestMethod.GET, 'test-name')
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='no endpoint specified'),
-        ANY(AssertionError, message='cannot use endpoint from previous request, it has a different request method'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='no endpoint specified'),
+            ANY(AssertionError, message='cannot use endpoint from previous request, it has a different request method'),
+        ],
+    }
 
     step_task_request_text_with_name(behave, RequestMethod.POST, 'test-name')
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='no endpoint specified'),
-        ANY(AssertionError, message='cannot use endpoint from previous request, it has a different request method'),
-        ANY(AssertionError, message='step text is mandatory for POST'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='no endpoint specified'),
+            ANY(AssertionError, message='cannot use endpoint from previous request, it has a different request method'),
+            ANY(AssertionError, message='step text is mandatory for POST'),
+        ],
+    }
 
     behave.text = '{}'
     step_task_request_text_with_name(behave, RequestMethod.POST, 'test-name')

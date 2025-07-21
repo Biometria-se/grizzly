@@ -1,4 +1,5 @@
 """Unit tests for grizzly.users.iothub."""
+
 from __future__ import annotations
 
 import json
@@ -31,6 +32,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 CONNECTION_STRING = 'HostName=some.hostname.nu;DeviceId=my_device;SharedAccessKey=xxxyyyzzz='
 
+
 @dataclass
 class ParentFixture:
     parent: GrizzlyScenario
@@ -40,7 +42,8 @@ class ParentFixture:
     blob_client_factory_mock: MagicMock
     blob_client_mock: MagicMock
 
-@pytest.fixture()
+
+@pytest.fixture
 def parent_fixture(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> ParentFixture:
     iot_hub_device_client_mock = mocker.MagicMock(spec=IoTHubDeviceClient)
     mocker.patch('grizzly.users.iothub.IoTHubDeviceClient.create_from_connection_string', return_value=iot_hub_device_client_mock)
@@ -146,7 +149,7 @@ class TestIotHubUser:
         on_stop_spy.assert_called_once_with()
 
     def test__init__(self, grizzly_fixture: GrizzlyFixture) -> None:
-        test_cls = type('IotHubTestUser', (IotHubUser, ), {'__scenario__': grizzly_fixture.grizzly.scenario})
+        test_cls = type('IotHubTestUser', (IotHubUser,), {'__scenario__': grizzly_fixture.grizzly.scenario})
         environment = grizzly_fixture.grizzly.state.locust.environment
 
         assert issubclass(test_cls, IotHubUser)
@@ -181,14 +184,17 @@ class TestIotHubUser:
         grizzly = user._scenario.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly.scenario, {
-                'AtomicIntegerIncrementer.messageID': 31337,
-                'AtomicDate.now': '',
-                'messageID': 137,
-            }),
+            'variables': transform(
+                grizzly.scenario,
+                {
+                    'AtomicIntegerIncrementer.messageID': 31337,
+                    'AtomicDate.now': '',
+                    'messageID': 137,
+                },
+            ),
         }
-        old_request = cast(RequestTask, user._scenario.tasks()[-1])
-        request = RequestTask(RequestMethod.SEND, "test-send", "not_relevant | allow_aready_exists=True", old_request.source)
+        old_request = cast('RequestTask', user._scenario.tasks()[-1])
+        request = RequestTask(RequestMethod.SEND, 'test-send', 'not_relevant | allow_aready_exists=True', old_request.source)
         user._scenario.tasks().clear()
         user._scenario.tasks.add(request)
         user.add_context(remote_variables)
@@ -225,12 +231,12 @@ class TestIotHubUser:
         )
         parent_fixture.iot_device_mock.notify_blob_upload_status.reset_mock()
 
-        request = cast(RequestTask, user._scenario.tasks()[-1])
+        request = cast('RequestTask', user._scenario.tasks()[-1])
 
         user.request(request)
 
         user._scenario.failure_handling.update({None: RestartScenario})
-        parent_fixture.blob_client_mock.upload_blob.side_effect=[RuntimeError('failed to upload blob')]
+        parent_fixture.blob_client_mock.upload_blob.side_effect = [RuntimeError('failed to upload blob')]
         parent_fixture.iot_device_mock.notify_blob_upload_status.reset_mock()
 
         request.method = RequestMethod.SEND
@@ -253,18 +259,21 @@ class TestIotHubUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly.scenario, {
-                'AtomicIntegerIncrementer.messageID': 31337,
-                'AtomicDate.now': '',
-                'messageID': 137,
-            }),
+            'variables': transform(
+                grizzly.scenario,
+                {
+                    'AtomicIntegerIncrementer.messageID': 31337,
+                    'AtomicDate.now': '',
+                    'messageID': 137,
+                },
+            ),
         }
         user.add_context(remote_variables)
-        request = cast(RequestTask, user._scenario.tasks()[-1])
+        request = cast('RequestTask', user._scenario.tasks()[-1])
         request.endpoint = 'not_relevant'
         request.response.content_type = TransformerContentType.OCTET_STREAM_UTF8
 
-        request = cast(RequestTask, user._scenario.tasks()[-1])
+        request = cast('RequestTask', user._scenario.tasks()[-1])
 
         gzip_compress = mocker.patch('gzip.compress', autospec=True, return_value='this_is_compressed')
         request.metadata = {}
@@ -297,17 +306,20 @@ class TestIotHubUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly.scenario, {
-                'AtomicIntegerIncrementer.messageID': 31337,
-                'AtomicDate.now': '',
-                'messageID': 137,
-            }),
+            'variables': transform(
+                grizzly.scenario,
+                {
+                    'AtomicIntegerIncrementer.messageID': 31337,
+                    'AtomicDate.now': '',
+                    'messageID': 137,
+                },
+            ),
         }
         user.add_context(remote_variables)
-        request = cast(RequestTask, user._scenario.tasks()[-1])
+        request = cast('RequestTask', user._scenario.tasks()[-1])
         request.endpoint = 'not_relevant'
 
-        gzip_compress = mocker.patch('gzip.compress', autospec=True, return_value = 'this_is_compressed')
+        gzip_compress = mocker.patch('gzip.compress', autospec=True, return_value='this_is_compressed')
         request.metadata = {}
         request.metadata['content_type'] = 'application/octet-stream; charset=utf-8'
         request.metadata['content_encoding'] = 'vulcan'
@@ -331,14 +343,17 @@ class TestIotHubUser:
         grizzly = grizzly_fixture.grizzly
 
         remote_variables = {
-            'variables': transform(grizzly.scenario, {
-                'AtomicIntegerIncrementer.messageID': 31337,
-                'AtomicDate.now': '',
-                'messageID': 137,
-            }),
+            'variables': transform(
+                grizzly.scenario,
+                {
+                    'AtomicIntegerIncrementer.messageID': 31337,
+                    'AtomicDate.now': '',
+                    'messageID': 137,
+                },
+            ),
         }
         parent_fixture.user.add_context(remote_variables)
-        request = cast(RequestTask, parent_fixture.user._scenario.tasks()[-1])
+        request = cast('RequestTask', parent_fixture.user._scenario.tasks()[-1])
         request.endpoint = 'not_relevant'
 
         gzip_compress = mocker.patch('gzip.compress', autospec=True, return_value='this_is_compressed')

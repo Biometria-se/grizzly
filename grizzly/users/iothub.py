@@ -1,4 +1,3 @@
-#"""@anchor pydoc:grizzly.users.messagequeue Message Queue
 """@anchor pydoc:grizzly.users.iothub Iot hub
 Communicate with an Azure IoT hub device.
 
@@ -97,6 +96,7 @@ Then save response payload "$.device.temperature" in variable "temperature"
 ```
 
 """
+
 from __future__ import annotations
 
 import gzip
@@ -118,7 +118,7 @@ from gevent.queue import Empty, Queue
 
 from grizzly.events import GrizzlyEventDecoder, event, events
 from grizzly.exceptions import retry
-from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
+from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState, StrDict
 from grizzly.utils import has_template
 from grizzly_extras.queue import VolatileDeque
 from grizzly_extras.transformer import JsonTransformer, TransformerContentType
@@ -155,12 +155,12 @@ class IotMessageDecoder(GrizzlyEventDecoder):
         return_value: Any,  # noqa: ARG002
         exception: Exception | None,
         **kwargs: Any,
-    ) -> tuple[dict[str, Any], dict[str, str | None]]:
+    ) -> tuple[StrDict, dict[str, str | None]]:
         if tags is None:
             tags = {}
 
         instance = args[0]
-        message = args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg)
+        message = cast('IotMessage', args[self.arg] if isinstance(self.arg, int) else kwargs.get(self.arg))
 
         metadata, _ = IotHubUser._unserialize_message(IotHubUser._serialize_message(message))
 
@@ -170,7 +170,7 @@ class IotMessageDecoder(GrizzlyEventDecoder):
             **(metadata or {}).get('custom_properties', {}),
         }
 
-        metrics: dict[str, Any] = {
+        metrics: StrDict = {
             'size': (metadata or {}).get('size'),
             'message_id': (metadata or {}).get('message_id'),
             'error': None,
@@ -182,13 +182,15 @@ class IotMessageDecoder(GrizzlyEventDecoder):
         return metrics, tags
 
 
-@grizzlycontext(context={
-    'expression': {
-        'unique': None,
-        'metadata': None,
-        'payload': None,
+@grizzlycontext(
+    context={
+        'expression': {
+            'unique': None,
+            'metadata': None,
+            'payload': None,
+        },
     },
-})
+)
 class IotHubUser(GrizzlyUser):
     __dependencies__: ClassVar[GrizzlyDependencies] = set()
 
@@ -371,7 +373,7 @@ class IotHubUser(GrizzlyUser):
                 gsleep(0.1)
 
     def _request_send(self, request: RequestTask) -> GrizzlyResponse:
-        source = cast(str, request.source)  # it hasn't come here if it was None
+        source = cast('str', request.source)  # it hasn't come here if it was None
         message = IotMessage(data=None, message_id=uuid4())
 
         if has_template(source):
@@ -392,11 +394,11 @@ class IotHubUser(GrizzlyUser):
 
     def _request_file_upload(self, request: RequestTask) -> GrizzlyResponse:
         filename = request.endpoint
-        storage_info: dict[str, Any] | None = None
+        storage_info: StrDict | None = None
 
         try:
             with retry(retries=3, exceptions=(ClientError,), backoff=1.0) as context:
-                storage_info = cast(dict[str, Any], context.execute(self.iot_client.get_storage_info_for_blob, filename))
+                storage_info = cast('StrDict', context.execute(self.iot_client.get_storage_info_for_blob, filename))
 
                 sas_url = 'https://{}/{}/{}{}'.format(
                     storage_info['hostName'],
@@ -420,14 +422,14 @@ class IotHubUser(GrizzlyUser):
 
                 try:
                     if content_encoding == 'gzip':
-                        compressed_payload: bytes = gzip.compress(cast(str, request.source).encode())
+                        compressed_payload: bytes = gzip.compress(cast('str', request.source).encode())
                         content_settings = ContentSettings(content_type=content_type, content_encoding=content_encoding)
                         metadata = blob_client.upload_blob(compressed_payload, content_settings=content_settings)
                     elif content_encoding:
                         error_message = f'Unhandled request content_encoding in IotHubUser: {content_encoding}'
                         raise RuntimeError(error_message)
                     else:
-                            metadata = blob_client.upload_blob(request.source)
+                        metadata = blob_client.upload_blob(request.source)
                 except ResourceExistsError:
                     if (request.arguments or {}).get('allow_already_exist', 'False').lower() == 'true':
                         self.logger.warning('file %s already exist, continue', filename)
@@ -457,9 +459,11 @@ class IotHubUser(GrizzlyUser):
             raise
         else:
             if metadata is not None:
-                metadata.update({
-                    'sasUrl': sas_url,
-                })
+                metadata.update(
+                    {
+                        'sasUrl': sas_url,
+                    },
+                )
 
             return metadata, request.source
 
@@ -468,7 +472,7 @@ class IotHubUser(GrizzlyUser):
             error_message = f'{self.__class__.__name__} has not implemented {request.method.name}'
             raise NotImplementedError(error_message)
 
-        metadata: dict[str, Any] | None = None
+        metadata: StrDict | None = None
         payload: str | None = None
 
         if request.method in [RequestMethod.SEND, RequestMethod.PUT]:

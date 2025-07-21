@@ -1,4 +1,5 @@
 """Unit tests of grizzly.types."""
+
 from __future__ import annotations
 
 import pytest
@@ -30,22 +31,24 @@ class TestRequestType:
             assert str(custom_type) == custom_type.value[0]
             assert custom_type.weight >= 0
 
-    @pytest.mark.parametrize(('value', 'expected'), [
-        (RequestMethod.GET, 'GET'),
-        (RequestMethod.RECEIVE, 'RECV'),
-        (RequestMethod.PUT, 'PUT'),
-        (RequestMethod.SEND, 'SEND'),
-    ])
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            (RequestMethod.GET, 'GET'),
+            (RequestMethod.RECEIVE, 'RECV'),
+            (RequestMethod.PUT, 'PUT'),
+            (RequestMethod.SEND, 'SEND'),
+        ],
+    )
     def test_from_method(self, value: RequestMethod, expected: str) -> None:
         assert RequestType.from_method(value) == expected
 
-    @pytest.mark.parametrize(('value', 'expected'), [
-        (e.name, e.alias) for e in RequestType
-    ] + [
-        (e.name, e.name) for e in RequestMethod if getattr(RequestType, e.name, None) is None
-    ] + [
-        (e.alias, e.alias) for e in RequestType
-    ])
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [(e.name, e.alias) for e in RequestType]
+        + [(e.name, e.name) for e in RequestMethod if getattr(RequestType, e.name, None) is None]
+        + [(e.alias, e.alias) for e in RequestType],
+    )
     def test_from_string(self, value: str, expected: str) -> None:
         assert RequestType.from_string(value) == expected
 

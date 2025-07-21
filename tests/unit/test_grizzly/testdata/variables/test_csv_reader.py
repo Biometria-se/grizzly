@@ -1,4 +1,5 @@
 """Unit tests of grizzly.testdata.variables.csv_reader."""
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -10,7 +11,6 @@ from grizzly.testdata.variables import AtomicCsvReader
 from grizzly.testdata.variables.csv_reader import atomiccsvreader__base_type__
 
 if TYPE_CHECKING:  # pragma: no cover
-
     from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture
 
 

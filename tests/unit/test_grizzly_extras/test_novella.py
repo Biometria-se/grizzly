@@ -1,7 +1,6 @@
 """Unit tests of grizzly_extras.novella."""
-from __future__ import annotations
 
-from typing import Union
+from __future__ import annotations
 
 import pytest
 
@@ -85,7 +84,7 @@ def test_make_human_readable() -> None:
 def test__create_nav_node(tmp_path_factory: pytest.TempPathFactory) -> None:
     test_context = tmp_path_factory.mktemp('test_context')
     try:
-        target: list[Union[str, dict[str, str]]] = []
+        target: list[str | dict[str, str]] = []
         # <!-- not a file
         node = test_context
         _create_nav_node(target, 'foobar', node)
@@ -134,11 +133,14 @@ def test__generate_dynamic_page(tmp_path_factory: pytest.TempPathFactory) -> Non
         assert len(list(test_output.rglob('**/*'))) != 0
         output_file = test_output / 'foobar' / 'foobar_sftp_api.md'
         assert output_file.exists()
-        assert output_file.read_text() == """---
+        assert (
+            output_file.read_text()
+            == """---
 title: Foobar / Foobar SFTP API
 ---
 @pydoc foo.bar.foobar_sftp_api
 """
+        )
         # -->
 
         # <!-- init file
@@ -148,11 +150,14 @@ title: Foobar / Foobar SFTP API
         assert len(list(test_output.rglob('**/*'))) != 0
         output_file = test_output / 'foobar' / 'index.md'
         assert output_file.exists()
-        assert output_file.read_text() == """---
+        assert (
+            output_file.read_text()
+            == """---
 title: Foobar
 ---
 @pydoc foo.bar
 """
+        )
         # -->
 
         # <!-- normal file, do not overwrite
@@ -162,11 +167,14 @@ title: Foobar
         assert len(list(test_output.rglob('**/*'))) != 0
         output_file = test_output / 'foobar' / 'foobar_sftp_api.md'
         assert output_file.exists()
-        assert output_file.read_text() == """---
+        assert (
+            output_file.read_text()
+            == """---
 title: Foobar / Foobar SFTP API
 ---
 @pydoc foo.bar.foobar_sftp_api
 """
+        )
         # -->
     finally:
         rm_rf(test_context)
@@ -183,15 +191,18 @@ class TestGrizzlyMarkdown:
         node = MarkdownAstNode({}, 0)
         assert GrizzlyMarkdown._get_header(node) == MarkdownHeading('', 0)
 
-        node = MarkdownAstNode({
-            'attrs': {'level': 3},
-            'children': [
-                {'raw': 'he'},
-                {'raw': 'llo'},
-                {'raw': ' world'},
-                {'raw': '!'},
-            ],
-        }, 0)
+        node = MarkdownAstNode(
+            {
+                'attrs': {'level': 3},
+                'children': [
+                    {'raw': 'he'},
+                    {'raw': 'llo'},
+                    {'raw': ' world'},
+                    {'raw': '!'},
+                ],
+            },
+            0,
+        )
         assert GrizzlyMarkdown._get_header(node) == MarkdownHeading('hello world!', 3)
 
     def test__get_tokens(self) -> None:
@@ -246,18 +257,21 @@ def step_what_in_the_world(context: Context) -> None:
         node = MarkdownAstNode({'type': 'block_code', 'raw': 'foobar'}, 0)
         assert GrizzlyMarkdown.ast_reformat_admonitions(node).ast == {'type': 'block_code', 'raw': 'foobar'}
 
-        node = MarkdownAstNode({
-            'type': 'paragraph',
-            'children': [
-                {'raw': '!!! foobar'},
-                {'type': 'softbreak'},
-                {'type': 'text', 'raw': 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.'},
-                {'type': 'softbreak'},
-                {'type': 'text', 'raw': 'Donec quis mollis sapien. Fusce ac purus sit amet tortor rutrum congue.'},
-                {'type': 'softbreak'},
-                {'type': 'text', 'raw': 'Suspendisse potenti. Morbi non lacus sed eros ullamcorper cursus.'},
-            ],
-        }, 1)
+        node = MarkdownAstNode(
+            {
+                'type': 'paragraph',
+                'children': [
+                    {'raw': '!!! foobar'},
+                    {'type': 'softbreak'},
+                    {'type': 'text', 'raw': 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.'},
+                    {'type': 'softbreak'},
+                    {'type': 'text', 'raw': 'Donec quis mollis sapien. Fusce ac purus sit amet tortor rutrum congue.'},
+                    {'type': 'softbreak'},
+                    {'type': 'text', 'raw': 'Suspendisse potenti. Morbi non lacus sed eros ullamcorper cursus.'},
+                ],
+            },
+            1,
+        )
 
         assert GrizzlyMarkdown.ast_reformat_admonitions(node).ast == {
             'type': 'paragraph',
@@ -273,27 +287,30 @@ def step_what_in_the_world(context: Context) -> None:
         }
 
     def test_ast_reformat_recursive(self) -> None:
-        node = MarkdownAstNode({
-            'type': 'paragraph',
-            'children': [
-                {'raw': '!!! foobar'},
-                {'type': 'softbreak'},
-                {
-                    'type': 'text',
-                    'raw': 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-                    'children': [
-                        {
-                            'type': 'paragraph',
-                            'children': [
-                                {'raw': '!!! bar'},
-                                {'type': 'softbreak'},
-                                {'type': 'text', 'raw': 'Suspendisse potenti. Morbi non lacus sed eros ullamcorper cursus.'},
-                            ],
-                        },
-                    ],
-                },
-            ],
-        }, 0)
+        node = MarkdownAstNode(
+            {
+                'type': 'paragraph',
+                'children': [
+                    {'raw': '!!! foobar'},
+                    {'type': 'softbreak'},
+                    {
+                        'type': 'text',
+                        'raw': 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+                        'children': [
+                            {
+                                'type': 'paragraph',
+                                'children': [
+                                    {'raw': '!!! bar'},
+                                    {'type': 'softbreak'},
+                                    {'type': 'text', 'raw': 'Suspendisse potenti. Morbi non lacus sed eros ullamcorper cursus.'},
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            0,
+        )
 
         assert GrizzlyMarkdown.ast_reformat_recursive(node, GrizzlyMarkdown.ast_reformat_admonitions).ast == {
             'type': 'paragraph',

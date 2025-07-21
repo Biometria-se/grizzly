@@ -3,15 +3,16 @@ Parse text string and construct a dictionary with key-value pairs.
 
 Logic to support grizzly arguments, which are passed in text strings.
 """
+
 from __future__ import annotations
 
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from .text import has_sequence
 
 
 def split_value(value: str, separator: str = '|') -> tuple[str, str]:
-    operators = ["=", "|"]
+    operators = ['=', '|']
 
     try:
         if value.count(separator) > 1:
@@ -29,7 +30,7 @@ def split_value(value: str, separator: str = '|') -> tuple[str, str]:
     except ValueError:
         values = value.split(separator, 1)
 
-    return cast(tuple[str, str], tuple([v.strip() for v in values]))
+    return cast('tuple[str, str]', tuple([v.strip() for v in values]))
 
 
 def get_unsupported_arguments(valid_arguments: list[str], arguments: dict[str, Any]) -> list[str]:
@@ -49,7 +50,7 @@ def parse_arguments(arguments: str, separator: str = '=', *, unquote: bool = Tru
         raise ValueError(message)
 
     parsed: dict[str, Any] = {}
-    previous_part: Optional[str] = None
+    previous_part: str | None = None
     argument_parts = arguments.split(',')
 
     for part_index, _argument in enumerate(argument_parts):
@@ -80,7 +81,7 @@ def parse_arguments(arguments: str, separator: str = '=', *, unquote: bool = Tru
             message = f'invalid value for argument "{key}"'
             raise ValueError(message)
 
-        start_quote: Optional[str] = None
+        start_quote: str | None = None
 
         has_equals = has_sequence('==', value)
         has_or = has_sequence('|=', value)

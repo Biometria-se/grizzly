@@ -1,8 +1,9 @@
 """Core functionality of grizzly testdata."""
+
 from __future__ import annotations
 
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Callable
@@ -39,19 +40,19 @@ class GrizzlyVariables(dict):
             globals()[class_name] = getattr(module, class_name)
 
         variable = globals()[class_name]
-        return cast(type['AtomicVariable'], variable)
+        return cast('type[AtomicVariable]', variable)
 
     @classmethod
-    def get_variable_spec(cls, name: str) -> tuple[Optional[str], Optional[str], str, Optional[str]]:
+    def get_variable_spec(cls, name: str) -> tuple[str | None, str | None, str, str | None]:
         dot_count = name.count('.')
 
         if dot_count == 0 or 'Atomic' not in name:
             return None, None, name, None
 
         namespace: list[str] = []
-        module_name: Optional[str] = None
-        variable_type: Optional[str] = None
-        variable_name: Optional[str] = None
+        module_name: str | None = None
+        variable_type: str | None = None
+        variable_name: str | None = None
         sub_variable_names: list[str] = []
 
         for part in name.split('.'):
@@ -73,7 +74,7 @@ class GrizzlyVariables(dict):
 
         sub_variable_name = '.'.join(sub_variable_names) if len(sub_variable_names) > 0 else None
 
-        return module_name, variable_type, cast(str, variable_name), sub_variable_name
+        return module_name, variable_type, cast('str', variable_name), sub_variable_name
 
     @classmethod
     def get_initialization_value(cls, name: str) -> str:
@@ -99,7 +100,7 @@ class GrizzlyVariables(dict):
             dependencies = variable.__dependencies__
 
             if getattr(variable, '__on_consumer__', False):
-                value = cast(Any, '__on_consumer__')
+                value = cast('Any', '__on_consumer__')
             else:
                 try:
                     value = variable(scenario=scenario, variable=variable_name, value=default_value)
@@ -149,7 +150,7 @@ class GrizzlyVariables(dict):
             super().update(*args, **kwargs)
 
     def __setitem__(self, key: str, value: GrizzlyVariableType) -> None:
-        caster: Optional[Callable] = None
+        caster: Callable | None = None
 
         # only when initializing
         if key not in self:

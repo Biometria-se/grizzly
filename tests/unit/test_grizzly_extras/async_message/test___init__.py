@@ -1,8 +1,9 @@
 """Unit tests of grizzly_extras.async_message."""
+
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -21,7 +22,7 @@ if TYPE_CHECKING:  # pragma: no cover
 class TestAsyncMessageHandler:
     def test_get_handler(self) -> None:
         class AsyncMessageTest(AsyncMessageHandler):
-            def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
+            def get_handler(self, action: str) -> AsyncMessageRequestHandler | None:
                 return super().get_handler(action)
 
             def close(self) -> None:
@@ -39,11 +40,11 @@ class TestAsyncMessageHandler:
             def a_handler(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: ARG002
                 return {}
 
-            def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
+            def get_handler(self, action: str) -> AsyncMessageRequestHandler | None:
                 if action == 'NONE':
                     return None
 
-                return cast(AsyncMessageRequestHandler, self.a_handler)
+                return cast('AsyncMessageRequestHandler', self.a_handler)
 
             def close(self) -> None:
                 pass
@@ -61,18 +62,26 @@ class TestAsyncMessageHandler:
         assert response.get('message', None) == 'NONE: AsyncMessageError="no implementation for NONE"'
         assert response.get('response_time', None) is not None
 
-        mocker.patch.object(handler, 'a_handler', side_effect=[{
-            'payload': 'test payload',
-            'metadata': {'value': 'hello world'},
-            'response_length': len('test payload'),
-        }])
+        mocker.patch.object(
+            handler,
+            'a_handler',
+            side_effect=[
+                {
+                    'payload': 'test payload',
+                    'metadata': {'value': 'hello world'},
+                    'response_length': len('test payload'),
+                },
+            ],
+        )
 
-        request.update({
-            'action': 'GET',
-            'context': {
-                'endpoint': 'TEST.QUEUE',
+        request.update(
+            {
+                'action': 'GET',
+                'context': {
+                    'endpoint': 'TEST.QUEUE',
+                },
             },
-        })
+        )
 
         response = handler.handle(request)
 

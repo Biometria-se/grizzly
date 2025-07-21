@@ -70,6 +70,7 @@ Second request:
 
 etc.
 """
+
 from __future__ import annotations
 
 import json
@@ -77,9 +78,9 @@ from contextlib import suppress
 from os import environ
 from pathlib import Path
 from secrets import randbelow
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
-from grizzly.types import bool_type
+from grizzly.types import StrDict, bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
@@ -102,12 +103,12 @@ def atomicjsonreader__base_type__(value: str) -> str:
             message = f'AtomicCsvReader: {e!s}'
             raise ValueError(message) from e
 
-        for argument, value in arguments.items():
-            if argument not in AtomicJsonReader.arguments:
-                message = f'AtomicJsonReader: argument {argument} is not allowed'
+        for k, v in arguments.items():
+            if k not in AtomicJsonReader.arguments:
+                message = f'AtomicJsonReader: argument {k} is not allowed'
                 raise ValueError(message)
 
-            AtomicJsonReader.arguments[argument](value)
+            AtomicJsonReader.arguments[k](v)
 
         value = f'{json_file} | {json_arguments}'
     else:
@@ -123,7 +124,7 @@ def atomicjsonreader__base_type__(value: str) -> str:
         message = f'AtomicJsonReader: {json_file} is not a file in {grizzly_context_requests!s}'
         raise ValueError(message)
 
-    data: Optional[list[dict[str, Any]]] = None
+    data: list[StrDict] | None = None
     try:
         data = json.loads(path.read_text())
     except Exception as e:
@@ -137,14 +138,14 @@ def atomicjsonreader__base_type__(value: str) -> str:
     return value
 
 
-class AtomicJsonReader(AtomicVariable[dict[str, Any]]):
+class AtomicJsonReader(AtomicVariable[StrDict]):
     __base_type__ = atomicjsonreader__base_type__
     __initialized: bool = False
 
-    _items: dict[str, list[dict[str, Any]]]
-    _settings: dict[str, dict[str, Any]]
+    _items: dict[str, list[StrDict]]
+    _settings: dict[str, StrDict]
     context_root: Path
-    arguments: ClassVar[dict[str, Any]] = {'repeat': bool_type, 'random': bool_type}
+    arguments: ClassVar[StrDict] = {'repeat': bool_type, 'random': bool_type}
 
     def __init__(self, *, scenario: GrizzlyContextScenario, variable: str, value: str, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
@@ -182,10 +183,10 @@ class AtomicJsonReader(AtomicVariable[dict[str, Any]]):
             self._settings = {variable: settings}
             self.__initialized = True
 
-    def _create_row_queue(self, value: str) -> list[dict[str, Any]]:
+    def _create_row_queue(self, value: str) -> list[dict]:
         input_file = self.context_root / value
 
-        return cast(list[dict[str, Any]], json.loads(input_file.read_text()))
+        return cast('list[StrDict]', json.loads(input_file.read_text()))
 
     @classmethod
     def clear(cls: type[AtomicJsonReader]) -> None:
@@ -193,19 +194,19 @@ class AtomicJsonReader(AtomicVariable[dict[str, Any]]):
 
         instances = cls._instances.get(cls, {})
         for scenario in instances:
-            instance = cast(AtomicJsonReader, cls.get(scenario))
+            instance = cast('AtomicJsonReader', cls.get(scenario))
             variables = list(instance._items.keys())
 
             for variable in variables:
                 del instance._items[variable]
                 del instance._settings[variable]
 
-    def __getitem__(self, variable: str) -> Optional[dict[str, Any]]:
+    def __getitem__(self, variable: str) -> StrDict | None:
         with self.semaphore():
-            prop: Optional[str] = None
+            prop: str | None = None
 
             if '.' in variable:
-                [variable, prop] = variable.rsplit('.', 1)
+                variable, prop = variable.rsplit('.', 1)
 
             try:
                 settings = self._settings[variable]

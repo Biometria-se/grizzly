@@ -1,11 +1,11 @@
 """Unit tests of grizzly.steps.scenario.tasks.clients."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from grizzly.context import GrizzlyContext
 from grizzly.steps import (
     step_task_client_from_endpoint_payload,
     step_task_client_from_endpoint_payload_metadata,
@@ -18,12 +18,13 @@ from grizzly.types import RequestMethod, pymqi
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
 def test_step_task_client_from_endpoint_payload_metadata(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -79,15 +80,17 @@ def test_step_task_client_from_endpoint_payload_metadata(behave_fixture: BehaveF
 
     behave.text = None
     step_task_client_from_endpoint_payload_metadata(behave, RequestMethod.POST, 'https://{{ endpoint_url }}', 'step-name', 'test', 'metadata')
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='chosen request method does not match direction "from"'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='chosen request method does not match direction "from"'),
+        ],
+    }
     delattr(behave, 'exceptions')
 
 
 def test_step_task_client_from_endpoint_payload(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
@@ -161,9 +164,11 @@ def test_step_task_client_to_endpoint_file(grizzly_fixture: GrizzlyFixture, requ
     assert task.endpoint == '{{ url }}'
 
     templates = task.get_templates()
-    assert sorted(templates) == sorted([
-        '{{ url }}',
-    ])
+    assert sorted(templates) == sorted(
+        [
+            '{{ url }}',
+        ],
+    )
 
     test_file = grizzly_fixture.test_context / 'requests' / 'file-test.json'
     test_file.parent.mkdir(exist_ok=True)
@@ -181,10 +186,12 @@ def test_step_task_client_to_endpoint_file(grizzly_fixture: GrizzlyFixture, requ
         assert task.endpoint == '{{ url }}'
 
         templates = task.get_templates()
-        assert sorted(templates) == sorted([
-            '{{ url }}',
-            'foobar {{ foo }}!',
-        ])
+        assert sorted(templates) == sorted(
+            [
+                '{{ url }}',
+                'foobar {{ foo }}!',
+            ],
+        )
     finally:
         test_file.unlink()
 
@@ -222,10 +229,12 @@ def test_step_task_client_to_endpoint_file_destination(grizzly_fixture: GrizzlyF
     assert task.endpoint == '{{ url }}'
 
     templates = task.get_templates()
-    assert sorted(templates) == sorted([
-        '{{ url }}',
-        'uploaded-file-{{ suffix }}.json',
-    ])
+    assert sorted(templates) == sorted(
+        [
+            '{{ url }}',
+            'uploaded-file-{{ suffix }}.json',
+        ],
+    )
 
     test_file = grizzly_fixture.test_context / 'requests' / 'file-test.json'
     test_file.parent.mkdir(exist_ok=True)
@@ -243,13 +252,16 @@ def test_step_task_client_to_endpoint_file_destination(grizzly_fixture: GrizzlyF
         assert task.endpoint == '{{ url }}'
 
         templates = task.get_templates()
-        assert sorted(templates) == sorted([
-            '{{ url }}',
-            'uploaded-file-{{ suffix }}.json',
-            'foobar {{ foo }}!',
-        ])
+        assert sorted(templates) == sorted(
+            [
+                '{{ url }}',
+                'uploaded-file-{{ suffix }}.json',
+                'foobar {{ foo }}!',
+            ],
+        )
     finally:
         test_file.unlink()
+
 
 @pytest.mark.parametrize('request_method', [RequestMethod.PUT, RequestMethod.POST])
 def test_step_task_client_to_endpoint_text(grizzly_fixture: GrizzlyFixture, request_method: RequestMethod) -> None:
@@ -282,7 +294,9 @@ def test_step_task_client_to_endpoint_text(grizzly_fixture: GrizzlyFixture, requ
     assert task.endpoint == '{{ url }}'
 
     templates = task.get_templates()
-    assert sorted(templates) == sorted([
-        '{{ url }}',
-        'foobar {{ foo }}!',
-    ])
+    assert sorted(templates) == sorted(
+        [
+            '{{ url }}',
+            'foobar {{ foo }}!',
+        ],
+    )

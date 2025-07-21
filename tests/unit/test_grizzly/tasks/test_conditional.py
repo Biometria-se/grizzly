@@ -1,4 +1,5 @@
 """Unit tests of grizzly.tasks.conditional."""
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -43,7 +44,7 @@ class TestConditionalTask:
         task_factory.switch(pointer=False)
         assert not getattr(task_factory, '_pointer', True)
 
-        task_factory.switch(None)
+        task_factory.switch(pointer=None)
         assert task_factory._pointer is None
 
     def test_add_and_peek(self) -> None:
@@ -82,9 +83,9 @@ class TestConditionalTask:
         # task has name attribute, prefix it
         task_factory.switch(pointer=False)
         task_factory.add(TestTask(name='dummy task'))
-        test_task = cast(TestTask, task_factory.tasks.get(False, [])[-1])
+        test_task = cast('TestTask', task_factory.tasks.get(False, [])[-1])
         assert test_task.name == 'test:dummy task'
-        test_task = cast(TestTask, task_factory.tasks.get(False, [])[-2])
+        test_task = cast('TestTask', task_factory.tasks.get(False, [])[-2])
         assert test_task.name is None
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
@@ -146,7 +147,7 @@ class TestConditionalTask:
 
         total_task___call___count = 0
         for _task in task_factory.tasks.get(True, []) + task_factory.tasks.get(False, []):
-            _task = cast(TestTask, _task)
+            _task = cast('TestTask', _task)
             total_task___call___count += _task.call_count
 
         assert total_task___call___count == len(task_factory.tasks.get(True, [])) + len(task_factory.tasks.get(False, []))

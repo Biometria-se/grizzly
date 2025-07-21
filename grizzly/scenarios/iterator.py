@@ -4,6 +4,7 @@ as it is told todo so.
 
 See {@pylink grizzly.steps.scenario.setup.step_setup_iterations}.
 """
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -117,7 +118,7 @@ class IteratorScenario(GrizzlyScenario):
         while True:
             execute_task_logged = False
             try:
-                self.current_task_index = (self._task_index % self.task_count)
+                self.current_task_index = self._task_index % self.task_count
 
                 if not self._task_queue:
                     self.schedule_task(self.get_next_task())
@@ -158,7 +159,9 @@ class IteratorScenario(GrizzlyScenario):
                                 break
 
                             sleep_time = retries * uniform(1.0, 5.0)  # noqa: S311
-                            message = f'task {self.current_task_index + 1} of {self.task_count} will execute a {NUMBER_TO_WORD[retries+1]} time in {sleep_time:.2f} seconds: {step}'
+                            message = (
+                                f'task {self.current_task_index + 1} of {self.task_count} will execute a {NUMBER_TO_WORD[retries + 1]} time in {sleep_time:.2f} seconds: {step}'
+                            )
                             self.logger.warning(message)
 
                             gsleep(sleep_time)  # random back-off time
@@ -212,7 +215,7 @@ class IteratorScenario(GrizzlyScenario):
                         self.on_stop()
                         raise StopUser from e
 
-                    self.logger.info('restarting %s at task %d of %d', restart_type, self.current_task_index+1, self.task_count)
+                    self.logger.info('restarting %s at task %d of %d', restart_type, self.current_task_index + 1, self.task_count)
                     # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over
                     tasks_left = self.task_count - (self._task_index % self.task_count)
                     self._task_index += tasks_left
@@ -284,7 +287,7 @@ class IteratorScenario(GrizzlyScenario):
     def wait(self) -> None:
         if self.user._scenario_state == ScenarioState.STOPPING:
             if self.current_task_index < self.task_count - 1 and not self.abort.is_set():
-                self.logger.debug('not finished with scenario, currently at task %d of %d, let me be!', self.current_task_index+1, self.task_count)
+                self.logger.debug('not finished with scenario, currently at task %d of %d, let me be!', self.current_task_index + 1, self.task_count)
                 self.user._state = LOCUST_STATE_RUNNING
                 self._sleep(self.wait_time())
                 self.user._state = LOCUST_STATE_RUNNING
@@ -395,7 +398,7 @@ class IteratorScenario(GrizzlyScenario):
                 raise ValueError(message) from ve
 
             if self.start is not None:
-                pace_correction = (start - self.start)
+                pace_correction = start - self.start
 
                 if (pace_correction * 1000) < value:
                     self.logger.debug('scenario keeping pace by sleeping %d milliseconds', pace_correction * 1000)

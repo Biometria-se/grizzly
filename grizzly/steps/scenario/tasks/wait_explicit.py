@@ -1,15 +1,18 @@
 """@anchor pydoc:grizzly.steps.scenario.tasks.wait_explicit Explicit wait
 This module contains step implementations for the {@pylink grizzly.tasks.wait_explicit} task.
 """
+
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import ExplicitWaitTask
 from grizzly.testdata.utils import resolve_parameters
 from grizzly.types.behave import Context, then
 from grizzly.utils import has_parameter, has_template
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @then('wait for "{wait_time_expression}" seconds')
@@ -38,7 +41,7 @@ def step_task_wait_explicit(context: Context, wait_time_expression: str) -> None
         wait_time (float): wait time in seconds
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     if not has_template(wait_time_expression):
         try:

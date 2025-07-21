@@ -93,6 +93,7 @@ Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "ex
 ```
 
 """  # noqa: E501
+
 from __future__ import annotations
 
 import json
@@ -101,7 +102,7 @@ from copy import copy
 from datetime import datetime, timezone
 from hashlib import sha256
 from html.parser import HTMLParser
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import requests
 from locust.contrib.fasthttp import FastHttpSession
@@ -109,7 +110,7 @@ from locust.contrib.fasthttp import ResponseContextManager as FastResponseContex
 from locust.exception import ResponseError
 
 from grizzly.auth import AAD, GrizzlyHttpAuthClient, RefreshTokenDistributor, refresh_token
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, StrDict
 from grizzly.utils import merge_dicts, safe_del
 from grizzly.utils.protocols import http_populate_cookiejar, ssl_context_factory
 from grizzly_extras.transformer import TransformerContentType
@@ -125,8 +126,9 @@ if TYPE_CHECKING:  # pragma: no cover
 class RestApiUserMeta(GrizzlyUserMeta, ABCMeta):
     pass
 
+
 class HtmlTitleParser(HTMLParser):
-    title: Optional[str]
+    title: str | None
 
     _look: bool
 
@@ -140,7 +142,7 @@ class HtmlTitleParser(HTMLParser):
     def should_look(self) -> bool:
         return self._look and self.title is None
 
-    def handle_starttag(self, tag: str, _attrs: list[tuple[str, Optional[str]]]) -> None:
+    def handle_starttag(self, tag: str, _attrs: list[tuple[str, str | None]]) -> None:
         self._look = tag == 'title' and self.title is None
 
     def handle_data(self, data: str) -> None:
@@ -152,32 +154,34 @@ class HtmlTitleParser(HTMLParser):
             self._look = False
 
 
-@grizzlycontext(context={
-    'verify_certificates': True,
-    'timeout': 60,
-    'auth': {
-        'refresh_time': 3000,
-        'provider': None,
-        'tenant': None,
-        'client': {
-            'id': None,
-            'secret': None,
-            'resource': None,
-            'key_file': None,
-            'cert_file': None,
+@grizzlycontext(
+    context={
+        'verify_certificates': True,
+        'timeout': 60,
+        'auth': {
+            'refresh_time': 3000,
+            'provider': None,
+            'tenant': None,
+            'client': {
+                'id': None,
+                'secret': None,
+                'resource': None,
+                'key_file': None,
+                'cert_file': None,
+            },
+            'user': {
+                'username': None,
+                'password': None,
+                'otp_secret': None,
+                'redirect_uri': None,
+                'initialize_uri': None,
+            },
         },
-        'user': {
-            'username': None,
-            'password': None,
-            'otp_secret': None,
-            'redirect_uri': None,
-            'initialize_uri': None,
-        },
+        '__cached_auth__': {},
+        '__context_change_history__': set(),
     },
-    '__cached_auth__': {},
-    '__context_change_history__': set(),
-})
-class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
+)
+class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):
     __dependencies__: ClassVar[GrizzlyDependencies] = {RefreshTokenDistributor}
 
     environment: Environment
@@ -185,10 +189,13 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
-        self.metadata = merge_dicts({
-            'Content-Type': 'application/json',
-            'x-grizzly-user': self.__class__.__name__,
-        }, self.metadata)
+        self.metadata = merge_dicts(
+            {
+                'Content-Type': 'application/json',
+                'x-grizzly-user': self.__class__.__name__,
+            },
+            self.metadata,
+        )
 
         cert_file = self._context.get('auth', {}).get('client', {}).get('cert_file', None)
         key_file = self._context.get('auth', {}).get('client', {}).get('key_file', None)
@@ -265,11 +272,11 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             network_timeout=self._context.get('timeout', 60),
         )
 
-        return cast(GrizzlyResponse, self._request(request, client))
+        return self._request(request, client)
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         """Use HttpSession for synchronous requests."""
-        return cast(GrizzlyResponse, self._request(request, self.client))
+        return self._request(request, self.client)
 
     @refresh_token(AAD)
     def _request(self, request: RequestTask, client: FastHttpSession) -> GrizzlyResponse:
@@ -285,7 +292,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
 
         request_headers.update({'Content-Type': request.response.content_type.value})
 
-        parameters: dict[str, Any] = {}
+        parameters: StrDict = {}
 
         if len(request_headers) > 0:
             parameters.update({'headers': request_headers})
@@ -308,8 +315,8 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
                 parameters['data'] = request.source.encode('utf-8')
 
         # from response...
-        headers: Optional[dict[str, str]] = None
-        payload: Optional[str] = None
+        headers: dict[str, str] | None = None
+        payload: str | None = None
 
         http_populate_cookiejar(client, self.cookies, url=url)
 
@@ -346,7 +353,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
 
         return (headers, payload)
 
-    def add_context(self, context: dict[str, Any]) -> None:
+    def add_context(self, context: StrDict) -> None:
         """If added context contains changes in `auth`, we should cache current `Authorization` token and force re-auth for a new, if the auth
         doesn't exist in the cache.
 

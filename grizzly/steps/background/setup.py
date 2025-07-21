@@ -1,20 +1,23 @@
 """@anchor pydoc:grizzly.steps.background.setup Setup
 This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.
 """
+
 from __future__ import annotations
 
 from importlib import import_module
-from typing import cast, get_type_hints
+from typing import TYPE_CHECKING, cast, get_type_hints
 from urllib.parse import urlparse
 
 import parse
 
-from grizzly.context import GrizzlyContext
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import MessageDirection
 from grizzly.types.behave import Context, given, register_type
 from grizzly.types.locust import Environment, Message
 from grizzly_extras.text import permutation
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @parse.with_pattern(r'(client|server)', regex_group_count=1)
@@ -61,8 +64,8 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
         url (str): URL for statistics endpoint
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
-    url = cast(str, resolve_variable(grizzly.scenario, url))
+    grizzly = cast('GrizzlyContext', context.grizzly)
+    url = cast('str', resolve_variable(grizzly.scenario, url))
     parsed = urlparse(url)
 
     assert parsed.scheme in ['influxdb', 'influxdb2', 'insights'], f'"{parsed.scheme}" is not a supported scheme'
@@ -86,7 +89,7 @@ def step_setup_log_level(context: Context, log_level: str) -> None:
 
     """
     assert log_level in ['INFO', 'DEBUG', 'WARNING', 'ERROR'], f'log level {log_level} is not supported'
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.setup.log_level = log_level
 
 
@@ -105,7 +108,7 @@ def step_setup_run_time(context: Context, timespan: str) -> None:
         timespan (str): description of how long the test should run for, e.g. 10s, 1h, 40m etc.
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.setup.timespan = timespan
 
 
@@ -129,7 +132,7 @@ def step_setup_message_type_callback(context: Context, callback_name: str, messa
         to_node (MessageDirection): client or server, exclusive
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     assert from_node != to_node, f'cannot register message handler that sends from {from_node} and is received at {to_node}'
 
@@ -178,7 +181,7 @@ def step_setup_configuration_value(context: Context, name: str, value: str) -> N
         value (str): configuration value, any `$..$` variables are resolved, but `{{ .. }}` templates are kept
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     resolved_value = resolve_variable(grizzly.scenario, value, try_template=False)
 
@@ -192,7 +195,7 @@ def step_setup_wait_spawning_complete_timeout(context: Context, timeout: float) 
     This is when there are dependencies between scenarios. This will make all scenarios to wait until all defined
     users are spawned.
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.setup.wait_for_spawning_complete = timeout
 
 
@@ -203,5 +206,5 @@ def step_setup_wait_spawning_complete_indefinitely(context: Context) -> None:
     This is when there are dependencies between scenarios. This will make all scenarios to wait until all defined
     users are spawned.
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.setup.wait_for_spawning_complete = -1

@@ -1,18 +1,21 @@
 """@anchor pydoc:grizzly.steps.background.shapes Shapes
 This module contains step implementations that describes how the load for all scenarios in a feature will look like.
 """
+
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import parse
 from locust.dispatch import UsersDispatcher as WeightedUsersDispatcher
 
-from grizzly.context import GrizzlyContext
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types.behave import Context, given, register_type
 from grizzly.utils import has_template
 from grizzly_extras.text import permutation
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.context import GrizzlyContext
 
 
 @parse.with_pattern(r'(user[s]?)')
@@ -42,7 +45,7 @@ def step_shapes_user_count(context: Context, value: str, **_kwargs: Any) -> None
         grammar (UserGramaticalNumber): one of `user`, `users`
 
     """
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
 
     if grizzly.setup.dispatcher_class is not None and grizzly.setup.dispatcher_class != WeightedUsersDispatcher:
         message = 'this step cannot be used in combination with step(s) `step_shapes_fixed_user_count*`'
@@ -82,7 +85,7 @@ def step_shapes_spawn_rate(context: Context, value: str, **_kwargs: Any) -> None
     """
     assert isinstance(value, str), f'{value} is not a string'
     assert value[0] != '$', 'this expression does not support $conf or $env variables'
-    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly = cast('GrizzlyContext', context.grizzly)
     spawn_rate = max(float(resolve_variable(grizzly.scenario, value)), 0.01)
 
     if has_template(value):

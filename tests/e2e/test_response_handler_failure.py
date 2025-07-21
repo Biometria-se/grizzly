@@ -1,4 +1,5 @@
 """End-to-end tests of grizzly.users.base.response_handler if one fails."""
+
 from __future__ import annotations
 
 from textwrap import dedent
@@ -13,7 +14,8 @@ if TYPE_CHECKING:  # pragma: no cover
 def test_e2e_response_handler_failure(e2e_fixture: End2EndFixture) -> None:
     start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
 
-    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test response handler failure
+    feature_file = e2e_fixture.create_feature(
+        dedent(f"""Feature: test response handler failure
     Background: common configuration
         Given "1" users
         And spawn rate is "1" user per second
@@ -36,7 +38,8 @@ def test_e2e_response_handler_failure(e2e_fixture: End2EndFixture) -> None:
           \"\"\"
         Then save response payload "$.hello.world[?value='foobar']" in variable "matches1"
         Then log message "matches1={{{{ matches1 }}}}"
-    """))
+    """),
+    )
 
     # clean up logs directory first
     for log_file in list((e2e_fixture.root / 'features' / 'logs').glob('*.log')):

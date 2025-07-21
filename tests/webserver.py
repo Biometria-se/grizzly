@@ -1,4 +1,5 @@
 """Webserver used for end-to-end tests."""
+
 from __future__ import annotations
 
 import csv
@@ -6,7 +7,7 @@ import json
 import logging
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import gevent
 from flask import Flask, jsonify, request
@@ -81,13 +82,15 @@ def app_get_book(book: str) -> FlaskResponse:
         reader = csv.DictReader(fd)
         for row in reader:
             if row['book'] == book:
-                return jsonify({
-                    'number_of_pages': row['pages'],
-                    'isbn_10': [row['isbn_10']] * 2,
-                    'authors': [
-                        {'key': '/author/' + row['author'].replace(' ', '_').strip() + '|' + row['isbn_10'].strip()},
-                    ],
-                })
+                return jsonify(
+                    {
+                        'number_of_pages': row['pages'],
+                        'isbn_10': [row['isbn_10']] * 2,
+                        'authors': [
+                            {'key': '/author/' + row['author'].replace(' ', '_').strip() + '|' + row['isbn_10'].strip()},
+                        ],
+                    },
+                )
 
     response = jsonify({'success': False})
     response.status_code = 500
@@ -103,9 +106,11 @@ def app_get_author(author_key: str) -> FlaskResponse:
     if len(request.get_data(cache=False, as_text=True)) > 0:
         return FlaskResponse(status=403)
 
-    return jsonify({
-        'name': name.replace('_', ' '),
-    })
+    return jsonify(
+        {
+            'name': name.replace('_', ' '),
+        },
+    )
 
 
 def get_headers(request: FlaskRequest) -> FlaskHeaders:
@@ -296,14 +301,14 @@ class Webserver:
 
     @property
     def port(self) -> int:
-        return cast(int, self._web_server.server_port)
+        return cast('int', self._web_server.server_port)
 
     @property
-    def auth(self) -> Optional[dict[str, Any]]:
+    def auth(self) -> dict[str, Any] | None:
         return app.auth_expected
 
     @auth.setter
-    def auth(self, value: Optional[dict[str, Any]]) -> None:
+    def auth(self, value: dict[str, Any] | None) -> None:
         app.auth_expected = value
 
     @property
@@ -322,9 +327,9 @@ class Webserver:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
     ) -> Literal[True]:
         self._web_server.stop_accepting()
         self._web_server.stop()

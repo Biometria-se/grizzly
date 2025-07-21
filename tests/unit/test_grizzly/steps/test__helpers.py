@@ -1,4 +1,5 @@
 """Unit tests for grizzly.steps._helpers."""
+
 from __future__ import annotations
 
 import json
@@ -6,12 +7,11 @@ import os
 from contextlib import suppress
 from itertools import product
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Union, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from jinja2.filters import FILTERS
 
-from grizzly.context import GrizzlyContext
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps._helpers import (
     _add_response_handler,
@@ -34,13 +34,18 @@ from tests.helpers import rm_rf
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
 
+    from grizzly.context import GrizzlyContext
     from tests.fixtures import GrizzlyFixture
 
 
-@pytest.mark.parametrize('request_type', [
-    RequestTask, HttpClientTask,
-])
-def test_add_request_task_response_status_codes(grizzly_fixture: GrizzlyFixture, request_type: type[Union[RequestTask, HttpClientTask]]) -> None:
+@pytest.mark.parametrize(
+    'request_type',
+    [
+        RequestTask,
+        HttpClientTask,
+    ],
+)
+def test_add_request_task_response_status_codes(grizzly_fixture: GrizzlyFixture, request_type: type[RequestTask | HttpClientTask]) -> None:
     grizzly = grizzly_fixture.grizzly
 
     if request_type is RequestTask:
@@ -61,7 +66,7 @@ def test_add_request_task_response_status_codes(grizzly_fixture: GrizzlyFixture,
 @pytest.mark.parametrize('request_type,', ['sync', 'async'])
 def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory, *, request_type: str) -> None:  # noqa: PLR0915
     behave = grizzly_fixture.behave.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test scenario'))
     grizzly.scenario.context['host'] = 'http://test'
     as_async = request_type == 'async'
@@ -194,7 +199,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
         assert len(tasks) == 4
 
         for i, t in enumerate(tasks):
-            request = cast(RequestTask, t)
+            request = cast('RequestTask', t)
             name, time_of_day, quote = values[i]
             assert request.name == f'{name_prefix}quote={quote}'
             assert request.endpoint == f'/api/test/{time_of_day}'
@@ -268,7 +273,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
 
 
 @pytest.mark.parametrize(('as_async', 'default_value'), product([False, True], [None, 'foobar']))
-def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool, default_value: Optional[str]) -> None:  # noqa: PLR0915
+def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool, default_value: str | None) -> None:  # noqa: PLR0915
     parent = grizzly_fixture()
     behave = grizzly_fixture.behave.context
     grizzly = grizzly_fixture.grizzly
@@ -293,7 +298,7 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool, de
 
     assert len(tasks) == 1
 
-    task = cast(RequestTask, tasks[0])
+    task = cast('RequestTask', tasks[0])
 
     with pytest.raises(AssertionError, match='variable "test-variable" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.METADATA, '', 'test', 'test-variable', default_value=default_value)
@@ -396,7 +401,7 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool, de
         with pytest.raises(AssertionError, match='unsupported arguments foobar, hello'):
             add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100, foobar=False, hello=world', '.*', 'test', default_value=default_value)
 
-        cast(RequestTask, tasks[-1]).response.content_type = TransformerContentType.UNDEFINED
+        cast('RequestTask', tasks[-1]).response.content_type = TransformerContentType.UNDEFINED
 
         with pytest.raises(AssertionError, match='content type is not set for latest request'):
             add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100', '.*', 'test', default_value=default_value)
@@ -432,7 +437,7 @@ def test_add_validation_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bo
         add_validation_handler(grizzly, ResponseTarget.METADATA, '', 'test', condition=False)
 
     # add metadata response handler
-    task = cast(RequestTask, tasks[0])
+    task = cast('RequestTask', tasks[0])
     task.response.content_type = TransformerContentType.JSON
     add_validation_handler(grizzly, ResponseTarget.METADATA, '$.test.value', 'test', condition=False)
     assert len(task.response.handlers.metadata) == 1

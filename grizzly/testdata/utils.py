@@ -1,4 +1,5 @@
 """Utilities related testdata."""
+
 from __future__ import annotations
 
 import logging
@@ -6,7 +7,7 @@ import re
 from collections import namedtuple
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from grizzly.exceptions import StopUser
 from grizzly.testdata.ast import get_template_variables, parse_templates
@@ -17,7 +18,7 @@ from . import GrizzlyVariables
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
     from grizzly.testdata.communication import GrizzlyDependencies
-    from grizzly.types import GrizzlyVariableType, TestdataType
+    from grizzly.types import GrizzlyVariableType, StrDict, TestdataType
 
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ def initialize_testdata(grizzly: GrizzlyContext) -> tuple[TestdataType, GrizzlyD
 
     for scenario, variables in template_variables.items():
         testdata[scenario.class_name] = {}
-        initialized_datatypes: dict[str, Any] = {}
+        initialized_datatypes: StrDict = {}
 
         for variable in variables:
             module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(variable)
@@ -57,9 +58,9 @@ def initialize_testdata(grizzly: GrizzlyContext) -> tuple[TestdataType, GrizzlyD
     return testdata, depedencies
 
 
-def transform(scenario: GrizzlyContextScenario, data: dict[str, Any], *, objectify: Optional[bool] = True) -> dict[str, Any]:
+def transform(scenario: GrizzlyContextScenario, data: StrDict, *, objectify: bool | None = True) -> dict:
     """Transform a dictionary with static values to something that can have values which are object."""
-    testdata: dict[str, Any] = {}
+    testdata: StrDict = {}
 
     for key, value in data.items():
         module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(key)
@@ -94,7 +95,7 @@ def transform(scenario: GrizzlyContextScenario, data: dict[str, Any], *, objecti
     return testdata
 
 
-def _objectify(testdata: dict[str, Any]) -> dict[str, Any]:
+def _objectify(testdata: StrDict) -> StrDict:
     for variable, attributes in testdata.items():
         if not isinstance(attributes, dict):
             continue
@@ -105,15 +106,15 @@ def _objectify(testdata: dict[str, Any]) -> dict[str, Any]:
     return testdata
 
 
-def create_context_variable(scenario: GrizzlyContextScenario, variable: str, value: str) -> dict[str, Any]:
+def create_context_variable(scenario: GrizzlyContextScenario, variable: str, value: str) -> StrDict:
     """Create a variable as a context variable. Handles other separators than `.`."""
     if has_template(value):
         scenario.orphan_templates.append(value)
 
     casted_value = resolve_variable(scenario, value)
-    casted_variable = cast(str, resolve_variable(scenario, variable))
+    casted_variable = cast('str', resolve_variable(scenario, variable))
 
-    prefix: Optional[str] = None
+    prefix: str | None = None
 
     if casted_variable.count('/') == 1 and casted_variable.count('.') > 0:
         prefix, casted_variable = casted_variable.split('/', 1)
@@ -138,7 +139,7 @@ def resolve_template(scenario: GrizzlyContextScenario, value: str) -> str:
 
 
 def resolve_parameters(scenario: GrizzlyContextScenario, value: str) -> str:
-    regex = r"\$(conf|env)::([^\$]+)\$"
+    regex = r'\$(conf|env)::([^\$]+)\$'
 
     matches = re.finditer(regex, value, re.MULTILINE)
 
@@ -164,6 +165,7 @@ def resolve_parameters(scenario: GrizzlyContextScenario, value: str) -> str:
 
     return value
 
+
 def read_file(value: str) -> str:
     base_dir = environ.get('GRIZZLY_CONTEXT_ROOT', None)
 
@@ -178,7 +180,12 @@ def read_file(value: str) -> str:
 
 
 def resolve_variable(
-        scenario: GrizzlyContextScenario, value: str, *, guess_datatype: bool = True, try_template: bool = True, try_file: bool = True,
+    scenario: GrizzlyContextScenario,
+    value: str,
+    *,
+    guess_datatype: bool = True,
+    try_template: bool = True,
+    try_file: bool = True,
 ) -> GrizzlyVariableType:
     """Resolve a value to its actual value, since it can be a jinja2 template or any dollar reference. Return type can be actual type of the value."""
     if len(value) < 1:
@@ -196,7 +203,7 @@ def resolve_variable(
         if value[:2] == './':
             value = value[2:]
 
-    quote_char: Optional[str] = None
+    quote_char: str | None = None
     if value[0] in ['"', "'"] and value[0] == value[-1]:
         quote_char = value[0]
         value = value[1:-1]
@@ -218,5 +225,3 @@ def resolve_variable(
         resolved_variable = value
 
     return resolved_variable
-
-

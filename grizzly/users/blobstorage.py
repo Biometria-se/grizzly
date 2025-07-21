@@ -45,10 +45,11 @@ Then send request "test/blob.file" to endpoint "azure-blobstorage-container-name
 ```
 
 """
+
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlparse
 
 from azure.storage.blob import BlobServiceClient
@@ -64,19 +65,21 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.types.locust import Environment
 
 
-@grizzlycontext(context={
-    'auth': {
-        'tenant': None,
-        'user': {
-            'username': None,
-            'password': None,
+@grizzlycontext(
+    context={
+        'auth': {
+            'tenant': None,
+            'user': {
+                'username': None,
+                'password': None,
+            },
         },
     },
-})
+)
 class BlobStorageUser(GrizzlyUser):
     blob_client: BlobServiceClient
 
-    credential: Optional[AzureAadCredential] = None
+    credential: AzureAadCredential | None = None
     url: str
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
@@ -89,8 +92,7 @@ class BlobStorageUser(GrizzlyUser):
         password = context_auth_user.get('password', None)
 
         if username is None and password is None:
-            if self.url.startswith('DefaultEndpointsProtocol='):
-                self.url = self.url[25:]
+            self.url = self.url.removeprefix('DefaultEndpointsProtocol=')
 
             # Replace semicolon separators between parameters to ? and & and massage it to make it "urlparse-compliant"
             # for validation

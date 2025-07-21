@@ -1,4 +1,5 @@
 """Tests of grizzly.users.servicebus."""
+
 from __future__ import annotations
 
 import logging
@@ -25,12 +26,11 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture, GrizzlyFixture, NoopZmqFixture
 
 
-
 class TestServiceBusUser:
     def test_on_start(self, behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-        test_cls = type('ServiceBusTestUser', (ServiceBusUser, ), {'__scenario__': behave_fixture.grizzly.scenario, 'host': None})
+        test_cls = type('ServiceBusTestUser', (ServiceBusUser,), {'__scenario__': behave_fixture.grizzly.scenario, 'host': None})
 
         assert issubclass(test_cls, ServiceBusUser)
 
@@ -70,7 +70,7 @@ class TestServiceBusUser:
         noop_zmq('grizzly.users.servicebus')
 
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-        test_cls = type('ServiceBusTestUser', (ServiceBusUser, ), {'__scenario__': behave_fixture.grizzly.scenario, 'host': None})
+        test_cls = type('ServiceBusTestUser', (ServiceBusUser,), {'__scenario__': behave_fixture.grizzly.scenario, 'host': None})
 
         assert issubclass(test_cls, ServiceBusUser)
 
@@ -113,7 +113,7 @@ class TestServiceBusUser:
         noop_zmq('grizzly.users.servicebus')
 
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-        test_cls = type('ServiceBusTestUser', (ServiceBusUser, ), {'__scenario__': behave_fixture.grizzly.scenario, 'host': None})
+        test_cls = type('ServiceBusTestUser', (ServiceBusUser,), {'__scenario__': behave_fixture.grizzly.scenario, 'host': None})
 
         assert issubclass(test_cls, ServiceBusUser)
 
@@ -153,19 +153,23 @@ class TestServiceBusUser:
         with pytest.raises(ValueError, match='ServiceBusTestUser: "mq" is not a supported scheme'):
             test_cls(environment=behave_fixture.locust.environment)
 
-        test_cls = type('ServiceBusTestUser', (ServiceBusUser, ), {
-            '__scenario__': behave_fixture.grizzly.scenario,
-            'host': 'sb://my-sbns',
-            '__context__': {
-                'auth': {
-                    'tenant': None,
-                    'user': {
-                        'username': 'bob@example.com',
-                        'password': 'secret',
+        test_cls = type(
+            'ServiceBusTestUser',
+            (ServiceBusUser,),
+            {
+                '__scenario__': behave_fixture.grizzly.scenario,
+                'host': 'sb://my-sbns',
+                '__context__': {
+                    'auth': {
+                        'tenant': None,
+                        'user': {
+                            'username': 'bob@example.com',
+                            'password': 'secret',
+                        },
                     },
                 },
             },
-        })
+        )
 
         assert issubclass(test_cls, ServiceBusUser)
 
@@ -189,7 +193,7 @@ class TestServiceBusUser:
     def test_disconnect(self, behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-        test_cls = type('ServiceBusTestUser', (ServiceBusUser, ), {'__scenario__': behave_fixture.grizzly.scenario, 'host': None})
+        test_cls = type('ServiceBusTestUser', (ServiceBusUser,), {'__scenario__': behave_fixture.grizzly.scenario, 'host': None})
 
         assert issubclass(test_cls, ServiceBusUser)
 
@@ -230,7 +234,7 @@ class TestServiceBusUser:
     def test_say_hello(self, noop_zmq: NoopZmqFixture, behave_fixture: BehaveFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.users.servicebus')
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-        test_cls = type('ServiceBusTestUser', (ServiceBusUser, ), {'__scenario__': behave_fixture.grizzly.scenario, 'host': None})
+        test_cls = type('ServiceBusTestUser', (ServiceBusUser,), {'__scenario__': behave_fixture.grizzly.scenario, 'host': None})
 
         assert issubclass(test_cls, ServiceBusUser)
 
@@ -347,10 +351,14 @@ class TestServiceBusUser:
 
         parent = grizzly_fixture()
 
-        cls_service_bus_user = type('ServiceBusUser_002', (ServiceBusUser,), {
-            '__scenario__': grizzly.scenario,
-            'host': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
-        })
+        cls_service_bus_user = type(
+            'ServiceBusUser_002',
+            (ServiceBusUser,),
+            {
+                '__scenario__': grizzly.scenario,
+                'host': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+            },
+        )
 
         parent._user = cls_service_bus_user(grizzly.state.locust.environment)
 
@@ -368,16 +376,18 @@ class TestServiceBusUser:
 
         def mock_recv_json(response: AsyncMessageResponse) -> None:
             mocker.patch.object(
-                cast(ServiceBusUser, parent.user).zmq_client,
+                cast('ServiceBusUser', parent.user).zmq_client,
                 'recv_json',
                 side_effect=[ZMQAgain(), response],
             )
 
-        mock_recv_json({
-            'worker': 'asdf-asdf-asdf',
-            'success': False,
-            'message': 'unknown error',
-        })
+        mock_recv_json(
+            {
+                'worker': 'asdf-asdf-asdf',
+                'success': False,
+                'message': 'unknown error',
+            },
+        )
 
         parent.user._scenario.tasks.clear()
 
@@ -428,26 +438,28 @@ class TestServiceBusUser:
 
         say_hello_spy.assert_called_once()
         say_hello_spy.reset_mock()
-        send_json_spy.assert_called_once_with({
-            'worker': 'asdf-asdf-asdf',
-            'client': id(parent.user),
-            'action': 'SEND',
-            'payload': 'hello',
-            'context': {
-                'endpoint': 'queue:test-queue',
-                'connection': 'sender',
-                'content_type': 'undefined',
-                'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
-                'message_wait': None,
-                'consume': False,
-                'username': None,
-                'password': None,
-                'tenant': None,
-                'verbose': False,
-                'forward': False,
+        send_json_spy.assert_called_once_with(
+            {
+                'worker': 'asdf-asdf-asdf',
+                'client': id(parent.user),
+                'action': 'SEND',
+                'payload': 'hello',
+                'context': {
+                    'endpoint': 'queue:test-queue',
+                    'connection': 'sender',
+                    'content_type': 'undefined',
+                    'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+                    'message_wait': None,
+                    'consume': False,
+                    'username': None,
+                    'password': None,
+                    'tenant': None,
+                    'verbose': False,
+                    'forward': False,
+                },
+                'request_id': 'foobar',
             },
-            'request_id': 'foobar',
-        })
+        )
 
         send_json_spy.reset_mock()
         request_fire_spy.assert_called_once_with(
@@ -472,13 +484,15 @@ class TestServiceBusUser:
         # successful request
         task = RequestTask(RequestMethod.RECEIVE, name='test-send', endpoint='queue:test-queue | verbose=True, forward=True', source=None)
 
-        mock_recv_json({
-            'worker': 'asdf-asdf-asdf',
-            'success': True,
-            'payload': 'hello',
-            'metadata': {'meta': True},
-            'response_length': 133,
-        })
+        mock_recv_json(
+            {
+                'worker': 'asdf-asdf-asdf',
+                'success': True,
+                'payload': 'hello',
+                'metadata': {'meta': True},
+                'response_length': 133,
+            },
+        )
 
         metadata, payload = parent.user.request(task)
         assert metadata == {'meta': True}
@@ -512,38 +526,42 @@ class TestServiceBusUser:
         )
         request_fire_spy.reset_mock()
 
-        send_json_spy.assert_called_once_with({
-            'worker': 'asdf-asdf-asdf',
-            'client': id(parent.user),
-            'action': 'RECEIVE',
-            'payload': None,
-            'context': {
-                'endpoint': 'queue:test-queue',
-                'connection': 'receiver',
-                'content_type': 'undefined',
-                'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
-                'message_wait': None,
-                'consume': False,
-                'username': None,
-                'password': None,
-                'tenant': None,
-                'verbose': True,
-                'forward': True,
+        send_json_spy.assert_called_once_with(
+            {
+                'worker': 'asdf-asdf-asdf',
+                'client': id(parent.user),
+                'action': 'RECEIVE',
+                'payload': None,
+                'context': {
+                    'endpoint': 'queue:test-queue',
+                    'connection': 'receiver',
+                    'content_type': 'undefined',
+                    'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+                    'message_wait': None,
+                    'consume': False,
+                    'username': None,
+                    'password': None,
+                    'tenant': None,
+                    'verbose': True,
+                    'forward': True,
+                },
+                'request_id': 'foobar',
             },
-            'request_id': 'foobar',
-        })
+        )
         send_json_spy.reset_mock()
 
         consume_task = RequestTask(RequestMethod.RECEIVE, name=task.name, endpoint=f'{task.endpoint}, expression:"$.document[?(@.name=="TPM Report")] | consume=True', source=None)
         consume_task.response.content_type = TransformerContentType.JSON
 
-        mock_recv_json({
-            'worker': 'asdf-asdf-asdf',
-            'success': True,
-            'payload': 'hello',
-            'metadata': {'meta': True},
-            'response_length': 133,
-        })
+        mock_recv_json(
+            {
+                'worker': 'asdf-asdf-asdf',
+                'success': True,
+                'payload': 'hello',
+                'metadata': {'meta': True},
+                'response_length': 133,
+            },
+        )
 
         metadata, payload = parent.user.request(consume_task)
         assert metadata == {'meta': True}
@@ -577,24 +595,26 @@ class TestServiceBusUser:
         )
         request_fire_spy.reset_mock()
 
-        send_json_spy.assert_called_once_with({
-            'worker': 'asdf-asdf-asdf',
-            'client': id(parent.user),
-            'action': 'RECEIVE',
-            'payload': None,
-            'context': {
-                'endpoint': 'queue:test-queue, expression:"$.document[?(@.name=="TPM Report")]',
-                'connection': 'receiver',
-                'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
-                'message_wait': None,
-                'content_type': 'json',
-                'consume': True,
-                'username': None,
-                'password': None,
-                'tenant': None,
-                'verbose': False,
-                'forward': False,
+        send_json_spy.assert_called_once_with(
+            {
+                'worker': 'asdf-asdf-asdf',
+                'client': id(parent.user),
+                'action': 'RECEIVE',
+                'payload': None,
+                'context': {
+                    'endpoint': 'queue:test-queue, expression:"$.document[?(@.name=="TPM Report")]',
+                    'connection': 'receiver',
+                    'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+                    'message_wait': None,
+                    'content_type': 'json',
+                    'consume': True,
+                    'username': None,
+                    'password': None,
+                    'tenant': None,
+                    'verbose': False,
+                    'forward': False,
+                },
+                'request_id': 'foobar',
             },
-            'request_id': 'foobar',
-        })
+        )
         send_json_spy.reset_mock()

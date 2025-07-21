@@ -52,13 +52,15 @@ class Task(GrizzlyTask):
 
 
 def callback_server_client(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
-    import logging
-    logging.info('received from SERVER: msg.node_id=%r, msg.data=%r', msg.node_id, msg.data)
+    import logging  # noqa: PLC0415
+
+    logging.info('received from SERVER: msg.node_id=%r, msg.data=%r', msg.node_id, msg.data)  # noqa: LOG015
 
 
 def callback_client_server(environment: Environment, msg: Message) -> None:  # noqa: ARG001
-    import logging
-    logging.info('received from CLIENT: msg.node_id=%r, msg.data=%r', msg.node_id, msg.data)
+    import logging  # noqa: PLC0415
+
+    logging.info('received from CLIENT: msg.node_id=%r, msg.data=%r', msg.node_id, msg.data)  # noqa: LOG015
 
 
 class AtomicCustomVariable(AtomicVariable[str]):

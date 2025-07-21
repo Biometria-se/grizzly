@@ -2,6 +2,7 @@
 
 This is not used, but kept for reference.
 """
+
 from __future__ import annotations
 
 import logging
@@ -9,9 +10,12 @@ from logging.handlers import QueueHandler, QueueListener
 from re import sub
 from socket import gethostname
 from time import time
-from typing import Any
+from typing import TYPE_CHECKING
 
 from gevent.queue import Full, Queue
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types import StrDict
 
 logger = logging.getLogger('grizzly.log')
 
@@ -22,7 +26,7 @@ def setup_logging(loglevel: str | int, logfile: str | None = None, maxsize: int 
 
     hostname = sub(r'\..*', '', gethostname())
 
-    config: dict[str, Any] = {
+    config: StrDict = {
         'version': 1,
         'disable_existing_loggers': False,
         'formatters': {

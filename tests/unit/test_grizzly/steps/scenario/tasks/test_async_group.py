@@ -1,4 +1,5 @@
 """Unit tests of grizzly.steps.scenario.tasks.async_group."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -44,10 +45,12 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
     step_task_async_group_start(behave, 'async-test-1')
 
     step_task_async_group_close(behave)
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='no async request group is open'),
-        ANY(AssertionError, message='there are no request tasks in async group "async-test-1"'),
-    ]}
+    assert behave.exceptions == {
+        behave.scenario.name: [
+            ANY(AssertionError, message='no async request group is open'),
+            ANY(AssertionError, message='there are no request tasks in async group "async-test-1"'),
+        ],
+    }
     assert grizzly.scenario.tasks.tmp.async_group is not None
 
     step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test', direction=RequestDirection.FROM, endpoint='/api/test')
