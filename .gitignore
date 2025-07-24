@@ -5,6 +5,7 @@
 *.egg-info/
 build/
 dist/
+site/
 logs/*
 coverage.xml
 .coverage*
@@ -22,14 +23,9 @@ coverage.xml
 
 tests/manual/**
 
-# automagically generated
-docs/licenses/*
-docs/changelog/*
-docs/cli.md
-docs/_site
-docs/_build*
 grizzly/__version__.py
 .pytest_tmp/
 tests/project
 tests/test-project/**/_*.feature
 example/environments/*.lock.yaml
+docs/**/*.gen.md

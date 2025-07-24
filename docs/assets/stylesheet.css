@@ -1,0 +1,4 @@
+/* Hide "Project status" from TOC in index.md / README.md */
+nav[aria-label="Project status"] {
+    display: none;
+}

@@ -3,24 +3,26 @@
 <img align="right" src="https://raw.githubusercontent.com/Biometria-se/grizzly/main/docs/content/assets/logo/grizzly_grasshopper_brown_256px.png" alt="grizzly logo">
 <span>
 
-###### Framework
+## Project status
+
+### Framework
 
 ![PyPI - License](https://img.shields.io/pypi/l/grizzly-loadtester?style=for-the-badge)
 ![PyPI](https://img.shields.io/pypi/v/grizzly-loadtester?style=for-the-badge)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/grizzly-loadtester?style=for-the-badge)
 
-###### Command Line Interface
+### Command Line Interface
 
 ![PyPI - License](https://img.shields.io/pypi/l/grizzly-loadtester-cli?style=for-the-badge)
 ![PyPI](https://img.shields.io/pypi/v/grizzly-loadtester-cli?style=for-the-badge)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/grizzly-loadtester-cli?style=for-the-badge)
 
-###### Editor Support / Language Server
+### Editor Support / Language Server
 ![PyPI - License](https://img.shields.io/pypi/l/grizzly-loadtester-ls?style=for-the-badge)
 ![PyPI](https://img.shields.io/pypi/v/grizzly-loadtester-ls?style=for-the-badge)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/grizzly-loadtester-ls?style=for-the-badge)
 
-###### Editor Support / Visual Studio Code Extension
+### Editor Support / Visual Studio Code Extension
 ![GitHub License](https://img.shields.io/github/license/Biometria-se/grizzly-lsp?style=for-the-badge)
 ![Visual Studio Marketplace Version (including pre-releases)](https://img.shields.io/visual-studio-marketplace/v/biometria-se.grizzly-loadtester-vscode?style=for-the-badge)
 ![Visual Studio Marketplace Release Date](https://img.shields.io/visual-studio-marketplace/release-date/biometria-se.grizzly-loadtester-vscode?style=for-the-badge)

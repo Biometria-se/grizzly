@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.testdata.variables.csv_reader CSV Reader
-This variable reads a CSV file and provides a new row from the CSV file each time it is accessed.
+"""Read a CSV file and provides a new row from the CSV file each time it is accessed.
 
 The CSV files **must** have headers for each column, since these are used to reference the value.
 
@@ -72,7 +71,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
 
 
-def atomiccsvreader__base_type__(value: str) -> str:
+def _atomiccsvreader(value: str) -> str:
     """Validate values that `AtomicCsvReader` can be initialized with."""
     grizzly_context_requests = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
 
@@ -110,7 +109,7 @@ def atomiccsvreader__base_type__(value: str) -> str:
 
 
 class AtomicCsvReader(AtomicVariable[StrDict]):
-    __base_type__ = atomiccsvreader__base_type__
+    __base_type__ = _atomiccsvreader
     __initialized: bool = False
 
     _rows: dict[str, list[StrDict]]

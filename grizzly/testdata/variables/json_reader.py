@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.testdata.variables.json_reader JSON Reader
-This variable reads a JSON file that contains a list of objects and provides a new object from the list each time it is accessed.
+"""Read a JSON file that contains a list of objects and provides a new object from the list each time it is accessed.
 
 The JSON file **must** contain a list of JSON objects, and each object **must** have the same properties.
 

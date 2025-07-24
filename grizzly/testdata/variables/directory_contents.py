@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.testdata.variables.directory_contents Directory Contents
-This variable provides a list of files in the specified directory.
+"""Provide a list of files in the specified directory.
 
 ## Format
 

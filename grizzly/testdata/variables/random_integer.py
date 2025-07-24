@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.testdata.variables.random_integer Random Integer
-This variable provides an random integer between specified interval.
+"""Provide an random integer between specified interval.
 
 ## Format
 

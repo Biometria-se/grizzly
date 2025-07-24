@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.testdata.variables.csv_writer CSV Writer
-This variable writes to a CSV file.
+"""Write values to a CSV file.
 
 The CSV files **must** have headers for each column, since these are used to reference the value.
 

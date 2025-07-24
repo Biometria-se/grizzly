@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.testdata.variables.integer_incrementer Integer Incrementer
-This variable provides an unique integer each time it is accessed.
+"""Unique incremented integer each time it is accessed.
 
 Useful to generate unique ID for each request.
 

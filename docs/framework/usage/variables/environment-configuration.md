@@ -1,8 +1,6 @@
 ---
 title: Environment configuration
 ---
-@anchor framework.usage.variables.environment_configuration Environment configuration
-
 It is possible to make the feature file environment agnostic by providing a `yaml` file containing a dictionary with a root node named `configuration`.
 The environment configuration file can also be used to store credentials and other sensitive information that should not be under version control.
 
@@ -39,14 +37,14 @@ An example basic environment configuration file:
 
 ```yaml
 configuration:
-    frontend:
-        host: https://www.example.com
-    backend:
-        host: https://backend.example.com
-        auth:
-            user:
-                username: bob
-                password: Who-the-f-is-alice
+  frontend:
+    host: https://www.example.com
+  backend:
+    host: https://backend.example.com
+    auth:
+      user:
+        username: bob
+        password: Who-the-f-is-alice
 ```
 
 The only rule for any nodes under `configuration` is that it **must** be a dictionary, since the path to a value will be flattened.
@@ -54,9 +52,9 @@ The only rule for any nodes under `configuration` is that it **must** be a dicti
 ## Advanced format
 
 If you plan to run in multiple environments there could be cases that some environment variables are the same in all of the environments. If this is the case, it is possible
-to merge multiple environment configuration files (`{% merge "<file1>" ["file2", ... ["fileN"]]}`), so that common values are only stored in one place.
+to merge multiple environment configuration files ({% raw %}`{% merge "<file1>" ["file2", ... ["fileN"]]}`{% endraw %}), so that common values are only stored in one place.
 
-The merging will take place from the bottom up, so contents in the source file where the `{% merge ... %}` statement is found, any duplicate keys in `fileN` will override the source values, `file2` will override those, and lastly `file1` will override those. So the first specified file to the `{% merge ... %}` statement will have highest precedence.
+The merging will take place from the bottom up, so contents in the source file where the {% raw %}`{% merge ... %}`{% endraw %} statement is found, any duplicate keys in `fileN` will override the source values, `file2` will override those, and lastly `file1` will override those. So the first specified file to the {% raw %}`{% merge ... %}`{% endraw %} statement will have highest precedence.
 
 ```
 source < fileN < ... < file2 < file1
@@ -66,29 +64,29 @@ Example:
 
 ```yaml title="./common.yaml"
 configuration:
-    backend:
-        auth:
-            user:
-                username: bob
-                password: Who-the-f-is-alice
+  backend:
+    auth:
+      user:
+        username: bob
+        password: Who-the-f-is-alice
 ```
 
 ```yaml title="./staging.yaml"
-{% merge "./common.yaml" %}
+{% raw %}{% merge "./common.yaml" %}{% endraw %}
 configuration:
-    frontend:
-        host: https://www.staging.example.com
-    backend:
-        host: https://backend.staging.example.com
+  frontend:
+    host: https://www.staging.example.com
+  backend:
+    host: https://backend.staging.example.com
 ```
 
 ```yaml title="./test.yaml"
-{% merge "./common.yaml" %}
+{% raw %}{% merge "./common.yaml" %}{% endraw %}
 configuration:
-    frontend:
-        host: https://www.test.example.com
-    backend:
-        host: https://backend.test.example.com
+  frontend:
+    host: https://www.test.example.com
+  backend:
+    host: https://backend.test.example.com
 ```
 
 For both environment files, this will produce the following configuration keys:
@@ -96,7 +94,6 @@ For both environment files, this will produce the following configuration keys:
 - `backend.host`
 - `backend.auth.user.username`
 - `backend.auth.user.password`
-
 
 ## Azure Keyvault Secrets
 
@@ -108,7 +105,7 @@ The values specified in the yaml file will have preceedence over keyvault values
 
 ```yaml
 configuration:
-    keyvault: https://<keyvault name>.vault.azure.net
+  keyvault: https://<keyvault name>.vault.azure.net
 ```
 
 Before starting `grizzly-cli`, you then have to login with `az login` so there are valid credentials to be used.
@@ -121,7 +118,7 @@ If this key is not in the environment file, it will use the name of the configur
 The following environment configuration file:
 ```yaml title="environments/local.yaml"
 configuration:
-    keyvault: https://grizzly-dummy.vault.azure.net
+  keyvault: https://grizzly-dummy.vault.azure.net
 ```
 
 With the following secrets in `grizzly-dummy` keyvault:
@@ -136,13 +133,13 @@ Will result in the following environment configuration:
 
 ```yaml title="environments/local.lock.yaml"
 configuration:
-    keyvault: https://grizzly-dummy.vault.azure.net
-    authentication:
-        admin:
-            username: root
-            password: hunter
-    log:
-        level: DEBUG
+  keyvault: https://grizzly-dummy.vault.azure.net
+  authentication:
+    admin:
+      username: root
+      password: hunter
+  log:
+    level: DEBUG
 ```
 
 In your feature-files you can then reference these values, as normal environment configuration:
