@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.auth.aad Azure Active Directory
-Grizzly provides a way to get tokens via Azure Active Directory (AAD), in the framework this is implemented by {@pylink grizzly.users.restapi}
+"""Grizzly provides a way to get tokens via Azure Active Directory (AAD), in the framework this is implemented by {@pylink grizzly.users.restapi}
 load user and {@pylink grizzly.tasks.clients.http} client task, via the `@refresh_token` decorator.
 
 It is possible to use it in custom code as well, by implementing a custom class that inherits `grizzly.auth.GrizzlyHttpAuthClient`.

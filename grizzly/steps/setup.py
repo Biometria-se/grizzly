@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.setup Setup
-This module contains steps that can be in both `Background:` and `Scenario:` sections.
-"""
+"""Steps that can be in both `Background:` and `Scenario:` gherkin sections."""
 
 from __future__ import annotations
 

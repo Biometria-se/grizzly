@@ -1,4 +1,4 @@
-"""Grizzly native tempalting filters that can be used to manipulate variable values where they are used."""
+"""Grizzly native templating filters that can be used to manipulate variable values where they are used."""
 
 from __future__ import annotations
 
@@ -18,10 +18,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class templatingfilter:
     name: str
-    func: Callable
+    __wrapped__: Callable
 
     def __init__(self, func: Callable) -> None:
-        self.func = func
+        self.__wrapped__ = func
         name = func.__name__
         existing_filter = FILTERS.get(name, None)
 
@@ -35,7 +35,7 @@ class templatingfilter:
             pass
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        return self.func(*args, **kwargs)
+        return self.__wrapped__(*args, **kwargs)
 
 
 def _is_namedtuple(value: Any) -> bool:

@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", (event) => {
+document.addEventListener("DOMContentLoaded", (_) => {
     dayjs.extend(window.dayjs_plugin_relativeTime);
 
     // <!-- update page frontmatter to human readable relative time since updated

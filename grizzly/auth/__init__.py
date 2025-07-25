@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.auth
-Core logic for handling different implementations for authorization.
-"""
+"""Core logic for handling different implementations for authorization."""
 
 from __future__ import annotations
 

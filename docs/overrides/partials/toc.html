@@ -50,7 +50,10 @@
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       {% for toc_item in toc %}
-        {% include "partials/toc-item.html" %}
+        {% if page.title | lower != toc_item.title | lower %}
+            {% set _ = toc_item.__setattr__("title", toc_item.title | transformstepheader) %}
+            {% include "partials/toc-item.html" %}
+        {% endif %}
       {% endfor %}
     </ul>
   {% endif %}

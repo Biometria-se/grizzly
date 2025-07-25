@@ -4,7 +4,7 @@ It is possible to implement custom testdata variables, the only requirement is t
 
 When initializing the variable, the full namespace has to be specified as `name` in the scenario {@pylink grizzly.steps.setup.step_setup_variable_value} step.
 
-There are examples of this in the {@link framework.example}.
+There are examples of this in the [example][].
 """
 
 from __future__ import annotations
@@ -46,6 +46,8 @@ class AtomicVariableSettable(metaclass=ABCMeta):
 
 
 class AtomicVariable(Generic[T], AbstractAtomicClass):
+    """Base class for all atomic variables."""
+
     __base_type__: Callable | None = None
     __dependencies__: ClassVar[GrizzlyDependencies] = set()
     __on_consumer__ = False

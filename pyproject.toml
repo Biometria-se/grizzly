@@ -95,6 +95,7 @@ ci = [
     "twine ==6.1.0"
 ]
 docs = [
+    "cssselect ==1.3.0",
     "pytablewriter ==1.2.1",
     "pip-licenses ==5.0.0",
     "requests ==2.32.4",
@@ -162,7 +163,7 @@ ignore = [
 "tests/unit/test_grizzly/tasks/clients/test_http.py" = ["F401"]
 "tests/test-project/**/*.py" = ["ALL"]
 "example/features/environment.py" = ["F401"]
-"grizzly_extras/mkdocs.py" = ["G004"]
+"grizzly_extras/mkdocs/**" = ["G004"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15

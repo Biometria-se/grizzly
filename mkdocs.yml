@@ -32,14 +32,29 @@ plugins:
   - section-index
   - grizzly-mkdocs:
       modules:
+        grizzly.auth:
+          output: framework/usage/authentication
+          extra_frontmatter:
+            toc:
+              level: 2
+          ignore:
+          - __init__.py
         grizzly.testdata.variables:
           output: framework/usage/variables/testdata
           extra_frontmatter:
             toc:
               level: 2
+        grizzly.testdata.filters:
+          output: framework/usage/variables/templating
+        grizzly.steps:
+          output: framework/usage/steps
+          postprocessors:
+            - grizzly_extras.mkdocs.postprocessors.StepHeaders
+          ignore:
+          - __init__.py
   - macros:
       include_dir: .
-#  - autorefs
+  - autorefs
   - mkdocstrings:
       enabled: true
       default_handler: python
@@ -51,6 +66,7 @@ plugins:
             - .
 
 markdown_extensions:
+  - attr_list
   - pymdownx.blocks.tab:
       alternate_style: true
   - pymdownx.highlight:
@@ -67,6 +83,7 @@ nav:
   - code_of_conduct.md
   - Framework:
     - Usage:
+      - Authentication: grizzly.auth
 #      - Tasks:
 #          - Clients:
       - Variables:
@@ -74,24 +91,25 @@ nav:
         - Testdata: grizzly.testdata.variables
         - Templating:
           - framework/usage/variables/templating/index.md
-          - Filters: framework/usage/variables/templating/filters.md
+          - Filters: grizzly.testdata.filters
 #      - Load Users:
-#      - Steps:
-#        - Background:
-#        - Scenario:
+      - Steps:
+        - grizzly.steps
+        - Background: grizzly.steps.background
+        - Scenario: grizzly.steps.scenario
     - Changelog: framework/changelog.md
     - Licenses: framework/licenses.md
-  - Command Line Interface:
-    - Usage:
-      - command-line-interface/usage/index.md
-      - Metadata: command-line-interface/usage/metadata.md
-    - Changelog: command-line-interface/changelog.md
-    - Licenses: command-line-interface/licenses.md
-  - Editor support:
-    - editor-support/index.md
-    - Language server: editor-support/language-server.md
-    - Editors:
-      - editor-support/editors/index.md
-      - Visual Studio Code: editor-support/editors/vscode.md
-    - Changelog: editor-support/changelog.md
-    - Licenses: editor-support/licenses.md
+#  - Command Line Interface:
+#    - Usage:
+#      - command-line-interface/usage/index.md
+#      - Metadata: command-line-interface/usage/metadata.md
+#    - Changelog: command-line-interface/changelog.md
+#    - Licenses: command-line-interface/licenses.md
+#  - Editor support:
+#    - editor-support/index.md
+#    - Language server: editor-support/language-server.md
+#    - Editors:
+#      - editor-support/editors/index.md
+#      - Visual Studio Code: editor-support/editors/vscode.md
+#    - Changelog: editor-support/changelog.md
+#    - Licenses: editor-support/licenses.md
