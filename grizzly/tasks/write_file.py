@@ -1,15 +1,11 @@
-"""@anchor pydoc:grizzly.tasks.write_file Write file
-This task writes contents to a file on disk.
+"""Task writes contents to a file on disk.
 
 If the specified file already exist, new content will be appended to the existing file.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.write_file.step_task_write_file}
+* [Write file][grizzly.steps.scenario.tasks.write_file.step_task_write_file]
 
-## Arguments
-
-* `file_name` _str_ - file name relative to `<context root>/requests`, can contain directory levels
 """
 
 from __future__ import annotations

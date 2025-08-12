@@ -107,7 +107,7 @@ def step_task_keystore_set_text(context: Context, key: str) -> None:
 
 
 @then('increment "{key}" in keystore and save in variable "{variable}"')
-def step_task_keystore_inc_default_step(context: Context, key: str, variable: str) -> None:
+def step_task_keystore_increment_default_with_step(context: Context, key: str, variable: str) -> None:
     """Increment the integer value for `key` (with step `1`) using the {@pylink grizzly.tasks.keystore} task.
 
     If there is no value for `key` incrementing will start from 0. The new value is saved in `variable`.

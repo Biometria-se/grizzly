@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.steps.utils Utils
-This module contains steps that can be useful during development or troubleshooting of a
+"""Module contains steps that can be useful during development or troubleshooting of a
 feature file, but should not be included in a finished, testable, feature.
 """
 

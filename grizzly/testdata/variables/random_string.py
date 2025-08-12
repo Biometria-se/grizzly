@@ -8,14 +8,16 @@ Initial value is a string pattern specified with `%s` and `%d`, or `%g`.
 
 * `%s` represents **one** ASCII letter
 * `%d` represents **one** digit between `0` and `9`
-* `%g` represents one complete UUID, cannot be combined with other string patterns
+* `%g` represents one complete UUID(4), cannot be combined with other string patterns
 
 Parts of the string can be static, e.g. not random.
 
 ## Arguments
 
-* `count` _int_ (optional) - number of unique strings to generate (default: `1`)
-* `upper` _bool_ (optional) - if the strings should be in upper case (default: `False`)
+| Name    | Type   | Description                            | Default |
+| ------- | ------ | -------------------------------------- | ------- |
+| `count` | `int`  | number of unique strings to generate   | `1`     |
+| `upper` | `bool` | if the strings should be in upper case | `False` |
 
 ## Example
 
@@ -55,7 +57,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def atomicrandomstring__base_type__(value: str) -> str:
-    """Validate values that `AtomicRandomString` can be initialized with."""
     if len(value) < 1:
         message = 'AtomicRandomString: no string pattern specified'
         raise ValueError(message)

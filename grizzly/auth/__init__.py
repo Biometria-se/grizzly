@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from importlib import import_module
 from time import perf_counter
-from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, ClassVar, Generic, ParamSpec, TypeVar, cast
 from urllib.parse import urlparse
 
 from azure.core.credentials import AccessToken
@@ -19,12 +19,6 @@ from grizzly.types import GrizzlyResponse, StrDict
 from grizzly.types.locust import StopUser
 from grizzly.utils import ModuleLoader, merge_dicts
 from grizzly_extras.azure.aad import AuthMethod, AuthType, AzureAadCredential
-
-try:
-    from typing import ParamSpec
-except:
-    from typing_extensions import ParamSpec  # type: ignore[assignment]
-
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario

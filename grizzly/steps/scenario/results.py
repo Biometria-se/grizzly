@@ -1,6 +1,5 @@
-"""@anchor pydoc:grizzly.steps.scenario.results Results
-This module contains step implementations that validates the total response results for all {@pylink grizzly.tasks} in a scenario, based on
-locust statistics (response time and failures).
+"""Mdule contains step implementations that validates the total response results for all [`grizzly.tasks`][grizzly.tasks]
+in a scenario, based on locust statistics (response time and failures).
 """
 
 from __future__ import annotations
@@ -34,7 +33,7 @@ def step_results_fail_ratio(context: Context, fail_ratio: int) -> None:
 
 
 @when('average response time is greater than "{avg_response_time:d}" milliseconds fail scenario')
-def step_results_avg_response_time(context: Context, avg_response_time: int) -> None:
+def step_results_average_response_time(context: Context, avg_response_time: int) -> None:
     """Set the average response time (milliseconds) that all requests in a scenario must be below
     for it to pass.
 

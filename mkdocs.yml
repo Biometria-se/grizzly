@@ -36,7 +36,7 @@ plugins:
           output: framework/usage/authentication
           extra_frontmatter:
             toc:
-              level: 2
+              level: 1
           ignore:
           - __init__.py
         grizzly.testdata.variables:
@@ -46,15 +46,42 @@ plugins:
               level: 2
         grizzly.testdata.filters:
           output: framework/usage/variables/templating
+        grizzly.tasks:
+          output: framework/usage/tasks
+          extra_frontmatter:
+            toc:
+              level: 2
+        grizzly.tasks.clients:
+          output: framework/usage/tasks/clients
         grizzly.steps:
           output: framework/usage/steps
           postprocessors:
-            - grizzly_extras.mkdocs.postprocessors.StepHeaders
-          ignore:
-          - __init__.py
+          - grizzly_extras.mkdocs.postprocessors.StepHeaders
+          - grizzly_extras.mkdocs.postprocessors.SubHeaders
+        grizzly.steps.background:
+          output: framework/usage/steps/background
+          postprocessors:
+          - grizzly_extras.mkdocs.postprocessors.StepHeaders
+          - grizzly_extras.mkdocs.postprocessors.SubHeaders
+        grizzly.steps.scenario:
+          output: framework/usage/steps/scenario
+          postprocessors:
+          - grizzly_extras.mkdocs.postprocessors.StepHeaders
+          - grizzly_extras.mkdocs.postprocessors.SubHeaders
+        grizzly.steps.scenario.tasks:
+          output: framework/usage/steps/scenario/tasks
+          postprocessors:
+          - grizzly_extras.mkdocs.postprocessors.StepHeaders
+          - grizzly_extras.mkdocs.postprocessors.SubHeaders
+        grizzly.users:
+          output: framework/usage/users
+          extra_frontmatter:
+            toc:
+              level: 2
   - macros:
       include_dir: .
-  - autorefs
+  - autorefs:
+      resolve_closest: true
   - mkdocstrings:
       enabled: true
       default_handler: python
@@ -84,19 +111,22 @@ nav:
   - Framework:
     - Usage:
       - Authentication: grizzly.auth
-#      - Tasks:
-#          - Clients:
       - Variables:
         - Environment configuration: framework/usage/variables/environment-configuration.md
         - Testdata: grizzly.testdata.variables
         - Templating:
           - framework/usage/variables/templating/index.md
           - Filters: grizzly.testdata.filters
-#      - Load Users:
+      - Load Users: grizzly.users
+      - Tasks:
+        - Clients: grizzly.tasks.clients
+        - grizzly.tasks
       - Steps:
-        - grizzly.steps
         - Background: grizzly.steps.background
-        - Scenario: grizzly.steps.scenario
+        - Scenario:
+          - Tasks: grizzly.steps.scenario.tasks
+          - grizzly.steps.scenario
+        - grizzly.steps
     - Changelog: framework/changelog.md
     - Licenses: framework/licenses.md
 #  - Command Line Interface:

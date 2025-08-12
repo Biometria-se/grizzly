@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.user User
-This module contains step implementations that describes a {@pylink grizzly.users}.
-"""
+"""Module contains step implementations that describes a [load user][grizzly.users]."""
 
 from __future__ import annotations
 
@@ -57,7 +55,7 @@ def _setup_user(context: Context, user_class_name: str, host: str, *, weight: st
 
 @given('"{user_count}" {grammar:UserGramaticalNumber} of type "{user_class_name}" with tag "{tag}" load testing "{host}"')
 def step_user_type_count_tag(context: Context, user_count: str, user_class_name: str, tag: str, host: str, **_kwargs: Any) -> None:
-    """Set which type of {@pylink grizzly.users} the scenario should use, which `host` is the target, how many users that should be spawned
+    """Set which type of [load user][grizzly.users] the scenario should use, which `host` is the target, how many users that should be spawned
     and an associated tag.
 
     Users with the same `tag` value will run on the same set of workers, which will be exclusive for users with the same tag value.
@@ -71,10 +69,10 @@ def step_user_type_count_tag(context: Context, user_count: str, user_class_name:
     ```
 
     Args:
-        user_count (int): Number of users locust should create
-        user_class_name (str): name of an implementation of {@pylink grizzly.users}, with or without `User`-suffix
+        user_count (int): number of users locust should create
+        user_class_name (str): name of an implementation of [load user][grizzly.users], with or without `User`-suffix
         tag (str): unique string to "stick" user types to a set of exclusive workers
-        host (str): an URL for the target host, format depends on which {@pylink grizzly.users} is specified
+        host (str): URL for the target host, format depends on which [load user][grizzly.users] is specified
 
     """
     _setup_user(context, user_class_name, host, user_count=user_count, tag=tag)
@@ -82,7 +80,7 @@ def step_user_type_count_tag(context: Context, user_count: str, user_class_name:
 
 @given('"{user_count}" {grammar:UserGramaticalNumber} of type "{user_class_name}" load testing "{host}"')
 def step_user_type_count(context: Context, user_count: str, user_class_name: str, host: str, **_kwargs: Any) -> None:
-    """Set which type of {@pylink grizzly.users} the scenario should use, which `host` is the target and how many users that should be spawned.
+    """Set which type of [load user][grizzly.users] the scenario should use, which `host` is the target and how many users that should be spawned.
 
     Example:
     ```gherkin
@@ -93,9 +91,9 @@ def step_user_type_count(context: Context, user_count: str, user_class_name: str
     ```
 
     Args:
-        user_count (int): Number of users locust should create
-        user_class_name (str): name of an implementation of {@pylink grizzly.users}, with or without `User`-suffix
-        host (str): an URL for the target host, format depends on which {@pylink grizzly.users} is specified
+        user_count (int): number of users locust should create
+        user_class_name (str): name of an implementation of [load user][grizzly.users], with or without `User`-suffix
+        host (str): an URL for the target host, format depends on which [load user][grizzly.users] is specified
 
     """
     _setup_user(context, user_class_name, host, user_count=user_count)
@@ -103,7 +101,7 @@ def step_user_type_count(context: Context, user_count: str, user_class_name: str
 
 @given('a user of type "{user_class_name}" with weight "{weight_value}" load testing "{host}"')
 def step_user_type_with_weight(context: Context, user_class_name: str, weight_value: str, host: str) -> None:
-    """Set which type of {@pylink grizzly.users} the scenario should use and which `host` is the target,
+    """Set which type of [load user][grizzly.users] the scenario should use and which `host` is the target,
     together with `weight` of the user (how many instances of this user should spawn relative to others).
 
     Example:
@@ -115,9 +113,9 @@ def step_user_type_with_weight(context: Context, user_class_name: str, weight_va
     ```
 
     Args:
-        user_class_name (str): name of an implementation of {@pylink grizzly.users}, with or without `User`-suffix
-        weight_value (str): weight value for the user, default is `1` (see [writing a locustfile](http://docs.locust.io/en/stable/writing-a-locustfile.html#weight-attribute))
-        host (str): an URL for the target host, format depends on which {@pylink grizzly.users} is specified
+        user_class_name: name of an implementation of [load user][grizzly.users], with or without `User`-suffix
+        weight_value: weight value for the user, default is `1` (see [writing a locustfile](http://docs.locust.io/en/stable/writing-a-locustfile.html#weight-attribute))
+        host: an URL for the target host, format depends on which [load user][grizzly.users] is specified
 
     """
     _setup_user(context, user_class_name, host, weight=weight_value)
@@ -125,7 +123,7 @@ def step_user_type_with_weight(context: Context, user_class_name: str, weight_va
 
 @given('a user of type "{user_class_name}" load testing "{host}"')
 def step_user_type(context: Context, user_class_name: str, host: str) -> None:
-    """Set which type of {@pylink grizzly.users} the scenario should use and which `host` is the target.
+    """Set which type of [load user][grizzly.users] the scenario should use and which `host` is the target.
 
     Example:
     ```gherkin
@@ -136,10 +134,8 @@ def step_user_type(context: Context, user_class_name: str, host: str) -> None:
     ```
 
     Args:
-        user_class_name (str): name of an implementation of {@pylink grizzly.users}, with or without `User`-suffix
-        host (str): an URL for the target host, format depends on which {@pylink grizzly.users} is specified
+        user_class_name (str): name of an implementation of [load user][grizzly.users], with or without `User`-suffix
+        host (str): an URL for the target host, format depends on which [load user][grizzly.users] is specified
 
     """
     _setup_user(context, user_class_name, host)
-    if not user_class_name.endswith('User'):
-        user_class_name = f'{user_class_name}User'

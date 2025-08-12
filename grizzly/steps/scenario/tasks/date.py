@@ -1,6 +1,34 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.date Date
-This module contains step implementations for the {@pylink grizzly.tasks.date} task.
-"""
+"""Module contains step implementations for the [Date][grizzly.tasks.date] task.
+
+## Arguments
+
+| Name       | Type  | Description                                                       | Default    |
+| ---------- | ----- | ----------------------------------------------------------------- | ---------- |
+| `variable` | `str` | name of, initialized, variable the parsed date should be saved in | _required_ |
+| `value`    | `str` | string datetime value to parse                                    | _required_ |
+
+## Format
+
+### `value`
+
+```plain
+<date> [| format=<format>][, timezone=<timezone>][, offset=<offset>]
+```
+
+| Name       | Type             | Description                                                                                                                                                       | Default        |
+| ---------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `date`     | `str | datetime` | string representation of a date and/or time or a `datetime` object, e.g. `datetime.now()`                                                                         | _required_     |
+| `format`   | `str`            | python [`strftime` format string](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes) or `ISO-8601:[DateTime|Time][:ms][:no-sep]` | _required_     |
+| `timezone` | `str`            | valid [timezone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)                                                                               | `None` (local) |
+| `offset`   | `str`            | time span string describing the offset, `Y` = years, `M` = months, `D` = days, `h` = hours, `m` = minutes, `s` = seconds, e.g. `1Y-2M10D`                         | `None`         |
+
+#### `ISO-8601`
+
+See [wikipedia ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) for information about the format. Specifying `DateTime` would result in "Date and time with the offset"
+and `Time` results in everything after "T" in the same example.
+
+In addition to this it is also possible to append milliseconds with `:ms` and remove all the seperators in the date and time with `:no-sep`.
+"""  # noqa: E501
 
 from __future__ import annotations
 

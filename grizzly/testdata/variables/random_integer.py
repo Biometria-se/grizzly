@@ -4,10 +4,6 @@
 
 Interval from which the integer should be generated from, in the format `<min>..<max>`.
 
-## Arguments
-
-This variable does not have any arguments.
-
 ## Example
 
 ```gherkin
@@ -37,7 +33,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def atomicrandominteger__base_type__(value: str) -> str:
-    """Validate values that `AtomicRandomInteger` can be set with."""
     if '..' not in value:
         message = f'AtomicRandomInteger: {value} is not a valid value format, must be: "a..b"'
         raise ValueError(message)

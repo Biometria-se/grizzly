@@ -8,8 +8,10 @@ Value is the path, relative to `requests/`, of an file ending with `.csv`.
 
 ## Arguments
 
-* `repeat` _bool_ (optional) - whether values should be reused, e.g. when reaching the end it should start from the beginning again (default: `False`)
-* `random` _bool_ (optional) - if rows should be selected by random, instead of sequential from first to last (default: `False`)
+| Name     | Type   | Description                                                                                         | Default |
+| -------- | ------ | --------------------------------------------------------------------------------------------------- | ------- |
+| `repeat` | `bool` | wheter values should be reused, e.g. when reaching the end it should start from the beginning again | `False` |
+| `random` | `bool` | if rows should be selected by random, instead of sequential from first to last                      | `False` |
 
 ## Example
 
@@ -48,8 +50,6 @@ Second request:
     "password": "some-other-password"
 }
 ```
-
-etc.
 """
 
 from __future__ import annotations

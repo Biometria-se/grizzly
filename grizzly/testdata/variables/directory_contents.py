@@ -6,8 +6,10 @@ Relative path of a directory under `requests/`.
 
 ## Arguments
 
-* `repeat` _bool_ (optional) - wether values should be reused, e.g. when reaching the end it should start from the beginning again (default: `False`)
-* `random` _bool_ (optional) - if files should be selected by random, instead of sequential from first to last (default: `False`)
+| Name     | Type   | Description                                                                                          | Default |
+| -------- | ------ | ---------------------------------------------------------------------------------------------------- | ------- |
+| `repeat` | `bool` | whether values should be reused, e.g. when reaching the end it should start from the beginning again | `False` |
+| `random` | `bool` | if files should be selected by random, instead of sequential from first to last                      | `False` |
 
 ## Example
 
@@ -51,7 +53,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def atomicdirectorycontents__base_type__(value: str) -> str:
-    """Validate values that `AtomicDirectoryContents` can be initialized with."""
     grizzly_context_requests = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
     if has_separator('|', value):
         [directory_value, directory_arguments] = split_value(value)

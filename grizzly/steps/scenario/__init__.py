@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario Scenario
-This module contains step implementations that only is allowed in the `Scenario` section in a feature file.
+"""Module contains step implementations that only is allowed in the `Scenario` section in a feature file.
 
 ```gherkin
 Feature: Example

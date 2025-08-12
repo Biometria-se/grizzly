@@ -1,18 +1,17 @@
-"""@anchor pydoc:grizzly.tasks Tasks
-Tasks are functionality that is executed by `locust` at run time as they are specified in the feature file.
+"""Tasks are functionality that is executed by `locust` at run time as they are specified in the feature file.
 
-The most essential task is {@pylink grizzly.tasks.request}, which all {@pylink grizzly.users} is using to make
+The most essential task is [Request task][grizzly.tasks.request], which all [load users][grizzly.users] is using to make
 requests to the endpoint that is being load tested.
 
-All other tasks are helper tasks for things that needs to happen after or before a {@pylink grizzly.tasks.request}, stuff like extracting information from
-a previous response or fetching additional test data from a different endpoint ("{@link pydoc:grizzly.tasks.clients}").
+All other tasks are helper tasks for things that needs to happen after or before a [Request task][grizzly.tasks.request], stuff like extracting information from
+a previous response or fetching additional test data from a different endpoint ([client tasks][grizzly.tasks.clients]).
 
 ## Custom
 
 It is possible to implement custom tasks, the only requirement is that they inherit `grizzly.tasks.GrizzlyTask`. To get them to be executed by `grizzly`,
 a step implementation is also needed.
 
-One can also set some metadata (timeout, method, name) on a task with the `@grizzlytask.metadata` decorator. This is not mandatory, but can be useful if
+You can also set some metadata (timeout, method, name) on a task with the `@grizzlytask.metadata` decorator. This is not mandatory, but can be useful if
 the task should not be able to run forever.
 
 Boilerplate example of a custom task:
@@ -44,13 +43,14 @@ class TestTask(GrizzlyTask):
         return task
 
 
-@then(u'run `TestTask`')
+@then('run `TestTask`')
 def step_run_testtask(context: Context) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.tasks.add(TestTask())
 ```
 
-There are examples of this in the {@link framework.example}.
+There are examples of this in the [example][example] documentation.
+
 """
 
 from __future__ import annotations

@@ -1,16 +1,20 @@
-"""@anchor pydoc:grizzly.steps.scenario.response Response
-This module contains step implementations that handles {@pylink grizzly.tasks.request} responses.
+"""Module contains step implementations that handles [Request][grizzly.tasks.request] task responses.
 
 ## Arguments
 
 ### `expression`
 
-Valid for: {@pylink grizzly.steps.scenario.response.step_response_save_matches}, {@pylink grizzly.steps.scenario.response.step_response_save},
-{@pylink grizzly.steps.scenario.response.step_response_validate}
+Valid for:
 
-* `expected_matches` _int_ (optional): number of expected matches that `expression` should get, a value of `-1` means `Any` number of matches (default: `1`)
+* [`grizzly.steps.scenario.response.step_response_save_matches`][grizzly.steps.scenario.response.step_response_save_matches]
+* [`grizzly.steps.scenario.response.step_response_save`][grizzly.steps.scenario.response.step_response_save]
+* [`grizzly.steps.scenario.response.step_response_validate`][grizzly.steps.scenario.response.step_response_validate]
 
-* `as_json` _bool_ (optional): always return matches as a JSON list, by default if there's a single match it will be returned as a string (default: `False`)
+| Name               | Type   | Description                                                                                                | Default |
+| ------------------ | ------ | ---------------------------------------------------------------------------------------------------------- | ------- |
+| `expected_matches` | `int`  | number of expected matches that `expression` should get, a value of `-1` means `Any` number of matches     | `1`     |
+| `as_json`          | `bool` | always return matches as a JSON list, by default if there's a single match it will be returned as a string | `False` |
+
 """
 
 from __future__ import annotations
@@ -50,7 +54,7 @@ def step_response_save_matches_optional(context: Context, target: ResponseTarget
 
     With this step it is possible to change variable values and as such use values from a response later on in the load test.
 
-    The {@pylink grizzly.tasks.request} task preceded by this step will **not** fail if the specified `expression` has no or more than one match,
+    The [Request][grizzly.tasks.request] task preceded by this step will **not** fail if the specified `expression` has no or more than one match,
     the value of `variable` will be set to `default_value`.
 
     Example:
@@ -93,7 +97,7 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
 
     With this step it is possible to change variable values and as such use values from a response later on in the load test.
 
-    The {@pylink grizzly.tasks.request} task preceded by this step will fail if the specified `expression` has no or more than one match.
+    The [Request][grizzly.tasks.request] task preceded by this step will fail if the specified `expression` has no or more than one match.
 
     Example:
     ```gherkin
@@ -132,11 +136,12 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
 def step_response_save_optional(context: Context, target: ResponseTarget, expression: str, variable: str, default_value: str) -> None:
     """Save metadata (header) or payload (body) value from a response in a variable.
 
-    This step expression is the same as {@pylink grizzly.steps.scenario.response.step_response_save_matches_optional} if `match_with` is set to `.*`.
+    This step expression is the same as [`grizzly.steps.scenario.response.step_response_save_matches_optional`][grizzly.steps.scenario.response.step_response_save_matches_optional]
+    if `match_with` is set to `.*`.
 
     With this step it is possible to change variable values and as such use values from a response later on in the load test.
 
-    The {@pylink grizzly.tasks.request} task preceded by this step will **not** fail if the specified `expression` has no or more than one match,
+    The [Request][grizzly.tasks.request] task preceded by this step will **not** fail if the specified `expression` has no or more than one match,
     the value of `variable` will be set to `default_value`.
 
     Example:
@@ -162,11 +167,12 @@ def step_response_save_optional(context: Context, target: ResponseTarget, expres
 def step_response_save(context: Context, target: ResponseTarget, expression: str, variable: str) -> None:
     """Save metadata (header) or payload (body) value from a response in a variable.
 
-    This step expression is the same as {@pylink grizzly.steps.scenario.response.step_response_save_matches} if `match_with` is set to `.*`.
+    This step expression is the same as [`grizzly.steps.scenario.response.step_response_save_matches`][grizzly.steps.scenario.response.step_response_save_matches]
+    if `match_with` is set to `.*`.
 
     With this step it is possible to change variable values and as such use values from a response later on in the load test.
 
-    The {@pylink grizzly.tasks.request} task preceded by this step will fail if the specified `expression` has no or more than one match.
+    The [Request][grizzly.tasks.request] task preceded by this step will fail if the specified `expression` has no or more than one match.
 
     Example:
     ```gherkin

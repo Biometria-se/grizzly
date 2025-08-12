@@ -109,7 +109,7 @@ docs = [
     "packaging ==25.0",
     "mistune ==3.1.3",
     "python-frontmatter ==1.1.0",
-    "grizzly-loadtester-cli"
+    "grizzly-loadtester-cli >=3.2.27"
 ]
 
 [tool.setuptools_scm]
@@ -126,7 +126,7 @@ grizzly_extras = ["py.typed"]
 
 [tool.ruff]
 exclude = [
-   ".env", ".venv", ".pytest_tmp", "build", "dist", "grizzly/__version__.py"
+    ".env", ".venv", ".pytest_tmp", "build", "dist", "grizzly/__version__.py"
 ]
 line-length = 180
 indent-width = 4

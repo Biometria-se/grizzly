@@ -1,19 +1,13 @@
-"""@anchor pydoc:grizzly.tasks.async_timer Asynchronous Timer
-This timer can be started in one scenario, on one worker, and be stopped in another scenario on another worker.
+"""Timer can be started in one scenario, on one worker, and be stopped in another scenario on another worker.
 
-It is possible to stop a timer only based on `tid` and `version`, but in that case that combination can only be used for *one* timer.
 This is useful if a timers is started in many different scenarios, but are stopped in one scenario which does not have any other information
 than the id (which it might have received from a queue or topic), and hence the timer name is not know at the time it is being stopped.
 
-A name must **always** be provided when starting the timer.
-
-`name`, `tid` and `version` supports {@link framework.usage.variables.templating}.
-
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_start}
+* [Async timer start][grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_start]
 
-* {@pylink grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_stop}
+* [Async timer stop][grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_stop]
 
 ## Statistics
 
@@ -26,6 +20,7 @@ anything goes wrong when executing the task, the error will also visible in the 
 
 Any timers that has not been stopped when the load test is finished, will be listed in the behave failure summary, and the test will be marked
 as failed.
+
 """
 
 from __future__ import annotations

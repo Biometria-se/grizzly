@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.background.setup Setup
-This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.
-"""
+"""Module contains step implementations that configures the load test scenario with parameters applicable for all scenarios."""
 
 from __future__ import annotations
 
@@ -23,7 +21,6 @@ if TYPE_CHECKING:  # pragma: no cover
 @parse.with_pattern(r'(client|server)', regex_group_count=1)
 @permutation(vector=(True, True))
 def parse_message_direction(text: str) -> str:
-    """Allow only "client" or "server"."""
     return text.strip()
 
 

@@ -5,6 +5,8 @@ from __future__ import annotations
 import inspect
 import re
 import warnings
+from contextlib import suppress
+from copy import deepcopy
 from datetime import datetime, timezone
 from importlib import import_module
 from json import dumps as jsondumps
@@ -23,12 +25,14 @@ from mkdocs.structure.files import File, InclusionLevel
 from grizzly_extras.mkdocs.log import MkdocsPluginLogger
 
 if TYPE_CHECKING:  # pragma: no cover
+    from types import ModuleType
+
     from jinja2.environment import Environment
     from mkdocs.config.defaults import MkDocsConfig
     from mkdocs.structure.files import Files
     from mkdocs.structure.pages import Page
 
-    from grizzly_extras.mkdocs.postprocessors import PostProcessor
+    from grizzly_extras.mkdocs.postprocessors import PostProcessor, TextFormat
 
 
 def transform_step_header(text: str) -> str:
@@ -72,6 +76,7 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
     def _find_nav(self, module_name: str, nav: list, parent: dict | None = None) -> dict | None:
         for item in nav:
             self.logger.debug(f'find navigation: {module_name}', payload=jsondumps(item, indent=2))
+
             if isinstance(item, list):
                 result = self._find_nav(module_name, item)
                 if result is not None:
@@ -117,6 +122,13 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
 
         return value
 
+    def _validate_doc(self, source: str, doc: str) -> None:
+        old_statements: list[str] = [statement for statement in ['@anchor', '@pylink', '@link'] if statement in doc]
+
+        if old_statements:
+            old_statements_string = ', '.join(old_statements)
+            self.logger.error(f'{source} contains pydoc-markdown {old_statements_string} statements')
+
     def on_config(self, config: MkDocsConfig) -> MkDocsConfig | None:
         for attr in ['docs_dir', 'site_dir']:
             setattr(self, attr, Path(self._get_config(config, attr)).absolute())
@@ -136,6 +148,33 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
         self._on_build(missing_ok=False)
         self.logger.trace(f'removed generated files in {self.docs_dir}')
 
+    def _get_members(self, py_module: ModuleType) -> list[str]:
+        members: list[str] = []
+
+        module_members = inspect.getmembers(py_module)
+        for name, possible_member in module_members:
+            if name.startswith('_'):
+                continue
+
+            actual_py_module = inspect.getmodule(possible_member)
+
+            if actual_py_module != py_module:
+                continue
+
+            member = possible_member.__wrapped__ if hasattr(possible_member, '__wrapped__') else possible_member
+
+            if not (inspect.isfunction(member) or inspect.ismethod(member) or inspect.isclass(member)):
+                continue
+
+            if member.__doc__ is None:
+                continue
+
+            self._validate_doc(f'{py_module.__name__}::{member.__name__}', member.__doc__)
+
+            members.append(name)
+
+        return members
+
     def _scan_module(
         self,
         root_module: Path,
@@ -145,6 +184,7 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
         module_conf: Config,
         *,
         is_package: bool,
+        parent_title: str,
     ) -> list[str | dict[str, str]] | str:
         nav_items: list[str | dict[str, str]] | str = [] if root_module.is_dir() else ''
 
@@ -161,6 +201,10 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
             _, file_name = root_module_name.rsplit('.', 1)
             scan_files = [root_module / f'{file_name}.py']
 
+        log_scan_files = indent('\n'.join([f.as_posix() for f in scan_files]), '  - ')
+
+        self.logger.trace(f'generating documentation for {root_module_name} in {root_module.as_posix()} into {output_path.as_posix()}', payload=log_scan_files)
+
         for path in sorted(scan_files):
             relative_path = path.absolute().relative_to(root_module)
 
@@ -175,7 +219,7 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
             full_doc_path = Path.joinpath(output_path, doc_path)
             relative_doc_path = full_doc_path.relative_to(self.docs_dir)
 
-            parts = (root_module_name, *tuple(module_path.parts))
+            parts = (*root_module_name.split('.'), *tuple(module_path.parts))
 
             if parts[-1] == '__init__' or not is_package:
                 parts = parts[:-1]
@@ -185,11 +229,14 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
             module_name = '.'.join(parts)
             from_module_name = '.'.join(parts[:-1])
 
+            self.logger.trace(f'importing {module_name} from {from_module_name}')
+
             try:
                 with warnings.catch_warnings():
                     warnings.filterwarnings('ignore')
                     py_module = import_module(module_name, package=from_module_name)
                     members: list[str] = []
+                    module_extra_mkdocstrings_options = deepcopy(extra_mkdocstrings_options)
                     module_docs: str | None = py_module.__doc__
 
                     if py_module.__file__ is None:
@@ -200,42 +247,26 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
                     if module_docs is None:
                         continue
 
-                    if 'members' not in extra_mkdocstrings_options:
-                        for name, possible_member in inspect.getmembers(py_module):
-                            if name.startswith('_'):
-                                continue
+                    if 'members' not in module_extra_mkdocstrings_options:
+                        members.extend(self._get_members(py_module))
 
-                            if inspect.getmodule(possible_member) != py_module:
-                                continue
+                    log_members = indent('\n'.join(members), '  - ')
+                    self.logger.debug(f'{py_module_file.as_posix()} members', payload=log_members)
 
-                            member = possible_member.__wrapped__ if hasattr(possible_member, '__wrapped__') else possible_member
-
-                            if not (inspect.isfunction(member) or inspect.ismethod(member) or inspect.isclass(member)):
-                                continue
-
-                            if member.__doc__ is None or member.__doc__.startswith('ignore:'):
-                                continue
-
-                            members.append(name)
-
-                    old_statements: list[str] = [statement for statement in ['@anchor', '@pylink', '@link'] if statement in module_docs]
-
-                    if old_statements:
-                        old_statements_string = ', '.join(old_statements)
-                        self.logger.warning(f'{root_module_name.replace(".", "/")}/{relative_path.as_posix()} contains pydoc-markdown {old_statements_string} statements')
+                    self._validate_doc(f'{root_module_name.replace(".", "/")}/{relative_path.as_posix()}', module_docs)
 
                     full_doc_path.unlink(missing_ok=True)
 
-                    title = self._make_human_readable(doc_path.stem)
+                    title = parent_title if doc_path.stem == 'index' else self._make_human_readable(doc_path.stem)
                     date = datetime.fromtimestamp(py_module_file.lstat().st_mtime, tz=timezone.utc)
 
                     # clean up
                     del py_module
 
-                    extra_mkdocstrings_options.update({'members': members or False})
+                    module_extra_mkdocstrings_options.update({'members': members or False})
 
                     frontmatter_markdown = yaml.safe_dump(extra_frontmatter) if extra_frontmatter else '\n'
-                    mkdocstrings_options = yaml.safe_dump(extra_mkdocstrings_options, indent=4)
+                    mkdocstrings_options = yaml.safe_dump(module_extra_mkdocstrings_options, indent=4)
 
                     with mkdocs_gen_files.open(full_doc_path, 'w') as fd:
                         print(
@@ -301,55 +332,82 @@ source_url: {self.repo_url}/blob/main/{path.relative_to(Path.cwd()).as_posix()}
                 root_module = root_module.parent
                 is_package = False
 
-            self.logger.trace(f'generating documentation for {root_module_name} in {root_module.as_posix()} into {output_path.as_posix()}')
-
             nav = self._find_nav(root_module_name, config.nav or [])
+
+            self.logger.debug(f'{root_module_name} nav item', payload=jsondumps(nav, indent=2))
 
             if nav is None:
                 message = f'could not find reference to {root_module_name} in mkdocs.yaml nav'
                 raise ConfigurationError(message)
 
             title = next(iter(nav.keys()))
-            nav_items = self._scan_module(root_module, root_module_name, output_path, files, module_conf, is_package=is_package)
+            nav_items = self._scan_module(root_module, root_module_name, output_path, files, module_conf, is_package=is_package, parent_title=title)
+
+            title_nav = nav.get(title, None)
+            if isinstance(title_nav, list) and isinstance(nav_items, list):
+                replace_nav_items: list[dict[str, str] | str] = []
+                for nav_item in title_nav:
+                    if isinstance(nav_item, str) and nav_item == root_module_name:
+                        replace_nav_items.extend(nav_items)
+                    else:
+                        replace_nav_items.append(nav_item)
+
+                # make sure .../index.md is at the first position
+                with suppress(ValueError):
+                    index_page_path = Path.joinpath(output_path, 'index.md').relative_to(self.docs_dir).as_posix()
+                    index = replace_nav_items.index(index_page_path)
+                    if index > 0:
+                        index_page = replace_nav_items.pop(index)
+                        replace_nav_items.insert(0, index_page)
+                    self.logger.trace(f'{index_page_path}: {index}')
+
+                nav_items = replace_nav_items
+
             nav.update({title: nav_items})
 
         self.logger.debug('mkdocs nav:', payload=jsondumps(config.nav, indent=2))
 
         return files
 
-    def on_page_content(self, html: str, page: Page, config: MkDocsConfig, files: Files) -> str | None:  # noqa: ARG002
+    def on_page_markdown(self, markdown: str, page: Page, config: MkDocsConfig, files: Files) -> str | None:
+        return self._on_page(markdown, page, config, files, text_format='markdown')
+
+    def on_page_content(self, html: str, page: Page, config: MkDocsConfig, files: Files) -> str | None:
+        return self._on_page(html, page, config, files, text_format='html')
+
+    def _on_page(self, content: str, page: Page, config: MkDocsConfig, files: Files, *, text_format: TextFormat) -> str | None:  # noqa: ARG002
         module = page.meta.get('module', None)
 
         if module is None:
-            return html
+            return content
 
         module_conf = self.config.get('modules', {}).get(module, None)
 
         if module_conf is None:
-            return html
+            return content
 
         postprocessors: list[str] | None = module_conf.get('postprocessors', None)
 
         if postprocessors is None:
-            return html
+            return content
 
-        pp_html: str | None = html
+        pp_content: str | None = content
 
         for postprocessor_name in postprocessors:
             module_name, class_name = postprocessor_name.rsplit('.', 1)
             try:
                 postprocessor_module = import_module(module_name, package=module_name)
                 postprocessor_class: type[PostProcessor] = getattr(postprocessor_module, class_name)
+                if postprocessor_class.text_format != text_format:
+                    continue
+
                 postprocessor = postprocessor_class(self.logger)
 
-                pp_html = postprocessor(page, html)
-
-                if pp_html is None:
-                    return None
+                pp_content = postprocessor(page, pp_content)
             except ModuleNotFoundError:
                 self.logger.exception(f'failed to load postprocessor {postprocessor_name}')
 
-        return pp_html
+        return pp_content
 
     def on_env(self, env: Environment, config: MkDocsConfig, files: Files) -> Environment | None:  # noqa: ARG002
         env.filters['transformstepheader'] = transform_step_header

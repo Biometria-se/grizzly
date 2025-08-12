@@ -1,4 +1,4 @@
-"""Steps that can be in both `Background:` and `Scenario:` gherkin sections."""
+"""Steps that can be in both `Background` and `Scenario` [Gherkin](https://cucumber.io/docs/gherkin/reference/) sections."""
 
 from __future__ import annotations
 
@@ -66,10 +66,10 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
     """Step to initialize a variable that should have the same [start] value for every run of the scenario.
 
     If this step is used after a step that adds a task or for a variable that already has been initialized, it is assumed that the value will change during runtime
-    so a {@pylink grizzly.tasks.set_variable} task will be added instead. The {@pylink grizzly.testdata.variables} must
+    so a [Set variable][grizzly.tasks.set_variable] task will be added instead. The [`grizzly.testdata.variables`][grizzly.testdata.variables] must
     have implemented support for being settable.
 
-    Data type for the value of the variable is based on the type of variable. If the variable is an testdata {@pylink grizzly.testdata.variables}
+    Data type for the value of the variable is based on the type of variable. If the variable is an testdata [`grizzly.testdata.variables`][grizzly.testdata.variables]
     then the value needs to match the format and type that the variable has implemented. If it is not a testdata variable
     `grizzly` will try to guess the data type. E.g.:
 

@@ -2,9 +2,10 @@
 
 It is possible to implement custom testdata variables, the only requirement is that they inherit `grizzly.testdata.variables.AtomicVariable`.
 
-When initializing the variable, the full namespace has to be specified as `name` in the scenario {@pylink grizzly.steps.setup.step_setup_variable_value} step.
+When initializing the variable, the full namespace has to be specified as `name` in the scenario
+[`grizzly.steps.setup.step_setup_variable_value`][grizzly.steps.setup.step_setup_variable_value] step.
 
-There are examples of this in the [example][].
+There are examples of this in the [example][example].
 """
 
 from __future__ import annotations
@@ -46,8 +47,6 @@ class AtomicVariableSettable(metaclass=ABCMeta):
 
 
 class AtomicVariable(Generic[T], AbstractAtomicClass):
-    """Base class for all atomic variables."""
-
     __base_type__: Callable | None = None
     __dependencies__: ClassVar[GrizzlyDependencies] = set()
     __on_consumer__ = False
@@ -174,7 +173,6 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
 
 
 def destroy_variables() -> None:
-    """Destroy all active Atomic variable singleton instances."""
     for name in globals():
         if not ('Atomic' in name and name != 'AtomicVariable'):
             continue

@@ -1,34 +1,28 @@
-"""@anchor pydoc:grizzly.tasks.conditional Conditional
-This task executes one or more other tasks based on `condition`.
+"""Task executes one or more other tasks based on `condition`.
 
 This is useful when a set of tasks should be executed if `condition` is `True`, and another set of tasks if `condition` is `False`.
 
-All tasks created between {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_if} and
-{@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_end} will be wrapped in this instance and executed conditionally.
+All tasks created between [conditional if][grizzly.steps.scenario.tasks.conditional.step_task_conditional_if] and
+[conditional end][grizzly.steps.scenario.tasks.conditional.step_task_conditional_end] will be wrapped in this instance and executed conditionally.
 If the task has its own `name` attribute, it will be prefixed with this tasks `name`.
 
-The {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_else} step expression is optional, if not used no additional tasks will be executed if
+The [conditional else][grizzly.steps.scenario.tasks.conditional.step_task_conditional_else] step expression is optional, if not used no additional tasks will be executed if
 `condition` is false.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_if}
+* [Conditional if][grizzly.steps.scenario.tasks.conditional.step_task_conditional_if]
 
-* {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_else} (optional)
+* [Conditional else][grizzly.steps.scenario.tasks.conditional.step_task_conditional_else] (optional)
 
-* {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_end}
+* [Conditional end][grizzly.steps.scenario.tasks.conditional.step_task_conditional_end]
 
 ## Statistics
 
 Executions of this task will be visible in `locust` request statistics with request type `COND`. `name` is suffixed with `<condition> (<n>)`,
 where `<condition>` is the runtime resolved condition and `<n>` is the number of tasks that is executed for the resolved condition. Each task in
-the set for `condition` will have its own entry in the statistics, see respective {@pylink grizzly.tasks} documentation.
+the set for `condition` will have its own entry in the statistics, see respective [tasks][grizzly.tasks] documentation.
 
-## Arguments
-
-* `name` _str_: name of the conditional, used in `locust` statistics
-
-* `condition` _str_: {@link framework.usage.variables.templating} string that must render `True` or `False`
 """
 
 from __future__ import annotations
