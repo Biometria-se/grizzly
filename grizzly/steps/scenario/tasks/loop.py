@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.loop Loop
-This module contains step implementations for the {@pylink grizzly.tasks.loop} task.
-"""
+"""Module contains step implementations for the [Loop][grizzly.tasks.loop] task."""
 
 from __future__ import annotations
 
@@ -15,11 +13,11 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @then('loop "{values}" as variable "{variable}" with name "{name}"')
 def step_task_loop_start(context: Context, values: str, variable: str, name: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.loop} tasks which executes all wrapped tasks with a value from the list `values`.
+    """Create an instance of the [Loop][grizzly.tasks.loop] tasks which executes all wrapped tasks with a value from the list `values`.
 
-    `values` **must** be a valid JSON list and supports {@link framework.usage.variables.templating}.
+    `values` supports [templating][framework.usage.variables.templating] and **must** be a valid JSON list.
 
-    See {@pylink grizzly.tasks.loop} task documentation for more information.
+    See [Loop][grizzly.tasks.loop] task documentation for more information.
 
     Example:
     ```gherkin
@@ -42,11 +40,11 @@ def step_task_loop_start(context: Context, values: str, variable: str, name: str
 
 @then('end loop')
 def step_task_loop_end(context: Context) -> None:
-    """Close the {@pylink grizzly.tasks.loop} task created by {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_start}.
+    """Close the [Loop][grizzly.tasks.loop] task created by [Start][grizzly.steps.scenario.tasks.loop.step_task_loop_start].
 
     This means that any following tasks specified will not be part of the loop.
 
-    See {@pylink grizzly.tasks.loop} task documentation for more information.
+    See [Loop][grizzly.tasks.loop] task documentation for more information.
 
     Example:
     ```gherkin

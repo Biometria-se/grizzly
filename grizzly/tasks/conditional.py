@@ -11,11 +11,11 @@ The [conditional else][grizzly.steps.scenario.tasks.conditional.step_task_condit
 
 ## Step implementations
 
-* [Conditional if][grizzly.steps.scenario.tasks.conditional.step_task_conditional_if]
+* [If][grizzly.steps.scenario.tasks.conditional.step_task_conditional_if]
 
-* [Conditional else][grizzly.steps.scenario.tasks.conditional.step_task_conditional_else] (optional)
+* [Else][grizzly.steps.scenario.tasks.conditional.step_task_conditional_else] (optional)
 
-* [Conditional end][grizzly.steps.scenario.tasks.conditional.step_task_conditional_end]
+* [End][grizzly.steps.scenario.tasks.conditional.step_task_conditional_end]
 
 ## Statistics
 

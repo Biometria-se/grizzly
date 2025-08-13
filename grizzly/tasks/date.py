@@ -4,7 +4,7 @@ and saves the result as a date/time string in an variable.
 
 ## Step implementations
 
-* [Date][grizzly.steps.scenario.tasks.date.step_task_date]
+* [Parse][grizzly.steps.scenario.tasks.date.step_task_date_parse]
 
 ## Statistics
 

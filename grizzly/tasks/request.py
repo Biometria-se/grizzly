@@ -8,13 +8,13 @@ steps is going to be used.
 
 ## Step implementations
 
-* [Request text with name endpoint][grizzly.steps.scenario.tasks.request.step_task_request_text_with_name_endpoint]
+* [Text with name endpoint][grizzly.steps.scenario.tasks.request.step_task_request_text_with_name_endpoint]
 
-* [Request file with name endpoint][grizzly.steps.scenario.tasks.request.step_task_request_file_with_name_endpoint]
+* [File with name endpoint][grizzly.steps.scenario.tasks.request.step_task_request_file_with_name_endpoint]
 
-* [Request file with name][grizzly.steps.scenario.tasks.request.step_task_request_file_with_name]
+* [File with name][grizzly.steps.scenario.tasks.request.step_task_request_file_with_name]
 
-* [Request text with name][grizzly.steps.scenario.tasks.request.step_task_request_text_with_name]
+* [Text with name][grizzly.steps.scenario.tasks.request.step_task_request_text_with_name]
 
 ## Statistics
 

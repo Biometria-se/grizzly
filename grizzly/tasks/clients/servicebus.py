@@ -1,101 +1,94 @@
-"""@anchor pydoc:grizzly.tasks.clients.servicebus Service Bus
-This task performs Azure SerciceBus operations to a specified endpoint.
+"""Task performs Azure SerciceBus operations to a specified endpoint.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload}
+* [From endpoint payload][grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload]
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload_metadata}
+* [From endpoint payload and metadata][grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload_and_metadata]
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file}
+* [To endpoint file][grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file]
 
 ## Arguments
 
-* `direction` _RequestDirection_ - if the request is upstream or downstream
-
-* `endpoint` _str_ - specifies details to be able to perform the request, e.g. Service Bus resource, queue, topic, subscription etc.
-
-* `name` _str_ - name used in `locust` statistics
-
-* `destination` _str_ (optional) - **not used by this client**
-
-* `source` _str_ (optional) - file path of local file that should be put on `endpoint`
+| Name          | Type               | Description                                                                                                     | Default    |
+| ------------- | ------------------ | --------------------------------------------------------------------------------------------------------------- | ---------- |
+| `direction`   | `RequestDirection` | if the request is upstream or downstream                                                                        | _required_ |
+| `endpoint`    | `str`              | specifies details to be able to perform the request, e.g. Service Bus resource, queue, topic, subscription etc. | _required_ |
+| `name`        | `str`              | name used in `locust` statistics                                                                                | _required_ |
+| `destination` | `str`              | *not used by this client*                                                                                       | `None`     |
+| `source`      | `str`              | file path of local file that should be put on `endpoint`                                                        | `None`     |
 
 ## Format
 
-### `endpoint`
+### endpoint
 
 ```plain
 sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>][&Empty=<empty>][&Unique=<unique>][&Verbose=<verbose>][&Forward=<forward>]]
 ```
 
-All variables in the endpoint have support for {@link framework.usage.variables.templating}.
+All variables in the endpoint has support for [templating][framework.usage.variables.templating].
 
 Network location:
 
-* `<username>` _str_ - when using credentials, authenticate with this username
-
-* `<password>` _str_  - password for said user
-
-* `<sbns resource name>` _str_ - must be specfied, Azure Service Bus Namespace name, with or without domain name
+| Name                   | Type  | Description                                                                     | Default    |
+| ---------------------- | ----- | ------------------------------------------------------------------------------- | ---------- |
+| `<username>`           | `str` | when using credentials, authenticate with this username                         | `None`     |
+| `<password>`           | `str` | password for said user                                                          | `None`     |
+| `<sbns resource name>` | `str` | must be specfied, Azure Service Bus Namespace name, with or without domain name | _required_ |
 
 Path:
 
-* `<queue name>` _str_ - name of queue, prefixed with `queue:` of an existing queue (mutual exclusive<sup>1</sup>)
+| Name                  | Type  | Description                                                                                                                                                                                                                         | Default        |
+| --------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `<queue name>`        | _str_ | name of queue, prefixed with `queue:` of an existing queue                                                                                                                                                                          | _required_[^1] |
+| `<topic name>`        | _str_ | name of topic, prefixed with `topic:` of an existing topic                                                                                                                                                                          | _required_[^1] |
+| `<subscription name>` | _str_ | name of an subscription on `topic name`, either an existing, or one to be created (if step text containing SQL Filter rule is specified), the actual subscription name will be suffixed with unique id related to the user instance | `None`         |
+| `<expression>`        | _str_ | JSON or XPath expression to filter out message on payload, only applicable when receiving messages                                                                                                                                  | `None`         |
 
-* `<topic name>` _str_ - name of topic, prefixed with `topic:` of an existing topic (mutual exclusive<sup>1</sup>)
-
-* `<subscription name>` _str_ - name of an subscription on `topic name`, either an existing, or one to be created (if step text containing SQL Filter rule is specified), the actual subscription name will be suffixed with unique id related to the user instance
-
-* `<expression>` _str_ - JSON or XPath expression to filter out message on payload, only applicable when receiving messages
-
-<sup>1</sup> Either specify `queue:` or `topic`, not both
+[^1]: Mutally exclusive, either specify `queue:` / `<queue name>` or `topic:` / `<topic name>`, not both
 
 Query:
 
-* `<policy name>` _str_ - name of the Service Bus policy to be used
-
-* `<access key>` _str_ - secret access key for specified `policy name`
+| Name            | Type  | Description                                   | Default    |
+| --------------- | ----- | --------------------------------------------- | ---------- |
+| `<policy name>` | `str` | name of the Service Bus policy to be used     | _required_ |
+| `<access key>`  | `str` | secret access key for specified `policy name` | _required_ |
 
 Fragment:
 
-* `<consume>` _bool_ - if messages should be consumed (removed from endpoint), or only peeked at (left on endpoint) (default: `True`)
-
-* `<wait>` _int_ - how many seconds to wait for a message to arrive on the endpoint (default: `∞`)
-
-* `<content type>` _str_ - content type of response payload, should be used in combination with `<expression>`
-
-* `<tenant>` _str_ - when using credentials, tenant to authenticate with
-
-* `<empty>` _bool_ - if endpoint should be emptied before each iteration, default `True`
-
-* `<unique>` _bool_ - if each instance should have their own endpoint, or if they should share (default `True`, have their own endpoint subscription)
-
-* `<verbose>` _bool_ - verbose logging for only these requests (default `False`)
-
-* `<forward>` _bool_ - if a queue should be created and the subscription should forward to it, and consuming messages from the queue (default `False`)
+| Name             | Type   | Description                                                                                                                                             | Default     |
+| ---------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `<consume>`      | `bool` | if messages should be consumed (removed from endpoint), or only peeked at (left on endpoint)                                                            | `True`      |
+| `<wait>`         | `int`  | how many seconds to wait for a message to arrive on the endpoint                                                                                        | `None => ∞` |
+| `<content type>` | `str`  | content type of response payload, should be used in combination with `<expression>`                                                                     | `None`      |
+| `<tenant>`       | `str`  | when using credentials, tenant to authenticate with                                                                                                     | `None`      |
+| `<empty>`        | `bool` | if endpoint should be emptied before each iteration                                                                                                     | `True`      |
+| `<unique>`       | `bool` | if each instance should have their own endpoint, when set to `False` all instances will share                                                           | `True`      |
+| `<verbose>`      | `bool` | verbose logging for only these requests                                                                                                                 | `False`     |
+| `<forward>`      | `bool` | if a queue should be created and the subscription should forward to it, and consuming messages from the queue instead of directly from the subscription | `False`     |
 
 If `<unique>` is `False`, it will not empty the endpoint between each iteration.
 
-Parts listed below are mutally exclusive, e.g. either ones should be used, but no combinations between the two.
-
-#### Connection strings
-
-If connection strings is to be used for authenticating, the following `endpoint` parts must be present:
+If connection strings is to be used for authentication, the following `endpoint` parts must be present:
 
 * `<policy name>`
 
 * `<access key>`
 
-#### Credential
-
-If credential is to be used for authenticating, the following `endpoint` parts must be present:
+If credential is to be used for authentication, the following `endpoint` parts must be present:
 
 * `<username>`
 
 * `<password>`
 
 * `<tenant>`
+
+## Examples
+
+```gherkin
+Given value for variable "event" is "none"
+Then get from "sb://$conf::sb.name$.servicebus.windows.net/topic:incoming-events/subscription:grizzly-/expression:'$.`this`[?active=true]';SharedAccessKeyName=$conf::sb.key.name$;SharedAccessKey=$conf::sb.key.secret$#Consume=True&MessageWait=$conf::sb.message.wait$&ContentType=json&Forward=True" with name "get-incoming-events" and save response payload in "event"
+```
 
 """  # noqa: E501
 

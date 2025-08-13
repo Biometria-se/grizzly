@@ -5,9 +5,9 @@ will be wrapped in this instance and executed for all values in the provided lis
 
 ## Step implementations
 
-* [Loop start][grizzly.steps.scenario.tasks.loop.step_task_loop_start]
+* [Start][grizzly.steps.scenario.tasks.loop.step_task_loop_start]
 
-* [Loop end][grizzly.steps.scenario.tasks.loop.step_task_loop_end]
+* [End][grizzly.steps.scenario.tasks.loop.step_task_loop_end]
 
 ## Statistics
 

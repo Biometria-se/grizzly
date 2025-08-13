@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.request Request
-This module contains step implementations that creates requests executed by the {@pylink grizzly.users}
+"""Module contains step implementations that creates requests executed by the [load user][grizzly.users]
 in the scenario.
 """
 
@@ -18,9 +17,9 @@ register_type(
 
 @then('{method:Method} request with name "{name}" {direction:Direction} endpoint "{endpoint}"')
 def step_task_request_text_with_name_endpoint(context: Context, method: RequestMethod, name: str, direction: RequestDirection, endpoint: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.request} task, where optional payload is defined directly in the feature file.
+    """Create an instance of the [Request][grizzly.tasks.request] task, where optional payload is defined directly in the feature file.
 
-    See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
+    See [Request][grizzly.tasks.request] task documentation for more information about arguments.
 
     * If `Method` in the expression is `get` or `receive`; the `direction` **must** be `from`.
 
@@ -72,9 +71,9 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
 
 @then('{method:Method} request "{source}" with name "{name}" to endpoint "{endpoint}"')
 def step_task_request_file_with_name_endpoint(context: Context, method: RequestMethod, source: str, name: str, endpoint: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.request} task, where the payload is defined in a template file.
+    """Create an instance of the [Request][grizzly.tasks.request] task, where the payload is defined in a template file.
 
-    See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
+    See [Request][grizzly.tasks.request] task documentation for more information about arguments.
 
     Example:
     ```gherkin
@@ -98,10 +97,10 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
 
 @then('{method:Method} request "{source}" with name "{name}"')
 def step_task_request_file_with_name(context: Context, method: RequestMethod, source: str, name: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.request} task, with the same `endpoint` as the previous Request task, where the
+    """Create an instance of the [Request][grizzly.tasks.request] task, with the same `endpoint` as the previous Request task, where the
     payload is defined in a template file.
 
-    See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
+    See [Request][grizzly.tasks.request] task documentation for more information about arguments.
 
     Example:
     ```gherkin
@@ -127,9 +126,9 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
 
 @then('{method:Method} request with name "{name}"')
 def step_task_request_text_with_name(context: Context, method: RequestMethod, name: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.request} task, where optional payload is defined directly in the feature file.
+    """Create an instance of the [Request][grizzly.tasks.request] task, where optional payload is defined directly in the feature file.
 
-    See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
+    See [Request][grizzly.tasks.request] task documentation for more information about arguments.
 
     If `method` in the expression is `post`, `put` or `send` the payload in the request **must** be defined directly in the feature file after the step.
     This step is useful if `method` and `endpoint` are the same as previous request, but the payload should be different.

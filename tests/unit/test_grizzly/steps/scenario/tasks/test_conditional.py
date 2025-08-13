@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING, cast
 
 from grizzly.steps import (
     step_task_async_group_close,
-    step_task_async_group_start,
+    step_task_async_group_open,
     step_task_conditional_else,
     step_task_conditional_end,
     step_task_conditional_if,
-    step_task_log_message,
+    step_task_log_message_print,
     step_task_request_text_with_name_endpoint,
     step_task_wait_between_constant,
 )
@@ -38,9 +38,9 @@ def test_step_task_conditional_if(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.tasks.tmp.conditional.tasks == {True: []}
 
     step_task_wait_between_constant(behave, '1.4')
-    step_task_log_message(behave, 'hello world')
+    step_task_log_message_print(behave, 'hello world')
     step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test-get', RequestDirection.FROM, '/api/test')
-    step_task_async_group_start(behave, 'async-group')
+    step_task_async_group_open(behave, 'async-group')
     step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test-async-get-1', RequestDirection.FROM, '/api/test')
     step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test-async-get-2', RequestDirection.FROM, '/api/test')
     step_task_async_group_close(behave)
@@ -74,7 +74,7 @@ def test_step_task_conditional_else(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.tasks.tmp.conditional.tasks.get(False, None) == []
 
     step_task_wait_between_constant(behave, '3.7')
-    step_task_log_message(behave, 'foo bar')
+    step_task_log_message_print(behave, 'foo bar')
     step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test-async-get-3', RequestDirection.FROM, '/api/test')
 
     assert list(grizzly.scenario.tasks.tmp.conditional.tasks.keys()) == [True, False]

@@ -8,7 +8,7 @@ Instances of this task is created with the step expression:
 
 ## Step implementations
 
-* [Transform][grizzly.steps.scenario.tasks.transformer.step_task_transform]
+* [Parse][grizzly.steps.scenario.tasks.transformer.step_task_transformer_parse]
 
 ## Statistics
 

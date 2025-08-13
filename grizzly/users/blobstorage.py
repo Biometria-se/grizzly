@@ -1,4 +1,4 @@
-"""Put files to Azure Blob Storage.
+"""Perform operations towards Azure Blob (container) Storage.
 
 ## Request methods
 
@@ -7,7 +7,7 @@ Supports the following request methods:
 * send
 * put
 * receive
-* put
+* get
 
 ## Format
 
@@ -27,14 +27,14 @@ is either `name` or based on the file name of `source`.
 
 ## Examples
 
-Example of how to use it in a scenario, with connection string:
+With connection string:
 
 ```gherkin
 Given a user of type "BlobStorage" load testing "DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=examplestorage;AccountKey=xxxyyyyzzz=="
 Then send request "test/blob.file" to endpoint "azure-blobstorage-container-name"
 ```
 
-Example of how to use it, with credentials:
+With credentials:
 
 ```gherkin
 Given a user of type "BlobStorage" load testing "bs://examplestorage"

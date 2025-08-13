@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.conditional Conditional
-This module contains step implementations for the {@pylink grizzly.tasks.conditional} task.
-"""
+"""Module contains step implementations for the [Conditional][grizzly.tasks.conditional] task."""
 
 from __future__ import annotations
 
@@ -15,11 +13,11 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @when('condition "{condition}" with name "{name}" is true, execute these tasks')
 def step_task_conditional_if(context: Context, condition: str, name: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.conditional} task which executes different sets of task depending on `condition`.
+    """Create an instance of the [Conditional][grizzly.tasks.conditional] task which executes different sets of task depending on `condition`.
 
     Also sets the task in a state that any following tasks will be run when `condition` is true.
 
-    See {@pylink grizzly.tasks.conditional} task documentation for more information.
+    See [Conditional][grizzly.tasks.conditional] task documentation for more information.
 
     Example:
     ```gherkin
@@ -30,6 +28,10 @@ def step_task_conditional_if(context: Context, condition: str, name: str) -> Non
     Then get request with name "get-when-false" from endpoint "/api/false"
     Then end condition
     ```
+
+    Args:
+        condition (str): jinja2 template that renders into a boolean
+        name (str): name of the conditional, will be used in request statistics
 
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
@@ -45,10 +47,10 @@ def step_task_conditional_if(context: Context, condition: str, name: str) -> Non
 
 @then('if condition is false, execute these tasks')
 def step_task_conditional_else(context: Context) -> None:
-    """Change state of {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_if}
+    """Change state of [Conditional][grizzly.tasks.conditional] task instance created by [Conditional if][grizzly.steps.scenario.tasks.conditional.step_task_conditional_if]
     so that any following tasks will be run when `condition` is false.
 
-    See {@pylink grizzly.tasks.conditional} task documentation for more information.
+    See [Conditional][grizzly.tasks.conditional] task documentation for more information.
 
     Example:
     ```gherkin
@@ -70,11 +72,11 @@ def step_task_conditional_else(context: Context) -> None:
 
 @then('end condition')
 def step_task_conditional_end(context: Context) -> None:
-    """Close the {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_if}.
+    """Close the [Conditional][grizzly.tasks.conditional] task instance created by [Conditional if][grizzly.steps.scenario.tasks.conditional.step_task_conditional_if].
 
     This means that any following tasks specified will not be part of the conditional.
 
-    See {@pylink grizzly.tasks.conditional} task documentation for more information.
+    See [Conditional][grizzly.tasks.conditional] task documentation for more information.
 
     Example:
     ```gherkin

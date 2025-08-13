@@ -8,7 +8,7 @@ import pytest
 
 from grizzly.steps import (
     step_task_client_from_endpoint_payload,
-    step_task_client_from_endpoint_payload_metadata,
+    step_task_client_from_endpoint_payload_and_metadata,
     step_task_client_to_endpoint_file,
     step_task_client_to_endpoint_file_destination,
     step_task_client_to_endpoint_text,
@@ -28,42 +28,42 @@ def test_step_task_client_from_endpoint_payload_metadata(behave_fixture: BehaveF
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
-    step_task_client_from_endpoint_payload_metadata(behave, RequestMethod.GET, 'obscure.example.com', 'step-name', 'test', 'metadata')
+    step_task_client_from_endpoint_payload_and_metadata(behave, RequestMethod.GET, 'obscure.example.com', 'step-name', 'test', 'metadata')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='could not find scheme in "obscure.example.com"')]}
     delattr(behave, 'exceptions')
 
-    step_task_client_from_endpoint_payload_metadata(behave, RequestMethod.GET, 'obscure://obscure.example.com', 'step-name', 'test', 'metadata')
+    step_task_client_from_endpoint_payload_and_metadata(behave, RequestMethod.GET, 'obscure://obscure.example.com', 'step-name', 'test', 'metadata')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='no client task registered for obscure')]}
     delattr(behave, 'exceptions')
 
-    step_task_client_from_endpoint_payload_metadata(behave, RequestMethod.GET, 'http://www.example.org', 'step-name', 'test', 'metadata')
+    step_task_client_from_endpoint_payload_and_metadata(behave, RequestMethod.GET, 'http://www.example.org', 'step-name', 'test', 'metadata')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='HttpClientTask: variable test has not been initialized')]}
     delattr(behave, 'exceptions')
 
     if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-        step_task_client_from_endpoint_payload_metadata(behave, RequestMethod.GET, 'mq://mq.example.org', 'step-name', 'test', 'metadata')
+        step_task_client_from_endpoint_payload_and_metadata(behave, RequestMethod.GET, 'mq://mq.example.org', 'step-name', 'test', 'metadata')
         assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='MessageQueueClientTask: variable test has not been initialized')]}
         delattr(behave, 'exceptions')
 
     grizzly.scenario.variables['test'] = 'none'
 
-    step_task_client_from_endpoint_payload_metadata(behave, RequestMethod.GET, 'http://www.example.org', 'step-name', 'test', 'metadata')
+    step_task_client_from_endpoint_payload_and_metadata(behave, RequestMethod.GET, 'http://www.example.org', 'step-name', 'test', 'metadata')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='HttpClientTask: variable metadata has not been initialized')]}
     delattr(behave, 'exceptions')
 
     if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-        step_task_client_from_endpoint_payload_metadata(behave, RequestMethod.GET, 'mq://mq.example.org', 'step-name', 'test', 'metadata')
+        step_task_client_from_endpoint_payload_and_metadata(behave, RequestMethod.GET, 'mq://mq.example.org', 'step-name', 'test', 'metadata')
         assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='MessageQueueClientTask: variable metadata has not been initialized')]}
         delattr(behave, 'exceptions')
 
     grizzly.scenario.variables['metadata'] = 'none'
 
     assert len(grizzly.scenario.tasks()) == 0
-    step_task_client_from_endpoint_payload_metadata(behave, RequestMethod.GET, 'http://www.example.org', 'step-name', 'test', 'metadata')
+    step_task_client_from_endpoint_payload_and_metadata(behave, RequestMethod.GET, 'http://www.example.org', 'step-name', 'test', 'metadata')
     assert len(grizzly.scenario.tasks()) == 1
 
     grizzly.scenario.variables['endpoint_url'] = 'https://example.org'
-    step_task_client_from_endpoint_payload_metadata(behave, RequestMethod.GET, 'https://{{ endpoint_url }}', 'step-name', 'test', 'metadata')
+    step_task_client_from_endpoint_payload_and_metadata(behave, RequestMethod.GET, 'https://{{ endpoint_url }}', 'step-name', 'test', 'metadata')
 
     task = grizzly.scenario.tasks()[-1]
     assert isinstance(task, HttpClientTask)
@@ -72,14 +72,14 @@ def test_step_task_client_from_endpoint_payload_metadata(behave_fixture: BehaveF
 
     behave.text = '1=1'
     with pytest.raises(NotImplementedError, match='HttpClientTask has not implemented support for step text'):
-        step_task_client_from_endpoint_payload_metadata(behave, RequestMethod.GET, 'https://{{ endpoint_url }}', 'step-name', 'test', 'metadata')
+        step_task_client_from_endpoint_payload_and_metadata(behave, RequestMethod.GET, 'https://{{ endpoint_url }}', 'step-name', 'test', 'metadata')
     assert behave.exceptions == {behave.scenario.name: [ANY(NotImplementedError, message='HttpClientTask has not implemented support for step text')]}
     delattr(behave, 'exceptions')
 
     print('=' * 200)
 
     behave.text = None
-    step_task_client_from_endpoint_payload_metadata(behave, RequestMethod.POST, 'https://{{ endpoint_url }}', 'step-name', 'test', 'metadata')
+    step_task_client_from_endpoint_payload_and_metadata(behave, RequestMethod.POST, 'https://{{ endpoint_url }}', 'step-name', 'test', 'metadata')
     assert behave.exceptions == {
         behave.scenario.name: [
             ANY(AssertionError, message='chosen request method does not match direction "from"'),

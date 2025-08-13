@@ -1,30 +1,29 @@
-"""@anchor pydoc:grizzly.tasks.clients.http HTTP
-This task performs a HTTP request to a specified endpoint.
+"""Task performs a HTTP request to a specified endpoint.
 
 This is useful if the scenario is using a non-HTTP user or a request to a URL other than the one under testing is needed, e.g. for testdata.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload}
+* [From endpoint payload][grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload]
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload_metadata}
+* [From endpoint payload and metadata][grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload_and_metadata]
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_text}
+* [To endpoint text][grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_text]
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file} (`source` will become contents of the specified file)
+* [To endpoint file][grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file] (`source` will become contents of the specified file)
 
 ## Arguments
 
-* `direction` _RequestDirection_ - only `RequestDirection.FROM` is implemented
-
-* `endpoint` _str_ - URL to perform GET request from
-
-* `name` _str_ - name used in `locust` statistics
+| Name        | Type               | Description                                            | Default    |
+| ----------- | ------------------ | ------------------------------------------------------ | ---------- |
+| `direction` | `RequestDirection` | impicit specified by which step implementation is used | _required_ |
+| `endpoint`  | `str`              | URL to perform GET request from                        | _required_ |
+| `name`      | `str`              | name used in `locust` statistics                       | _required_ |
 
 ## Authentication
 
 To enable authentication for `HttpClientTask` the `auth` context tree has to be correctly set. This is done by using
-{@pylink grizzly.steps.setup.step_setup_set_context_variable} where the branches are prefixed with `<host>/`, e.g.:
+[Set context variable][grizzly.steps.setup.step_setup_set_context_variable] step, where the branches are prefixed with `<host>/`, e.g.:
 
 ```gherkin
 And value for variable "foobar" is "none"
@@ -41,7 +40,8 @@ Then get from "https://{{ url }}" with name "authenticated-get" and save respons
 This will make any requests towards `www.example.com` to get a token from `http://login.example.com/oauth2` and use it in any
 requests towards `www.example.com`.
 
-For more details, see {@pylink grizzly.auth.aad}.
+For more details, see [AAD][grizzly.auth.aad] documentation.
+
 """
 
 from __future__ import annotations

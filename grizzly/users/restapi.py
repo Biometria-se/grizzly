@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.users.restapi RestAPI
-Communicates with HTTP and HTTPS, with built-in support for Azure authenticated endpoints.
+"""Communicates with HTTP and HTTPS, with built-in support for Azure token authenticated endpoints.
 
 ## Request methods
 
@@ -34,9 +33,9 @@ And set context variable "auth.refresh_time" to "3500"
 
 ### Authentication
 
-See {@pylink grizzly.auth.aad}.
+See [AAD][grizzly.auth.aad] for more information.
 
-It is possible to change authenticated user during runtime by using {@pylink grizzly.steps.setup.step_setup_set_context_variable} step expressions inbetween other tasks.
+It is possible to change authenticated user during runtime by using [Set context variable][grizzly.steps.setup.step_setup_set_context_variable] step expressions inbetween other tasks.
 To change user both `auth.user.username` and `auth.user.password` has to be changed (even though maybe only one of them changes value).
 
 This will then cache the `Authorization` token for the current user, and if changed back to that user there is no need to re-authenticate again, unless `refresh_time` for the first login
@@ -65,7 +64,7 @@ the cached authentication tokens will be re-used.
 #### mTLS
 
 It is possible to use mTLS by specifying the client certificate and key with `auth.client.cert_file` and `auth.client.key_file`, this will then make it possible for the server to authenticate
-the user / client by the certificate.
+the user / client with a certificate.
 
 ```gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
@@ -79,9 +78,9 @@ Then get request from endpoint "/api/test"
 For now the key file can not be password protected. Path to the files needs to be relative to `GRIZZLY_CONTEXT_ROOT`, which in most cases means relative to the directory where `environment.py`
 resides.
 
-### Multipart/form-data
+### Multipart form-data
 
-RestApi supports posting of multipart/form-data content-type, and in that case additional arguments needs to be passed with the request:
+RestApi supports posting of `multipart/form-data` content-type, and in that case additional arguments needs to be passed with the request:
 
 * `multipart_form_data_name` _str_ - the name of the input form
 

@@ -32,16 +32,18 @@ class StepHeaders(PostProcessor):
     def __init__(self, logger: MkdocsPluginLogger) -> None:
         self.logger = logger
 
-    def __call__(self, page: Page, html: str | None) -> str | None:  # noqa: ARG002
+    def __call__(self, page: Page, html: str | None) -> str | None:
         if html is None:
             return html
 
         tree = lxml.html.fromstring(html)
 
+        module = page.meta.get('module', None)
+
         headers = tree.cssselect('h2.doc.doc-heading')
 
         for header in headers:
-            header_text = transform_step_header(header.text_content().strip())
+            header_text = transform_step_header(header.text_content().strip(), module)
 
             # remove children
             for child in header:
@@ -62,47 +64,52 @@ class SubHeaders(PostProcessor):
         if html is None:
             return html
 
-        if 'Parameters:' not in html:
-            return html
-
-        # <p><span class="doc-section-title">Parameters:</span></p>
-        # <h3 id="grizzly.auth.aad--mfa-totp">MFA / TOTP</h3>
-
         tree = lxml.html.fromstring(html)
 
-        headers = tree.cssselect('p > span.doc-section-title:contains("Parameters:")')
+        if 'Parameters:' in html:
+            """
+            <p><span class="doc-section-title">Parameters:</span></p> ->
+            <h3 id="<namespace>--arguments">Arguments</h3>
+            """
 
-        for span in headers:
-            p = span.getparent()
-            parent = p.getparent()
-            header_text = span.text_content().strip()
+            headers = tree.cssselect('p > span.doc-section-title:contains("Parameters:")')
 
-            if header_text != 'Parameters:':
-                continue
+            for span in headers:
+                p = span.getparent()
+                parent = p.getparent()
+                header_text = span.text_content().strip()
 
-            grandparent = parent.getparent()
+                if header_text != 'Parameters:':
+                    continue
 
-            main_header = next(iter(grandparent.cssselect('h2.doc-heading')))
-            main_id = main_header.get('id')
+                grandparent = parent.getparent()
 
-            new_header = E.h3('Arguments', {'id': f'{main_id}--arguments'})
-            parent.replace(p, new_header)
+                main_header = next(iter(grandparent.cssselect('h2.doc-heading')))
+                main_id = main_header.get('id')
 
-        headers = tree.cssselect('p:contains("Example:")')
+                new_header = E.h3('Arguments', {'id': f'{main_id}--arguments'})
+                parent.replace(p, new_header)
 
-        for p in headers:
-            parent = p.getparent()
-            header_text = p.text_content().strip()
+        if 'Example:' in html:
+            """
+            <p>Example: </p> ->
+            <h3 id="<namespace>--example">Example</h3>
+            """
+            headers = tree.cssselect('p:contains("Example:")')
 
-            if header_text != 'Example:':
-                continue
+            for p in headers:
+                parent = p.getparent()
+                header_text = p.text_content().strip()
 
-            grandparent = parent.getparent()
+                if header_text != 'Example:':
+                    continue
 
-            main_header = next(iter(grandparent.cssselect('h2.doc-heading')))
-            main_id = main_header.get('id')
+                grandparent = parent.getparent()
 
-            new_header = E.h3('Example', {'id': f'{main_id}--example'})
-            parent.replace(p, new_header)
+                main_header = next(iter(grandparent.cssselect('h2.doc-heading')))
+                main_id = main_header.get('id')
+
+                new_header = E.h3('Example', {'id': f'{main_id}--example'})
+                parent.replace(p, new_header)
 
         return cast('str | None', lxml.html.tostring(tree).decode())

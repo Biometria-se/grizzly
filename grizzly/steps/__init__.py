@@ -17,12 +17,11 @@ Feature: description of the test
 
 In this package there are modules with step implementations that can be used in both `Background` and `Scenario` sections in a feature file.
 
-@anchor pydoc:grizzly.steps.custom Custom steps
 ## Custom
 
 Custom steps are implemented in your `grizzly` project `features/steps/steps.py` file. This is also the file that imports all `grizzly`-defined step implementations.
 
-There are examples of this in the {@link framework.example}.
+There are examples of this in the [example][example] documentation.
 
 ## Considerations
 

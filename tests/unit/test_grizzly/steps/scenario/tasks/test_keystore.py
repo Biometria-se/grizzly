@@ -5,15 +5,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from grizzly.steps import (
-    step_task_keystore_dec_default_step,
-    step_task_keystore_del,
+    step_task_keystore_decrement_default_with_step,
     step_task_keystore_get,
     step_task_keystore_get_default,
     step_task_keystore_get_remove,
-    step_task_keystore_inc_default_step,
+    step_task_keystore_increment_default_with_step,
     step_task_keystore_pop,
     step_task_keystore_push,
     step_task_keystore_push_text,
+    step_task_keystore_remove,
     step_task_keystore_set,
     step_task_keystore_set_text,
 )
@@ -204,7 +204,7 @@ def test_step_task_keystore_set_text(behave_fixture: BehaveFixture) -> None:
     assert task.arguments == {'render': True}
 
 
-def test_step_task_keystore_inc_default_step(behave_fixture: BehaveFixture) -> None:
+def test_step_task_keystore_increment_default_step_with_step(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -212,16 +212,16 @@ def test_step_task_keystore_inc_default_step(behave_fixture: BehaveFixture) -> N
 
     grizzly.scenario.tasks.clear()
 
-    step_task_keystore_inc_default_step(behave, 'foobar', 1)
+    step_task_keystore_increment_default_with_step(behave, 'foobar', 1)
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='action context for "inc" must be a string')]}
     delattr(behave, 'exceptions')
 
-    step_task_keystore_inc_default_step(behave, 'foobar', 'foobar')
+    step_task_keystore_increment_default_with_step(behave, 'foobar', 'foobar')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variable "foobar" has not been initialized')]}
     delattr(behave, 'exceptions')
 
     grizzly.scenario.variables.update({'foobar': 'none'})
-    step_task_keystore_inc_default_step(behave, 'foobar', 'foobar')
+    step_task_keystore_increment_default_with_step(behave, 'foobar', 'foobar')
 
     task = grizzly.scenario.tasks()[-1]
 
@@ -232,7 +232,7 @@ def test_step_task_keystore_inc_default_step(behave_fixture: BehaveFixture) -> N
     assert task.default_value is None
 
 
-def test_step_task_keystore_dec_default_step(behave_fixture: BehaveFixture) -> None:
+def test_step_task_keystore_decrement_default_step_with_step(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -240,16 +240,16 @@ def test_step_task_keystore_dec_default_step(behave_fixture: BehaveFixture) -> N
 
     grizzly.scenario.tasks.clear()
 
-    step_task_keystore_dec_default_step(behave, 'foobar', 1)
+    step_task_keystore_decrement_default_with_step(behave, 'foobar', 1)
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='action context for "dec" must be a string')]}
     delattr(behave, 'exceptions')
 
-    step_task_keystore_dec_default_step(behave, 'foobar', 'foobar')
+    step_task_keystore_decrement_default_with_step(behave, 'foobar', 'foobar')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variable "foobar" has not been initialized')]}
     delattr(behave, 'exceptions')
 
     grizzly.scenario.variables.update({'foobar': 'none'})
-    step_task_keystore_dec_default_step(behave, 'foobar', 'foobar')
+    step_task_keystore_decrement_default_with_step(behave, 'foobar', 'foobar')
 
     task = grizzly.scenario.tasks()[-1]
 
@@ -392,7 +392,7 @@ def test_step_task_keystore_push_text(behave_fixture: BehaveFixture) -> None:
     assert task.arguments == {'render': True}
 
 
-def test_step_task_keystore_del(behave_fixture: BehaveFixture) -> None:
+def test_step_task_keystore_remove(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
 
@@ -401,7 +401,7 @@ def test_step_task_keystore_del(behave_fixture: BehaveFixture) -> None:
 
     grizzly.scenario.tasks.clear()
 
-    step_task_keystore_del(behave, 'foobar::{{ foo }}')
+    step_task_keystore_remove(behave, 'foobar::{{ foo }}')
 
     task = grizzly.scenario.tasks()[-1]
 

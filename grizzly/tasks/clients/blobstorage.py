@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.tasks.clients.blobstorage Blob Storage
-This task performs Azure Blob Storage put operations to a specified endpoint.
+"""Task performs Azure Blob Storage put operations to a specified endpoint.
 
 This is useful if the scenario is another user type than `BlobStorageUser`, but the scenario still requires an action towards a blob container.
 
@@ -7,57 +6,59 @@ Only supports `RequestDirection.TO`.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file_destination}
+* [To endpoint file destination][grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file_destination]
 
 ## Arguments
 
-* `direction` _RequestDirection_ - if the request is upstream or downstream
-
-* `endpoint` _str_ - specifies details to be able to perform the request, e.g. account and container information
-
-* `name` _str_ - name used in `locust` statistics
-
-* `destination` _str_ (optional) - name of the file when uploaded, if not specified the basename of `source` will be used
-
-* `source` _str_ (optional) - file path of local file that should be saved in `Container`
+| Name          | Type               | Description                                                                                 | Default    |
+| ------------- | ------------------ | ------------------------------------------------------------------------------------------- | ---------- |
+| `direction`   | `RequestDirection` | if the request is upstream or downstream                                                    | _required_ |
+| `endpoint`    | `str`              | specifies details to be able to perform the request, e.g. account and container information | _required_ |
+| `name`        | `str`              | name used in `locust` statistics                                                            | _required_ |
+| `destination` | `str`              | name of the file when uploaded, if not specified the basename of `source` will be used      | `None`     |
+| `source`      | `str`              | file path of local file that should be saved in `Container`                                 | `None`     |
 
 ## Format
 
-### `endpoint`
+### endpoint
 
 Using connection strings:
+
 ```plain
 bs[s]://<AccountName>/<Container>?AccountKey=<AccountKey>[# Overwrite=<bool>]
 ```
-* `AccountName` _str_ - name of storage account
 
-* `AccountKey` _str_ - secret key to be able to "connect" to the storage account
-
-* `Container` _str_ - name of the container to perform the request on
-
-* `Overwrite` _bool_ - if files should be overwritten if they already exists in `Container` (default: `False`)
+| Name          | Type   | Description                                                          | Default    |
+| ------------- | ------ | -------------------------------------------------------------------- | ---------- |
+| `AccountName` | `str`  | name of storage account                                              | _required_ |
+| `AccountKey`  | `str`  | secret key to be able to "connect" to the storage account            | _required_ |
+| `Container`   | `str`  | name of the container to perform the request on                      | _required_ |
+| `Overwrite`   | `bool` | if files should be overwritten if they already exists in `Container` | `False`    |
 
 Using credentials:
 ```plain
 bs[s]://<username>:<password>@<AccountName>/<Container># Tenant=<tenant>[&Overwrite=<bool>]
 ```
 
-* `username` _str_ - username to connect as
+| Name          | Type   | Description                                                          | Default    |
+| ------------- | ------ | -------------------------------------------------------------------- | ---------- |
+| `username`    | `str`  | username to authenticate with                                        | _required_ |
+| `password`    | `str`  | password to authenticate with                                        | _required_ |
+| `AccountName` | `str`  | name of storage account                                              | _required_ |
+| `Tenant`      | `str`  | name of tenant to authenticate with                                  | _required_ |
+| `Container`   | `str`  | name of the container to perform the request on                      | _required_ |
+| `Overwrite`   | `bool` | if files should be overwritten if they already exists in `Container` | `False`    |
 
-* `password` _str_  - password for said user
+### destination
 
-* `AccountName` _str_ - name of storage account
+The MIME type of an uploaded file will automagically be guessed based on the (rendered) destination file extension.
 
-* `Tenant` _str_  - name of tenant to authenticate with
+## Examples
 
-* `Container` _str_ - name of the container to perform the request on
-
-* `Overwrite` _bool_ - if files should be overwritten if they already exists in `Container` (default: `False`)
-
-### `destination`
-
-The MIME type of an uploaded file will automagically be guessed based on the [rendered] destination file extension.
-"""
+```gherkin
+Then put to "upload/incoming.j2.txt" to "bss://$conf::storage.name$/$conf::storage.container$?AccountKey=$conf::storage.key$#Overwrite=True" with name "upload" as "2025/08/13/incoming.txt"
+```
+"""  # noqa: E501
 
 from __future__ import annotations
 

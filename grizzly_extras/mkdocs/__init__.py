@@ -35,7 +35,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly_extras.mkdocs.postprocessors import PostProcessor, TextFormat
 
 
-def transform_step_header(text: str) -> str:
+def transform_step_header(text: str, module: str | None) -> str:
     if not text.startswith('step_'):
         return text
 
@@ -44,6 +44,11 @@ def transform_step_header(text: str) -> str:
 
     # remove function arguments
     text = re.sub(r'\(.*', '', text)
+
+    if module is not None:
+        _, module = module.rsplit('.', 1)
+
+        text = text.replace(f'{module}_', '')
 
     # remove snakes, and capatilize
     return text.replace('_', ' ').capitalize()
@@ -123,7 +128,7 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
         return value
 
     def _validate_doc(self, source: str, doc: str) -> None:
-        old_statements: list[str] = [statement for statement in ['@anchor', '@pylink', '@link'] if statement in doc]
+        old_statements: list[str] = [statement for statement in ['@anchor', '@pylink', '@link', '@shell', '@cat'] if statement in doc]
 
         if old_statements:
             old_statements_string = ', '.join(old_statements)
@@ -229,7 +234,7 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
             module_name = '.'.join(parts)
             from_module_name = '.'.join(parts[:-1])
 
-            self.logger.trace(f'importing {module_name} from {from_module_name}')
+            self.logger.debug(f'importing {module_name} from {from_module_name}')
 
             try:
                 with warnings.catch_warnings():
@@ -247,13 +252,13 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
                     if module_docs is None:
                         continue
 
+                    self._validate_doc(f'{root_module_name.replace(".", "/")}/{relative_path.as_posix()}', module_docs)
+
                     if 'members' not in module_extra_mkdocstrings_options:
                         members.extend(self._get_members(py_module))
 
                     log_members = indent('\n'.join(members), '  - ')
                     self.logger.debug(f'{py_module_file.as_posix()} members', payload=log_members)
-
-                    self._validate_doc(f'{root_module_name.replace(".", "/")}/{relative_path.as_posix()}', module_docs)
 
                     full_doc_path.unlink(missing_ok=True)
 
@@ -273,7 +278,8 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
                             f"""---
 title: {title}
 date: {date.isoformat()}
-module: {root_module_name}
+root_module: {root_module_name}
+module: {module_name}
 source_url: {self.repo_url}/blob/main/{path.relative_to(Path.cwd()).as_posix()}
 {frontmatter_markdown}---
 ::: {module_name}
@@ -306,7 +312,6 @@ source_url: {self.repo_url}/blob/main/{path.relative_to(Path.cwd()).as_posix()}
                             inclusion=InclusionLevel.INCLUDED,
                         ),
                     )
-
             except ImportError as e:
                 message = str(e)
                 self.logger.exception(message, payload=f'{from_module_name=}, {module_name=}')
@@ -359,7 +364,6 @@ source_url: {self.repo_url}/blob/main/{path.relative_to(Path.cwd()).as_posix()}
                     if index > 0:
                         index_page = replace_nav_items.pop(index)
                         replace_nav_items.insert(0, index_page)
-                    self.logger.trace(f'{index_page_path}: {index}')
 
                 nav_items = replace_nav_items
 
@@ -376,7 +380,7 @@ source_url: {self.repo_url}/blob/main/{path.relative_to(Path.cwd()).as_posix()}
         return self._on_page(html, page, config, files, text_format='html')
 
     def _on_page(self, content: str, page: Page, config: MkDocsConfig, files: Files, *, text_format: TextFormat) -> str | None:  # noqa: ARG002
-        module = page.meta.get('module', None)
+        module = page.meta.get('root_module', None)
 
         if module is None:
             return content

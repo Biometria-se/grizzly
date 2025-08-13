@@ -4,7 +4,9 @@ If the specified file already exist, new content will be appended to the existin
 
 ## Step implementations
 
-* [Write file][grizzly.steps.scenario.tasks.write_file.step_task_write_file]
+* [Create or append][grizzly.steps.scenario.tasks.write_file.step_task_write_file_create_or_append]
+
+* [Temporary][grizzly.steps.scenario.tasks.write_file.step_task_write_file_temporary]
 
 """
 

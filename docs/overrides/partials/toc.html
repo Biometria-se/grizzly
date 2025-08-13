@@ -51,7 +51,7 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       {% for toc_item in toc %}
         {% if page.title | lower != toc_item.title | lower %}
-            {% set _ = toc_item.__setattr__("title", toc_item.title | transformstepheader) %}
+            {% set _ = toc_item.__setattr__("title", toc_item.title | transformstepheader(page.meta.module)) %}
             {% include "partials/toc-item.html" %}
         {% endif %}
       {% endfor %}

@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.wait_explicit Explicit wait
-This module contains step implementations for the {@pylink grizzly.tasks.wait_explicit} task.
-"""
+"""Module contains step implementations for the [Wait explicit][grizzly.tasks.wait_explicit] task."""
 
 from __future__ import annotations
 
@@ -16,13 +14,13 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @then('wait for "{wait_time_expression}" seconds')
-def step_task_wait_explicit(context: Context, wait_time_expression: str) -> None:
-    """Create an instace of the {@pylink grizzly.tasks.wait_explicit} task.
+def step_task_wait_explicit_static(context: Context, wait_time_expression: str) -> None:
+    """Create an instace of the [Wait explicit][grizzly.tasks.wait_explicit] task.
 
     The scenario will wait the specified time (seconds) in additional to the wait time specified
-    by {@pylink grizzly.tasks.wait_between}.
+    by [Wait between][grizzly.tasks.wait_between] task.
 
-    See {@pylink grizzly.tasks.wait_explicit} task documentation for more information about the task.
+    See [Wait explicit][grizzly.tasks.wait_explicit] task documentation for more information.
 
     Example:
     ```gherkin
@@ -34,11 +32,11 @@ def step_task_wait_explicit(context: Context, wait_time_expression: str) -> None
     Then wait for "{{ wait_time }}" seconds
     ```
 
-    Above combinations of steps will result in a wait time between 3 and 4 seconds for the first {@pylink grizzly.tasks} that is defined after the
+    Above combinations of steps will result in a wait time between 3 and 4 seconds for the first [task][grizzly.tasks] that is defined after the
     `Then wait for...`-step.
 
     Args:
-        wait_time (float): wait time in seconds
+        wait_time_expression (str | float): [templating][framework.usage.variables.templating] that renders to a float
 
     """
     grizzly = cast('GrizzlyContext', context.grizzly)

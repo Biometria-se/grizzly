@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.async_group Async group
-This module contains step implementations for the {@pylink grizzly.tasks.async_group} task.
-"""
+"""Module contains step implementations for the [Async group][grizzly.tasks.async_group] task."""
 
 from __future__ import annotations
 
@@ -14,12 +12,12 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @given('an async request group with name "{name}"')
-def step_task_async_group_start(context: Context, name: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.async_group} task.
+def step_task_async_group_open(context: Context, name: str) -> None:
+    """Create an instance of the [Async group][grizzly.tasks.async_group] task.
 
-    All {@pylink grizzly.tasks.request} tasks created after this step will be added to the request group, until the group is closed.
+    All [Request][grizzly.tasks.request] tasks created after this step will be added to the request group, until the group is closed.
 
-    See {@pylink grizzly.tasks.async_group} task documentation for more information.
+    See [Async group][grizzly.tasks.async_group] task documentation for more information.
 
     Example:
     ```gherkin
@@ -27,7 +25,7 @@ def step_task_async_group_start(context: Context, name: str) -> None:
     Then post request with name "test-post-2" to endpoint "/api/test"
         \"\"\"
         {
-            "value": "i have good news!"
+            "value": "good news everyone!"
         }
         \"\"\"
 
@@ -36,6 +34,10 @@ def step_task_async_group_start(context: Context, name: str) -> None:
     ```
 
     In this example, the `put` and `get` requests will run asynchronously, and both requests will block following requests until both are finished.
+    [Async group][grizzly.tasks.async_group] tasks cannot be nested.
+
+    Args:
+        name (str): unique name for the group, used in request statistics
 
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
@@ -47,11 +49,11 @@ def step_task_async_group_start(context: Context, name: str) -> None:
 
 @then('close async request group')
 def step_task_async_group_close(context: Context) -> None:
-    """Close the instance created in {@pylink grizzly.steps.scenario.tasks.async_group.step_task_async_group_start}.
+    """Close the instance created in [Async group start][grizzly.steps.scenario.tasks.async_group.step_task_async_group_open].
 
-    Add the {@pylink grizzly.tasks.async_group} task to the list of tasks that the scenario is going to execute.
+    Add the [Async group][grizzly.tasks.async_group] task to the list of tasks that the scenario is going to execute.
 
-    See {@pylink grizzly.tasks.async_group} task documentation for more information.
+    See [Async group][grizzly.tasks.async_group] task documentation for more information.
 
     Example:
     ```gherkin
@@ -59,7 +61,7 @@ def step_task_async_group_close(context: Context) -> None:
     Then post request with name "test-post-2" to endpoint "/api/test"
         \"\"\"
         {
-            "value": "i have good news!"
+            "value": "good news everyone!"
         }
         \"\"\"
 

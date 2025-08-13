@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.wait_between Wait between
-This module contains step implementations for the {@pylink grizzly.tasks.wait_between} task.
-"""
+"""Module contains step implementations for the [Wait between][grizzly.tasks.wait_between] task."""
 
 from __future__ import annotations
 
@@ -17,11 +15,11 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @given('wait "{min_time}..{max_time}" seconds between tasks')
 def step_task_wait_between_random(context: Context, min_time: str, max_time: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.wait_between} task.
+    """Create an instance of the [Wait between][grizzly.tasks.wait_between] task.
 
-    Set number of, randomly, seconds the {@pylink grizzly.users} will wait between executing each task.
+    Set number of, randomly, seconds the [load user][grizzly.users] will wait between executing each task.
 
-    See {@pylink grizzly.tasks.wait_between} task documentation for more information.
+    See [Wait between][grizzly.tasks.wait_between] task documentation for more information.
 
     Example:
     ```gherkin
@@ -41,6 +39,12 @@ def step_task_wait_between_random(context: Context, min_time: str, max_time: str
     ...
     ```
 
+    Args:
+        min_time (str): minimum time to wait between tasks
+        max_time (str): maximum time to wait between tasks
+
+    Arguments supports [templating][framework.usage.variables.templating].
+
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
     if has_parameter(min_time):
@@ -54,11 +58,11 @@ def step_task_wait_between_random(context: Context, min_time: str, max_time: str
 
 @given('wait "{time}" seconds between tasks')
 def step_task_wait_between_constant(context: Context, time: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.wait_between} task.
+    """Create an instance of the [Wait between][grizzly.tasks.wait_between] task.
 
-    Set number of, constant, seconds the {@pylink grizzly.users} will wait between executing each task.
+    Set number of, constant, seconds the [load user][grizzly.users] will wait between executing each task.
 
-    See {@pylink grizzly.tasks.wait_between} task documentation for more information.
+    See [Wait between][grizzly.tasks.wait_between] task documentation for more information.
 
     Example:
     ```gherkin
@@ -77,6 +81,11 @@ def step_task_wait_between_constant(context: Context, time: str) -> None:
     # wait 1.3 seconds
     ...
     ```
+
+    Args:
+        time (str): static time to wait between tasks
+
+    Argument supports [templating][framework.usage.variables.templating].
 
     """
     grizzly = cast('GrizzlyContext', context.grizzly)

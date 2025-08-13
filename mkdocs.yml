@@ -53,6 +53,11 @@ plugins:
               level: 2
         grizzly.tasks.clients:
           output: framework/usage/tasks/clients
+          extra_mkdocstrings_options:
+            members: false
+          extra_frontmatter:
+            toc:
+              level: 2
         grizzly.steps:
           output: framework/usage/steps
           postprocessors:
@@ -73,6 +78,10 @@ plugins:
           postprocessors:
           - grizzly_extras.mkdocs.postprocessors.StepHeaders
           - grizzly_extras.mkdocs.postprocessors.SubHeaders
+          extra_mkdocstrings_options:
+            show_root_toc_entry: false
+          ignore:
+          - __init__.py
         grizzly.users:
           output: framework/usage/users
           extra_frontmatter:
@@ -94,6 +103,8 @@ plugins:
 
 markdown_extensions:
   - attr_list
+  - admonition
+  - footnotes
   - pymdownx.blocks.tab:
       alternate_style: true
   - pymdownx.highlight:

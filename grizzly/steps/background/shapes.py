@@ -39,8 +39,7 @@ def step_shapes_user_count(context: Context, value: str, **_kwargs: Any) -> None
     ```
 
     Args:
-        user_count (int): Number of users locust should create
-        grammar (UserGramaticalNumber): one of `user`, `users`
+        value (str): number of users locust should create, supports [templating][framework.usage.variables.templating] that renders to an `int`
 
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
@@ -77,8 +76,7 @@ def step_shapes_spawn_rate(context: Context, value: str, **_kwargs: Any) -> None
     ```
 
     Args:
-        spawn_rate (float): number of users per second
-        grammar (UserGramaticalNumber): one of `user`, `users`
+        value (str): number of users locust should create, supports [templating][framework.usage.variables.templating] that renders to a `float`
 
     """
     assert isinstance(value, str), f'{value} is not a string'

@@ -6,9 +6,9 @@
 
 Valid for:
 
-* [`grizzly.steps.scenario.response.step_response_save_matches`][grizzly.steps.scenario.response.step_response_save_matches]
-* [`grizzly.steps.scenario.response.step_response_save`][grizzly.steps.scenario.response.step_response_save]
-* [`grizzly.steps.scenario.response.step_response_validate`][grizzly.steps.scenario.response.step_response_validate]
+* [Save matches][grizzly.steps.scenario.response.step_response_save_matches]
+* [Save][grizzly.steps.scenario.response.step_response_save]
+* [Validate][grizzly.steps.scenario.response.step_response_validate]
 
 | Name               | Type   | Description                                                                                                | Default |
 | ------------------ | ------ | ---------------------------------------------------------------------------------------------------------- | ------- |

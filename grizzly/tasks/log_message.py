@@ -3,7 +3,7 @@
 
 ## Step implementations
 
-* [Log message][grizzly.steps.scenario.tasks.log_message.step_task_log_message]
+* [Print][grizzly.steps.scenario.tasks.log_message.step_task_log_message_print]
 
 ## Statistics
 

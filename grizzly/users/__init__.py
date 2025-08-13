@@ -4,8 +4,9 @@ These implementations are the basis for how to communicate with the system under
 
 ## Custom
 
-It is possible to implement custom users, the only requirement is that they inherit `grizzly.users.GrizzlyUser`. To get them to be executed by `grizzly`
-the full namespace has to be specified as `user_class_name` in the scenarios [`grizzly.steps.scenario.user`][grizzly.steps.scenario.user] step.
+It is possible to implement custom users, the only requirement is that they inherit `grizzly.users.GrizzlyUser`.
+To get them to be executed by `grizzly` the full namespace has to be specified as `user_class_name` in the
+scenarios [user][grizzly.steps.scenario.user] step.
 
 There are examples of this in the [example][example] documentation.
 """

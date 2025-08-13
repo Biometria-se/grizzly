@@ -5,9 +5,9 @@ than the id (which it might have received from a queue or topic), and hence the 
 
 ## Step implementations
 
-* [Async timer start][grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_start]
+* [Start][grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_start]
 
-* [Async timer stop][grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_stop]
+* [Stop][grizzly.steps.scenario.tasks.async_timer.step_task_async_timer_stop]
 
 ## Statistics
 

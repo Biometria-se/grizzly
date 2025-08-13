@@ -2,7 +2,7 @@
 
 ## Step implementations
 
-* [Wait explicit][grizzly.steps.scenario.tasks.wait_explicit.step_task_wait_explicit]
+* [Static][grizzly.steps.scenario.tasks.wait_explicit.step_task_wait_explicit_static]
 
 """
 

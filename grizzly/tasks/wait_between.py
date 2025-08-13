@@ -3,7 +3,7 @@
 The default is to wait `0` seconds between each task.
 
 This is useful in a scenario with many tasks that should have some wait time between them, but there are a group
-of tasks (e.g. [Transform][grizzly.tasks.transform], [Date][grizzly.tasks.date] or [Log Message][grizzly.tasks.log_message])
+of tasks (e.g. [Transformer][grizzly.tasks.transformer], [Date][grizzly.tasks.date] or [Log Message][grizzly.tasks.log_message])
 that should execute as fast as possible.
 
 If `max_time` is not provided, the wait between tasks is constant `min_time`. If both are provided there will be a

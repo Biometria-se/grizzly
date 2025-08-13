@@ -1,74 +1,69 @@
-"""@anchor pydoc:grizzly.tasks.clients.messagequeue Messagequeue
-This task performs IBM MQM get and put opertions to a specified queue or topic.
+"""Task performs IBM MQM get and put opertions to a specified queue or topic.
 
 This is useful if the scenario is another user type than `MessageQueueUser`, but the scenario still requires an action towards an MQ server.
-Use {@pylink grizzly.tasks.transformer} task to extract specific parts of the message.
+Use [Transformer][grizzly.tasks.transformer] task to extract specific parts of the message.
 
-Grizzly *must* have been installed with the extra `mq` package and native IBM MQ libraries must be installed for being able to use this variable:
+!!! warning
 
-```plain
-pip3 install grizzly-loadtester[mq]
-```
+    Grizzly **must** have been installed with the extra `mq` package and native IBM MQ libraries must be installed for being able to use this client task.
+
+    ```plain
+    pip3 install grizzly-loadtester[mq]
+    ```
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload}
+* [From endpoint payload][grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload]
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload_metadata}
+* [From endpoint payload and metadata][grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload_and_metadata]
 
-* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file}
+* [To endpoint file][grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file]
 
 ## Arguments
 
-* `direction` _RequestDirection_ - if the request is upstream or downstream
-
-* `endpoint` _str_ - specifies details to be able to perform the request, e.g. account and container information
-
-* `name` _str_ - name used in `locust` statistics
-
-* `destination` _str_ (optional) - **not used by this client**
-
-* `source` _str_ (optional) - file path of local file that should be put on `endpoint`
+| Name          | Type               | Description                                                                                 | Default    |
+| ------------- | ------------------ | ------------------------------------------------------------------------------------------- | ---------- |
+| `direction`   | `RequestDirection` | if the request is upstream or downstream                                                    | _required_ |
+| `endpoint`    | `str`              | specifies details to be able to perform the request, e.g. account and container information | _required_ |
+| `name`        | `str`              | name used in `locust` statistics                                                            | _required_ |
+| `destination` | `str`              | *not used by this client*                                                                   | `None`     |
+| `source`      | `str`              | file path of local file that should be put on `endpoint`                                    | `None`     |
 
 ## Format
 
-### `endpoint`
+### endpoint
 
 ```plain
 mq[s]://<username>:<password>@]<hostname>[:<port>]/<endpoint>?QueueManager=<queue manager>&Channel=<channel>[&wait=<wait>][&heartbeat=<heartbeat>][&KeyFile=<key repo path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]][&HeaderType=<header type>][&MaxMessageSize=<number of bytes>]
 ```
 
-All variables in the endpoint have support for {@link framework.usage.variables.templating}.
+All variables in the endpoint has support for [templating][framework.usage.variables.templating].
 
-* `mq[s]` _str_ - must be specified, `mqs` implies connecting with TLS, if `KeyFile` is not set in querystring, it will look for a key repository in `./<username>`
+| Name             | Type  | Description                                                                                                                                                                      | Default    |
+| ---------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `mq[s]`          | _str_ | must be specified, `mqs` implies connecting with TLS, if `KeyFile` is not set in querystring, it will look for a key repository in `./<username>`                                | _required_ |
+| `username`       | _str_ | username to authenticate with                                                                                                                                                    | `None`     |
+| `password`       | _str_ | password to authenticate with                                                                                                                                                    | `None`     |
+| `hostname`       | _str_ | hostname of MQ server                                                                                                                                                            | _required_ |
+| `port`           | _int_ | port on MQ server                                                                                                                                                                | `1414`     |
+| `endpoint`       | _str_ | prefixed with either `topic:` or `queue:` and then the name of the endpoint to perform operations on                                                                             | _required_ |
+| `wait`           | _int_ | number of seconds to wait for an message, default is to wait infinite                                                                                                            | `0`        |
+| `heartbeat`      | _int_ | number of seconds between heartbeats                                                                                                                                             | `300`      |
+| `QueueManager`   | _str_ | name of queue manager                                                                                                                                                            | _required_ |
+| `Channel`        | _str_ | name of channel to connect to                                                                                                                                                    | _required_ |
+| `KeyFile`        | _str_ | path to key repository for certificates needed to connect over TLS                                                                                                               | `None`     |
+| `SslCipher`      | _str_ | SSL cipher to use for connection, default `ECDHE_RSA_AES_256_GCM_SHA384`                                                                                                         | `None`     |
+| `CertLabel`      | _str_ | label of certificate in key repository                                                                                                                                           | `username` |
+| `HeaderType`     | _str_ | header type, can be `RFH2` for sending gzip compressed messages using RFH2 header                                                                                                | `None`     |
+| `MaxMessageSize` | _int_ | maximum number of bytes a message can be for the client to accept it, default value implies that the client will throw `MQRC_TRUNCATED_MSG_FAILED`, adjust buffer and try again. | `None`     |
 
-* `username` _str_ (optional) - username to authenticate with, default `None`
+## Examples
 
-* `password` _str_ (optional) - password to authenticate with, default `None`
+```gherkin
+Given value for variable "message" is "none"
+Then get from "mqs://$conf::mq.username$:$conf::mq.password$@$conf::mq.endpoint.host$/queue:INCOMING?QueueManager=$conf::mq.endpoint.qm$&Channel=$conf::mq.channel$&KeyFile=$conf::mq.key_file$&wait=1800&MaxMessageSize=16384" with name "get-incoming" and save response payload in "message"
+```
 
-* `hostname` _str_ - hostname of MQ server
-
-* `port` _int_ (optional) - port on MQ server, default `1414`
-
-* `endpoint` _str_ - prefixed with either `topic:` or `queue:` and then the name of the endpoint to perform operations on
-
-* `wait` _int_ (optional) - number of seconds to wait for an message, default is to wait infinite (0 seconds)
-
-* `heartbeat` _int_ (optional) - number of seconds between heartbeats, default is 300 seconds
-
-* `QueueManager` _str_ - name of queue manager
-
-* `Channel` _str_ - name of channel to connect to
-
-* `KeyFile` _str_ (optional) - path to key repository for certificates needed to connect over TLS
-
-* `SslCipher` _str_ (optional) - SSL cipher to use for connection, default `ECDHE_RSA_AES_256_GCM_SHA384`
-
-* `CertLabel` _str_ (optional) - label of certificate in key repository, default `username`
-
-* `HeaderType` _str_ (optional) - header type, can be `RFH2` for sending gzip compressed messages using RFH2 header, default `None`
-
-* `MaxMessageSize` _int_ (optional) - maximum number of bytes a message can be for the client to accept it, default is `None` which implies that the client will throw `MQRC_TRUNCATED_MSG_FAILED`, adjust buffer and try again.
 """  # noqa: E501
 
 from __future__ import annotations

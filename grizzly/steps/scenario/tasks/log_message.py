@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.log_message Log message
-This module contains step implementations for the {@pylink grizzly.tasks.log_message} task.
-"""
+"""Module contains step implementations for the [Log message][grizzly.tasks.log_message] task."""
 
 from __future__ import annotations
 
@@ -14,13 +12,13 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @then('log message "{message}"')
-def step_task_log_message(context: Context, message: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.log_message} task.
+def step_task_log_message_print(context: Context, message: str) -> None:
+    """Create an instance of the [Log message][grizzly.tasks.log_message] task.
 
     Prints a log message in the console, useful for troubleshooting values of variables or set markers in log files.
+    The message supports [templating][framework.usage.variables.templating].
 
-    The message supports {@link framework.usage.variables.templating}. See {@pylink grizzly.tasks.log_message} task documentation for more
-    information about the task.
+    See [Log message][grizzly.tasks.log_message] task documentation for more information.
 
     Example:
     ```gherkin

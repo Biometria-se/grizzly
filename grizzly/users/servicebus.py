@@ -1,9 +1,11 @@
 """Send and receive messages on Azure Service Bus queues and topics.
 
-!!! note
+!!! warning
+
     If `message.wait` is not set, `azure.servicebus` will wait until there is a message available, and hence block the scenario.
 
-!!! attention
+!!! danger
+
     Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
     you do care about them, you should setup a subscription to do the filtering in Azure.
 

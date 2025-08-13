@@ -6,9 +6,9 @@ Enable `gevent` debugging for this task by running with argument `--verbose` and
 
 ## Step implementations
 
-* [Async group start][grizzly.steps.scenario.tasks.async_group.step_task_async_group_start]
+* [Open][grizzly.steps.scenario.tasks.async_group.step_task_async_group_open]
 
-* [Async group close][grizzly.steps.scenario.tasks.async_group.step_task_async_group_close]
+* [Close][grizzly.steps.scenario.tasks.async_group.step_task_async_group_close]
 
 Requests are added to the group with the same step implementations as [Request][grizzly.tasks.request] task.
 

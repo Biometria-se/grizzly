@@ -6,13 +6,27 @@ Stored (set) values are not rendered, so it is possible to store templates.
 
 ## Step implementations
 
-* [Keystore get][grizzly.steps.scenario.tasks.keystore.step_task_keystore_get]
+* [Get][grizzly.steps.scenario.tasks.keystore.step_task_keystore_get]
 
-* [Keystore get default][grizzly.steps.scenario.tasks.keystore.step_task_keystore_get_default]
+* [Get default][grizzly.steps.scenario.tasks.keystore.step_task_keystore_get_default]
 
-* [Keystore set][grizzly.steps.scenario.tasks.keystore.step_task_keystore_set]
+* [Get remove][grizzly.steps.scenario.tasks.keystore.step_task_keystore_get_remove]
 
-* [Keystore increment default with step][grizzly.steps.scenario.tasks.keystore.step_task_keystore_increment_default_with_step]
+* [Set][grizzly.steps.scenario.tasks.keystore.step_task_keystore_set]
+
+* [Set text][grizzly.steps.scenario.tasks.keystore.step_task_keystore_set_text]
+
+* [Increment default with step][grizzly.steps.scenario.tasks.keystore.step_task_keystore_increment_default_with_step]
+
+* [Decrement default with step][grizzly.steps.scenario.tasks.keystore.step_task_keystore_decrement_default_with_step]
+
+* [Pop][grizzly.steps.scenario.tasks.keystore.step_task_keystore_pop]
+
+* [Push][grizzly.steps.scenario.tasks.keystore.step_task_keystore_push]
+
+* [Push text][grizzly.steps.scenario.tasks.keystore.step_task_keystore_push_text]
+
+* [Remove][grizzly.steps.scenario.tasks.keystore.step_task_keystore_remove]
 
 ## Statistics
 
