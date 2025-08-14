@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from grizzly.steps import (
-    step_setup_variable_value,
+    step_setup_set_variable_value,
     step_task_conditional_end,
     step_task_conditional_if,
     step_task_loop_end,
@@ -31,7 +31,7 @@ def test_step_task_loop(behave_fixture: BehaveFixture) -> None:
     step_task_loop_start(behave, '["hello", "world"]', 'foobar', 'test-loop')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='LoopTask: foobar has not been initialized')]}
 
-    step_setup_variable_value(behave, 'foobar', 'none')
+    step_setup_set_variable_value(behave, 'foobar', 'none')
 
     step_task_loop_start(behave, '["hello", "world"]', 'foobar', 'test-loop')
 

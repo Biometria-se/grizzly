@@ -1,6 +1,8 @@
 """Write values to a CSV file.
 
-The CSV files **must** have headers for each column, since these are used to reference the value.
+!!! info
+
+    CSV files **must** have headers for each column, since these are used to reference the value.
 
 When setting the value of the variable there must be one value per specified header.
 

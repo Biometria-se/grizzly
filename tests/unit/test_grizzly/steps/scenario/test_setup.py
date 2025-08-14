@@ -107,7 +107,7 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.iterations == 13
 
 
-def test_step_setup_pace(behave_fixture: BehaveFixture) -> None:
+def test_step_setup_iteration_pace(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -116,16 +116,16 @@ def test_step_setup_pace(behave_fixture: BehaveFixture) -> None:
     assert getattr(grizzly.scenario, 'pace', '') is None
     assert behave.exceptions == {}
 
-    step_setup_pace(behave, '2000')
+    step_setup_iteration_pace(behave, '2000')
 
     assert len(grizzly.scenario.orphan_templates) == 0
     assert grizzly.scenario.pace == '2000'
 
-    step_setup_pace(behave, 'asdf')
+    step_setup_iteration_pace(behave, 'asdf')
 
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='"asdf" is neither a template or a number')]}
 
-    step_setup_pace(behave, '{{ pace }}')
+    step_setup_iteration_pace(behave, '{{ pace }}')
 
     assert grizzly.scenario.orphan_templates == ['{{ pace }}']
     assert grizzly.scenario.pace == '{{ pace }}'
@@ -145,7 +145,7 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
 
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variable AtomicIntegerIncrementer.test has not been declared')]}
 
-    step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test', '1337')
+    step_setup_set_variable_value(behave, 'AtomicIntegerIncrementer.test', '1337')
     step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
     assert grizzly.scenario.variables.alias.get('AtomicIntegerIncrementer.test', None) == 'auth.refresh_time'
@@ -177,7 +177,7 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
         ],
     }
 
-    step_setup_variable_value(behave, 'AtomicCsvReader.users', 'users.csv')
+    step_setup_set_variable_value(behave, 'AtomicCsvReader.users', 'users.csv')
     step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
     step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
 

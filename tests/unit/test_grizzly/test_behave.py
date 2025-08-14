@@ -19,7 +19,7 @@ from pytest_mock import MockerFixture
 from grizzly.behave import after_feature, after_scenario, after_step, before_feature, before_scenario, before_step
 from grizzly.steps.background.setup import step_setup_save_statistics as step_background
 from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
-from grizzly.steps.setup import step_setup_variable_value_ask as step_both
+from grizzly.steps.setup import step_setup_ask_variable_value as step_both
 from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, LogMessageTask, LoopTask
 from grizzly.testdata.communication import TestdataProducer
 from grizzly.types import RequestType

@@ -1,6 +1,6 @@
 """Task executes the wraped tasks for all values in provided list.
 
-All task created between [Loop start][grizzly.steps.scenario.tasks.loop.step_task_loop_start] and [Loop end][grizzly.steps.scenario.tasks.loop.step_task_loop_end]
+All task created between [Start][grizzly.steps.scenario.tasks.loop.step_task_loop_start] and [End][grizzly.steps.scenario.tasks.loop.step_task_loop_end]
 will be wrapped in this instance and executed for all values in the provided list (must be in JSON format).
 
 ## Step implementations
@@ -12,7 +12,9 @@ will be wrapped in this instance and executed for all values in the provided lis
 ## Statistics
 
 Executions of this task will be visible in `locust` request statistics with request type `LOOP` and `name` is suffixed with `(<n>)`, where `n`
-is the number of wrapped tasks. Each wrapped task will have its own entry in the statistics, see respective [tasks][grizzly.tasks] documentation.
+is the number of wrapped tasks.
+
+Each wrapped task will have its own entry in the statistics, see respective [tasks][grizzly.tasks] documentation.
 
 """
 

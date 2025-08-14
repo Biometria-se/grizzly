@@ -11,9 +11,9 @@ random wait between (and including) `min_time` and `max_time` between tasks.
 
 ## Step implementations
 
-* [Wait between constant][grizzly.steps.scenario.tasks.wait_between.step_task_wait_between_constant]
+* [Constant][grizzly.steps.scenario.tasks.wait_between.step_task_wait_between_constant]
 
-* [Wait between random][grizzly.steps.scenario.tasks.wait_between.step_task_wait_between_random]
+* [Random][grizzly.steps.scenario.tasks.wait_between.step_task_wait_between_random]
 
 ## Statistics
 

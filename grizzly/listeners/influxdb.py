@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.listeners.influxdb InfluxDB
-Write metrics to InfluxDB.
-"""
+"""Write metrics to InfluxDB."""
 
 from __future__ import annotations
 

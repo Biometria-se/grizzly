@@ -40,7 +40,7 @@ def step_task_date_parse(context: Context, value: str, variable: str) -> None:
 
     # Format
 
-    ## `value`
+    ## value
 
     ```plain
     <date> [| format=<format>][, timezone=<timezone>][, offset=<offset>]

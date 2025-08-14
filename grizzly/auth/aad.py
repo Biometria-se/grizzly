@@ -1,9 +1,9 @@
-"""Grizzly provides a way to get tokens via Azure Active Directory (AAD), in the framework this is implemented by [`grizzly.users.restapi`][grizzly.users.restapi]
-load user and {@pylink grizzly.tasks.clients.http} client task, via the `@refresh_token` decorator.
+"""Grizzly provides a way to get tokens via Azure Active Directory (AAD), in the framework this is implemented by [RestApi][grizzly.users.restapi]
+load user and [HTTP client][grizzly.tasks.clients.http] task, via the `@refresh_token` decorator.
 
 It is possible to use it in custom code as well, by implementing a custom class that inherits `grizzly.auth.GrizzlyHttpAuthClient`.
 
-For information about how to set context variables, see [`grizzly.steps.setup.step_setup_set_context_variable`][grizzly.steps.setup.step_setup_set_context_variable].
+For information about how to set context variables, see [Set context variable][grizzly.steps.setup.step_setup_set_context_variable].
 
 Context variable values supports [Templating][framework.usage.variables.templating].
 

@@ -191,6 +191,15 @@ def step_setup_wait_spawning_complete_timeout(context: Context, timeout: float) 
 
     This is when there are dependencies between scenarios. This will make all scenarios to wait until all defined
     users are spawned.
+
+    Example:
+    ```gherkin
+    Given wait "13.37" seconds until spawning is complete
+    ```
+
+    Args:
+        timeout (float): number of seconds to wait until locust spawning is complete
+
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.setup.wait_for_spawning_complete = timeout
@@ -202,6 +211,12 @@ def step_setup_wait_spawning_complete_indefinitely(context: Context) -> None:
 
     This is when there are dependencies between scenarios. This will make all scenarios to wait until all defined
     users are spawned.
+
+    Example:
+    ```gherkin
+    Given wait until spawning is complete
+    ```
+
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.setup.wait_for_spawning_complete = -1

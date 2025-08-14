@@ -136,7 +136,7 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
 def step_response_save_optional(context: Context, target: ResponseTarget, expression: str, variable: str, default_value: str) -> None:
     """Save metadata (header) or payload (body) value from a response in a variable.
 
-    This step expression is the same as [`grizzly.steps.scenario.response.step_response_save_matches_optional`][grizzly.steps.scenario.response.step_response_save_matches_optional]
+    This step expression is the same as [Save matches optional][grizzly.steps.scenario.response.step_response_save_matches_optional]
     if `match_with` is set to `.*`.
 
     With this step it is possible to change variable values and as such use values from a response later on in the load test.
@@ -167,7 +167,7 @@ def step_response_save_optional(context: Context, target: ResponseTarget, expres
 def step_response_save(context: Context, target: ResponseTarget, expression: str, variable: str) -> None:
     """Save metadata (header) or payload (body) value from a response in a variable.
 
-    This step expression is the same as [`grizzly.steps.scenario.response.step_response_save_matches`][grizzly.steps.scenario.response.step_response_save_matches]
+    This step expression is the same as [Save matches][grizzly.steps.scenario.response.step_response_save_matches]
     if `match_with` is set to `.*`.
 
     With this step it is possible to change variable values and as such use values from a response later on in the load test.

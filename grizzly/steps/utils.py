@@ -13,7 +13,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @then('fail')
-def step_utils_fail(context: Context, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
+@then('fail scenario')
+def step_utils_fail_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
     """Force a failed scenario. Can be useful when writing a new scenario. The scenario will fail before `locust` has started, so only when
     the scenario is setup.
 

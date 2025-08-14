@@ -25,10 +25,12 @@ There are examples of this in the [example][example] documentation.
 
 ## Considerations
 
-When writing step expressions, the following should be taken into consideration.
+When writing step expressions, the following should be taken into consideration, regarding premuntations of code completion for step implementations.
 
 ::: grizzly_extras.text
     options:
+        show_root_heading: false
+        show_root_toc_entry: false
         members:
         - PermutationEnum
         - permutation

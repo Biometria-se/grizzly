@@ -59,13 +59,7 @@ The solution is heavily inspired by [Karol Brejnas locust experiments - feeding 
 
 When the consumer wants new test data, it sends a message to the server that it is available and for which scenario it is going to run. The producer then responds with unique test data that can be used.
 
-### Statistics
-
-Listeners for both InfluxDB and Azure Application Insights are included. The later is more or less [`appinsights_listener.py`](https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsights_listener.py), from the good guys at [Svenska Spel](https://github.com/SvenskaSpel), but with typing.
-
-They are useful when history of test runs is needed, or when wanting to correlate load tests with other events in the targeted environment.
-
-### Load test users
+### Load users
 
 `locust` comes with a simple user for loading an HTTP(S) endpoint and due to the nature of how the integration between `behave` and `locust` works in `grizzly`, it is not possible to directly use `locust.user.users` provided users, even for HTTP(S) targets.
 
@@ -74,10 +68,6 @@ They are useful when history of test runs is needed, or when wanting to correlat
 * `MessageQueueUser`: send and receive from IBM MQ queues
 * `BlobStorageUser`: send and receive files to Azure Blob Storage
 * `IotHubUser`: send/put files to Azure IoT Hub
-
-### Request log
-
-All failed requests are logged to a file which includes both header and body, both for request and response.
 
 ## Installation
 

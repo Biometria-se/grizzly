@@ -2,7 +2,7 @@
 
 ## Step implementations
 
-* [Variable value][grizzly.steps.setup.step_setup_variable_value]
+* [Set variable value][grizzly.steps.setup.step_setup_set_variable_value]
 
 ## Statistics
 

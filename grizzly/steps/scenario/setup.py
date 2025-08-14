@@ -88,14 +88,14 @@ def step_setup_iterations(context: Context, value: str, *_args: Any, **_kwargs: 
 
 
 @given('set iteration time to "{pace_time}" milliseconds')
-def step_setup_pace(context: Context, pace_time: str) -> None:
+def step_setup_iteration_pace(context: Context, pace_time: str) -> None:
     """Set minimum time one iterations of all the [tasks][grizzly.tasks] in the scenario should take.
 
     E.g. if `pace` is set to `2000` ms and the time since it last ran was `300` ms, this task will
     sleep for `1700` ms. If the time of all tasks is greater than the specified time, there will be
     an error, but the scenario will continue.
 
-    This is useful to be able to control the intensity towards the loadtesting target.
+    This is useful to be able to control the intensity towards the load testing target.
 
     Example:
     ```gherkin

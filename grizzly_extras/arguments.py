@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly_extras.arguments
-Parse text string and construct a dictionary with key-value pairs.
+"""Parse text string and construct a dictionary with key-value pairs.
 
 Logic to support grizzly arguments, which are passed in text strings.
 """

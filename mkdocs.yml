@@ -2,6 +2,7 @@ site_name: "Grizzly"
 
 docs_dir: docs/
 site_dir: site/
+site_url: "https://biometria-se.github.io/grizzly"
 repo_url: "https://github.com/Biometria-se/grizzly"
 edit_uri: blob/main/docs/
 extra_css:
@@ -24,6 +25,7 @@ theme:
   features:
     - navigation.tracking
     - navigation.top
+    - navigation.sections
     - content.code.copy
     - content.code.annotate
 
@@ -46,6 +48,9 @@ plugins:
               level: 2
         grizzly.testdata.filters:
           output: framework/usage/variables/templating
+          postprocessors:
+          - grizzly_extras.mkdocs.postprocessors.StepHeaders
+          - grizzly_extras.mkdocs.postprocessors.SubHeaders
         grizzly.tasks:
           output: framework/usage/tasks
           extra_frontmatter:
@@ -140,17 +145,16 @@ nav:
         - grizzly.steps
     - Changelog: framework/changelog.md
     - Licenses: framework/licenses.md
-#  - Command Line Interface:
-#    - Usage:
-#      - command-line-interface/usage/index.md
-#      - Metadata: command-line-interface/usage/metadata.md
-#    - Changelog: command-line-interface/changelog.md
-#    - Licenses: command-line-interface/licenses.md
-#  - Editor support:
-#    - editor-support/index.md
-#    - Language server: editor-support/language-server.md
-#    - Editors:
-#      - editor-support/editors/index.md
-#      - Visual Studio Code: editor-support/editors/vscode.md
-#    - Changelog: editor-support/changelog.md
-#    - Licenses: editor-support/licenses.md
+  - Command Line Interface:
+    - Usage:
+      - command-line-interface/usage/index.md
+      - Metadata: command-line-interface/usage/metadata.md
+    - Changelog: command-line-interface/changelog.md
+    - Licenses: command-line-interface/licenses.md
+  - Editor support:
+    - Language server: editor-support/language-server.md
+    - Editors:
+      - editor-support/editors/index.md
+      - Visual Studio Code: editor-support/editors/vscode.md
+    - Changelog: editor-support/changelog.md
+    - Licenses: editor-support/licenses.md

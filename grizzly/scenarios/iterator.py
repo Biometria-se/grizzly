@@ -1,8 +1,7 @@
-"""@anchor pydoc:grizzly.scenarios.iterator Iterator
-This module contains the iterator scenario, it is a load testing scenario with fixed load and will iterate as many times
+"""Module contains the iterator scenario, it is a load testing scenario with fixed load and will iterate as many times
 as it is told todo so.
 
-See {@pylink grizzly.steps.scenario.setup.step_setup_iterations}.
+See [Iterations][grizzly.steps.scenario.setup.step_setup_iterations].
 """
 
 from __future__ import annotations

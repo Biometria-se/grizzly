@@ -1,4 +1,4 @@
-"""Mdule contains step implementations that validates the total response results for all [`grizzly.tasks`][grizzly.tasks]
+"""Module contains step implementations that validates the total response results for all [tasks][grizzly.tasks]
 in a scenario, based on locust statistics (response time and failures).
 """
 

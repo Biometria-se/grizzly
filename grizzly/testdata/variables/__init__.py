@@ -3,7 +3,7 @@
 It is possible to implement custom testdata variables, the only requirement is that they inherit `grizzly.testdata.variables.AtomicVariable`.
 
 When initializing the variable, the full namespace has to be specified as `name` in the scenario
-[`grizzly.steps.setup.step_setup_variable_value`][grizzly.steps.setup.step_setup_variable_value] step.
+[Set variable value][grizzly.steps.setup.step_setup_set_variable_value] step.
 
 There are examples of this in the [example][example].
 """

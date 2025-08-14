@@ -144,7 +144,11 @@ def literal_eval(value: str) -> Any:
     Example:
     ```gherkin
     Given value of variable "value" is "{'hello': 'world'}"
+    Then log message "value: {{ value | literal_eval }}"
     ```
+
+    Args:
+        value (str): string representation of python object
 
     """
     return ast_literal_eval(value)

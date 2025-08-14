@@ -33,6 +33,9 @@ class MkdocsPluginLogger:
     def debug(self, *args: str, payload: str = '') -> None:
         self.trace(*args, payload, level=logging.DEBUG)
 
+    def info(self, *args: str, payload: str = '') -> None:
+        self.trace(*args, payload, level=logging.INFO)
+
     def warning(self, *args: str, payload: str = '') -> None:
         self.trace(*args, payload, level=logging.WARNING)
 

@@ -3,4 +3,4 @@ title: Changelog
 ---
 # Changelog
 
-@shell cd .. && script/docs-generate.bash cli --changelog
+@shell cd ../../ && script/docs-generate.bash cli --changelog

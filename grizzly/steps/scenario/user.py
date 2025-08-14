@@ -54,7 +54,7 @@ def _setup_user(context: Context, user_class_name: str, host: str, *, weight: st
 
 
 @given('"{user_count}" {grammar:UserGramaticalNumber} of type "{user_class_name}" with tag "{tag}" load testing "{host}"')
-def step_user_type_count_tag(context: Context, user_count: str, user_class_name: str, tag: str, host: str, **_kwargs: Any) -> None:
+def step_user_type_with_count_and_tag(context: Context, user_count: str, user_class_name: str, tag: str, host: str, **_kwargs: Any) -> None:
     """Set which type of [load user][grizzly.users] the scenario should use, which `host` is the target, how many users that should be spawned
     and an associated tag.
 
@@ -79,7 +79,7 @@ def step_user_type_count_tag(context: Context, user_count: str, user_class_name:
 
 
 @given('"{user_count}" {grammar:UserGramaticalNumber} of type "{user_class_name}" load testing "{host}"')
-def step_user_type_count(context: Context, user_count: str, user_class_name: str, host: str, **_kwargs: Any) -> None:
+def step_user_type_with_count(context: Context, user_count: str, user_class_name: str, host: str, **_kwargs: Any) -> None:
     """Set which type of [load user][grizzly.users] the scenario should use, which `host` is the target and how many users that should be spawned.
 
     Example:

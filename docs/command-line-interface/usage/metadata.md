@@ -1,7 +1,6 @@
 ---
 title: Metadata
 ---
-@anchor command-line-interface.usage.metadata Metadata
 # Metadata
 
 It is possible to add metadata in feature files that `grizzly-cli` will use. Metadata comments can be added anywhere in the feature file, but
