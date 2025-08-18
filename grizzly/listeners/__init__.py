@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Concatenate, cast
+from typing import TYPE_CHECKING, Any, Concatenate, ParamSpec, Protocol, cast
 from urllib.parse import urlparse
 
 from locust.stats import (
@@ -13,7 +13,6 @@ from locust.stats import (
     print_percentile_stats,
     print_stats,
 )
-from typing_extensions import ParamSpec
 
 from grizzly.testdata.communication import GrizzlyDependencies, TestdataConsumer, TestdataProducer
 from grizzly.types import MessageDirection, RequestType, StrDict, TestdataType
@@ -145,6 +144,7 @@ def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) 
     else:
         logger.error('received grizzly_worker_quit message on a non WorkerRunner?!')
 
+    logger.info('worker quiting with rc %d', code)
     raise SystemExit(code)
 
 

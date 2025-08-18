@@ -892,7 +892,8 @@ def cleanup_resources(processes: dict[str, subprocess.Popen], greenlet: gevent.G
 
         process.wait()
 
-        logger.debug('%s: process.returncode=%d', dependency, process.returncode)
+        # logger.debug('%s: process.returncode=%d', dependency, process.returncode)
+        logger.info('!! %s: process.returncode=%d', dependency, process.returncode)
 
     processes.clear()
 
@@ -1053,6 +1054,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
                 def watch_running_external_processes() -> None:
                     while runner.user_count > 0:
+                        logger.info('!! runner.user_classes_count=%r', runner.user_classes_count)
                         _processes = processes.copy()
                         if len(_processes) < 1:
                             logger.error('no running processes')

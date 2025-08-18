@@ -62,7 +62,7 @@ def configure_logging() -> None:
 configure_logging()
 
 
-AsyncMessageMetadata = dict | None
+AsyncMessageMetadata = dict[str, Any] | None
 AsyncMessagePayload = Any
 
 

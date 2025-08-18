@@ -179,11 +179,8 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0912, PLR0915
     workers_available: list[str] = []
 
     with ThreadPoolExecutor(max_workers=500) as executor:
-        worker_is_spawning = False
 
         def spawn_worker() -> None:
-            nonlocal worker_is_spawning
-
             identity = str(uuid4())
 
             worker = Worker(context, identity, run_daemon)
@@ -191,7 +188,6 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0912, PLR0915
             future = executor.submit(worker.run)
             workers.update({identity: (future, worker)})
             logger.info('spawned worker %s', identity)
-            worker_is_spawning = True
 
         client_worker_map: dict[str, str] = {}
         worker_identifiers_map: dict[str, bytes] = {}
@@ -343,7 +339,6 @@ def router(run_daemon: Event) -> None:  # noqa: C901, PLR0912, PLR0915
 
             logger.debug('destroy zmq context')
             context.destroy(linger=0)
-            logger.info('stopped')
         except Exception:
             if not run_daemon.is_set():
                 logger.exception('unhandled exception for client %s, request id %s', request_client_id, request_request_id)
