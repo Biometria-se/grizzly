@@ -20,7 +20,7 @@ dependencies = [
     "azure-iot-device ==2.14.0",
     "behave ==1.2.6",
     "influxdb ==5.3.2",
-    "influxdb-client ==1.49.0",
+    "influxdb-client ==1.48.0",
     "Jinja2 ==3.1.6",
     "jsonpath-ng ==1.7.0",
     "lxml ==6.0.0",
