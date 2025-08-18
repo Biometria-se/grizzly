@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 
 from azure.core.credentials import AccessToken
 
+from grizzly.scenarios import GrizzlyScenario
 from grizzly.testdata.communication import GrizzlyMessageHandler, GrizzlyMessageMapping
 from grizzly.types import GrizzlyResponse, StrDict
 from grizzly.types.locust import StopUser
@@ -22,7 +23,6 @@ from grizzly_extras.azure.aad import AuthMethod, AuthType, AzureAadCredential
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-    from grizzly.scenarios import GrizzlyScenario
     from grizzly.tasks import RequestTask
     from grizzly.testdata import GrizzlyVariables
     from grizzly.types.locust import Environment
@@ -115,16 +115,11 @@ class refresh_token(Generic[P]):
             request: RequestTask | None = None
 
             # make sure the client has a credential instance, if it is needed
-            try:
-                # ugly workaround for partially initialized modules due to circular imports... :'(
-                if arg.__class__.__name__ == 'GrizzlyScenario':
-                    arg = cast('GrizzlyScenario', arg)
-                    request = None
-                    user = arg.user
-                else:
-                    raise ImportError
-            except Exception:
-                request = cast('RequestTask', arg)
+            if isinstance(arg, GrizzlyScenario):
+                request = None
+                user = arg.user
+            else:
+                request = arg
                 user = cast('GrizzlyUser', client)
 
             self.impl.initialize(client, user)
