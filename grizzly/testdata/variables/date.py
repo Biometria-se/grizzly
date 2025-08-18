@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.testdata.variables.date Date
-This variable is used to format and use dates.
+"""Format and create dates.
 
 ## Format
 
@@ -8,9 +7,11 @@ at the time of access.
 
 ## Arguments
 
-* `format` _str_ - a python [`strftime` format string](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes), this argument is required
-* `timezone` _str_ (optional) - a valid [timezone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
-* `offset` _str_ (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. `1Y-2M10D`
+| Name       | Type  | Description                                                                                                                               | Default        |
+| ---------- |------ | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `format`   | `str` | python [`strftime` format string](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)                     | _required_     |
+| `timezone` | `str` | valid [timezone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)                                                       | `None` (local) |
+| `offset`   | `str` | time span string describing the offset, `Y` = years, `M` = months, `D` = days, `h` = hours, `m` = minutes, `s` = seconds, e.g. `1Y-2M10D` | `None`         |
 
 ## Example
 
@@ -50,7 +51,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def atomicdate__base_type__(value: str) -> str:
-    """Validate values that `AtomicDate` can be initialized with."""
     if not isinstance(value, str):
         message = f'AtomicDate: {value} ({type(value)}) is not a string'  # type: ignore[unreachable]
         raise TypeError(message)

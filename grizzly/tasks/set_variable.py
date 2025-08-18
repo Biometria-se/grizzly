@@ -1,19 +1,13 @@
-"""@anchor pydoc:grizzly.tasks.set_variable Set variable
-This task sets a testdata variable during runtime.
+"""Task sets a testdata variable during runtime.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.setup.step_setup_variable_value}
+* [Set variable value][grizzly.steps.setup.step_setup_set_variable_value]
 
 ## Statistics
 
 This task does not have any request statistics entries.
 
-## Arguments
-
-* `variable` _str_ - name of the variable that should be set
-
-* `value` _value_ - value of the variable being set, must be a template
 """
 
 from __future__ import annotations

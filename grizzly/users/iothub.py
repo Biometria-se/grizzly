@@ -1,8 +1,10 @@
-"""@anchor pydoc:grizzly.users.iothub Iot hub
-Communicate with an Azure IoT hub device.
+"""Communicate with an Azure IoT hub as an IoT device.
 
-Due to how Azure IoT hub devices works, you can only run one instance of this user if you rely on cloud-to-device (C2D) messages.
-Chose to handle task errors strategy so you do not end up with a scenario that will cause the whole feature to fail since the `IotHubUser` stopped.
+!!! warning
+
+    Due to how Azure IoT hub devices works, you can only run one instance of this user if you rely on cloud-to-device (C2D) messages.
+    Carefully chose to handle task errors so you do not end up with a scenario that will cause the whole feature to fail since the
+    `IotHubUser` stopped.
 
 ## Request methods
 
@@ -15,23 +17,25 @@ Supports the following request methods:
 
 ## Metadata
 
-The following properties is added to the metadata part of a message:
+The following properties is added to the metadata part of a message.
 
-- `custom_properties` (dict)
-- `message_id` (str)
-- `expiry_time_utc` (str)
-- `correlation_id` (str)
-- `user_id` (str)
-- `content_type` (str)
-- `output_name` (str)
-- `input_name` (str)
-- `ack` (bool)
-- `iothub_interface_id` (str)
-- `size` (int)
+| Name                  | Type   |
+| --------------------- | ------ |
+| `custom_properties`   | `dict` |
+| `message_id`          | `str`  |
+| `expiry_time_utc`     | `str`  |
+| `correlation_id`      | `str`  |
+| `user_id`             | `str`  |
+| `content_type`        | `str`  |
+| `output_name`         | `str`  |
+| `input_name`          | `str`  |
+| `ack`                 | `bool` |
+| `iothub_interface_id` | `str`  |
+| `size`                | `int`  |
 
 ## Sending
 
-This user has support for sending IoT messages and uploading files. For the former the `endpoint` in the request must be `device-to-cloud`, otherwise
+This user has support for sending IoT messages and uploading files. For device-to-cloud (D2C) messages, `endpoint` in the request must be `device-to-cloud`, otherwise
 it will try to upload the request as a file. See [device-to-cloud communication guidance](https://learn.microsoft.com/en-us/azure/iot-hub/iot-hub-devguide-d2c-guidance)
 for the difference.
 
@@ -41,9 +45,9 @@ Receiving cloud-to-device (C2D) messages is a little bit special, the `endpoint`
 
 There are 3 other context variables that will control wether a message will be pushed to the internal queue or not:
 
-- `expression.unique`, this is a JSON-path expression will extract a value from the message payload, push the whole message to the internal queue and save the value in a
-  "volatile list", if a message with the same value is received within 5 seconds, it will not be handled. This is to avoid handling duplicates of messages, which can occur
-  for different reasons. E.g. `$.body.event.id`.
+- `expression.unique` (str), this is a JSON-path expression will extract a value from the message payload, push the whole message to the internal queue and save the value in a
+  "volatile list", if a message with the same value is received within 20 seconds, it will not be handled. This is to avoid handling duplicates of messages, which can occur
+  for different reasons ("at least once" design pattern). E.g. `$.body.event.id`.
 
 - `expression.metadata` (bool), this a JSON-path expression that should validate to a boolean expression, messages for which this expression does not validate to `True` will be
   dropped and not pushed to the internal queue. E.g. `$.size>=1024`.
@@ -53,7 +57,7 @@ There are 3 other context variables that will control wether a message will be p
 
 ## Pipe arguments
 
-See {@pylink grizzly.tasks.request} endpoint format for standard pipe arguments, in additional to those the following are also supported:
+See [Request][grizzly.tasks.request] task endpoint format for standard pipe arguments, in additional to those the following are also supported:
 
 - `wait` (int), number of seconds to wait for a available message before failing request. If not specified it will wait indefinitely.
 

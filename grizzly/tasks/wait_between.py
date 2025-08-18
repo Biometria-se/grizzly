@@ -1,29 +1,24 @@
-"""@anchor pydoc:grizzly.tasks.wait_between Wait Between
-This task sets the wait time between tasks in a scenario.
+"""Task sets the wait time between tasks in a scenario.
 
 The default is to wait `0` seconds between each task.
 
 This is useful in a scenario with many tasks that should have some wait time between them, but there are a group
-of tasks (e.g. Transform, Date or Log Messages) that should execute as fast as possible.
+of tasks (e.g. [Transformer][grizzly.tasks.transformer], [Date][grizzly.tasks.date] or [Log Message][grizzly.tasks.log_message])
+that should execute as fast as possible.
 
 If `max_time` is not provided, the wait between tasks is constant `min_time`. If both are provided there will be a
 random wait between (and including) `min_time` and `max_time` between tasks.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.wait_between.step_task_wait_between_constant}
+* [Constant][grizzly.steps.scenario.tasks.wait_between.step_task_wait_between_constant]
 
-* {@pylink grizzly.steps.scenario.tasks.wait_between.step_task_wait_between_random}
+* [Random][grizzly.steps.scenario.tasks.wait_between.step_task_wait_between_random]
 
 ## Statistics
 
 This task does not have any request statistics entries.
 
-## Arguments
-
-* `min_time` _float_ - minimum time to wait
-
-* `max_time` _float_ (optional) - maximum time to wait
 """
 
 from __future__ import annotations

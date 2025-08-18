@@ -66,7 +66,8 @@
                 "redhat.vscode-yaml",
                 "ms-vscode.live-server",
                 "charliermarsh.ruff",
-                "oderwat.indent-rainbow"
+                "oderwat.indent-rainbow",
+                "SanjulaGanepola.github-local-actions"
             ]
         }
     },
@@ -93,14 +94,9 @@
     // Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
     "remoteUser": "vscode",
     "features": {
-        "ghcr.io/devcontainers/features/docker-from-docker:1": {
-            "version": "latest"
-        },
-        "ghcr.io/devcontainers/features/git:1": {
-            "version": "os-provided"
-        },
-        "ghcr.io/devcontainers/features/github-cli:1": {
-            "version": "latest"
-        }
+        "ghcr.io/devcontainers/features/docker-from-docker:1": {},
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers/features/github-cli:1": {},
+        "ghcr.io/itsmechlark/features/act:1": {}
     }
 }

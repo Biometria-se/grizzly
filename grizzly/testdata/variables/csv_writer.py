@@ -1,18 +1,21 @@
-"""@anchor pydoc:grizzly.testdata.variables.csv_writer CSV Writer
-This variable writes to a CSV file.
+"""Write values to a CSV file.
 
-The CSV files **must** have headers for each column, since these are used to reference the value.
+!!! info
+
+    CSV files **must** have headers for each column, since these are used to reference the value.
 
 When setting the value of the variable there must be one value per specified header.
 
 ## Format
 
-Value is the path, relative to `requests/`, of an file ending with `.csv`.
+Value is the path, relative to `requests/`, to a file ending with `.csv`.
 
 ## Arguments
 
-* `headers` _List[str]_ - comma seperated list of headers to be used in destination file
-* `overwrite` _bool_ (optional) - if destination file exists and should be overwritten (default: `False`)
+| Name        | Type        | Description                                                    | Default    |
+| ----------- | ----------- | -------------------------------------------------------------- | ---------- |
+| `headers`   | `list[str]` | comma separated list of headers to be used in destination file | _required_ |
+| `overwrite` | `bool`      | if destination file exists and should be overwritten           | `False`    |
 
 ## Example
 
@@ -49,7 +52,6 @@ open_files: dict[str, FileObjectThread] = {}
 
 
 def atomiccsvwriter__base_type__(value: str) -> str:
-    """Validate values that `AtomicCsvWriter` can be initialized with."""
     grizzly_context_requests = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
 
     if '|' not in value:
@@ -121,9 +123,6 @@ class CsvMessageDecoder(GrizzlyEventDecoder):
 
 @event(events.user_event, tags={'type': 'testdata::atomiccsvwriter'}, decoder=CsvMessageDecoder(arg='msg'))
 def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
-    """Receive messages containing CSV data.
-    Write the data to a CSV file.
-    """
     with AtomicCsvWriter.semaphore():
         data = cast('StrDict', msg.data)
         destination_file = cast('str', data['destination'])

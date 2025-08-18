@@ -5,7 +5,7 @@ from __future__ import annotations
 from json import dumps as jsondumps
 from typing import TYPE_CHECKING, cast
 
-from grizzly.steps import step_task_transform
+from grizzly.steps import step_task_transformer_parse
 from grizzly.tasks import TransformerTask
 from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY
@@ -15,13 +15,13 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture
 
 
-def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
+def test_step_task_transformer_parse_json(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
-    step_task_transform(
+    step_task_transformer_parse(
         behave,
         jsondumps(
             {
@@ -38,7 +38,7 @@ def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='TransformerTask: document_id has not been initialized')]}
 
     grizzly.scenario.variables['document_id'] = 'None'
-    step_task_transform(
+    step_task_transformer_parse(
         behave,
         jsondumps(
             {
@@ -61,7 +61,7 @@ def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.orphan_templates) == 0
 
-    step_task_transform(
+    step_task_transformer_parse(
         behave,
         jsondumps(
             {
@@ -89,13 +89,13 @@ def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
     )
 
 
-def test_step_task_transform_xml(behave_fixture: BehaveFixture) -> None:
+def test_step_task_transformer_parse_xml(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
-    step_task_transform(
+    step_task_transformer_parse(
         behave,
         """<?xml version="1.0" encoding="utf-8"?>
 <document>
@@ -110,7 +110,7 @@ def test_step_task_transform_xml(behave_fixture: BehaveFixture) -> None:
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='TransformerTask: document_id has not been initialized')]}
 
     grizzly.scenario.variables['document_id'] = 'None'
-    step_task_transform(
+    step_task_transformer_parse(
         behave,
         """<?xml version="1.0" encoding="utf-8"?>
 <document>
@@ -131,7 +131,7 @@ def test_step_task_transform_xml(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.orphan_templates) == 0
 
-    step_task_transform(
+    step_task_transformer_parse(
         behave,
         """<?xml version="1.0" encoding="utf-8"?>
 <document>

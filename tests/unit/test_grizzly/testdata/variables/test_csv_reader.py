@@ -8,36 +8,36 @@ from typing import TYPE_CHECKING
 import pytest
 
 from grizzly.testdata.variables import AtomicCsvReader
-from grizzly.testdata.variables.csv_reader import atomiccsvreader__base_type__
+from grizzly.testdata.variables.csv_reader import _atomiccsvreader
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture
 
 
-def test_atomiccsvreader__base_type__(grizzly_fixture: GrizzlyFixture) -> None:
+def test__atomiccsvreader(grizzly_fixture: GrizzlyFixture) -> None:
     test_context = grizzly_fixture.test_context / 'requests'
     test_context.mkdir(exist_ok=True)
 
     with pytest.raises(ValueError, match=r'must be a CSV file with file extension \.csv'):
-        atomiccsvreader__base_type__('file1.txt')
+        _atomiccsvreader('file1.txt')
 
     (test_context / 'a-directory.csv').mkdir()
 
     with pytest.raises(ValueError, match='is not a file in'):
-        atomiccsvreader__base_type__('a-directory.csv')
+        _atomiccsvreader('a-directory.csv')
 
     with pytest.raises(ValueError, match='is not a file in'):
-        atomiccsvreader__base_type__('file1.csv')
+        _atomiccsvreader('file1.csv')
 
     test_file = test_context / 'file1.csv'
     test_file.write_text('\n')
 
-    assert atomiccsvreader__base_type__('file1.csv') == 'file1.csv'
+    assert _atomiccsvreader('file1.csv') == 'file1.csv'
 
     with pytest.raises(ValueError, match='is not allowed'):
-        atomiccsvreader__base_type__('file1.csv | arg1=test')
+        _atomiccsvreader('file1.csv | arg1=test')
 
-    assert atomiccsvreader__base_type__('file1.csv|random=True') == 'file1.csv | random=True'
+    assert _atomiccsvreader('file1.csv|random=True') == 'file1.csv | random=True'
 
 
 class TestAtomicCsvReader:

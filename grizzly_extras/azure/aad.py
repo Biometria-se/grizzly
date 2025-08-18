@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly_extras.azure.aad Azure Active Directory
-Non-grizzly implementation of an Azure Credential, used by grizzly.
-"""
+"""Non-grizzly implementation of an Azure Credential, used by grizzly."""
 
 from __future__ import annotations
 

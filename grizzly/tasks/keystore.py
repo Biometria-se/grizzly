@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.tasks.keystore Keystore task
-This tasks sets and gets values from a distributed keystore. This makes is possible to share values between scenarios.
+"""Tasks sets and gets values from a distributed keystore. This makes is possible to share values between scenarios.
 
 Retreived (get) values are rendered before setting the variable.
 Stored (set) values are not rendered, so it is possible to store templates.
@@ -7,13 +6,27 @@ Stored (set) values are not rendered, so it is possible to store templates.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.keystore.step_task_keystore_get}
+* [Get][grizzly.steps.scenario.tasks.keystore.step_task_keystore_get]
 
-* {@pylink grizzly.steps.scenario.tasks.keystore.step_task_keystore_get_default}
+* [Get default][grizzly.steps.scenario.tasks.keystore.step_task_keystore_get_default]
 
-* {@pylink grizzly.steps.scenario.tasks.keystore.step_task_keystore_set}
+* [Get remove][grizzly.steps.scenario.tasks.keystore.step_task_keystore_get_remove]
 
-* {@pylink grizzly.steps.scenario.tasks.keystore.step_task_keystore_inc_default_step}
+* [Set][grizzly.steps.scenario.tasks.keystore.step_task_keystore_set]
+
+* [Set text][grizzly.steps.scenario.tasks.keystore.step_task_keystore_set_text]
+
+* [Increment default with step][grizzly.steps.scenario.tasks.keystore.step_task_keystore_increment_default_with_step]
+
+* [Decrement default with step][grizzly.steps.scenario.tasks.keystore.step_task_keystore_decrement_default_with_step]
+
+* [Pop][grizzly.steps.scenario.tasks.keystore.step_task_keystore_pop]
+
+* [Push][grizzly.steps.scenario.tasks.keystore.step_task_keystore_push]
+
+* [Push text][grizzly.steps.scenario.tasks.keystore.step_task_keystore_push_text]
+
+* [Remove][grizzly.steps.scenario.tasks.keystore.step_task_keystore_remove]
 
 ## Statistics
 
@@ -21,13 +34,12 @@ This task only has request statistics entry, of type `KEYS`, if a key (without `
 
 ## Arguments
 
-* `key` _str_: name of key in keystore
-
-* `action` _Action_: literal `set` or `get`
-
-* `action_context` _str | Any_: when `action` is `get` it must be a `str` (variable name), for `set` any goes (as long as it is json serializable and not `None`)
-
-* `default_value` _Any | None_: used when `action` is `get` and `key` does not exist in the keystore
+| Name             | Type         | Description                                                                                                                       | Default    |
+| ---------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `key`            | `str`        | name of key in keystore                                                                                                           | _required_ |
+| `action`         | `Action`     | literal `set` or `get`                                                                                                            | _required_ |
+| `action_context` | `str | Any`  | when `action` is `get` it must be a `str` (variable name), for `set` any goes (as long as it is json serializable and not `None`) | _required_ |
+| `default_value`  | `Any | None` | used when `action` is `get` and `key` does not exist in the keystore                                                              | _required_ |
 
 Values for `set` and `push` operations are not rendered by default, they will be pushed as is. By using argument `render`, it is possible to change this behaviour, e.g.:
 

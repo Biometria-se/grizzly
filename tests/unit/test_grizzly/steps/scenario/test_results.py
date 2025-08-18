@@ -25,7 +25,7 @@ def test_step_results_fail_ratio(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.should_validate()
 
 
-def test_step_results_avg_response_time(behave_fixture: BehaveFixture) -> None:
+def test_step_results_average_response_time(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -33,7 +33,7 @@ def test_step_results_avg_response_time(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.validation.avg_response_time is None
     assert not grizzly.scenario.should_validate()
 
-    step_results_avg_response_time(behave, 200)
+    step_results_average_response_time(behave, 200)
 
     assert grizzly.scenario.validation.avg_response_time == 200
     assert grizzly.scenario.should_validate()

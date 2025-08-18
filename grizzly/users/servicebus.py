@@ -1,17 +1,20 @@
 """Send and receive messages on Azure Service Bus queues and topics.
 
-!!! note
+!!! warning
+
     If `message.wait` is not set, `azure.servicebus` will wait until there is a message available, and hence block the scenario.
 
-!!! attention
-    Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
-    you do care about them, you should setup a subscription to do the filtering in Azure.
+!!! danger
+
+    Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression.
+
+    If you do care about them, you should setup a subscription to do the filtering in Azure.
 
 User is based on `azure.servicebus` for communicating with Azure Service Bus. But creating a connection and session towards a queue or a topic
 is a costly operation, and caching of the session was causing problems with `gevent` due to the sockets blocking and hence grizzly was
-blocking when finished. To get around this, the user implementation communicates with a stand-alone process via `zmq`, which in turn communicates
-with Azure Service Bus.
+blocking when finished.
 
+To get around this, the user implementation communicates with a stand-alone process via 0mq, which in turn communicates with Azure Service Bus.
 `async-messaged` starts automagically when a scenario uses the `ServiceBusUser`.
 
 ## Request methods
@@ -46,11 +49,11 @@ receiving messages. See example below.
 
 The `endpoint` also has support for the following arguments:
 
-* `verbose` (bool) - all request related to this request is logged with `DEBUG` log level (default `False`)
-
-* `consume` (bool) - if messages not matching `expression` should be consumed or abandoned, either way they are not not returned to test case (default `False`)
-
-* `forward` (bool) - if subscriptions should be configured to forward to a queue, and messages is consumed from the queue (default `False`)
+| Name      | Type   | Description                                                                                                              | Default |
+| --------- | ------ | ------------------------------------------------------------------------------------------------------------------------ | ------- |
+| `verbose` | `bool` | all request related to this request is logged with `DEBUG` log level                                                     | `False` |
+| `consume` | `bool` | if messages not matching `expression` should be consumed or abandoned, either way they are not not returned to test case | `False` |
+| `forward` | `bool` | if subscriptions should be configured to forward to a queue, and messages is consumed from the queue                     | `False` |
 
 These arguments are specified in `endpoint` as such:
 

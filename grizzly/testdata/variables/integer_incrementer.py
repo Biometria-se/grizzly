@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.testdata.variables.integer_incrementer Integer Incrementer
-This variable provides an unique integer each time it is accessed.
+"""Unique incremented integer each time it is accessed.
 
 Useful to generate unique ID for each request.
 
@@ -9,9 +8,10 @@ The first value of an integer that is going to be used.
 
 ## Arguments
 
-* `step` _int_, (optional) - how much the value should increment each time (default `1`)
-
-* `persist` _bool_, (optional) - if the initial value should be persist and loaded from file (default `False`)
+| Name      | Type   | Description                                                 | Default |
+| --------- | ------ | ----------------------------------------------------------- | ------- |
+| `step`    | `int`  | how much the value should increment each time               | `1`     |
+| `persist` | `bool` | if the initial value should be persist and loaded from file | `False` |
 
 ## Example
 
@@ -50,7 +50,7 @@ Values of `AtomicIntegerIncrementer.unique_id`, per run and iteration:
 
     4. ...
 
-Values of `AtomicIntegerIncrementer.persistent`, per run and iteration:
+Values of `AtomicIntegerIncrementer.persistent`, per run and iteration, for 4 iterations:
 
 1. Run (`features/persistent/example.json` missing)
 
@@ -60,18 +60,18 @@ Values of `AtomicIntegerIncrementer.persistent`, per run and iteration:
 
     3. `20`
 
-    4. ...
+    4. `25`
 
 2. Run (`features/persistent/example.json` created by Run 1, due to `persistent=True`), initial
-value `35 | step=5, persist=True` will be read from the file and override what is written in `example.feature`
+value `25 | step=5, persist=True` will be read from the file and override what is written in `example.feature`
 
-    1. `25`
+    1. `30`
 
-    2. `30`
+    2. `35`
 
-    3. `35`
+    3. `40`
 
-    4. ...
+    4. `45`
 """
 
 from __future__ import annotations
@@ -90,7 +90,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def atomicintegerincrementer__base_type__(value: str | int) -> str:
-    """Validate values that `AtomicRandomInteger` can be initialized with."""
     if isinstance(value, int):
         return str(value)
 

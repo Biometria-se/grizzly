@@ -32,7 +32,7 @@ def test__setup_user_validation(behave_fixture: BehaveFixture) -> None:
         _setup_user(behave, 'Dummy', 'dummy://foobar', user_count='200')
 
 
-def test_step_user_type_count_tag(behave_fixture: BehaveFixture) -> None:
+def test_step_user_type_with_count_and_tag(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -41,7 +41,7 @@ def test_step_user_type_count_tag(behave_fixture: BehaveFixture) -> None:
     assert not hasattr(grizzly.scenario.user, 'class_name')
     assert 'host' not in grizzly.scenario.context
 
-    step_user_type_count_tag(behave, '100', 'RestApi', 'foobar', 'http://localhost:8000', _grammar='users')
+    step_user_type_with_count_and_tag(behave, '100', 'RestApi', 'foobar', 'http://localhost:8000', _grammar='users')
 
     assert grizzly.setup.dispatcher_class == FixedUsersDispatcher
     assert grizzly.scenario.user.class_name == 'RestApiUser'
@@ -51,7 +51,7 @@ def test_step_user_type_count_tag(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.user.weight == 1
 
 
-def test_setup_user_type_count(behave_fixture: BehaveFixture) -> None:
+def test_setup_user_type_with_count(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast('GrizzlyContext', behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -61,7 +61,7 @@ def test_setup_user_type_count(behave_fixture: BehaveFixture) -> None:
     assert 'host' not in grizzly.scenario.context
     grizzly.scenario.variables['max_users'] = '10'
 
-    step_user_type_count(behave, '{{ max_users * 0.1 }}', 'ServiceBus', 'sb://localhost:8000', _grammar='user')
+    step_user_type_with_count(behave, '{{ max_users * 0.1 }}', 'ServiceBus', 'sb://localhost:8000', _grammar='user')
 
     assert grizzly.setup.dispatcher_class == FixedUsersDispatcher
     assert grizzly.scenario.user.class_name == 'ServiceBusUser'

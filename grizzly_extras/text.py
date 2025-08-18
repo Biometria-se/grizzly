@@ -1,8 +1,4 @@
-"""@anchor pydoc:grizzly_extras.text
-Utilities related to handling text.
-"""
-
-from __future__ import annotations
+from __future__ import annotations  # noqa: D100
 
 from abc import ABC, abstractmethod
 from contextlib import suppress
@@ -19,7 +15,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class permutation:
-    """Decorator used to annotate `parse` methods that are not using {@pylink grizzly_extras.text.PermutationEnum} as a base.
+    """Decorator used to annotate `parse` methods that are not using [`PermutationEnum`][grizzly_extras.text.PermutationEnum] as a base.
 
     This could be for example parse methods that uses regular expressions via `parse.with_pattern`.
 
@@ -39,7 +35,7 @@ class permutation:
     )
     ```
 
-    See {@pylink grizzly_extras.text.PermutationEnum.__vector__} for an explanation of possible values and their meaning.
+    See [`__vector__`][grizzly_extras.text.PermutationEnum.__vector__] for an explanation of possible values and their meaning.
     """
 
     vector: tuple[bool, bool] | None
@@ -91,7 +87,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     )
     ```
 
-    ##### `None`
+    ##### None
 
     Variable occurs `1..N` times in the expression
 
@@ -107,7 +103,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     Then I want to eat a "" and a ""
     ```
 
-    ##### `(False, True)`
+    ##### (False, True)
 
     Variable occurs `1` time in the expression.
 
@@ -121,7 +117,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     Then I want to eat a orange
     ```
 
-    ##### `(True, False)`
+    ##### (True, False)
 
     Variable occurs `2..N` times in the expression.
 
@@ -133,7 +129,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     Then I want to eat a banana, a apple and a orange
     ```
 
-    ##### `(True, True)`
+    ##### (True, True)
 
     Variable occurs `2..N` times in the expression, and should produce more than one combination of the step expression.
 

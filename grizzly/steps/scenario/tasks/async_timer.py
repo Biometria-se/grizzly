@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.async_timer Asynchronous Timer
-This module contains step implementations for the {@pylink grizzly.tasks.async_timer} task.
-"""
+"""Module contains step implementations for the [Async timer][grizzly.tasks.async_timer] task."""
 
 from __future__ import annotations
 
@@ -17,7 +15,7 @@ if TYPE_CHECKING:  # pragma: no cover
 def step_task_async_timer_start(context: Context, name: str, tid: str, version: str) -> None:
     """Start an asynchrounous timer.
 
-    See {@pylink grizzly.tasks.async_timer} task documentation for more information.
+    See [Async timer][grizzly.tasks.async_timer] task documentation for more information.
 
     Example:
     ```gherkin
@@ -25,7 +23,13 @@ def step_task_async_timer_start(context: Context, name: str, tid: str, version: 
         Then start document timer with name "Creation time" for id "{{ document_id }}" and version "{{ document_version }}"
     ```
 
-    Start a timer in one scenario.
+    Start a timer in one scenario. One specific instance of a timer is the combination of `name`, `tid` and `version`. So `tid`
+    can be reused, as long as it has another `version`.
+
+    Args:
+        name (str): name of the timer which will be shown in request statistics
+        tid (str): unique id for the timer
+        version (str): version of `tid`
 
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
@@ -40,7 +44,7 @@ def step_task_async_timer_stop(context: Context, name: str, tid: str, version: s
     This is needed if the combination of `tid` and `version` the timer was started with is not
     unique for the timer.
 
-    See {@pylink grizzly.tasks.async_timer} task documentation for more information.
+    See [Async timer][grizzly.tasks.async_timer] task documentation for more information.
 
     Example:
     ```gherkin
@@ -48,7 +52,12 @@ def step_task_async_timer_stop(context: Context, name: str, tid: str, version: s
         Then stop document timer with name "Creation time" for id "{{ document_id }}" and version "{{ document_version }}"
     ```
 
-    Stop a, known, timer in another scenario
+    Stop timer from another scenario (or the same as it was started).
+
+    Args:
+        name (str): name of the timer which will be shown in request statistics
+        tid (str): unique id for the timer
+        version (str): version of `tid`
 
     """
     grizzly = cast('GrizzlyContext', context.grizzly)

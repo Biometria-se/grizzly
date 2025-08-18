@@ -1,13 +1,9 @@
-"""@anchor pydoc:grizzly.tasks.wait_explicit Explicit Wait
-This task executes a `gevent.sleep` and is used to manually create delays between steps in a scenario.
+"""Task executes a `gevent.sleep` and is used to manually create delays between steps in a scenario.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.wait_explicit.step_task_wait_explicit}
+* [Static][grizzly.steps.scenario.tasks.wait_explicit.step_task_wait_explicit_static]
 
-## Arguments
-
-* `time_expression` _str_ - float as string or a fractions of seconds to excplicitly sleep in the scenario, supports {@link framework.usage.variables.templating}
 """
 
 from __future__ import annotations

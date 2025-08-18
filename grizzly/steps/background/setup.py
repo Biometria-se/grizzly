@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.background.setup Setup
-This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.
-"""
+"""Module contains step implementations that configures the load test scenario with parameters applicable for all scenarios."""
 
 from __future__ import annotations
 
@@ -23,7 +21,6 @@ if TYPE_CHECKING:  # pragma: no cover
 @parse.with_pattern(r'(client|server)', regex_group_count=1)
 @permutation(vector=(True, True))
 def parse_message_direction(text: str) -> str:
-    """Allow only "client" or "server"."""
     return text.strip()
 
 
@@ -194,6 +191,15 @@ def step_setup_wait_spawning_complete_timeout(context: Context, timeout: float) 
 
     This is when there are dependencies between scenarios. This will make all scenarios to wait until all defined
     users are spawned.
+
+    Example:
+    ```gherkin
+    Given wait "13.37" seconds until spawning is complete
+    ```
+
+    Args:
+        timeout (float): number of seconds to wait until locust spawning is complete
+
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.setup.wait_for_spawning_complete = timeout
@@ -205,6 +211,12 @@ def step_setup_wait_spawning_complete_indefinitely(context: Context) -> None:
 
     This is when there are dependencies between scenarios. This will make all scenarios to wait until all defined
     users are spawned.
+
+    Example:
+    ```gherkin
+    Given wait until spawning is complete
+    ```
+
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.setup.wait_for_spawning_complete = -1

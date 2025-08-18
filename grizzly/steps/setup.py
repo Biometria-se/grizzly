@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.setup Setup
-This module contains steps that can be in both `Background:` and `Scenario:` sections.
-"""
+"""Steps that can be in both `Background` and `Scenario` [Gherkin](https://cucumber.io/docs/gherkin/reference/) sections."""
 
 from __future__ import annotations
 
@@ -23,7 +21,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @then('ask for value of variable "{name}"')
 @given('ask for value of variable "{name}"')
-def step_setup_variable_value_ask(context: Context, name: str) -> None:
+def step_setup_ask_variable_value(context: Context, name: str) -> None:
     """Tell `grizzly-cli` that it should ask for an initial value for the variable.
 
     It will inject the value into the locust runtime environment, and in this step read it and insert it
@@ -64,14 +62,14 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
 
 
 @given('value for variable "{name}" is "{value}"')
-def step_setup_variable_value(context: Context, name: str, value: str) -> None:
+def step_setup_set_variable_value(context: Context, name: str, value: str) -> None:
     """Step to initialize a variable that should have the same [start] value for every run of the scenario.
 
     If this step is used after a step that adds a task or for a variable that already has been initialized, it is assumed that the value will change during runtime
-    so a {@pylink grizzly.tasks.set_variable} task will be added instead. The {@pylink grizzly.testdata.variables} must
+    so a [Set variable][grizzly.tasks.set_variable] task will be added instead. The [variable][grizzly.testdata.variables] must
     have implemented support for being settable.
 
-    Data type for the value of the variable is based on the type of variable. If the variable is an testdata {@pylink grizzly.testdata.variables}
+    Data type for the value of the variable is based on the type of variable. If the variable is a testdata [variables][grizzly.testdata.variables]
     then the value needs to match the format and type that the variable has implemented. If it is not a testdata variable
     `grizzly` will try to guess the data type. E.g.:
 
@@ -168,7 +166,7 @@ def _execute_python_script(context: Context, source: str, args: str | None) -> N
 
 
 @then('execute python script "{script_path}" with arguments "{arguments}"')
-def step_setup_execute_python_script_with_args(context: Context, script_path: str, arguments: str) -> None:
+def step_setup_execute_python_script_with_arguments(context: Context, script_path: str, arguments: str) -> None:
     """Execute python script located in specified path, providing the specified arguments.
 
     The script will not execute on workers, only on master (distributed mode) or local (local mode), and

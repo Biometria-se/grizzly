@@ -1,16 +1,15 @@
-"""@anchor pydoc:grizzly.auth.aad Azure Active Directory
-Grizzly provides a way to get tokens via Azure Active Directory (AAD), in the framework this is implemented by {@pylink grizzly.users.restapi}
-load user and {@pylink grizzly.tasks.clients.http} client task, via the `@refresh_token` decorator.
+"""Grizzly provides a way to get tokens via Azure Active Directory (AAD), in the framework this is implemented by [RestApi][grizzly.users.restapi]
+load user and [HTTP client][grizzly.tasks.clients.http] task, via the `@refresh_token` decorator.
 
 It is possible to use it in custom code as well, by implementing a custom class that inherits `grizzly.auth.GrizzlyHttpAuthClient`.
 
-For information about how to set context variables, see {@pylink grizzly.steps.setup.step_setup_set_context_variable}
+For information about how to set context variables, see [Set context variable][grizzly.steps.setup.step_setup_set_context_variable].
 
-Context variable values supports {@link framework.usage.variables.templating}.
+Context variable values supports [Templating][framework.usage.variables.templating].
 
 There are two ways to get an token, see below.
 
-## Client secret
+# Client secret
 
 Using client secret for an app registration.
 
@@ -22,7 +21,7 @@ And set context variable "auth.client.secret" to "<client secret>"
 And set context variable "auth.client.resource" to "<resource url/guid>"
 ```
 
-## Username and password
+# Username and password
 
 Using a username and password, with optional MFA authentication.
 
@@ -37,11 +36,11 @@ And set context variable "auth.user.password" to "HemL1gaArn3!"
 And set context variable "auth.user.redirect_uri" to "/app-registrered-redirect-uri"
 ```
 
-### MFA / TOTP
+## MFA / TOTP
 
 If the user is required to have a MFA method, support for software based TOTP tokens are supported. The user **must** first have this method configured.
 
-#### Configure TOTP
+### Configure TOTP
 
 1. Login to the accounts [My signins](https://mysignins.microsoft.com/security-info)
 
@@ -63,17 +62,18 @@ If the user is required to have a MFA method, support for software based TOTP to
 
 10. Open a terminal and run the following command:
 
-    === "Bash"
+    /// tab | Bash
+    ```bash
+    OTP_SECRET="<secret key from step 8>" grizzly-cli auth
+    ```
+    ///
 
-        ```bash
-        OTP_SECRET="<secret key from step 8>" grizzly-cli auth
-        ```
-    === "PowerShell"
-
-        ```powershell
-        $Env:OTP_SECRET = "<secret key from step 8>"
-        grizzly-cli auth
-        ```
+    /// tab | PowerShell
+    ```powershell
+    $Env:OTP_SECRET = "<secret key from step 8>"
+    grizzly-cli auth
+    ```
+    ///
 
 11. Copy the code generate from above command, go back to the browser and paste it into the text field and click `Next`
 
@@ -81,7 +81,7 @@ If the user is required to have a MFA method, support for software based TOTP to
 
 The user now have software based TOTP tokens as MFA method, where `grizzly` will act as the authenticator app.
 
-#### Example
+### Example
 
 In addition to the "Username and password" example, the context variable `auth.user.otp_secret` must also be set.
 

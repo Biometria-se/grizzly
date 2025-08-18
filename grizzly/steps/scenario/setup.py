@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.setup Setup
-This module contains step implementations that setup the load test scenario with parameters that is going to be used in the scenario they are defined in.
-"""
+"""Module contains step implementations that setup the load test scenario with parameters that is going to be used in the scenario they are defined in."""
 
 from __future__ import annotations
 
@@ -59,7 +57,7 @@ register_type(
 
 @given('repeat for "{value}" {iteration_number:IterationGramaticalNumber}')
 def step_setup_iterations(context: Context, value: str, *_args: Any, **_kwargs: Any) -> None:
-    """Set how many iterations of the {@pylink grizzly.tasks} in the scenario should execute.
+    """Set how many iterations the [tasks][grizzly.tasks] in the scenario should execute.
 
     Default value is `1`. A value of `0` means to run until all test data is consumed, or that the (optional) specified
     runtime for the scenario is reached.
@@ -90,19 +88,23 @@ def step_setup_iterations(context: Context, value: str, *_args: Any, **_kwargs: 
 
 
 @given('set iteration time to "{pace_time}" milliseconds')
-def step_setup_pace(context: Context, pace_time: str) -> None:
-    """Set minimum time one iterations of the {@pylink grizzly.tasks} in the scenario should take.
+def step_setup_iteration_pace(context: Context, pace_time: str) -> None:
+    """Set minimum time one iterations of all the [tasks][grizzly.tasks] in the scenario should take.
+
     E.g. if `pace` is set to `2000` ms and the time since it last ran was `300` ms, this task will
     sleep for `1700` ms. If the time of all tasks is greater than the specified time, there will be
     an error, but the scenario will continue.
 
-    This is useful to be able to control the intensity towards the loadtesting target.
+    This is useful to be able to control the intensity towards the load testing target.
 
     Example:
     ```gherkin
     Then set iteration time to "2000" milliseconds
     Then set iteration time to "{{ pace }}" milliseconds
     ```
+
+    Args:
+        pace_time (str): number of milliseconds each iteration at max should take, supports templating
 
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
@@ -180,6 +182,10 @@ def step_setup_the_failed_task_custom(context: Context, failure: type[Exception]
     When the task fails with "TaskTimeoutError" retry task
     ```
 
+    Args:
+        failure (type[Exception] | str): exception type or exception message that should be handled
+        failure_action (FailureAction): how the specified failure should be handled
+
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
     assert len(grizzly.scenario.tasks()) > 0, 'scenario does not have any tasks'
@@ -198,6 +204,9 @@ def step_setup_the_failed_task_default(context: Context, failure_action: Failure
     When the task fails restart scenario
     When the task fails stop user
     ```
+
+    Args:
+        failure_action (FailureAction): default failure action when nothing specific is matched
 
     """
     assert failure_action.default_friendly, f'{failure_action.step_expression} should not be used as the default behavior, only use it for specific failures'
@@ -220,6 +229,10 @@ def step_setup_any_failed_task_custom(context: Context, failure: type[Exception]
     When any task fail with "TaskTimeoutError" retry task
     ```
 
+    Args:
+        failure (type[Exception] | str): exception type or exception message that should be handled
+        failure_action (FailureAction): how the specified failure should be handled
+
     """
     grizzly = cast('GrizzlyContext', context.grizzly)
     grizzly.scenario.failure_handling.update({failure: failure_action.exception})
@@ -237,6 +250,9 @@ def step_setup_any_failed_task_default(context: Context, failure_action: Failure
     When any task fail stop user
     ```
 
+    Args:
+        failure_action (FailureAction): default failure action when nothing specific is matched
+
     """
     assert failure_action.default_friendly, f'{failure_action.step_expression} should not be used as the default behavior, only use it for specific failures'
 
@@ -252,10 +268,10 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
     When step expression is used before any tasks has been added in the scenario the metadata will
     be used for all requests the specified loadtesting user executes in the scenario.
 
-    If used after a {@pylink grizzly.tasks.request} task, the metadata will be added and only used
+    If used after a [Request][grizzly.tasks.request] task, the metadata will be added and only used
     for that request.
 
-    If used after a task that implements `grizzly.auth.GrizzlyHttpAuthClient` (e.g. {@pylink grizzly.tasks.clients.http}),
+    If used after a task that implements `grizzly.auth.GrizzlyHttpAuthClient` (e.g. [HTTP client task][grizzly.tasks.clients.http]),
     the metadata will be added and only used when that task executes.
 
     Example:

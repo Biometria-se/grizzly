@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.listeners.appinsights Application Insights
-This listener is based on the great work made by
+"""Listener is based on the great work made by
 [Svenska Spel and their Application Insights listener](https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsights_listener.py).
 
 Minor changes, mainly related to adding typing, and also how InstrumentationKey is handled.

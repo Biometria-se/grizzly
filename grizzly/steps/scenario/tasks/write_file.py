@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.write_file Write file
-This module contains step implementations for the {@pylink grizzly.tasks.write_file} task.
-"""
+"""Module contains step implementations for the [Write file][grizzly.tasks.write_file] task."""
 
 from __future__ import annotations
 
@@ -14,15 +12,15 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @then('write "{content}" in file "{file_name}"')
-def step_task_write_file(context: Context, content: str, file_name: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.write_file} task.
+def step_task_write_file_create_or_append(context: Context, content: str, file_name: str) -> None:
+    """Create an instance of the [Write file][grizzly.tasks.write_file] task.
 
     Writes content into specified file (adds new line after), if the file already exist the content will be appended.
     Useful for traceability or observability during a test.
 
     Both content and file name support templating.
 
-    See {@pylink grizzly.tasks.write_file} task documentation for more information about the task.
+    See [Write file][grizzly.tasks.write_file] task documentation for more information.
 
     Example:
     ```gherkin
@@ -40,15 +38,15 @@ def step_task_write_file(context: Context, content: str, file_name: str) -> None
 
 
 @then('write "{content}" in temporary file "{file_name}"')
-def step_task_write_temp_file(context: Context, content: str, file_name: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.write_file} task, which will remove the file when test is stopped.
+def step_task_write_file_temporary(context: Context, content: str, file_name: str) -> None:
+    """Create an instance of the [Write file][grizzly.tasks.write_file] task, which will remove the file when test is stopped.
 
     Writes specified content, as-is, in the specified file (no line break added), the file will be removed when the test stops.
     The file will be created in the first iteration, and then be a no-op task for any following iterations.
 
     Both content and file name support templating, and content can be base64 encoded.
 
-    See {@pylink grizzly.tasks.write_file} task documentation for more information about the task.
+    See [Write file][grizzly.tasks.write_file] task documentation for more information.
 
     Example:
     ```gherkin

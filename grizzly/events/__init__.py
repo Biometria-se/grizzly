@@ -121,13 +121,13 @@ class GrizzlyEvents:
     """Internal `grizzly` events, supported by `grizzly.listeners.influxdb`."""
 
     keystore_request: GrizzlyInternalEventHook = field(init=False, default_factory=grizzly_internal_event_hook_factory('request_keystore'))
-    """Triggered by a keystore request, both from producer and consumer, it will be triggered by any step that uses {@pylink grizzly.tasks.keystore}."""
+    """Triggered by a keystore request, both from producer and consumer, it will be triggered by any step that uses [Keystore][grizzly.tasks.keystore] task."""
 
     testdata_request: GrizzlyInternalEventHook = field(init=False, default_factory=grizzly_internal_event_hook_factory('request_testdata'))
     """Triggered by a testdata request, which is done in the beginning of each iteration of a scenario."""
 
     user_event: GrizzlyInternalEventHook = field(init=False, default_factory=grizzly_internal_event_hook_factory('user_event'))
-    """This can be triggered by a {@pylink grizzly.users}, i.e. the handling of C2D messages in {@pylink grizzly.users.iothub} user."""
+    """This can be triggered by a [load user][grizzly.users], i.e. the handling of C2D messages in [IoTHub user][grizzly.users.iothub] user."""
 
 
 class GrizzlyEventDecoder(metaclass=ABCMeta):

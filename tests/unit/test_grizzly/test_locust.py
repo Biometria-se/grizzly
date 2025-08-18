@@ -798,6 +798,13 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
         assert re.match(r'^DOC\s+TPM report OUT\s+10', grizzly_stats[last_stat_row].strip())
         assert re.match(r'^DOC\s+TPM report IN\s+10', grizzly_stats[last_stat_row - 1].strip())
 
+        assert len(grizzly_stats) - 1 == len(locust_stats)
+
+        try:
+            date_parse(grizzly_stats[0])
+        except:
+            pytest.fail(f'{grizzly_stats[0]} is not a valid date')
+
         for stat in grizzly_stats[1:]:
             assert stat in locust_stats
 

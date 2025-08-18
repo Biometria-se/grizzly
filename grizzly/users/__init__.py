@@ -1,14 +1,14 @@
-"""@anchor pydoc:grizzly.users Load User
-This package contains implementation for different type of endpoints and protocols.
+"""Package contains implementation for different type of endpoints and protocols.
 
 These implementations are the basis for how to communicate with the system under test.
 
 ## Custom
 
-It is possible to implement custom users, the only requirement is that they inherit `grizzly.users.GrizzlyUser`. To get them to be executed by `grizzly`
-the full namespace has to be specified as `user_class_name` in the scenarios {@pylink grizzly.steps.scenario.user} step.
+It is possible to implement custom users, the only requirement is that they inherit `grizzly.users.GrizzlyUser`.
+To get them to be executed by `grizzly` the full namespace has to be specified as `user_class_name` in the
+scenarios [user][grizzly.steps.scenario.user] step.
 
-There are examples of this in the {@link framework.example}.
+There are examples of this in the [example][example] documentation.
 """
 
 from __future__ import annotations

@@ -1,7 +1,8 @@
-"""@anchor pydoc:grizzly.testdata.variables.csv_reader CSV Reader
-This variable reads a CSV file and provides a new row from the CSV file each time it is accessed.
+"""Read a CSV file and provides a new row from the CSV file each time it is accessed.
 
-The CSV files **must** have headers for each column, since these are used to reference the value.
+!!! info
+
+    CSV files **must** have headers for each column, since these are used to reference the value.
 
 ## Format
 
@@ -9,8 +10,10 @@ Value is the path, relative to `requests/`, of an file ending with `.csv`.
 
 ## Arguments
 
-* `repeat` _bool_ (optional) - whether values should be reused, e.g. when reaching the end it should start from the beginning again (default: `False`)
-* `random` _bool_ (optional) - if rows should be selected by random, instead of sequential from first to last (default: `False`)
+| Name     | Type   | Description                                                                                         | Default |
+| -------- | ------ | --------------------------------------------------------------------------------------------------- | ------- |
+| `repeat` | `bool` | wheter values should be reused, e.g. when reaching the end it should start from the beginning again | `False` |
+| `random` | `bool` | if rows should be selected by random, instead of sequential from first to last                      | `False` |
 
 ## Example
 
@@ -49,8 +52,6 @@ Second request:
     "password": "some-other-password"
 }
 ```
-
-etc.
 """
 
 from __future__ import annotations
@@ -72,7 +73,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
 
 
-def atomiccsvreader__base_type__(value: str) -> str:
+def _atomiccsvreader(value: str) -> str:
     """Validate values that `AtomicCsvReader` can be initialized with."""
     grizzly_context_requests = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
 
@@ -110,7 +111,7 @@ def atomiccsvreader__base_type__(value: str) -> str:
 
 
 class AtomicCsvReader(AtomicVariable[StrDict]):
-    __base_type__ = atomiccsvreader__base_type__
+    __base_type__ = _atomiccsvreader
     __initialized: bool = False
 
     _rows: dict[str, list[StrDict]]

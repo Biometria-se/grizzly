@@ -39,7 +39,7 @@ def _assert_variable_value(self: BehaveContext, name: str, value: Any) -> None:
 
 
 @pytest.mark.parametrize('section', ['Scenario', 'Background'])
-def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture, section: str) -> None:
+def test_step_setup_ask_variable_value(behave_fixture: BehaveFixture, section: str) -> None:
     try:
         in_background = section == 'Background'
         behave = behave_fixture.context
@@ -60,7 +60,7 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture, section: s
 
         assert behave.exceptions == {}
 
-        step_setup_variable_value_ask(behave, name)
+        step_setup_ask_variable_value(behave, name)
 
         assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variable "AtomicIntegerIncrementer.messageID" does not have a value')]}
 
@@ -68,11 +68,11 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture, section: s
 
         environ[f'TESTDATA_VARIABLE_{name}'] = '1337'
 
-        step_setup_variable_value_ask(behave, name)
+        step_setup_ask_variable_value(behave, name)
 
         assert int(grizzly.scenario.variables.get(name, '')) == 1337
 
-        step_setup_variable_value_ask(behave, name)
+        step_setup_ask_variable_value(behave, name)
 
         assert behave.exceptions == {
             behave.scenario.name: [
@@ -83,7 +83,7 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture, section: s
 
         environ['TESTDATA_VARIABLE_INCORRECT_QUOTED'] = '"incorrectly_quoted\''
 
-        step_setup_variable_value_ask(behave, 'INCORRECT_QUOTED')
+        step_setup_ask_variable_value(behave, 'INCORRECT_QUOTED')
 
         assert behave.exceptions == {
             behave.scenario.name: [
@@ -99,7 +99,7 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture, section: s
 
 
 @pytest.mark.parametrize('section', ['Scenario', 'Background'])
-def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: MockerFixture, section: str) -> None:  # noqa: PLR0915
+def test_step_setup_set_variable_value(behave_fixture: BehaveFixture, mocker: MockerFixture, section: str) -> None:  # noqa: PLR0915
     in_background = section == 'Background'
     behave = behave_fixture.context
     behave.assert_variable_value = _assert_variable_value.__get__(behave, behave.__class__)
@@ -110,17 +110,17 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     behave.scenario = grizzly.scenario.behave
     behave_fixture.create_step('test step', in_background=in_background, context=behave)
 
-    step_setup_variable_value(behave, 'test_string', 'test')
+    step_setup_set_variable_value(behave, 'test_string', 'test')
     behave.assert_variable_value('test_string', 'test')
 
-    step_setup_variable_value(behave, 'test_int', '1')
+    step_setup_set_variable_value(behave, 'test_int', '1')
     behave.assert_variable_value('test_int', 1)
 
-    step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test', '1 | step=10')
+    step_setup_set_variable_value(behave, 'AtomicIntegerIncrementer.test', '1 | step=10')
     behave.assert_variable_value('AtomicIntegerIncrementer.test', '1 | step=10')
 
     grizzly.scenario.variables['step'] = 13
-    step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test2', '1 | step="{{ step }}"')
+    step_setup_set_variable_value(behave, 'AtomicIntegerIncrementer.test2', '1 | step="{{ step }}"')
     behave.assert_variable_value('AtomicIntegerIncrementer.test2', '1 | step="13"')
 
     grizzly.state.configuration['csv.file.path'] = 'test/input.csv'
@@ -128,7 +128,7 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     csv_file_path = behave_fixture.locust._test_context_root / 'requests' / 'test' / 'input.csv'
     csv_file_path.parent.mkdir(parents=True, exist_ok=True)
     csv_file_path.touch()
-    step_setup_variable_value(behave, 'AtomicCsvReader.input', '$conf::csv.file.path$ | repeat="{{ csv_repeat }}"')
+    step_setup_set_variable_value(behave, 'AtomicCsvReader.input', '$conf::csv.file.path$ | repeat="{{ csv_repeat }}"')
     assert len(behave.exceptions) == 0
     behave.assert_variable_value('AtomicCsvReader.input', 'test/input.csv | repeat="False"')
 
@@ -136,26 +136,26 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     csv_file_path = behave_fixture.locust._test_context_root / 'requests' / 'test' / 'input.test.csv'
     csv_file_path.parent.mkdir(parents=True, exist_ok=True)
     csv_file_path.touch()
-    step_setup_variable_value(behave, 'AtomicCsvReader.csv_input', 'test/input.$conf::env$.csv | repeat="{{ csv_repeat }}"')
+    step_setup_set_variable_value(behave, 'AtomicCsvReader.csv_input', 'test/input.$conf::env$.csv | repeat="{{ csv_repeat }}"')
     assert len(behave.exceptions) == 0
     behave.assert_variable_value('AtomicCsvReader.csv_input', 'test/input.test.csv | repeat="False"')
 
     grizzly.scenario.variables['leveranser'] = 100
-    step_setup_variable_value(behave, 'AtomicRandomString.regnr', '%sA%s1%d%d | count={{ (leveranser * 0.25 + 1) | int }}, upper=True')
+    step_setup_set_variable_value(behave, 'AtomicRandomString.regnr', '%sA%s1%d%d | count={{ (leveranser * 0.25 + 1) | int }}, upper=True')
     behave.assert_variable_value('AtomicRandomString.regnr', '%sA%s1%d%d | count=26, upper=True')
 
-    step_setup_variable_value(behave, 'AtomicDate.test', '2021-04-13')
+    step_setup_set_variable_value(behave, 'AtomicDate.test', '2021-04-13')
     behave.assert_variable_value('AtomicDate.test', '2021-04-13')
 
-    step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
+    step_setup_set_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variables have been found in templates, but have not been declared:\nvalue')]}
 
     grizzly.scenario.variables['value'] = 'hello world!'
-    step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
+    step_setup_set_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
 
     behave.assert_variable_value('dynamic_variable_value', 'hello world!')
 
-    step_setup_variable_value(behave, 'incorrectly_quoted', '"error\'')
+    step_setup_set_variable_value(behave, 'incorrectly_quoted', '"error\'')
 
     assert behave.exceptions == {
         behave.scenario.name: [
@@ -166,10 +166,10 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     behave.exceptions.clear()
 
     grizzly.scenario.variables.persistent.update({'AtomicIntegerIncrementer.persistent': '10 | step=10, persist=True'})
-    step_setup_variable_value(behave, 'AtomicIntegerIncrementer.persistent', '1 | step=10, persist=True')
+    step_setup_set_variable_value(behave, 'AtomicIntegerIncrementer.persistent', '1 | step=10, persist=True')
     behave.assert_variable_value('AtomicIntegerIncrementer.persistent', '10 | step=10, persist=True')
 
-    step_setup_variable_value(behave, 'AtomicCsvWriter.output', 'output.csv | headers="foo,bar"')
+    step_setup_set_variable_value(behave, 'AtomicCsvWriter.output', 'output.csv | headers="foo,bar"')
     behave.assert_variable_value('AtomicCsvWriter.output', 'output.csv | headers="foo,bar"')
     assert len(grizzly.scenario.tasks()) == 0
 
@@ -177,7 +177,7 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
 
     grizzly.scenario.tasks.add(LogMessageTask('dummy'))
 
-    step_setup_variable_value(behave, 'AtomicCsvWriter.output.foo', '{{ foo_value }}')
+    step_setup_set_variable_value(behave, 'AtomicCsvWriter.output.foo', '{{ foo_value }}')
     if not in_background:
         assert len(grizzly.scenario.tasks()) == 2
         task = grizzly.scenario.tasks()[-1]
@@ -195,14 +195,14 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     if not in_background:
         grizzly.scenario.variables.update({'bar_value': 'foobaz'})
 
-        step_setup_variable_value(behave, 'AtomicCsvWriter.output.bar', '{{ bar_value }}')
+        step_setup_set_variable_value(behave, 'AtomicCsvWriter.output.bar', '{{ bar_value }}')
         assert len(grizzly.scenario.tasks()) == 3
         task = grizzly.scenario.tasks()[-1]
         assert task == SOME(SetVariableTask, variable='AtomicCsvWriter.output.bar', value='{{ bar_value }}')
 
         grizzly.scenario.tasks.clear()
 
-        step_setup_variable_value(behave, 'custom.variable.AtomicFooBar.value.foo', 'hello')
+        step_setup_set_variable_value(behave, 'custom.variable.AtomicFooBar.value.foo', 'hello')
 
         assert behave.exceptions == {
             behave.scenario.name: [
@@ -219,7 +219,7 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
 
         grizzly.scenario.tasks.add(LogMessageTask('dummy'))
 
-        step_setup_variable_value(behave, 'tests.helpers.AtomicCustomVariable.value.foo', 'hello')
+        step_setup_set_variable_value(behave, 'tests.helpers.AtomicCustomVariable.value.foo', 'hello')
 
         set_variable_task_mock.assert_called_once_with('tests.helpers.AtomicCustomVariable.value.foo', 'hello', VariableType.VARIABLES)
 
@@ -229,21 +229,21 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
         grizzly.scenarios.create(behave_fixture.create_scenario('test zcenario'))
         grizzly.scenario.variables.update({'value': 'foo'})
 
-        step_setup_variable_value(behave, 'AtomicIntegerIncrementer.persistent', '1 | step=10, persist=True')
+        step_setup_set_variable_value(behave, 'AtomicIntegerIncrementer.persistent', '1 | step=10, persist=True')
         assert behave.exceptions == {}
-        step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
+        step_setup_set_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
         assert behave.exceptions == {}
 
         grizzly.scenarios.select(prev_scenario)
         grizzly.scenario.tasks().clear()
-        step_setup_variable_value(behave, 'AtomicIntegerIncrementer.persistent', '1 | step=10, persist=True')
+        step_setup_set_variable_value(behave, 'AtomicIntegerIncrementer.persistent', '1 | step=10, persist=True')
         assert behave.exceptions == {
             prev_scenario.name: [
                 ANY(AssertionError, message='variable AtomicIntegerIncrementer.persistent has already been initialized'),
             ],
         }
 
-        step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
+        step_setup_set_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
         assert behave.exceptions == {
             prev_scenario.name: [
                 ANY(AssertionError, message='variable AtomicIntegerIncrementer.persistent has already been initialized'),
@@ -253,12 +253,12 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
 
         grizzly.scenario.tasks.add(LogMessageTask('dummy'))
 
-        step_setup_variable_value(behave, 'new_variable', 'foobar')
+        step_setup_set_variable_value(behave, 'new_variable', 'foobar')
         behave.assert_variable_value('new_variable', 'foobar')
 
         grizzly.scenario.tasks.clear()
 
-        step_setup_variable_value(behave, 'new_variable', 'foobar')
+        step_setup_set_variable_value(behave, 'new_variable', 'foobar')
 
         assert behave.exceptions == {
             behave.scenario.name: [
@@ -269,7 +269,7 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
         }
 
 
-def test_step_setup_execute_python_script_with_args(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+def test_step_setup_execute_python_script_with_arguments(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
     execute_script_mock = mocker.patch('grizzly.steps.setup._execute_python_script', return_value=None)
     context = grizzly_fixture.behave.context
     grizzly = grizzly_fixture.grizzly
@@ -282,12 +282,12 @@ def test_step_setup_execute_python_script_with_args(grizzly_fixture: GrizzlyFixt
         script_file.parent.mkdir(exist_ok=True, parents=True)
         script_file.write_text("print('foobar')")
 
-        step_setup_execute_python_script_with_args(context, script_file.as_posix(), '--foo=bar --bar foo --baz')
+        step_setup_execute_python_script_with_arguments(context, script_file.as_posix(), '--foo=bar --bar foo --baz')
 
         execute_script_mock.assert_called_once_with(context, "print('foobar')", '--foo=bar --bar foo --baz')
         execute_script_mock.reset_mock()
 
-        step_setup_execute_python_script_with_args(context, 'bin/generate-testdata.py', '--foo=bar --bar foo --baz')
+        step_setup_execute_python_script_with_arguments(context, 'bin/generate-testdata.py', '--foo=bar --bar foo --baz')
 
         execute_script_mock.assert_called_once_with(context, "print('foobar')", '--foo=bar --bar foo --baz')
         execute_script_mock.reset_mock()
@@ -295,7 +295,7 @@ def test_step_setup_execute_python_script_with_args(grizzly_fixture: GrizzlyFixt
         context.feature.location.filename = f'{grizzly_fixture.test_context}/features/test.feature'
 
         grizzly.scenario.variables.update({'foo': 'bar'})
-        step_setup_execute_python_script_with_args(context, '../bin/generate-testdata.py', '--foo={{ foo }} --bar foo --baz')
+        step_setup_execute_python_script_with_arguments(context, '../bin/generate-testdata.py', '--foo={{ foo }} --bar foo --baz')
 
         execute_script_mock.assert_called_once_with(context, "print('foobar')", '--foo=bar --bar foo --baz')
         execute_script_mock.reset_mock()

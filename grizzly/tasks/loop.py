@@ -1,27 +1,21 @@
-"""@anchor pydoc:grizzly.tasks.loop Loop
-This task executes the wraped tasks for all values in provided list.
+"""Task executes the wraped tasks for all values in provided list.
 
-All task created between {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_start} and {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_end}
+All task created between [Start][grizzly.steps.scenario.tasks.loop.step_task_loop_start] and [End][grizzly.steps.scenario.tasks.loop.step_task_loop_end]
 will be wrapped in this instance and executed for all values in the provided list (must be in JSON format).
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_start}
+* [Start][grizzly.steps.scenario.tasks.loop.step_task_loop_start]
 
-* {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_end}
+* [End][grizzly.steps.scenario.tasks.loop.step_task_loop_end]
 
 ## Statistics
 
 Executions of this task will be visible in `locust` request statistics with request type `LOOP` and `name` is suffixed with `(<n>)`, where `n`
-is the number of wrapped tasks. Each wrapped task will have its own entry in the statistics, see respective {@pylink grizzly.tasks} documentation.
+is the number of wrapped tasks.
 
-## Arguments
+Each wrapped task will have its own entry in the statistics, see respective [tasks][grizzly.tasks] documentation.
 
-* `name` _str_: name of the for loop, used in `locust` statistics
-
-* `values` _str_: {@link framework.usage.variables.templating} string which must be valid json and render to a list of values
-
-* `variable` _str_: name of variable that a value from `input_list` will be accessible in
 """
 
 from __future__ import annotations

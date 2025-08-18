@@ -1,0 +1,13 @@
+/* Hide "Project status" from TOC in index.md / README.md */
+nav[aria-label="Project status"] {
+    display: none;
+}
+
+/* Hide "Table of contents" if there is no items in the list */
+nav[aria-label="Table of contents"]:not(:has(ul > li)) {
+    display: none;
+}
+
+.md-typeset code {
+    font-size: 0.75em;
+}

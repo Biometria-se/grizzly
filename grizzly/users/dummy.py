@@ -1,12 +1,13 @@
 """Does nothing (noop).
 
+This is useful for scenarios that collects and aggregates information from many different sources (targets) using
+[client][grizzly.tasks.clients] tasks.
+
 ## Format
 
 Format of `host` can be anything.
 
 ## Examples
-
-Example of how to use it in a scenario:
 
 ```gherkin
 Given a user of type "Dummy" load testing "/dev/null"

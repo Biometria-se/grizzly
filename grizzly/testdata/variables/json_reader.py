@@ -1,5 +1,4 @@
-"""@anchor pydoc:grizzly.testdata.variables.json_reader JSON Reader
-This variable reads a JSON file that contains a list of objects and provides a new object from the list each time it is accessed.
+"""Read a JSON file that contains a list of objects and provides a new object from the list each time it is accessed.
 
 The JSON file **must** contain a list of JSON objects, and each object **must** have the same properties.
 
@@ -9,8 +8,10 @@ Value is the path, relative to `requests/`, of an file ending with `.json`.
 
 ## Arguments
 
-* `repeat` _bool_ (optional) - whether values should be reused, e.g. when reaching the end it should start from the beginning again (default: `False`)
-* `random` _bool_ (optional) - if rows should be selected by random, instead of sequential from first to last (default: `False`)
+| Name     | Type   | Description                                                                                          | Default |
+| -------- | ------ | ---------------------------------------------------------------------------------------------------- | ------- |
+| `repeat` | `bool` | whether values should be reused, e.g. when reaching the end it should start from the beginning again | `False` |
+| `random` | `bool` | if rows should be selected by random, instead of sequential from first to last                       | `False` |
 
 ## Example
 
@@ -67,8 +68,6 @@ Second request:
     "password": "some-other-password"
 }
 ```
-
-etc.
 """
 
 from __future__ import annotations
@@ -91,7 +90,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def atomicjsonreader__base_type__(value: str) -> str:
-    """Validate values that `AtomicJsonReader` can be initialized with."""
     grizzly_context_requests = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
 
     if has_separator('|', value):

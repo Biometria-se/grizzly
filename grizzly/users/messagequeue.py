@@ -1,9 +1,8 @@
-"""@anchor pydoc:grizzly.users.messagequeue Message Queue
-Get and put messages on with IBM MQ queues.
+"""Get and put messages on with IBM MQ queues.
 
 User is based on `pymqi` for communicating with IBM MQ. However `pymqi` uses native libraries which `gevent` (used by `locust`) cannot patch,
 which causes any calls in `pymqi` to block the rest of `locust`. To get around this, the user implementation communicates with a stand-alone
-process via zmq, which in turn communicates with IBM MQ.
+process via 0mq, which in turn communicates with IBM MQ.
 
 `async-messaged` starts automagically when a scenario uses `MessageQueueUser` and `pymqi` dependencies are installed.
 
@@ -31,8 +30,10 @@ a specific message is to be retrieved from the queue. The format of endpoint is:
 queue:<queue_name>[, expression:<expression>][, max_message_size:<max_message_size>]
 ```
 
-Where `<expression>` can be a XPath or jsonpath expression, depending on the specified content type. See example below.
-Where `<max_message_size>` is the maximum number of bytes a message can be for being able to accept it. If not set, the client will
+`<expression>` can be a XPath or jsonpath expression, depending on the specified content type, see
+[Get message with expression][grizzly.users.messagequeue--get-message-with-expression] example.
+
+`<max_message_size>` is the maximum number of bytes a message can be for being able to accept it. If not set, the client will
 reject the message with `MQRC_TRUNCATED_MSG_FAILED`, adjust the message buffer and try again. If set, and the message is bigger than
 the specified size, the message will be rejected by the client and will eventually fail.
 
@@ -88,7 +89,7 @@ And set context variable "auth.password" to "<password>"
 #### With TLS
 
 A [key repository](https://www.ibm.com/docs/en/ibm-mq/7.5?topic=wstulws-setting-up-key-repository-unix-linux-windows-systems)
-(3 files; `.kdb`, `.rdb` and `.sth`) for the user is needed, and is specified with `auth.key_file` excluding the file extension.
+(`.kdb` and `.sth`) for the user is needed, and is specified with `auth.key_file` excluding the file extension.
 
 ```gherkin
 Given a user of type "MessageQueue" load testing "mq://mqm:admin@mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"

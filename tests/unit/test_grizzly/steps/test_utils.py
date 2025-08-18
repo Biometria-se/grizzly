@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from grizzly.steps.utils import step_utils_add_orphan_template, step_utils_fail
+from grizzly.steps.utils import step_utils_add_orphan_template, step_utils_fail_scenario
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -15,7 +15,7 @@ def test_step_utils_fail(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     assert behave.exceptions == {}
 
-    step_utils_fail(behave)
+    step_utils_fail_scenario(behave)
 
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='manually failed')]}
 

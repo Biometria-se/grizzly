@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.clients Clients
-This module contains step implementations for the {@pylink grizzly.tasks.clients} tasks.
-"""
+"""Module contains step implementations for [client][grizzly.tasks.clients] tasks."""
 
 from __future__ import annotations
 
@@ -16,13 +14,13 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @then('{method:Method} from "{endpoint}" with name "{name}" and save response payload in "{payload_variable}" and metadata in "{metadata_variable}"')
-def step_task_client_from_endpoint_payload_metadata(context: Context, method: RequestMethod, endpoint: str, name: str, payload_variable: str, metadata_variable: str) -> None:
-    """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
+def step_task_client_from_endpoint_payload_and_metadata(context: Context, method: RequestMethod, endpoint: str, name: str, payload_variable: str, metadata_variable: str) -> None:
+    """Create an instance of a [client][grizzly.tasks.clients] task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`.
 
     Get information from another host or endpoint than the scenario is load testing and saves the response in a variable.
 
-    See {@pylink grizzly.tasks.clients} task documentation for more information about client tasks.
+    See [client][grizzly.tasks.clients] task documentation for more information about client tasks.
 
     Example:
     ```gherkin
@@ -56,12 +54,12 @@ def step_task_client_from_endpoint_payload_metadata(context: Context, method: Re
 
 @then('{method:Method} from "{endpoint}" with name "{name}" and save response payload in "{variable}"')
 def step_task_client_from_endpoint_payload(context: Context, method: RequestMethod, endpoint: str, name: str, variable: str) -> None:
-    """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
+    """Create an instance of a [client][grizzly.tasks.clients] task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`.
 
     Get information from another host or endpoint than the scenario is load testing and saves the response in a variable.
 
-    See {@pylink grizzly.tasks.clients} task documentation for more information about client tasks.
+    See [client][grizzly.tasks.clients] task documentation for more information about client tasks.
 
     Example:
     ```gherkin
@@ -94,13 +92,13 @@ def step_task_client_from_endpoint_payload(context: Context, method: RequestMeth
 
 @then('{method:Method} "{source}" to "{endpoint}" with name "{name}" as "{destination}"')
 def step_task_client_to_endpoint_file_destination(context: Context, method: RequestMethod, source: str, endpoint: str, name: str, destination: str) -> None:
-    """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is
+    """Create an instance of a [client][grizzly.tasks.clients] task, actual implementation of the task is
     determined based on the URL scheme specified in `endpoint`.
 
     Put information, source being a file, to another host or endpoint than the scenario is load testing
     and saves the response in a variable
 
-    See {@pylink grizzly.tasks.clients} task documentation for more information about client tasks.
+    See [client][grizzly.tasks.clients] task documentation for more information about client tasks.
 
     Example:
     ```gherkin
@@ -108,7 +106,7 @@ def step_task_client_to_endpoint_file_destination(context: Context, method: Requ
     ```
 
     Args:
-        source (str): relative path to file in `feature/requests`, supports {@link framework.usage.variables.templating}
+        source (str): relative path to file in `feature/requests`, supports [templating][framework.usage.variables.templating]
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
         destination (str): name of source on the destination
@@ -134,13 +132,13 @@ def step_task_client_to_endpoint_file_destination(context: Context, method: Requ
 
 @then('{method:Method} "{source}" to "{endpoint}" with name "{name}"')
 def step_task_client_to_endpoint_file(context: Context, method: RequestMethod, source: str, endpoint: str, name: str) -> None:
-    """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
+    """Create an instance of a [client][grizzly.tasks.clients] task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`.
 
     Put information, source being a file, to another host or endpoint than the scenario
     is load testing and saves the response in a variable
 
-    See {@pylink grizzly.tasks.clients} task documentation for more information about client tasks.
+    See [client][grizzly.tasks.clients] task documentation for more information about client tasks.
 
     Example:
     ```gherkin
@@ -148,7 +146,7 @@ def step_task_client_to_endpoint_file(context: Context, method: RequestMethod, s
     ```
 
     Args:
-        source (str): relative path to file in `feature/requests`, supports {@link framework.usage.variables.templating}
+        source (str): relative path to file in `feature/requests`, supports [templating][framework.usage.variables.templating]
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
 
@@ -173,13 +171,13 @@ def step_task_client_to_endpoint_file(context: Context, method: RequestMethod, s
 
 @then('{method:Method} to "{endpoint}" with name "{name}"')
 def step_task_client_to_endpoint_text(context: Context, method: RequestMethod, endpoint: str, name: str) -> None:
-    """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
+    """Create an instance of a [client][grizzly.tasks.clients] task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`.
 
     Put information, source step text, to another host or endpoint than the scenario
     is load testing and saves the response in a variable
 
-    See {@pylink grizzly.tasks.clients} task documentation for more information about client tasks.
+    See [client][grizzly.tasks.clients] task documentation for more information about client tasks.
 
     Example:
     ```gherkin

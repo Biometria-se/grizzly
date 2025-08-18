@@ -120,9 +120,8 @@ jobs:
         git checkout -b "${tag}" "tags/${tag}"
 
     - name: build documentation
-      working-directory: ./docs/
       id: build-docs
-      run: python -m novella --site-dir "./_build" --base-url grizzly/
+      run: python -m mkdocs build
 
     - name: deploy documentation
       id: deploy-docs
@@ -130,7 +129,7 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_branch: gh-pages
-        publish_dir: ./docs/_build
+        publish_dir: ./site
         destination_dir: docs/
         enable_jekyll: false
         # cname: <a better domain>

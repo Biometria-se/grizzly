@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.transformer Transformer
-This module contains step implementations for the {@pylink grizzly.tasks.transformer} task.
-"""
+"""Module contains step implementations for the [Transformer][grizzly.tasks.transformer] task."""
 
 from __future__ import annotations
 
@@ -19,13 +17,13 @@ register_type(
 
 
 @then('parse "{content}" as "{content_type:ContentType}" and save value of "{expression}" in variable "{variable}"')
-def step_task_transform(context: Context, content: str, content_type: TransformerContentType, expression: str, variable: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.transformer} task.
+def step_task_transformer_parse(context: Context, content: str, content_type: TransformerContentType, expression: str, variable: str) -> None:
+    """Create an instance of the [Transformer][grizzly.tasks.transformer] task.
 
     Transforms the specified `content` with `content_type` to an object that an transformer can extract information from
     with the specified `expression`.
 
-    See {@pylink grizzly.tasks.transformer} task documentation for more information about the task.
+    See [Transformer][grizzly.tasks.transformer] task documentation for more information.
 
     Example:
     ```gherkin
@@ -38,7 +36,7 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
     ```
 
     Args:
-        contents (str): contents to parse, supports {@link framework.usage.variables.templating} or a static string
+        content (str): contents to parse, supports [templating][framework.usage.variables.templating] or a static string
         content_type (TransformerContentType): MIME type of `contents`
         expression (str): JSON or XPath expression for specific value in `contents`
         variable (str): name of variable to save value to, must have been initialized

@@ -1,0 +1,160 @@
+site_name: "Grizzly"
+
+docs_dir: docs/
+site_dir: site/
+site_url: "https://biometria-se.github.io/grizzly"
+repo_url: "https://github.com/Biometria-se/grizzly"
+edit_uri: blob/main/docs/
+extra_css:
+  - assets/stylesheet.css
+extra_javascript:
+  - assets/lib/dayjs.min.js
+  - assets/lib/dayjs-relative-time.min.js
+  - assets/javascript.js
+
+theme:
+  name: material
+  custom_dir: docs/overrides/
+  locale: en
+  logo: "assets/logo/grizzly_grasshopper_orange_64px.png"
+  favicon: "assets/favicon.ico"
+  palette:
+    scheme: slate
+    primary: brown
+    accent: deep orange
+  features:
+    - navigation.tracking
+    - navigation.top
+    - navigation.sections
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+  - section-index
+  - grizzly-mkdocs:
+      modules:
+        grizzly.auth:
+          output: framework/usage/authentication
+          extra_frontmatter:
+            toc:
+              level: 1
+          ignore:
+          - __init__.py
+        grizzly.testdata.variables:
+          output: framework/usage/variables/testdata
+          extra_frontmatter:
+            toc:
+              level: 2
+        grizzly.testdata.filters:
+          output: framework/usage/variables/templating
+          postprocessors:
+          - grizzly_extras.mkdocs.postprocessors.StepHeaders
+          - grizzly_extras.mkdocs.postprocessors.SubHeaders
+        grizzly.tasks:
+          output: framework/usage/tasks
+          extra_frontmatter:
+            toc:
+              level: 2
+        grizzly.tasks.clients:
+          output: framework/usage/tasks/clients
+          extra_mkdocstrings_options:
+            members: false
+          extra_frontmatter:
+            toc:
+              level: 2
+        grizzly.steps:
+          output: framework/usage/steps
+          postprocessors:
+          - grizzly_extras.mkdocs.postprocessors.StepHeaders
+          - grizzly_extras.mkdocs.postprocessors.SubHeaders
+        grizzly.steps.background:
+          output: framework/usage/steps/background
+          postprocessors:
+          - grizzly_extras.mkdocs.postprocessors.StepHeaders
+          - grizzly_extras.mkdocs.postprocessors.SubHeaders
+        grizzly.steps.scenario:
+          output: framework/usage/steps/scenario
+          postprocessors:
+          - grizzly_extras.mkdocs.postprocessors.StepHeaders
+          - grizzly_extras.mkdocs.postprocessors.SubHeaders
+        grizzly.steps.scenario.tasks:
+          output: framework/usage/steps/scenario/tasks
+          postprocessors:
+          - grizzly_extras.mkdocs.postprocessors.StepHeaders
+          - grizzly_extras.mkdocs.postprocessors.SubHeaders
+          extra_mkdocstrings_options:
+            show_root_toc_entry: false
+          ignore:
+          - __init__.py
+        grizzly.users:
+          output: framework/usage/users
+          extra_frontmatter:
+            toc:
+              level: 2
+  - macros:
+      include_dir: .
+  - autorefs:
+      resolve_closest: true
+  - mkdocstrings:
+      enabled: true
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_source: false
+          paths:
+            - .
+
+markdown_extensions:
+  - attr_list
+  - admonition
+  - footnotes
+  - pymdownx.blocks.tab:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+
+nav:
+  - index.md
+  - example.md
+  - code_of_conduct.md
+  - Framework:
+    - Usage:
+      - Authentication: grizzly.auth
+      - Variables:
+        - Environment configuration: framework/usage/variables/environment-configuration.md
+        - Testdata: grizzly.testdata.variables
+        - Templating:
+          - framework/usage/variables/templating/index.md
+          - Filters: grizzly.testdata.filters
+      - Load Users: grizzly.users
+      - Tasks:
+        - Clients: grizzly.tasks.clients
+        - grizzly.tasks
+      - Steps:
+        - Background: grizzly.steps.background
+        - Scenario:
+          - Tasks: grizzly.steps.scenario.tasks
+          - grizzly.steps.scenario
+        - grizzly.steps
+    - Changelog: framework/changelog.md
+    - Licenses: framework/licenses.md
+  - Command Line Interface:
+    - Usage:
+      - command-line-interface/usage/index.md
+      - Metadata: command-line-interface/usage/metadata.md
+    - Changelog: command-line-interface/changelog.md
+    - Licenses: command-line-interface/licenses.md
+  - Editor support:
+    - Language server: editor-support/language-server.md
+    - Editors:
+      - editor-support/editors/index.md
+      - Visual Studio Code: editor-support/editors/vscode.md
+    - Changelog: editor-support/changelog.md
+    - Licenses: editor-support/licenses.md

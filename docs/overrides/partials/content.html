@@ -1,0 +1,29 @@
+{% include "partials/tags.html" %}
+{% include "partials/actions.html" %}
+{% if page.meta and page.meta.source_url %}
+<a
+    href="{{ page.meta.source_url }}"
+    title="{{ lang.t('action.view') }}"
+    class="md-content__button md-icon"
+    target="_new"
+>
+    {% set icon = config.theme.icon.view or "material/file-eye-outline" %}
+    {% include ".icons/" ~ icon ~ ".svg" %}
+</a>
+{% endif %}
+{% if "\x3ch1" not in page.content %}
+  <h1>{{ page.title | d(config.site_name, true)}}</h1>
+{% endif %}
+{% if page.meta and page.meta.date %}
+<span class="md-source-file__fact" data-updated="{{ page.meta.date }}">
+    {% set date = page.meta.date.strftime('%Y-%m-%d') %}
+    <span class="md-icon" title="{{ lang.t('source.file.date.updated') }} {{ date }}">
+        {% include ".icons/material/clock-edit-outline.svg" %}
+    </span>
+    <span id="md-source-file__fact-updated">formatting...</span>
+</span>
+{% endif %}
+{{ page.content }}
+{% include "partials/source-file.html" %}
+{% include "partials/feedback.html" %}
+{% include "partials/comments.html" %}
