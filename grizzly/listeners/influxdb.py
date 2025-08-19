@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, TypedDict, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import gevent
+from gevent.event import Event
 from influxdb import InfluxDBClient as InfluxDBClientV1
 from influxdb.exceptions import InfluxDBClientError
 from influxdb_client import InfluxDBClient as InfluxDBClientV2  # type: ignore[attr-defined]
@@ -227,6 +228,8 @@ class InfluxDbListener:
         environment: Environment,
         url: str,
     ) -> None:
+        self._event = Event()
+
         parsed = urlparse(url)
         path = parsed.path[1:] if parsed.path is not None else None
 
@@ -261,7 +264,6 @@ class InfluxDbListener:
         self._hostname = get_hostname()
         self._username = os.getenv('USER', 'unknown')
         self._events: list[InfluxDbPoint] = []
-        self._finished = False
         self._profile_name = params['ProfileName'][0] if 'ProfileName' in params else ''
         self._description = params['Description'][0] if 'Description' in params else ''
 
@@ -283,8 +285,12 @@ class InfluxDbListener:
         self.run_events_greenlet = gevent.spawn(self.run_events)
         self.run_user_count_greenlet = gevent.spawn(self.run_user_count)
 
+    @property
+    def finished(self) -> bool:
+        return cast('bool', self._event.is_set())
+
     def on_quit(self, *_args: Any, **_kwargs: Any) -> None:
-        self._finished = True
+        self._event.set()
 
     def create_client(self) -> InfluxDb:
         if self.influx_version == 1:
@@ -302,10 +308,6 @@ class InfluxDbListener:
             token=self.influx_token,
             org=self.influx_org,
         )
-
-    @property
-    def finished(self) -> bool:
-        return self._finished
 
     def run_user_count(self) -> None:
         runner = self.environment.runner

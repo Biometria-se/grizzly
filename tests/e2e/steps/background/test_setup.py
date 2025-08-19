@@ -21,7 +21,6 @@ if TYPE_CHECKING:  # pragma: no cover
     [
         'influxdb://grizzly:password@localhost/grizzly-statistics?Testplan=grizzly-statistics',
         'influxdb2://token@localhost:31337/org:bucket?Testplan=grizzly-statistics',
-        'insights://localhost/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf',
         'influxdb://$conf::statistics.username$:$conf::statistics.password$@localhost/$conf::statistics.database$?Testplan=grizzly-statistics',
         'influxdb2://$conf::statistics.token$@localhost:31337/$conf::statistics.org$:$conf::statistics.bucket$?Testplan=grizzly-statistics',
     ],

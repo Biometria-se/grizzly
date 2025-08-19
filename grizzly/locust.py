@@ -790,6 +790,9 @@ def setup_environment_listeners(context: Context, *, dependencies: GrizzlyDepend
     for hook in grizzly.setup.hooks:
         hook(environment)
 
+    for handler in environment.events.quit._handlers:
+        logger.info('!! events.quit handler: %r', handler)
+
 
 def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     def create_separator(max_length_iterations: int, max_length_status: int, max_length_description: int) -> str:
@@ -1288,6 +1291,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
             code = max(code, environment.process_exit_code or -1)
 
         logger.info('main greenlet finished, rc = %d', code)
+
+        environment.events.quit.fire(exit_code=code)
 
         return code
     finally:
