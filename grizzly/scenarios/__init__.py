@@ -129,6 +129,7 @@ class GrizzlyScenario(SequentialTaskSet):
         """When locust test is stopping, all tasks on_stop methods must be called, even though
         one might fail, so just log those as errors.
         """
+        self.logger.info('!! on_stop called')
         for task in self.tasks:
             if isinstance(task, grizzlytask):
                 try:
