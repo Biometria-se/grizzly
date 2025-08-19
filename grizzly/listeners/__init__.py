@@ -144,7 +144,6 @@ def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) 
     else:
         logger.error('received grizzly_worker_quit message on a non WorkerRunner?!')
 
-    logger.info('worker quiting with rc %d', code)
     raise SystemExit(code)
 
 
