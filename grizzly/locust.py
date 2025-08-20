@@ -1298,8 +1298,11 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         return code
     finally:
         cleanup_resources(external_processes, watch_running_external_processes_greenlet, open_files)
-        gevent.killall([g for g in gc.get_objects() if isinstance(g, gevent.Greenlet)])
-        gevent.util.print_run_info()
+        for greenlet in main_greenlet.greenlets:
+            greenlet.kill(block=False)
+
+        # gevent.killall([g for g in gc.get_objects() if isinstance(g, gevent.Greenlet)])
+        # gevent.util.print_run_info()
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> list[tuple[str, str, int]]:
