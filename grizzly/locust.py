@@ -1297,6 +1297,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         return code
     finally:
         cleanup_resources(external_processes, watch_running_external_processes_greenlet, open_files)
+        gevent.util.print_run_info()
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> list[tuple[str, str, int]]:
