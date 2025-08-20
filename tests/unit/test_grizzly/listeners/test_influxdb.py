@@ -336,7 +336,6 @@ class TestInfluxDblistener:
         assert listener.environment is locust_fixture.environment
         assert listener._username == os.getenv('USER', 'unknown')
         assert listener._events == []
-        assert not listener.finished
         assert listener._profile_name == ''
         assert listener._description == ''
 
@@ -354,7 +353,6 @@ class TestInfluxDblistener:
         assert listener.environment is locust_fixture.environment
         assert listener._username == os.getenv('USER', 'unknown')
         assert listener._events == []
-        assert not listener.finished
         assert listener._profile_name == 'unittest-profile'
         assert listener._description == 'unittesting'
 
@@ -425,12 +423,9 @@ class TestInfluxDblistener:
         )
         try:
             listener._events = []
-            listener._event.set()
             listener.run_events()
         except RuntimeError:
             pytest.fail('gevent.sleep was unexpectedly called')
-        finally:
-            listener._event = Event()
 
         def write(_: InfluxDbV2, events: list[StrDict]) -> None:
             assert len(events) == 1
