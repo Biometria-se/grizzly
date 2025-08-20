@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import gc
 import itertools
 import logging
 import subprocess
@@ -729,20 +728,6 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> tuple[list[type[GrizzlyUs
     return user_classes, dependencies
 
 
-@contextmanager
-def disable_logging() -> Generator[None, None, None]:
-    original_handlers = logging.getLogger().handlers[:]
-
-    for handler in original_handlers:
-        logging.getLogger().removeHandler(handler)
-
-    try:
-        yield None
-    finally:
-        for handler in original_handlers:
-            logging.getLogger().addHandler(handler)
-
-
 def setup_resource_limits(context: Context) -> None:
     if sys.platform != 'win32' and not on_master(context):
         try:
@@ -804,9 +789,6 @@ def setup_environment_listeners(context: Context, *, dependencies: GrizzlyDepend
 
     for hook in grizzly.setup.hooks:
         hook(environment)
-
-    for handler in environment.events.quit._handlers:
-        logger.info('!! events.quit handler: %r', handler)
 
 
 def print_scenario_summary(grizzly: GrizzlyContext) -> None:
@@ -1312,15 +1294,6 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         return code
     finally:
         cleanup_resources(external_processes, watch_running_external_processes_greenlet, open_files)
-
-        # kill all remaining greenlets...
-        # this is needed, probably, after locust change version contraint to allow gevent 25.x
-        # which in turn made us change to python 3.13, since there was problems with gevent and
-        # python 3.12. for some reason influxdb-client, is causing problem due to a ThreadPoolExecutor
-        # a scheduler in reactivex creates, and it does not stop, causing the main greenlet thread to
-        # be active, and hence hanging grizzly.
-        with disable_logging():
-            gevent.killall([g for g in gc.get_objects() if isinstance(g, gevent.Greenlet)])
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> list[tuple[str, str, int]]:

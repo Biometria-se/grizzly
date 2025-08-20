@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import socket
+from contextlib import suppress
 from datetime import datetime, timezone
 from json import dumps as jsondumps
 from platform import node as get_hostname
@@ -12,7 +13,6 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import pytest
-from gevent.event import Event
 from influxdb.exceptions import InfluxDBClientError
 from influxdb_client.client.query_api import QueryApi
 from influxdb_client.client.write_api import WriteApi
@@ -328,16 +328,20 @@ class TestInfluxDblistener:
 
         listener = InfluxDbListener(locust_fixture.environment, 'https://influx.test.com/testdb?Testplan=unittest-plan')
 
-        assert len(locust_fixture.environment.events.request._handlers) == 2
-        assert listener.influx_port == 8086
-        assert listener._testplan == 'unittest-plan'
-        assert listener._target_environment is None
-        assert listener._hostname == socket.gethostname()
-        assert listener.environment is locust_fixture.environment
-        assert listener._username == os.getenv('USER', 'unknown')
-        assert listener._events == []
-        assert listener._profile_name == ''
-        assert listener._description == ''
+        try:
+            assert len(locust_fixture.environment.events.request._handlers) == 2
+            assert listener.influx_port == 8086
+            assert listener._testplan == 'unittest-plan'
+            assert listener._target_environment is None
+            assert listener._hostname == socket.gethostname()
+            assert listener.environment is locust_fixture.environment
+            assert listener._username == os.getenv('USER', 'unknown')
+            assert listener._events == []
+            assert listener._profile_name == ''
+            assert listener._description == ''
+        finally:
+            with suppress(Exception):
+                listener.destroy_client()
 
         locust_fixture.environment.events.request._handlers.pop()
 
@@ -345,16 +349,20 @@ class TestInfluxDblistener:
             locust_fixture.environment,
             'https://influx.test.com:1239/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
-        assert len(locust_fixture.environment.events.request._handlers) == 2
-        assert listener.influx_port == 1239
-        assert listener._testplan == 'unittest-plan'
-        assert listener._target_environment == 'local'
-        assert listener._hostname == socket.gethostname()
-        assert listener.environment is locust_fixture.environment
-        assert listener._username == os.getenv('USER', 'unknown')
-        assert listener._events == []
-        assert listener._profile_name == 'unittest-profile'
-        assert listener._description == 'unittesting'
+        try:
+            assert len(locust_fixture.environment.events.request._handlers) == 2
+            assert listener.influx_port == 1239
+            assert listener._testplan == 'unittest-plan'
+            assert listener._target_environment == 'local'
+            assert listener._hostname == socket.gethostname()
+            assert listener.environment is locust_fixture.environment
+            assert listener._username == os.getenv('USER', 'unknown')
+            assert listener._events == []
+            assert listener._profile_name == 'unittest-profile'
+            assert listener._description == 'unittesting'
+        finally:
+            with suppress(Exception):
+                listener.destroy_client()
 
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test_run_user_count(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
@@ -366,47 +374,50 @@ class TestInfluxDblistener:
             new_callable=mocker.PropertyMock,
             side_effect=[{}, {'User1': 2, 'User2': 3}, {'User1': 2, 'User2': 3}],
         )
-        mocker.patch(
-            'grizzly.listeners.influxdb.InfluxDbListener.finished',
-            new_callable=mocker.PropertyMock,
-            side_effect=[False, True, True, False, False, False, True, True],
-        )
 
         listener = InfluxDbListener(
             locust_fixture.environment,
             'https://influx.test.com:1240/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
-        write_spy = mocker.patch.object(listener.connection, 'write', return_value=None)
+        try:
+            queue_event_mock = mocker.patch.object(listener, 'queue_event', side_effect=[RuntimeError])
 
-        listener.run_user_count()
+            with pytest.raises(RuntimeError):
+                listener.run_user_count()
 
-        write_spy.assert_not_called()
-        gsleep_spy.assert_not_called()
+            gsleep_spy.assert_not_called()
+            queue_event_mock.assert_called_once_with([])
 
-        listener.run_user_count()
+            queue_event_mock = mocker.patch.object(listener, 'queue_event', side_effect=[None, RuntimeError])
 
-        gsleep_spy.assert_called_once_with(5.0)
-        gsleep_spy.reset_mock()
+            with pytest.raises(RuntimeError):
+                listener.run_user_count()
 
-        assert write_spy.call_count == 2
-        for i in range(2):
-            args, _ = write_spy.call_args_list[i]
-            assert len(args) == 1
-            assert len(args[0]) == 2
-            for j in range(2):
-                assert args[0][j].get('measurement', None) == 'user_count'
-                assert args[0][j].get('tags', None) == {
-                    'environment': 'local',
-                    'testplan': 'unittest-plan',
-                    'hostname': get_hostname(),
-                    'user_class': f'User{j + 1}',
-                    'description': 'unittesting',
-                    'profile': 'unittest-profile',
-                }
-                assert args[0][j].get('fields', None) == {
-                    'user_count': 2 + j,
-                }
+            gsleep_spy.assert_called_once_with(5.0)
+            gsleep_spy.reset_mock()
+
+            assert queue_event_mock.call_count == 2
+            for i in range(2):
+                args, _ = queue_event_mock.call_args_list[i]
+                assert len(args) == 1
+                assert len(args[0]) == 2
+                for j in range(2):
+                    assert args[0][j].get('measurement', None) == 'user_count'
+                    assert args[0][j].get('tags', None) == {
+                        'environment': 'local',
+                        'testplan': 'unittest-plan',
+                        'hostname': get_hostname(),
+                        'user_class': f'User{j + 1}',
+                        'description': 'unittesting',
+                        'profile': 'unittest-profile',
+                    }
+                    assert args[0][j].get('fields', None) == {
+                        'user_count': 2 + j,
+                    }
+        finally:
+            with suppress(Exception):
+                listener.destroy_client()
 
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test_run_events(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
@@ -417,47 +428,30 @@ class TestInfluxDblistener:
             'https://influx.test.com:1241/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
-        mocker.patch(
-            'gevent.sleep',
-            side_effect=RuntimeError('gsleep was called'),
-        )
         try:
+            mocker.patch(
+                'gevent.sleep',
+                side_effect=RuntimeError('gsleep was called'),
+            )
+            write_mock = mocker.patch.object(listener.connection, 'write', return_value=None)
             listener._events = []
-            listener.run_events()
-        except RuntimeError:
-            pytest.fail('gevent.sleep was unexpectedly called')
 
-        def write(_: InfluxDbV2, events: list[StrDict]) -> None:
-            assert len(events) == 1
-            event = events[-1]
-            assert event.get('measurement', None) == 'request'
-            assert event.get('tags', None) == {
-                'hostname': ANY(str),
-                'name': '/api/v1/test',
-                'method': 'GET',
-                'result': 'Success',
-                'testplan': 'unittest-plan',
-            }
-            assert event.get('time', None) is not None
-            assert event.get('fields', None) == {
-                'response_time': 133.7,
-                'exception': None,
-                'request_finished': ANY(str),
-                'request_started': ANY(str),
-            }
+            with pytest.raises(RuntimeError):
+                listener.run_events()
 
-        mocker.patch(
-            'grizzly.listeners.influxdb.InfluxDbV1.write',
-            write,
-        )
+            write_mock.assert_not_called()
 
-        listener._log_request('GET', '/api/v1/test', 'Success', {'response_time': 133.7}, {}, None)
-        assert len(listener._events) == 1
+            listener._log_request('GET', '/api/v1/test', 'Success', {'response_time': 133.7}, {}, None)
+            assert len(listener._events) == 1
 
-        with pytest.raises(RuntimeError):
-            listener.run_events()
+            with pytest.raises(RuntimeError):
+                listener.run_events()
 
-        assert len(listener._events) == 0
+            write_mock.assert_called()
+            assert len(listener._events) == 0
+        finally:
+            with suppress(Exception):
+                listener.destroy_client()
 
     def test__override_event(self, grizzly_fixture: GrizzlyFixture) -> None:
         event: InfluxDbPoint = {

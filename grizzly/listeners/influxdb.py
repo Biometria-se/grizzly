@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, TypedDict, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import gevent
-from gevent.event import Event
 from gevent.lock import Semaphore
 from influxdb import InfluxDBClient as InfluxDBClientV1
 from influxdb.exceptions import InfluxDBClientError
@@ -180,6 +179,22 @@ class InfluxDbV2(InfluxDb):
             self.client.__exit__(exc_type, exc, traceback)
 
         if self.write_api:
+            # <!--
+            # this is needed after locust changed version contraint to allow gevent 25.x
+            # which in turn made us change to python 3.13, since there was problems with gevent and
+            # python 3.12. for some reason influxdb-client, is causing problem due to a ThreadPoolExecutor
+            # (a scheduler in reactivex), and it does not stop, causing the main greenlet thread to
+            # be active, and hence hanging grizzly.
+            logger = logging.getLogger('influxdb_client.client.write_api')
+            logger.setLevel(logging.CRITICAL)
+
+            with suppress(AttributeError):
+                self.write_api._write_options.write_scheduler.executor.shutdown(wait=False)
+
+            with suppress(AttributeError):
+                self.write_api._write_options.write_scheduler = None
+            # // -->
+
             self.write_api.close()
 
         if exc is not None:
@@ -316,9 +331,10 @@ class InfluxDbListener:
         with suppress(Exception):
             self.connection.disconnect()
 
-        self.logger.info('stopped')
-
     def queue_event(self, p: list[InfluxDbPoint] | InfluxDbPoint) -> None:
+        if not p:
+            return
+
         with self.lock:
             if isinstance(p, list):
                 self._events.extend(p)
