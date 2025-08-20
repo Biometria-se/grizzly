@@ -1298,11 +1298,14 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         return code
     finally:
         cleanup_resources(external_processes, watch_running_external_processes_greenlet, open_files)
-        for greenlet in main_greenlet.greenlets:
-            greenlet.kill(block=False)
 
-        # gevent.killall([g for g in gc.get_objects() if isinstance(g, gevent.Greenlet)])
-        # gevent.util.print_run_info()
+        # kill all remaining greenlets...
+        # this is needed, probably, after locust change version contraint to allow gevent 25.x
+        # which in turn made us change to python 3.13, since there was problems with gevent and
+        # python 3.12. for some reason influxdb-client, is causing problem due to a ThreadPoolExecutor
+        # a scheduler in reactivex creates, and it does not stop, causing the main greenlet thread to
+        # be active, and hence hanging grizzly.
+        gevent.killall([g for g in gc.get_objects() if isinstance(g, gevent.Greenlet)])
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> list[tuple[str, str, int]]:
