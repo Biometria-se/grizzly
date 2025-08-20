@@ -729,6 +729,20 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> tuple[list[type[GrizzlyUs
     return user_classes, dependencies
 
 
+@contextmanager
+def disable_logging() -> Generator[None, None, None]:
+    original_handlers = logging.getLogger().handlers[:]
+
+    for handler in original_handlers:
+        logging.getLogger().removeHandler(handler)
+
+    try:
+        yield None
+    finally:
+        for handler in original_handlers:
+            logging.getLogger().addHandler(handler)
+
+
 def setup_resource_limits(context: Context) -> None:
     if sys.platform != 'win32' and not on_master(context):
         try:
@@ -1305,7 +1319,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         # python 3.12. for some reason influxdb-client, is causing problem due to a ThreadPoolExecutor
         # a scheduler in reactivex creates, and it does not stop, causing the main greenlet thread to
         # be active, and hence hanging grizzly.
-        gevent.killall([g for g in gc.get_objects() if isinstance(g, gevent.Greenlet)])
+        with disable_logging():
+            gevent.killall([g for g in gc.get_objects() if isinstance(g, gevent.Greenlet)])
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> list[tuple[str, str, int]]:
