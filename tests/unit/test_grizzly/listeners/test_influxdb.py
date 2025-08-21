@@ -341,6 +341,7 @@ class TestInfluxDblistener:
             assert listener._description == ''
         finally:
             with suppress(Exception):
+                listener._events.clear()
                 listener.destroy_client()
 
         locust_fixture.environment.events.request._handlers.pop()
@@ -362,6 +363,7 @@ class TestInfluxDblistener:
             assert listener._description == 'unittesting'
         finally:
             with suppress(Exception):
+                listener._events.clear()
                 listener.destroy_client()
 
     @pytest.mark.usefixtures('patch_influxdblistener')
@@ -417,6 +419,7 @@ class TestInfluxDblistener:
                     }
         finally:
             with suppress(Exception):
+                listener._events.clear()
                 listener.destroy_client()
 
     @pytest.mark.usefixtures('patch_influxdblistener')
@@ -451,6 +454,7 @@ class TestInfluxDblistener:
             assert len(listener._events) == 0
         finally:
             with suppress(Exception):
+                listener._events.clear()
                 listener.destroy_client()
 
     def test__override_event(self, grizzly_fixture: GrizzlyFixture) -> None:
@@ -472,28 +476,33 @@ class TestInfluxDblistener:
             'https://influx.test.com:1242/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
-        listener._override_event(
-            event,
-            {
-                '__tags_foo__': 'foo',
-                '__time__': '2024-07-08T10:52:01Z',
-                '__fields_request_started__': '2024-07-08T10:52:01Z',
-                '__fields_request_finished__': '2024-07-08T10:54:00Z',
-            },
-        )
+        try:
+            listener._override_event(
+                event,
+                {
+                    '__tags_foo__': 'foo',
+                    '__time__': '2024-07-08T10:52:01Z',
+                    '__fields_request_started__': '2024-07-08T10:52:01Z',
+                    '__fields_request_finished__': '2024-07-08T10:54:00Z',
+                },
+            )
 
-        assert event == {
-            'measurement': 'request',
-            'tags': {
-                'foo': 'foo',
-                'hostname': 'localhost',
-            },
-            'time': '2024-07-08T10:52:01Z',
-            'fields': {
-                'request_started': '2024-07-08T10:52:01Z',
-                'request_finished': '2024-07-08T10:54:00Z',
-            },
-        }
+            assert event == {
+                'measurement': 'request',
+                'tags': {
+                    'foo': 'foo',
+                    'hostname': 'localhost',
+                },
+                'time': '2024-07-08T10:52:01Z',
+                'fields': {
+                    'request_started': '2024-07-08T10:52:01Z',
+                    'request_finished': '2024-07-08T10:54:00Z',
+                },
+            }
+        finally:
+            with suppress(Exception):
+                listener._events.clear()
+                listener.destroy_client()
 
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test__log_request(self, grizzly_fixture: GrizzlyFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
@@ -513,37 +522,37 @@ class TestInfluxDblistener:
             'https://influx.test.com:1243/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
-        assert len(listener._events) == 0
-
-        listener._log_request('GET', 'Request: /api/v1/test', 'Success', {'response_time': 133.7}, {}, None)
-
-        assert len(listener._events) == 1
-
-        expected_keys = ['measurement', 'tags', 'time', 'fields']
-
-        event = listener._events[-1]
-
-        assert sorted(expected_keys) == sorted(event.keys())
-        assert event.get('measurement', None) == 'request'
-        assert event.get('tags', None) == {
-            'name': 'Request: /api/v1/test',
-            'method': 'GET',
-            'result': 'Success',
-            'testplan': 'unittest-plan',
-            'hostname': get_hostname(),
-            'profile': 'unittest-profile',
-            'environment': 'local',
-            'description': 'unittesting',
-            'user': id(listener),
-        }
-        assert event.get('fields', None) == {
-            'exception': None,
-            'response_time': 133.7,
-            'request_started': '2022-12-16T10:27:59.989756+00:00',
-            'request_finished': '2022-12-16T10:28:00.123456+00:00',
-        }
-
         try:
+            assert len(listener._events) == 0
+
+            listener._log_request('GET', 'Request: /api/v1/test', 'Success', {'response_time': 133.7}, {}, None)
+
+            assert len(listener._events) == 1
+
+            expected_keys = ['measurement', 'tags', 'time', 'fields']
+
+            event = listener._events[-1]
+
+            assert sorted(expected_keys) == sorted(event.keys())
+            assert event.get('measurement', None) == 'request'
+            assert event.get('tags', None) == {
+                'name': 'Request: /api/v1/test',
+                'method': 'GET',
+                'result': 'Success',
+                'testplan': 'unittest-plan',
+                'hostname': get_hostname(),
+                'profile': 'unittest-profile',
+                'environment': 'local',
+                'description': 'unittesting',
+                'user': id(listener),
+            }
+            assert event.get('fields', None) == {
+                'exception': None,
+                'response_time': 133.7,
+                'request_started': '2022-12-16T10:27:59.989756+00:00',
+                'request_finished': '2022-12-16T10:28:00.123456+00:00',
+            }
+
             os.environ['TESTDATA_VARIABLE_TEST1'] = 'unittest-1'
             os.environ['TESTDATA_VARIABLE_TEST2'] = 'unittest-2'
 
@@ -593,6 +602,10 @@ class TestInfluxDblistener:
             del os.environ['TESTDATA_VARIABLE_TEST1']
             del os.environ['TESTDATA_VARIABLE_TEST2']
 
+            with suppress(Exception):
+                listener._events.clear()
+                listener.destroy_client()
+
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test_request(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
         patch_influxdblistener()
@@ -604,85 +617,90 @@ class TestInfluxDblistener:
 
         mocker.patch.object(listener, 'run_events', return_value=None)
 
-        listener.request('GET', '/api/v1/test', 133.7, 200, {}, None)
-        assert listener._events == [
-            SOME(
-                dict,
-                measurement='request',
-                tags=SOME(
+        try:
+            listener.request('GET', '/api/v1/test', 133.7, 200, {}, None)
+            assert listener._events == [
+                SOME(
                     dict,
-                    name='/api/v1/test',
-                    method='GET',
-                    result='Success',
-                    testplan='unittest-plan',
-                    hostname=get_hostname(),
-                    environment='local',
-                    profile='unittest-profile',
-                    description='unittesting',
+                    measurement='request',
+                    tags=SOME(
+                        dict,
+                        name='/api/v1/test',
+                        method='GET',
+                        result='Success',
+                        testplan='unittest-plan',
+                        hostname=get_hostname(),
+                        environment='local',
+                        profile='unittest-profile',
+                        description='unittesting',
+                    ),
+                    time=ANY(str),
+                    fields=SOME(
+                        dict,
+                        response_time=134,
+                        response_length=200,
+                        exception=None,
+                        request_started=ANY(str),
+                        request_finished=ANY(str),
+                    ),
                 ),
-                time=ANY(str),
-                fields=SOME(
-                    dict,
-                    response_time=134,
-                    response_length=200,
-                    exception=None,
-                    request_started=ANY(str),
-                    request_finished=ANY(str),
-                ),
-            ),
-        ]
+            ]
 
-        listener.request('POST', '/api/v2/test', 555.37, 137, {}, CatchResponseError('request failed'))
-        assert listener._events == [
-            SOME(
-                dict,
-                measurement='request',
-                tags=SOME(
+            listener.request('POST', '/api/v2/test', 555.37, 137, {}, CatchResponseError('request failed'))
+            assert listener._events == [
+                SOME(
                     dict,
-                    name='/api/v1/test',
-                    method='GET',
-                    result='Success',
-                    testplan='unittest-plan',
-                    hostname=get_hostname(),
-                    environment='local',
-                    profile='unittest-profile',
-                    description='unittesting',
+                    measurement='request',
+                    tags=SOME(
+                        dict,
+                        name='/api/v1/test',
+                        method='GET',
+                        result='Success',
+                        testplan='unittest-plan',
+                        hostname=get_hostname(),
+                        environment='local',
+                        profile='unittest-profile',
+                        description='unittesting',
+                    ),
+                    time=ANY(str),
+                    fields=SOME(
+                        dict,
+                        response_time=134,
+                        response_length=200,
+                        exception=None,
+                        request_started=ANY(str),
+                        request_finished=ANY(str),
+                    ),
                 ),
-                time=ANY(str),
-                fields=SOME(
+                SOME(
                     dict,
-                    response_time=134,
-                    response_length=200,
-                    exception=None,
-                    request_started=ANY(str),
-                    request_finished=ANY(str),
+                    measurement='request',
+                    tags=SOME(
+                        dict,
+                        name='/api/v2/test',
+                        method='POST',
+                        result='Failure',
+                        testplan='unittest-plan',
+                        hostname=get_hostname(),
+                        environment='local',
+                        profile='unittest-profile',
+                        description='unittesting',
+                    ),
+                    time=ANY(str),
+                    fields=SOME(
+                        dict,
+                        response_time=555,
+                        response_length=137,
+                        exception='request failed',
+                        request_started=ANY(str),
+                        request_finished=ANY(str),
+                    ),
                 ),
-            ),
-            SOME(
-                dict,
-                measurement='request',
-                tags=SOME(
-                    dict,
-                    name='/api/v2/test',
-                    method='POST',
-                    result='Failure',
-                    testplan='unittest-plan',
-                    hostname=get_hostname(),
-                    environment='local',
-                    profile='unittest-profile',
-                    description='unittesting',
-                ),
-                time=ANY(str),
-                fields=SOME(
-                    dict,
-                    response_time=555,
-                    response_length=137,
-                    exception='request failed',
-                    request_started=ANY(str),
-                    request_finished=ANY(str),
-                ),
-            ),
-        ]
+            ]
+        finally:
+            with suppress(Exception):
+                listener._events.clear()
+                listener.destroy_client()
 
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test_request_exception(
@@ -699,10 +717,15 @@ class TestInfluxDblistener:
         )
         mocker.patch.object(listener, '_create_metrics', side_effect=[Exception])
 
-        with caplog.at_level(logging.ERROR):
-            listener.request('GET', '/api/v2/test', 555.37, 137, {}, None)
-        assert 'failed to write metric for "GET /api/v2/test' in caplog.text
-        caplog.clear()
+        try:
+            with caplog.at_level(logging.ERROR):
+                listener.request('GET', '/api/v2/test', 555.37, 137, {}, None)
+            assert 'failed to write metric for "GET /api/v2/test' in caplog.text
+            caplog.clear()
+        finally:
+            with suppress(Exception):
+                listener._events.clear()
+                listener.destroy_client()
 
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test__create_metrics(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None]) -> None:
@@ -714,14 +737,19 @@ class TestInfluxDblistener:
         )
         expected_keys = ['response_time', 'response_length']
 
-        metrics = listener._create_metrics(1337, -1)
+        try:
+            metrics = listener._create_metrics(1337, -1)
 
-        assert sorted(expected_keys) == sorted(metrics.keys())
+            assert sorted(expected_keys) == sorted(metrics.keys())
 
-        assert metrics.get('response_time', None) == 1337
-        assert metrics.get('response_length', 100) is None
+            assert metrics.get('response_time', None) == 1337
+            assert metrics.get('response_length', 100) is None
 
-        metrics = listener._create_metrics(555, 1337)
+            metrics = listener._create_metrics(555, 1337)
 
-        assert metrics.get('response_time', None) == 555
-        assert metrics.get('response_length', None) == 1337
+            assert metrics.get('response_time', None) == 555
+            assert metrics.get('response_length', None) == 1337
+        finally:
+            with suppress(Exception):
+                listener._events.clear()
+                listener.destroy_client()
