@@ -1289,6 +1289,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         logger.info('main greenlet finished, rc = %d', code)
 
+        environment.events.quit.fire(exit_code=code)
+
         return code
     finally:
         cleanup_resources(external_processes, watch_running_external_processes_greenlet, open_files)

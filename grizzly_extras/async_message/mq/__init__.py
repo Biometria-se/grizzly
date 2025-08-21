@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager, suppress
 from time import perf_counter as time
 from time import sleep
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageError, AsyncMessageHandler, AsyncMessageRequest, AsyncMessageRequestHandler, AsyncMessageResponse, register
@@ -237,8 +237,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             content_type = TransformerContentType.from_string(value)
         return content_type
 
-    def _get_safe_message_descriptor(self, md: pymqi.MD) -> dict:
-        metadata: dict = md.get()
+    def _get_safe_message_descriptor(self, md: pymqi.MD) -> dict[str, Any]:
+        metadata: dict[str, Any] = md.get()
 
         if 'MsgId' in metadata:
             metadata['MsgId'] = tohex(metadata['MsgId'])

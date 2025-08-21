@@ -119,6 +119,7 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
     finally:
         if runner is not None:
             runner.quit()
+            runner.environment.events.quit.fire(exit_code=0)
 
 
 @pytest.mark.usefixtures('_listener_test_mocker')
@@ -181,6 +182,7 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
         if runner is not None:
             runner.quit()
             runner.custom_messages.clear()
+            runner.environment.events.quit.fire(exit_code=0)
 
 
 @pytest.mark.usefixtures('_listener_test_mocker')
@@ -250,12 +252,6 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
         return_value=None,
     )
 
-    # ApplicationInsight -- short circuit
-    mocker.patch(
-        'grizzly.listeners.appinsights.AzureLogHandler',
-        autospec=True,
-    )
-
     from grizzly.context import grizzly
 
     environment = locust_fixture.environment
@@ -264,42 +260,40 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
     environment.events.spawning_complete._handlers = []
 
     # not a valid scheme
-    grizzly.setup.statistics_url = 'http://localhost'
-    init_statistics_listener(grizzly.setup.statistics_url)(environment)
-    assert len(environment.events.request._handlers) == 1
-    assert len(environment.events.quitting._handlers) == 0
-    assert len(environment.events.quit._handlers) == 0
-    assert len(environment.events.spawning_complete._handlers) == 0
+    try:
+        grizzly.setup.statistics_url = 'http://localhost'
+        init_statistics_listener(grizzly.setup.statistics_url)(environment)
+        assert len(environment.events.request._handlers) == 1
+        assert len(environment.events.quitting._handlers) == 0
+        assert len(environment.events.quit._handlers) == 0
+        assert len(environment.events.spawning_complete._handlers) == 0
+    finally:
+        environment.events.quit.fire(exit_code=0)
 
-    grizzly.setup.statistics_url = 'influxdb://test/database?Testplan=test'
-    init_statistics_listener(grizzly.setup.statistics_url)(environment)
-    assert len(environment.events.request._handlers) == 2
-    assert len(environment.events.quitting._handlers) == 0
-    assert len(environment.events.quit._handlers) == 1
-    assert len(environment.events.spawning_complete._handlers) == 0
+    try:
+        grizzly.setup.statistics_url = 'influxdb://test/database?Testplan=test'
+        init_statistics_listener(grizzly.setup.statistics_url)(environment)
+        assert len(environment.events.request._handlers) == 2
+        assert len(environment.events.quitting._handlers) == 0
+        assert len(environment.events.quit._handlers) == 1
+        assert len(environment.events.spawning_complete._handlers) == 0
+    finally:
+        environment.events.quit.fire(exit_code=0)
 
     mocker.patch(
         'grizzly.listeners.influxdb.InfluxDbV2.connect',
         return_value=None,
     )
 
-    grizzly.setup.statistics_url = 'influxdb2://token@influxhost/org:bucket?Testplan=test'
-    init_statistics_listener(grizzly.setup.statistics_url)(environment)
-    assert len(environment.events.request._handlers) == 3
-    assert len(environment.events.quitting._handlers) == 0
-    assert len(environment.events.quit._handlers) == 2
-    assert len(environment.events.spawning_complete._handlers) == 0
-
-    grizzly.setup.statistics_url = 'insights://?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
-    with pytest.raises(AssertionError, match='IngestionEndpoint was neither set as the hostname or in the query string'):
+    try:
+        grizzly.setup.statistics_url = 'influxdb2://token@influxhost/org:bucket?Testplan=test'
         init_statistics_listener(grizzly.setup.statistics_url)(environment)
-
-    grizzly.setup.statistics_url = 'insights://insights.example.se/?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
-    init_statistics_listener(grizzly.setup.statistics_url)(environment)
-    assert len(environment.events.request._handlers) == 4
-    assert len(environment.events.quitting._handlers) == 0
-    assert len(environment.events.quit._handlers) == 2
-    assert len(environment.events.spawning_complete._handlers) == 0
+        assert len(environment.events.request._handlers) == 3
+        assert len(environment.events.quitting._handlers) == 0
+        assert len(environment.events.quit._handlers) == 2
+        assert len(environment.events.spawning_complete._handlers) == 0
+    finally:
+        environment.events.quit.fire(exit_code=0)
 
 
 @pytest.mark.usefixtures('_listener_test_mocker')

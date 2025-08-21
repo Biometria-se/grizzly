@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Concatenate, cast
+from typing import TYPE_CHECKING, Any, Concatenate, ParamSpec, cast
 from urllib.parse import urlparse
 
 from locust.stats import (
@@ -13,7 +13,6 @@ from locust.stats import (
     print_percentile_stats,
     print_stats,
 )
-from typing_extensions import ParamSpec
 
 from grizzly.testdata.communication import GrizzlyDependencies, TestdataConsumer, TestdataProducer
 from grizzly.types import MessageDirection, RequestType, StrDict, TestdataType
@@ -80,13 +79,6 @@ def init_statistics_listener(url: str) -> Callable[Concatenate[Environment, P], 
             from .influxdb import InfluxDbListener  # noqa: PLC0415
 
             InfluxDbListener(
-                environment=environment,
-                url=url,
-            )
-        elif parsed.scheme == 'insights':
-            from .appinsights import ApplicationInsightsListener  # noqa: PLC0415
-
-            ApplicationInsightsListener(
                 environment=environment,
                 url=url,
             )
