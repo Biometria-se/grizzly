@@ -8,13 +8,13 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from functools import wraps
 from importlib import import_module
+from inspect import getmro
 from time import perf_counter
 from typing import TYPE_CHECKING, ClassVar, Generic, ParamSpec, TypeVar, cast
 from urllib.parse import urlparse
 
 from azure.core.credentials import AccessToken
 
-from grizzly.scenarios import GrizzlyScenario
 from grizzly.testdata.communication import GrizzlyMessageHandler, GrizzlyMessageMapping
 from grizzly.types import GrizzlyResponse, StrDict
 from grizzly.types.locust import StopUser
@@ -23,6 +23,7 @@ from grizzly_extras.azure.aad import AuthMethod, AuthType, AzureAadCredential
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+    from grizzly.scenarios import GrizzlyScenario
     from grizzly.tasks import RequestTask
     from grizzly.testdata import GrizzlyVariables
     from grizzly.types.locust import Environment
@@ -115,11 +116,12 @@ class refresh_token(Generic[P]):
             request: RequestTask | None = None
 
             # make sure the client has a credential instance, if it is needed
-            if isinstance(arg, GrizzlyScenario):
+            mro_list = [m.__name__ for m in getmro(arg.__class__)]
+            if 'GrizzlyScenario' in mro_list:
                 request = None
-                user = arg.user
+                user = cast('GrizzlyScenario', arg).user
             else:
-                request = arg
+                request = cast('RequestTask', arg)
                 user = cast('GrizzlyUser', client)
 
             self.impl.initialize(client, user)
