@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from importlib import import_module
 from json import dumps as jsondumps
 from pathlib import Path
-from subprocess import DEVNULL, check_output
+from subprocess import CalledProcessError, check_output
 from textwrap import indent
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, ClassVar, cast
@@ -451,9 +451,14 @@ source_url: {self.repo_url}/blob/main/{path.relative_to(Path.cwd()).as_posix()}
             command = match.group(1)
             self.logger.info(f'{page.file.src_uri} executing "{command}"...')
             start = perf_counter()
-            output = check_output(command, shell=True, cwd=cwd, stderr=DEVNULL)  # noqa: S602
-            delta = perf_counter() - start
-            self.logger.info(f'...took {delta:.2f} seconds')
+            try:
+                output = check_output(command, shell=True, cwd=cwd)  # noqa: S602
+            except CalledProcessError as e:
+                self.logger.error(f'{e!s}', payload=f'stdout: {e.stdout!r}\nstderr: {e.stderr!r}')  # noqa: TRY400
+                raise
+            finally:
+                delta = perf_counter() - start
+                self.logger.info(f'...took {delta:.2f} seconds')
 
             text = text.replace(match.group(0), output.decode())
 

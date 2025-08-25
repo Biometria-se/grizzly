@@ -238,7 +238,7 @@ jobs:
     - name: build
       run: |
         git checkout -b v0.0.0
-        mkdocs build
+        python -m mkdocs build
 
     - name: check for @TODO annotations
       working-directory: ./site
