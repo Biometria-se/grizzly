@@ -1,0 +1,97 @@
+[project]
+name = "grizzly-loadtester-cli"
+dynamic = ["version", "readme"]
+description = "Command line interface for grizzly-loadtester"
+license = "MIT"
+license-files = ["LICENSE.md"]
+authors = [
+    { name = "biometria", email="opensource@biometria.se" },
+]
+maintainers = [
+    { name = "Mikael Göransson", email = "github@mgor.se" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "azure-identity>=1.24.0",
+    "azure-keyvault-secrets>=4.10.0",
+    "grizzly-loadtester-common",
+    "progress>=1.6.1",
+    "requests>=2.32.5",
+    "tomli>=2.2.1",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython"
+]
+keywords = [
+    "grizzly",
+    "grizzly-loadtester",
+    "cli",
+    "command line interface",
+    "locust",
+    "behave",
+    "load",
+    "loadtest",
+    "performance",
+    "traffic generator"
+]
+
+[project.urls]
+Documentation = "https://biometria-se.github.io/grizzly/command-line-interface/usage/"
+Code = "https://github.com/biometria-se/grizzly/"
+Tracker = "https://github.com/Biometria-se/grizzly/issues"
+
+[project.scripts]
+grizzly-cli = "grizzly_cli.__main__:main"
+
+[build-system]
+requires = ["hatchling==1.27.0", "hatch-vcs==0.5.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.hooks.custom]
+path = "../hatch_build.py"
+
+[tool.hatch.metadata.hooks.custom]
+path = "../hatch_build.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/grizzly_cli"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/grizzly_cli", "tests/"]
+exclude = ["tests/test_cli/e2e/example"]
+
+[tool.hatch.build.targets.sdist.force-include]
+"../LICENSE.md" = "LICENSE.md"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+tag_regex = "^cli@(?P<version>[v]\\d+(?:\\.\\d+){0,2}[^\\+]*?)(?:\\+.*)?$"
+scm.git.describe_command = "git describe --dirty --tags --long --abbrev=40 --match 'cli@v*[0-9]*'"
+version_scheme = "no-guess-dev"
+local_scheme = "no-local-version"
+root = "../"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/grizzly_cli/__version__.py"
+
+[tool.uv.sources]
+grizzly-loadtester-common = { workspace = true }
+grizzly-loadtester = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "grizzly-loadtester",
+    "pip>=25.2",
+    "requests-mock>=1.12.1",
+]

@@ -1,0 +1,10 @@
+{
+  "grizzly.stdio.args": [
+    "--verbose",
+    "--no-verbose",
+    "pygls"
+  ],
+  "[grizzly-gherkin]": {
+    "editor.links": false
+  }
+}

@@ -1,0 +1,39 @@
+[project]
+name = "grizzly-mkdocs"
+version = "0.1.0"
+description = "Grizzly documentation"
+license = "MIT"
+authors = [
+    { name = "biometria", email="opensource@biometria.se" },
+]
+maintainers = [
+    { name = "Mikael Göransson", email = "github@mgor.se" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "cssselect>=1.3.0",
+    "mkdocs>=1.6.1",
+    "mkdocs-autorefs>=1.4.2",
+    "mkdocs-gen-files>=0.5.0",
+    "mkdocs-macros-plugin>=1.3.9",
+    "mkdocs-material>=9.6.18",
+    "mkdocs-section-index>=0.3.10",
+    "mkdocstrings-python>=1.17.0",
+    "packaging>=25.0",
+    "pip-licenses>=5.0.0",
+    "pytablewriter>=1.2.1",
+    "requests>=2.32.5",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "types-pyyaml>=6.0.12.20250822",
+    "types-requests>=2.32.4.20250809",
+]
+
+[project.entry-points."mkdocs.plugins"]
+grizzly-mkdocs = "grizzly_mkdocs:GrizzlyMkdocs"

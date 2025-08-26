@@ -1,0 +1,347 @@
+# Adding a new package to the workspace, also needs to be added here:
+# - tool.pytest.ini_options
+# - tool.coverage.path
+# - tool.mypy
+[project]
+name = "grizzly-loadtester-bundle"
+dynamic = ["version"]
+description = "Monorepo containing all grizzly related packages"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE.md"]
+authors = [
+    { name = "biometria", email="opensource@biometria.se" },
+]
+maintainers = [
+    { name = "Mikael Göransson", email = "github@mgor.se" }
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv.pip]
+link-mode = "copy"
+
+[build-system]
+requires = ["hatchling==1.27.0", "hatch-vcs==0.5.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.envs.test]
+detached = true
+type = "virtual"
+installer = "uv"
+python = "{matrix:python}"
+dependencies = [
+    "virtualenv"
+]
+
+[[tool.hatch.envs.test.matrix]]
+python = ["3.10", "3.11", "3.12", "3.13"]
+
+[tool.hatch.envs.test.scripts]
+install = ["uv sync --locked -p {matrix:python} --active --all-packages --all-groups"]
+
+framework-unit = ["install", "python -m pytest framework/tests/ --ignore=framework/tests/test_framework/e2e"]
+framework-e2e-local = ["install", "python -m pytest framework/tests/ --ignore=framework/tests/test_framework/unit"]
+framework-e2e-dist = ["install", "E2E_DIST_MODE=dist python -m pytest framework/tests/ --ignore=framework/tests/test_framework/unit"]
+framework-e2e-example = ["install", "python -m pytest -s framework/tests/test_framework/e2e/test_example.py::test_e2e_example"]
+framework-e2e = ["framework-e2e-local", "framework-e2e-dist"]
+framework-all = ["framework-unit", "framework-e2e", "framework-e2e-dist"]
+
+cli-unit = ["install", "python -m pytest command-line-interface/tests --ignore=command-line-interface/tests/test_cli/e2e"]
+cli-e2e = ["install", "python -m pytest command-line-interface/tests --ignore=command-line-interface/tests/test_cli/unit"]
+cli-e2e-example = ["install", "python -m pytest command-line-interface/tests/test_cli/e2e/test_run.py"]
+cli-all = ["cli-unit", "cli-e2e"]
+
+common-unit = ["install", "python -m pytest common/tests"]
+common-e2e = ["echo not implemented"]
+common-all = ["common-unit"]
+
+ls-unit = ["install", "python -m pytest editor-support/tests --ignore=editor-support/tests/test_ls/e2e"]
+ls-e2e = ["install", "python -m pytest editor-support/tests --ignore=editor-support/tests/test_ls/unit"]
+ls-clients-vscode = ["install", "cd editor-support/clients/vscode && npm run test"]
+ls-all = ["ls-unit", "ls-e2e", "ls-clients-vscode"]
+
+extras-unit = ["extras-async-messaged-unit"]
+extras-e2e = ["extras-async-messaged-e2e"]
+extras-all = ["extras-unit", "extras-e2e"]
+
+extras-async-messaged-unit = ["install", "python -m pytest extras/async-messaged/tests --ignore=extras/async-messaged/tests/test_async_messaged/e2e"]
+extras-async-messaged-e2e = ["echo not implemented"]
+extras-async-messaged-all = ["extras-async-messaged-unit", "extras-async-messaged-e2e"]
+
+
+all-unit = ["framework-unit", "cli-unit", "common-unit", "ls-unit", "extras-unit"]
+all-e2e = ["framework-e2e", "cli-e2e", "common-e2e", "ls-e2e", "framework-e2e-dist", "extras-e2e"]
+all = ["all-unit", "all-e2e"]
+
+[tool.hatch.envs.lint]
+detached = true
+type = "virtual"
+installer = "uv"
+python = "{matrix:python}"
+
+[[tool.hatch.envs.lint.matrix]]
+python = ["3.10", "3.13"]
+
+[tool.hatch.envs.lint.scripts]
+install = ["uv sync --locked -p {matrix:python} --active --all-packages --group dev"]
+all = ["mypy", "lint", "format"]
+types = ["install", "python -m mypy"]
+lint = ["install", "ruff check ."]
+format = ["install", "ruff format --check"]
+ruff-fix = ["install", "ruff check . --fix", "ruff format"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+tag_regex = "^bundle@(?P<version>[v]\\d+(?:\\.\\d+){0,2}[^\\+]*?)(?:\\+.*)?$"
+scm.git.describe_command = "git describe --dirty --tags --long --abbrev=40 --match 'bundle@v*[0-9]*'"
+version_scheme = "no-guess-dev"
+local_scheme = "no-local-version"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "./__version__.py"
+
+[tool.uv.workspace]
+members = [
+    "framework",
+    "common",
+    "docs",
+    "command-line-interface",
+    "editor-support",
+    "extras/async-messaged",
+]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
+
+[dependency-groups]
+dev = [
+    "astunparse>=1.6.3",
+    "atomicwrites>=1.4.1",
+    "coverage[toml]>=7.10.5",
+    "hatch>=1.14.1",
+    "line-profiler>=5.0.0",
+    "mypy>=1.17.1",
+    "parameterized>=0.9.0",
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
+    "pytest-mock>=3.14.1",
+    "pytest-timeout>=2.4.0",
+    "ruff>=0.12.10",
+    "semver>=3.0.4",
+    "snakeviz>=2.2.2",
+]
+
+[tool.ruff]
+exclude = [
+    ".env", ".venv", ".pytest_tmp", "build", "dist", "**/__version__.py"
+]
+line-length = 180
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "ANN401",
+    "BLE001",
+    "COM812",
+    "D101", "D102", "D103", "D105", "D106", "D107", "D203", "D213", "D205", "D301", "D407", "D417",
+    "DTZ005",
+    "E722", "E402",
+    "F405", "F403",
+    "N801",
+    "PD011",
+    "PLR2004",
+    "UP007", "UP006",
+    "Q000", "Q003",
+    "S101", "S104", "S314", "S603", "S701",
+    "SLF001",
+    "T201",
+    "TRY301"
+]
+
+[tool.ruff.lint.per-file-ignores]
+"hatch_build.py" = ["S602", "S607"]
+"docs/**" = ["G004", "D104"]
+"**/tests/**/*.py" = ["S106", "PLC0415"]
+"**/__version__.py" = ["ALL"]
+"example/features/environment.py" = ["F401"]
+"framework/tests/test_framework/unit/test_locust_dispatch.py" = ["PT009", "PT027"]
+"command-line-interface/src/**/*.py" = ["S607"]
+"command-line-interface/tests/test_cli/unit/utils/test___init__.py" = ["W291"]
+"editor-support/**/*.py" = ["D100", "D104", "G004", "TRY401"]
+"editor-support/src/grizzly_ls/__main__.py" = ["T100", "LOG015", "PLC0415"]
+"editor-support/tests/project/**" = ["ALL"]
+"extras/scripts/**/*.py" = ["D100"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.pylint]
+max-branches = 15
+max-args = 10
+
+[tool.ruff.lint.flake8-builtins]
+ignorelist = ["license"]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "framework/src",
+    "common/src",
+    "docs/src",
+    "command-line-interface/src",
+    "editor-support/src",
+    "extras/async-messaged/src"
+]
+# new dependencies, can silently register a pytest plugin, which will cause monkey patchning to fail, and hence not finding any tests;
+# find .venv/lib/python*/ -name 'entry_points.txt' -exec grep -A 1 'pytest11' {} \; | grep -v pytest11
+# pytest --trace-config
+addopts = [
+    "-p", "no:requests_mock",
+    "-p", "no:anyio",
+    "--cov=.",
+    "--cov-report=xml:coverage.xml",
+    "--no-cov-on-fail"
+]
+testpaths = [
+    "framework/tests",
+    "common/tests",
+    "docs/tests",
+    "command-line-interface/tests",
+    "editor-support/tests",
+    "extras/async-messaged/tests"
+]
+timeout = 15
+filterwarnings = [
+    "ignore:setDaemon\\(\\) is deprecated.*:DeprecationWarning",
+    "ignore:.*pkg_resources.*:DeprecationWarning",
+    "ignore:Use setlocale.*instead:DeprecationWarning",
+    "error:.*:gevent.monkey.MonkeyPatchWarning",
+    "ignore:.*Use timezone-aware objects to represent datetimes",
+    "ignore:.*use of fork\\(\\) may lead to deadlocks in the child",
+    "ignore:'locale\\.getdefaultlocale' is deprecated"
+]
+
+[tool.coverage.paths]
+source = [
+    "framework/src",
+    "common/src",
+    "docs/src",
+    "command-line-interface/src",
+    "editor-support/src",
+    "extras/async-messaged/src"
+]
+
+[tool.coverage.report]
+skip_covered = true
+skip_empty = true
+
+[tool.mypy]
+explicit_package_bases = true
+mypy_path = "$MYPY_CONFIG_FILE_DIR/framework/src,$MYPY_CONFIG_FILE_DIR/common/src,$MYPY_CONFIG_FILE_DIR/docs/src,$MYPY_CONFIG_FILE_DIR/framework/tests,$MYPY_CONFIG_FILE_DIR/common/tests,$MYPY_CONFIG_FILE_DIR/example,$MYPY_CONFIG_FILE_DIR/command-line-interface/src,$MYPY_CONFIG_FILE_DIR/command-line-interface/tests,$MYPY_CONFIG_FILE_DIR/editor-support/src,$MYPY_CONFIG_FILE_DIR/editor-support/tests,$MYPY_CONFIG_FILE_DIR/extras/async-messaged/src,$MYPY_CONFIG_FILE_DIR/extras/async-messaged/tests"
+files = "framework/src,framework/tests,common/src,common/tests,docs/src,docs/tests,command-line-interface/src,command-line-interface/tests,editor-support/src,editor-support/tests,extras/async-messaged/src,extras/async-messaged/tests"
+exclude = ["framework/tests/test-project/", "editor-support/tests/project"]
+# https://github.com/python/mypy/issues/5870
+#follow_missing_imports = true
+show_column_numbers = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+#disallow_incomplete_defs = true
+#disallow_any_generics = true
+#disallow_subclassing_any = true
+#disallow_untyped_calls = true
+disallow_incomplete_defs = true
+#disallow_untyped_decorators = true
+no_implicit_optional = true
+no_implicit_reexport = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = "test_grizzly.test_locust_dispatch"
+disable_error_code = ["type-abstract", "unused-ignore"]
+
+[[tool.mypy.overrides]]
+module = "grizzly.steps.*"
+no_implicit_reexport = false
+
+[[tool.mypy.overrides]]
+module = "behave.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pymqi.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "gevent.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "influxdb.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "lxml.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "jsonpath_ng.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "parse.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "geventhttpclient.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "roundrobin.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "parameterized.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "jinja2_simple_tags.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "greenlet.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "progress.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "debugpy.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "re.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "random_word.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "piplicenses.*"
+ignore_missing_imports = true

@@ -1,0 +1,29 @@
+{
+  "name": "check-pr-action",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Check pull request for version bump labels",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "rollup --config rollup.config.js",
+    "test": "mocha test/**/*.test.js"
+  },
+  "keywords": [
+    "github-actions",
+    "pull-request"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "chai": "^6.2.1",
+    "mocha": "^11.7.5",
+    "rollup": "^4.53.3",
+    "sinon": "^21.0.0"
+  }
+}

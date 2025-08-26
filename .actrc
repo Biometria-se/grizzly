@@ -1,0 +1,4 @@
+--container-architecture=linux/amd64
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+--action-offline-mode
+--var DEFAULT_BRANCH=HEAD

@@ -1,0 +1,14 @@
+.venv/
+.vscode/
+.github/
+.devcontainer/
+
+**/.pytest_tmp
+**/__pycache__
+**/.*_cache
+**/node_modules
+**/.vscode-test
+
+docs/site
+example/
+dist/

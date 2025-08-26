@@ -1,0 +1,46 @@
+services:
+  master:
+    hostname: master
+    image: ${GRIZZLY_IMAGE_REGISTRY:-}${GRIZZLY_PROJECT_NAME}:${GRIZZLY_USER_TAG}
+    tty: ${GRIZZLY_CONTAINER_TTY}
+    ulimits:
+      nofile: ${GRIZZLY_LIMIT_NOFILE}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${GRIZZLY_MOUNT_CONTEXT}/${GRIZZLY_MOUNT_PATH}:/srv/grizzly
+    environment:
+      - COLUMNS=${COLUMNS}
+      - LINES=${LINES}
+    command: --no-color -D master=true -D expected-workers=${GRIZZLY_EXPECTED_WORKERS:-1} /srv/grizzly/${GRIZZLY_RUN_FILE:-features} ${GRIZZLY_MASTER_RUN_ARGS:-} ${GRIZZLY_COMMON_RUN_ARGS:-}
+    env_file: "${GRIZZLY_ENVIRONMENT_FILE}"
+    healthcheck:
+      test: ["CMD", "lsof", "-i", ":5557", "-sTCP:LISTEN"]
+      interval: ${GRIZZLY_HEALTH_CHECK_INTERVAL:-5}s
+      timeout: ${GRIZZLY_HEALTH_CHECK_TIMEOUT:-3}s
+      retries: ${GRIZZLY_HEALTH_CHECK_RETRIES:-3}
+
+  worker:
+    image: ${GRIZZLY_IMAGE_REGISTRY:-}${GRIZZLY_PROJECT_NAME}:${GRIZZLY_USER_TAG}
+    tty: ${GRIZZLY_CONTAINER_TTY}
+    ulimits:
+      nofile: ${GRIZZLY_LIMIT_NOFILE}
+    stop_grace_period: 1h
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${GRIZZLY_MOUNT_CONTEXT}/${GRIZZLY_MOUNT_PATH}:/srv/grizzly
+    environment:
+      - COLUMNS=${COLUMNS}
+      - LINES=${LINES}
+    command: --no-color -q --no-summary --format null -D worker=true -D master-host=master /srv/grizzly/${GRIZZLY_RUN_FILE:-features} ${GRIZZLY_WORKER_RUN_ARGS:-} ${GRIZZLY_COMMON_RUN_ARGS:-}
+    env_file: "${GRIZZLY_ENVIRONMENT_FILE}"
+    depends_on:
+      master:
+        condition: service_healthy
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: ${GRIZZLY_MTU:-1500}

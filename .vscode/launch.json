@@ -1,0 +1,57 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "extensionHost",
+      "request": "launch",
+      "name": "Launch Client",
+      "args": [
+        "--profile=extension-context",
+        "--extensionDevelopmentPath=${workspaceRoot}/editor-support/clients/vscode",
+        "${workspaceFolder}/editor-support/tests/project"
+      ],
+      "sourceMaps": true,
+      "outFiles": [
+        "${workspaceRoot}/editor-support/clients/vscode/out/**/*.js"
+      ],
+      "preLaunchTask": "debug client",
+      "env": {
+        "VIRTUAL_ENV": "${workspaceFolder}/.venv"
+      },
+    },
+    {
+      // Gets launched when clicking "Debug Test" in the Testing view
+      "name": "Debug Unit Test",
+      "type": "debugpy",
+      "request": "launch",
+      "justMyCode": false,
+      "program": "${file}",
+      // Defines that the configuration should be used when debugging tests in VS Code
+      "purpose": [
+        "debug-test"
+      ],
+      "console": "integratedTerminal",
+      "env": {
+        // Disable coverage since it won't work with debugging/breakpoints
+        "PYTEST_ADDOPTS": "--no-cov",
+        // Needed for the debugger to play well with gevent
+        "GEVENT_SUPPORT": "True"
+      }
+    },
+    {
+      "name": "Python Debugger: Attach",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "port": 5678,
+        "host": "localhost",
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "${workspaceFolder}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "publisher": "biometria-se",
+  "name": "grizzly-loadtester-vscode",
+  "displayName": "Grizzly Loadtester for VSCode",
+  "description": "Visual Studio Code extension for grizzly projects, auto-completion of available step expressions, diagnostics and step implementation quick fixes.",
+  "author": "Biometria <opensource@biometria.se>",
+  "license": "MIT",
+  "version": "0.0.1",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "theme": "dark",
+    "color": "#795649"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/biometria-se/grizzly-lsp"
+  },
+  "bugs": {
+    "url": "https://github.com/Biometria-se/grizzly/issues"
+  },
+  "homepage": "https://biometria-se.github.io/grizzly/",
+  "categories": [
+    "Testing",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "grizzly",
+    "load testing",
+    "locust"
+  ],
+  "qna": "false",
+  "engines": {
+    "node": ">=22",
+    "vscode": "^1.100.0"
+  },
+  "extensionDependencies": [
+    "ms-python.python"
+  ],
+  "activationEvents": [],
+  "main": "./out/src/extension",
+  "contributes": {
+    "languages": [
+      {
+        "id": "grizzly-gherkin",
+        "aliases": [
+          "gherkin",
+          "feature"
+        ],
+        "extensions": [
+          ".feature",
+          ".grizzly"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "grizzly-gherkin",
+        "scopeName": "text.gherkin.feature",
+        "path": "./syntaxes/feature.tmLanguage"
+      }
+    ],
+    "commands": [
+      {
+        "command": "grizzly.server.restart",
+        "title": "Restart Language Server",
+        "category": "Grizzly"
+      },
+      {
+        "command": "grizzly.server.inventory.rebuild",
+        "title": "Rebuild step inventory",
+        "category": "Grizzly"
+      },
+      {
+        "command": "grizzly.server.diagnostics.run",
+        "title": "Run diagnostics",
+        "category": "Grizzly"
+      },
+      {
+        "command": "grizzly.gherkin.preview.beside",
+        "title": "Preview",
+        "category": "Grizzly",
+        "icon": "$(preview)"
+      }
+    ],
+    "menus": {
+      "editor/title/context": [
+        {
+          "command": "grizzly.gherkin.preview.beside",
+          "group": "gherkin",
+          "when": "resourceLangId == grizzly-gherkin"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "grizzly.gherkin.preview.beside",
+          "group": "navigation@-99",
+          "when": "resourceLangId == grizzly-gherkin"
+        }
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "Grizzly",
+      "properties": {
+        "grizzly.server.connection": {
+          "scope": "resource",
+          "type": "string",
+          "default": "stdio",
+          "enum": [
+            "socket",
+            "stdio"
+          ],
+          "description": "How to connect to language server, with 'socket' the server has to be started manually"
+        },
+        "grizzly.stdio.module": {
+          "scope": "resource",
+          "type": "string",
+          "default": "grizzly_ls",
+          "description": "Language server module"
+        },
+        "grizzly.stdio.args": {
+          "scope": "resource",
+          "type": "array",
+          "default": [],
+          "description": "Additional arguments used by the language server"
+        },
+        "grizzly.socket.host": {
+          "scope": "resource",
+          "type": "string",
+          "default": "127.0.0.1"
+        },
+        "grizzly.socket.port": {
+          "scope": "resource",
+          "type": "number",
+          "default": 4444
+        },
+        "grizzly.variable_pattern": {
+          "scope": "resource",
+          "type": "array",
+          "default": [
+            ".*ask for value of variable \"([^\"]*)\"$",
+            ".*value for variable \"([^\"]*)\" is \".*?\"$"
+          ],
+          "description": "A list of regular expressions matching step expressions that sets variables, this is needed for being able to auto-complete variable names. The regular expression must have one matching group, being the position with the variable name"
+        },
+        "grizzly.use_virtual_environment": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "description": "Install project dependencies in a seperate virtual environment"
+        },
+        "grizzly.pip_extra_index_url": {
+          "scope": "resource",
+          "type": "string",
+          "default": "",
+          "description": "URL to index that dependencies should be downloaded from instead of pypi.org"
+        },
+        "grizzly.diagnostics_on_save_only": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "description": "Diagnosing a feature file can be a performance hit, only enable if you know what you are doing"
+        },
+        "grizzly.quick_fix.step_impl_template": {
+          "scope": "resource",
+          "type": "string",
+          "default": null,
+          "description": "Template for missing step implementation quick fixes"
+        },
+        "grizzly.file_ignore_patterns": {
+          "scope": "resource",
+          "type": "array",
+          "default": null,
+          "description": "List of glob patterns for files to ignore during source compilation"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "cp ../../../LICENSE.md . && npm run build-base -- --minify",
+    "build-base": "esbuild ./src/extension.ts --bundle --outfile=out/src/extension.js --external:vscode --format=cjs --platform=node",
+    "build": "npm run build-base -- --sourcemap",
+    "watch": "npm run build-base -- --sourcemap --watch",
+    "tsc-watch": "tsc -b -w",
+    "compile": "tsc -b",
+    "lint": "eslint src/ tests/ --ext .ts,.tsx",
+    "lint-fix": "eslint src/ tests/ --ext .ts,.tsx --fix",
+    "pretests": "npm run compile",
+    "tests": "node out/tests/runTest",
+    "licenses": "npm-license-crawler --noColor --production --json"
+  },
+  "dependencies": {
+    "@vscode/python-extension": "^1.0.5",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-uri": "^3.0.8"
+  },
+  "devDependencies": {
+    "@types/chai": "^5.2.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.7.4",
+    "@types/vscode": "^1.100.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vscode/test-electron": "^2.5.2",
+    "chai": "^6.0.1",
+    "esbuild": "^0.25.9",
+    "eslint": "^8.57.1",
+    "eslint-config-love": "^62.0.1",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-n": "^17.10.3",
+    "eslint-plugin-promise": "^7.1.0",
+    "glob": "^11.0.3",
+    "mocha": "^11.7.2",
+    "npm-license-crawler": "^0.2.1",
+    "typescript": "^5.6.2"
+  }
+}

@@ -1,0 +1,236 @@
+# build with uv build --out-dir dist/ --package <package> --wheel --sdist
+# without --wheel and --sdist, the wheel will be built from the source distribution, and the custom hatch build hooks in ../hatch_build.py will be
+# missing.
+name: Release
+
+run-name: |
+  ${{ github.event_name == 'workflow_dispatch' && format('Release PR #{0} (manually)', inputs.pr-number) || format('Release PR #{0} (automatic)', github.event.pull_request.number) }}
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        description: 'PR number to release'
+        required: true
+        type: number
+      dry-run:
+        description: 'dry run (no actual release)'
+        required: false
+        type: boolean
+
+jobs:
+  prerequisites:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       (contains(github.event.pull_request.labels.*.name, 'major') ||
+        contains(github.event.pull_request.labels.*.name, 'minor') ||
+        contains(github.event.pull_request.labels.*.name, 'patch')))
+    outputs:
+      should-release: ${{ steps.check-pr.outputs.should-release }}
+      version-bump: ${{ steps.check-pr.outputs.version-bump }}
+      pr-number: ${{ steps.check-pr.outputs.pr-number }}
+      commit-sha: ${{ steps.check-pr.outputs.commit-sha }}
+      base-commit-sha: ${{ steps.check-pr.outputs.base-commit-sha }}
+      changes_uv: ${{ steps.mapper.outputs.changes_uv }}
+      changes_npm: ${{ steps.mapper.outputs.changes_npm }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: "Setup uv job"
+      uses: ./.github/actions/setup-uv-job
+
+    - name: "Check pull request"
+      id: check-pr
+      uses: ./.github/actions/check-pr
+      with:
+        pr-number: ${{ inputs.pr-number }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: ./.github/changes-filter.yaml
+        ref: ${{ steps.check-pr.outputs.commit-sha }}
+        base: ${{ steps.check-pr.outputs.base-commit-sha }}
+
+    - name: "Map changed directories to packages"
+      if: steps.filter.outputs.changes != '[]'
+      id: mapper
+      run: |
+        uv run ./extras/scripts/map-changes.py --changes '${{ steps.filter.outputs.changes }}' --force false --release
+
+  uv-release:
+    name: "uv release / ${{ matrix.changes.package }}"
+    needs: [prerequisites]
+    if: needs.prerequisites.outputs.should-release == 'true' && needs.prerequisites.outputs.changes_uv != '[]'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+    permissions:
+      id-token: write
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        changes: ${{ fromJson(needs.prerequisites.outputs.changes_uv) }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.prerequisites.outputs.commit-sha }}
+        fetch-tags: true
+        fetch-depth: 0
+
+    - name: "Setup uv job"
+      uses: ./.github/actions/setup-uv-job
+
+    - name: "Setup release"
+      uses: ./.github/actions/setup-release
+      with:
+        project: ${{ matrix.changes.directory }}
+        version-bump: ${{ needs.prerequisites.outputs.version-bump }}
+        dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run || 'false' }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        name: "uv release / ${{ matrix.changes.package }}"
+
+    - name: Build
+      run: uv build --package ${{ matrix.changes.package }} --sdist --wheel
+
+    - name: "Publish${{ github.event_name == 'workflow_dispatch' && inputs.dry-run && ' (dry-run)' || '' }}"
+      run: uv publish ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run && '--dry-run' || '' }}
+
+  npm-release:
+    name: "npm release / ${{ matrix.changes.package }}"
+    needs: [prerequisites]
+    if: needs.prerequisites.outputs.should-release == 'true' && needs.prerequisites.outputs.changes_npm != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        changes: ${{ fromJson(needs.prerequisites.outputs.changes_npm) }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.prerequisites.outputs.commit-sha }}
+        fetch-tags: true
+        fetch-depth: 0
+
+    - uses: actions/setup-node@v5
+      with:
+        cache: 'npm'
+        node-version: 24
+        cache-dependency-path: "${{ matrix.changes.directory }}/package-lock.json"
+
+    - name: "Setup release"
+      id: setup-release
+      uses: ./.github/actions/setup-release
+      with:
+        project: ${{ matrix.changes.directory }}
+        version-bump: ${{ needs.prerequisites.outputs.version-bump }}
+        dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run || 'false' }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        name: "npm release / ${{ matrix.changes.package }}"
+
+    - name: Install dependencies
+      working-directory: ${{ matrix.changes.directory }}
+      run: npm install
+
+    - name: Update version
+      working-directory: ${{ matrix.changes.directory }}
+      run: npm version ${{ steps.setup-release.outputs.next-release-version }}
+
+    - name: Build
+      working-directory: ${{ matrix.changes.directory }}
+      run: npx @vscode/vsce package
+
+    - name: Publish
+      working-directory: ${{ matrix.changes.directory }}
+      env:
+        VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+      run: |
+        if [[ "${{ inputs.dry-run || 'false' }}" == "false" ]]; then
+          npx @vscode/vsce publish -p $VSCE_TOKEN
+        else
+          ls -l grizzly-loadtester-vscode-*.vsix
+          unzip -t grizzly-loadtester-vscode-*.vsix || true
+        fi
+
+  documentation:
+    name: "documentation"
+    needs:
+    - prerequisites
+    - uv-release
+    - npm-release
+    if: |
+      always() &&
+      needs.prerequisites.result == 'success' &&
+      (needs.uv-release.result == 'success' || needs.uv-release.result == 'skipped') &&
+      (needs.npm-release.result == 'success' || needs.npm-release.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-tags: true
+        fetch-depth: 0
+
+    - name: "Setup uv job"
+      uses: ./.github/actions/setup-uv-job
+
+    - uses: actions/setup-node@v5
+      with:
+        node-version: 24
+
+    - name: "Setup environment"
+      run: |
+        uv run ./extras/scripts/setup-environment.py
+
+    - name: "Install IBM MQM"
+      uses: ./.github/actions/setup-ibm-mqm
+      with:
+        image: "ubuntu-latest"
+
+    - name: "Install dependencies"
+      env:
+        LD_LIBRARY_PATH: ${{ env.LD_LIBRARY_PATH }}
+      run: |
+        uv sync --locked --all-packages --all-extras --all-groups
+
+    - name: "Setup release"
+      id: setup-release
+      uses: ./.github/actions/setup-release
+      with:
+        project: "."
+        version-bump: ${{ needs.prerequisites.outputs.version-bump }}
+        dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run || 'false' }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        name: "documentation"
+
+    - name: Build
+      run: uv run mkdocs build
+
+    - name: "Deploy documentation"
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_branch: gh-pages
+        publish_dir: ./docs/build
+        destination_dir: docs/
+        enable_jekyll: false
+        # cname: <a better domain>
+        allow_empty_commit: true
+        commit_message: 'Documentation for release ${{ steps.setup-release.outputs.next-release-tag }}'
+

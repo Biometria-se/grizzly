@@ -1,0 +1,4 @@
+.env/
+logs/
+environments/*.yaml
+!environments/example.yaml

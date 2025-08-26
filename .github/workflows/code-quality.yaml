@@ -1,0 +1,381 @@
+name: Code Quality
+
+on:
+  pull_request:
+    branches: [ main ]
+
+  workflow_dispatch:
+    inputs:
+      skip-e2e-tests:
+        type: boolean
+        description: 'Skip E2E tests'
+        default: false
+
+jobs:
+  changes:
+    runs-on: "ubuntu-latest"
+
+    outputs:
+      changes_uv: ${{ steps.mapper.outputs.changes_uv }}
+      changes_npm: ${{ steps.mapper.outputs.changes_npm }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: "Setup uv job"
+      uses: ./.github/actions/setup-uv-job
+      with:
+        python-version: "3.13"
+
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: ./.github/changes-filter.yaml
+
+    - name: "Map changed directories to packages"
+      id: mapper
+      run: |
+        uv run ./extras/scripts/map-changes.py --changes '${{ steps.filter.outputs.changes }}' --force ${{ github.event_name == 'workflow_dispatch' }}
+
+  uv-lint:
+    name: "uv lint / ${{ matrix.changes.package }} / py${{ matrix.python-version }} / ${{ matrix.image }}"
+    needs: changes
+    if: needs.changes.outputs.changes_uv != '[]'
+    outputs:
+      changes_uv: ${{ needs.changes.outputs.changes_uv }}
+    runs-on: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu-latest"]
+        python-version: ["3.10", "3.13"]
+        changes: ${{ fromJSON(needs.changes.outputs.changes_uv) }}
+        exclude:
+          - image: "windows-latest"
+            python-version: "3.10"
+          - image: "macos-15-intel"
+            python-version: "3.10"
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: "Setup uv job"
+      uses: ./.github/actions/setup-uv-job
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: "install ${{ matrix.changes.package }} dev dependencies"
+      run: |
+        uv sync --locked -p ${{ matrix.python-version }} --inexact --only-dev --all-packages --no-install-project --no-install-workspace
+        uv sync --locked -p ${{ matrix.python-version }} --inexact --package ${{ matrix.changes.package }}
+
+    - name: "Run lint"
+      working-directory: ${{ matrix.changes.directory }}
+      run: |
+        uv run ruff check .
+
+    - name: "Run format"
+      working-directory: ${{ matrix.changes.directory }}
+      run: |
+        uv run ruff format .
+
+    - name: "Check types"
+      working-directory: ${{ matrix.changes.directory }}
+      run: |
+        uv run mypy .
+
+  uv-test:
+    name: "uv test / ${{ matrix.changes.package }} / py${{ matrix.python-version }} / ${{ matrix.image }}"
+    needs: uv-lint
+    if: always()
+    continue-on-error: true
+    timeout-minutes: 5
+    outputs:
+      changes_uv: ${{ needs.uv-lint.outputs.changes_uv || '[]' }}
+    runs-on: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
+        python-version: ["3.10", "3.13"]
+        changes: ${{ fromJSON(needs.uv-lint.outputs.changes_uv || '[]') }}
+        exclude:
+          - image: "windows-latest"
+            python-version: "3.10"
+          - image: "macos-15-intel"
+            python-version: "3.10"
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: "Setup uv job"
+      uses: ./.github/actions/setup-uv-job
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: "install ${{ matrix.changes.package }} dev dependencies"
+      run: |
+        uv sync --locked -p ${{ matrix.python-version }} --inexact --only-dev --all-packages --no-install-project --no-install-workspace
+        uv sync --locked -p ${{ matrix.python-version }} --inexact --package ${{ matrix.changes.package }}
+
+    - name: "Run unit tests"
+      id: uv_tests_unit
+      if: matrix.changes.tests.unit != ''
+      working-directory: ${{ matrix.changes.directory }}
+      run: |
+        uv run pytest ${{ matrix.changes.tests.unit }}
+
+    - name: "Check coverage"
+      if: steps.uv_tests_unit.outcome == 'success'
+      working-directory: ${{ matrix.changes.directory }}
+      run: |
+        uv run coverage report -i --omit=tests/**/*,**/*messagequeue*,**/mq/__init__.py,**/__version__.py --fail-under=80
+
+  uv-test-e2e:
+    name: "uv test-e2e / ${{ matrix.changes.package }} / py${{ matrix.python-version }} / ${{ matrix.image }}"
+    needs: uv-test
+    if: always() && (inputs.skip-e2e-tests || 'false') == 'false'
+    timeout-minutes: 40
+    outputs:
+      changes_uv: ${{ needs.uv-test.outputs.changes_uv || '[]' }}
+    runs-on: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
+        python-version: ["3.13"]
+        changes: ${{ fromJSON(needs.uv-test.outputs.changes_uv || '[]') }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: "Setup uv job"
+      uses: ./.github/actions/setup-uv-job
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: "Install docker compose for distributed E2E tests"
+      uses: KengoTODA/actions-setup-docker-compose@main
+      if: matrix.changes.tests.e2e.dist != '' && matrix.image == 'ubuntu-latest'
+      with:
+        version: "2.39.3"
+
+    - name: "Set shell encoding (windows)"
+      if: ${{ matrix.image == 'windows-latest' }}
+      run: |
+        if (!(Test-Path $profile))
+        {
+          New-Item -Path $profile -Type File -Force
+        }
+        # note that PYTHONUTF8=1 only works for python >= 3.7...
+        '$OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding' + [Environment]::Newline + (Get-Content -Raw $profile -ErrorAction SilentlyContinue) + [Environment]::Newline + '$env:PYTHONIOENCODING = "utf-8"' + [Environment]::Newline + '$env:PYTHONUTF8 = 1' + [Environment]::Newline | Set-Content -Encoding utf8 $profile
+
+
+    - name: "Install ${{ matrix.changes.package }} dev dependencies"
+      run: |
+        uv sync --locked -p ${{ matrix.python-version }} --inexact --only-dev --all-packages --no-install-project --no-install-workspace
+        uv sync --locked -p ${{ matrix.python-version }} --inexact --package ${{ matrix.changes.package }} --dev
+
+    - name: "Setup environment"
+      run: |
+        uv run ./extras/scripts/setup-environment.py
+
+    - name: "Start SSH agent"
+      if: matrix.image != 'windows-latest'
+      run: |
+        ssh-agent -a /tmp/ssh_auth_sock
+
+    - name: "Run E2E local test"
+      id: e2e_local
+      if: matrix.changes.tests.e2e.local != ''
+      working-directory: ${{ matrix.changes.directory }}
+      env:
+        E2E_RUN_MODE: local
+        SSH_AUTH_SOCK: /tmp/ssh_auth_sock
+        VIRTUAL_ENV: ${{ env.VIRTUAL_ENV }}
+      run: |
+        uv run pytest ${{ matrix.changes.tests.e2e.local }}
+
+    - name: "E2E local test log"
+      uses: actions/upload-artifact@v4
+      if: failure() && matrix.changes.tests.e2e.local != '' && steps.e2e_local.outcome == 'failure'
+      env:
+        GRIZZLY_TMP_LOGFILE: ${{ env.GRIZZLY_TMP_LOGFILE }}
+      with:
+        name: "grizzly-e2e-local-logs-${{ matrix.image }}-py${{ matrix.python-version }}"
+        path: "${{ env.GRIZZLY_TMP_LOGFILE }}"
+        if-no-files-found: error
+
+    - name: "Run E2E distributed test"
+      id: e2e_dist
+      if: matrix.changes.tests.e2e.dist != '' && matrix.image == 'ubuntu-latest'
+      working-directory: ${{ matrix.changes.directory }}
+      env:
+        E2E_RUN_MODE: dist
+        SSH_AUTH_SOCK: /tmp/ssh_auth_sock
+        VIRTUAL_ENV: ${{ env.VIRTUAL_ENV }}
+      run: |
+        uv run pytest ${{ matrix.changes.tests.e2e.dist }}
+
+    - name: "E2E distributed test log"
+      uses: actions/upload-artifact@v4
+      if: failure() && matrix.changes.tests.e2e.dist != '' && steps.e2e_dist.outcome == 'failure'
+      env:
+        GRIZZLY_TMP_LOGFILE: ${{ env.GRIZZLY_TMP_LOGFILE }}
+      with:
+        name: "grizzly-e2e-dist-logs-${{ matrix.image }}-py${{ matrix.python-version }}"
+        path: "${{ env.GRIZZLY_TMP_LOGFILE }}"
+        if-no-files-found: error
+
+  npm-lint:
+    name: "npm lint / ${{ matrix.changes.package }} / ${{ matrix.image }}"
+    needs: changes
+    runs-on: ${{ matrix.image }}
+    if: needs.changes.outputs.changes_npm != '[]'
+    outputs:
+      changes_npm: ${{ needs.changes.outputs.changes_npm || '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu-latest"]
+        changes: ${{ fromJSON(needs.changes.outputs.changes_npm || '[]') }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v5
+      with:
+        cache: 'npm'
+        node-version: 24
+        cache-dependency-path: "${{ matrix.changes.directory }}/package-lock.json"
+
+    - name: "Install dependencies"
+      working-directory: ${{ matrix.changes.directory }}
+      run: |
+        npm install
+
+    - name: "Lint"
+      working-directory: ${{ matrix.changes.directory }}
+      run: |
+        npm run lint
+
+    - name: "Build"
+      working-directory: ${{ matrix.changes.directory }}
+      run: |
+        npm version 1.0.0
+        npx @vscode/vsce package
+
+  npm-test:
+    name: "npm test / ${{ matrix.changes.package }} / ${{ matrix.image }}"
+    needs: npm-lint
+    if: needs.npm-lint.outputs.changes_npm != '[]'
+    timeout-minutes: 10
+    outputs:
+      changes_npm: ${{ needs.npm-lint.outputs.changes_npm || '[]' }}
+    runs-on: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
+        python-version: ["3.10"]
+        changes: ${{ fromJSON(needs.npm-lint.outputs.changes_npm || '[]') }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: "Setup uv job"
+      uses: ./.github/actions/setup-uv-job
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - uses: actions/setup-node@v5
+      with:
+        cache: 'npm'
+        node-version: 24
+        cache-dependency-path: "${{ matrix.changes.directory }}/package-lock.json"
+
+    - name: "Install grizzly-ls and grizzly"
+      run: |
+          uv sync --locked -p ${{ matrix.python-version }} --inexact --package grizzly-loadtester-ls --no-dev
+          uv sync --locked -p ${{ matrix.python-version }} --inexact --package grizzly-loadtester --no-dev
+
+    - name: "Setup environment"
+      run: |
+        uv run ./extras/scripts/setup-environment.py
+
+    - name: "Install dependencies"
+      working-directory: ${{ matrix.changes.directory }}
+      env:
+        VIRTUAL_ENV: ${{ env.VIRTUAL_ENV }}
+      run: |
+        npm install
+        python -m pip install uv
+
+    - name: "Tests"
+      uses: mgor/setup-xvfb@v1
+      env:
+        VERBOSE: true
+        VIRTUAL_ENV: ${{ env.VIRTUAL_ENV }}
+      with:
+        working-directory: ${{ matrix.changes.directory }}
+        run: npm run tests
+
+    - name: "Server logs"
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: "grizzly-ls-server-logs-${{ matrix.image }}"
+        path: "./editor-support/tests/project/grizzly-ls.log"
+        if-no-files-found: error
+
+  docs:
+    name: "documentation"
+    needs:
+      - npm-test
+      - uv-test-e2e
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: "Setup uv job"
+      uses: ./.github/actions/setup-uv-job
+
+    - uses: actions/setup-node@v5
+      with:
+        node-version: 24
+
+    - name: "Setup environment"
+      run: |
+        uv run ./extras/scripts/setup-environment.py
+
+    - name: "Install IBM MQM"
+      uses: ./.github/actions/setup-ibm-mqm
+      with:
+        image: "ubuntu-latest"
+
+    - name: "Install dependencies"
+      env:
+        LD_LIBRARY_PATH: ${{ env.LD_LIBRARY_PATH }}
+      run: |
+        uv sync --locked --all-packages --all-extras --all-groups
+
+    - name: "Build documentation"
+      run: uv run mkdocs build
+
+    - name: "Check for @TODO annotations"
+      working-directory: ./docs/build
+      run: find . -type f -name '*.html' | xargs -- grep -nHE '@TODO' | awk 'BEGIN{rc=0} !/^$/ {rc=1; print} END{exit rc}'
+
+    - name: "Check for unclosed code blocks"
+      working-directory: ./docs/build
+      run: for file in $(find . -type f -name '*.md'); do awk 'BEGIN{count=0} /```/ {count+=1} END{if (count % 2 != 0) { print FILENAME ", contains uneven number of code-block markers"; exit 1;}}' $file || break; done
+
+    - name: "Check code block format"
+      working-directory: ./docs/build
+      run: for file in $(find . -type f -name '*.md'); do awk 'BEGIN{count=0} /``` / {print FILENAME " " $0; count+=1} END{if (count > 0) { print FILENAME ", there should not be a space between code-block and language specification"; exit 1;}}' $file || break; done
+
+    - name: "Check for macro rendering errors"
+      working-directory: ./docs/build
+      run: find . -type f -name '*.html' | xargs -- grep -nHE 'Macro Rendering Error' | awk 'BEGIN{rc=0} !/^$/ {rc=1; print} END{exit rc}'

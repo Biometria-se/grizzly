@@ -1,0 +1,5 @@
+{
+  "tag": {
+    "pattern": "ls/vscode@v*[0-9]*"
+  }
+}

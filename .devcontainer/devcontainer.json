@@ -1,0 +1,111 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.209.5/containers/python-3
+{
+  "name": "Python 3",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "VARIANT": "3.13",
+      // Options
+      "INSTALL_NODE": "true",
+      "NODE_VERSION": "lts/*"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": ".venv/bin/python",
+        "python.pythonPath": ".venv/bin/python",
+        "python.terminal.activateEnvInCurrentTerminal": true,
+        "python.languageServer": "Pylance",
+        "pythonTestExplorer.testFramework": "pytest",
+        "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+        "files.associations": {
+          "*.j2.json": "jinja-json",
+          "*.j2.xml": "jinja-xml"
+        },
+        "mypy.extraArguments": [
+          "--config-file",
+          "pyproject.toml"
+        ],
+        "python.testing.pytestEnabled": true,
+        "coverage-gutters.xmlname": "coverage.xml",
+        "coverage-gutters.ignoredPathGlobs": "**/{node_modules,venv,.venv,vendor,tests}/**",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "always",
+            "source.organizeImports.ruff": "never"
+          }
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+        },
+        "ruff.lint.ignore": [
+          "F401"
+        ],
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "always"
+        },
+        "eslint.validate": [
+          "typescript"
+        ],
+        "eslint.format.enable": true,
+        "eslint.lintTask.enable": true,
+        "dev.containers.dockerCredentialHelper": false
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "editorconfig.editorconfig",
+        "eamodio.gitlens",
+        "samuelcolvin.jinjahtml",
+        "mikestead.dotenv",
+        "ryanluker.vscode-coverage-gutters",
+        "stevejpurves.cucumber",
+        "silverbulleters.gherkin-autocomplete",
+        "matangover.mypy",
+        "redhat.vscode-yaml",
+        "ms-vscode.live-server",
+        "charliermarsh.ruff",
+        "oderwat.indent-rainbow",
+        "SanjulaGanepola.github-local-actions",
+        "tamasfe.even-better-toml",
+        "github.copilot",
+        "github.copilot-chat",
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  },
+  // Set *default* container specific settings.json values on container create.
+  // Add the IDs of extensions you want installed when the container is created.
+  "mounts": [
+    "source=/etc/timezone,target=/etc/timezone,type=bind",
+    "source=/etc/localtime,target=/etc/localtime,type=bind",
+    "source=grizzly-monorepo-bashhistory,target=/commandhistory,type=volume"
+  ],
+  "containerEnv": {
+    "E2E_RUN_MODE": "local",
+    "UV_LINK_MODE": "copy"
+  },
+  "remoteEnv": {
+    "GRIZZLY_MOUNT_CONTEXT": "${localWorkspaceFolder}"
+  },
+  "runArgs": [
+    "--add-host=host.docker.internal:host-gateway"
+  ],
+  // Use 'forwardPorts' to make a list of ports inside the container available locally.
+  // "forwardPorts": [],
+  "postCreateCommand": "ssh-add -l; uv sync --locked --all-packages --all-extras --all-groups",
+  // Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+  "remoteUser": "vscode",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-from-docker:1": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/itsmechlark/features/act:1": {},
+    "ghcr.io/jsburckhardt/devcontainer-features/uv:1": {}
+  }
+}

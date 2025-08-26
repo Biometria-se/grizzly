@@ -1,0 +1,46 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "compile",
+      "group": "build",
+      "options": {
+        "cwd": "${workspaceFolder}/editor-support/clients/vscode"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "never"
+      },
+      "problemMatcher": [
+        "$tsc"
+      ]
+    },
+    {
+      "label": "tsc watch",
+      "type": "npm",
+      "script": "tsc-watch",
+      "isBackground": true,
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/editor-support/clients/vscode"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "never"
+      },
+      "problemMatcher": [
+        "$tsc-watch"
+      ]
+    },
+    {
+      "label": "debug client",
+      "dependsOn": [
+        "tsc watch"
+      ]
+    }
+  ]
+}

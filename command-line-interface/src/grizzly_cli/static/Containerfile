@@ -1,0 +1,203 @@
+ARG GRIZZLY_EXTRA=base
+ARG GRIZZLY_INSTALL_TYPE=remote
+
+FROM python:3.13.3-slim AS base
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update
+
+# <!-- mq
+FROM base AS mq
+
+#ARG IBM_MQ_LIB_HOST=https://ibm.biz
+#ARG IBM_MQ_LIB=IBM-MQC-Redist-LinuxX64targz
+ARG IBM_MQ_LIB_HOST=https://public.dhe.ibm.com
+ARG IBM_MQ_LIB=ibmdl/export/pub/software/websphere/messaging/mqdev/redist/9.4.0.6-IBM-MQC-Redist-LinuxX64.tar.gz
+
+RUN apt-get install -y --no-install-recommends wget
+
+ENV IBM_MQ_LIB_HOST=${IBM_MQ_LIB_HOST}
+
+RUN mkdir /tmp/mqm && cd /tmp/mqm && \
+    wget -q --show-progress ${IBM_MQ_LIB_HOST}/${IBM_MQ_LIB} -O - | tar xzf -
+
+RUN mkdir -p /opt/mqm/inc \
+    && mkdir -p /opt/mqm/lib \
+    && mkdir -p /opt/mqm/lib64 \
+    && mkdir -p /opt/mqm/gskit8/lib64 \
+    && mkdir -p /opt/mqm/msg/en_US
+
+RUN cp /tmp/mqm/inc/*.h* /opt/mqm/inc/ \
+    && cp /tmp/mqm/lib/libcurl.so /opt/mqm/lib/ \
+    && cp /tmp/mqm/lib/ccsid*.tbl /opt/mqm/lib/ \
+    && cp /tmp/mqm/lib64/libmq*_r.so /opt/mqm/lib64/ \
+    && cp -r /tmp/mqm/gskit8/lib64 /opt/mqm/gskit8/ \
+    && cp /tmp/mqm/msg/en_US/amq.cat /opt/mqm/msg/en_US/
+# // mq -->
+
+# <!-- python-base-remote (no extras, remote install)
+FROM base AS python-base-remote
+
+RUN mkdir /build
+# // python-base-remote (no extras) -->
+
+# <!-- python-base-local (no extras, local install)
+FROM base AS python-base-local
+
+COPY . /build/
+# // python-base-local (get code from build machine) -->
+
+# <!-- python-mq (with mq extras -> pymqi)
+FROM python-base-${GRIZZLY_INSTALL_TYPE} AS python-mq
+
+COPY --from=mq /opt/mqm /opt/mqm
+# // python-mq (with mq extras -> pymqi) -->
+
+# <!-- python-mq-local (with mq extras -> pymqi, local install)
+FROM python-mq AS python-mq-local
+# // python-mq-local (with mq extras -> pymqi, local install) -->
+
+# <!-- python-mq-remote (with mq extras -> pymqi, remote install)
+FROM python-mq AS python-mq-remote
+# // python-mq-remote (with mq extras -> pymqi, remote install) -->
+
+# <!-- python-venv
+FROM python-${GRIZZLY_EXTRA}-${GRIZZLY_INSTALL_TYPE} AS python-venv
+
+RUN apt-get install -y --no-install-recommends \
+    openssh-client \
+    git \
+    gcc \
+    g++ \
+    libffi-dev \
+    cmake \
+    make \
+    libssl-dev \
+    python3-dev
+
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+
+RUN mkdir -p -m 0600 /root/.ssh
+
+RUN python -m venv /venv
+
+ENV VIRTUAL_ENV=/venv
+
+ENV PATH="/venv/bin:$PATH"
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+ENV UV_LINK_MODE=copy
+
+WORKDIR /build
+# // python-venv -->
+
+# <!-- python-venv-base-local (no mq extras, local install)
+FROM python-venv AS python-venv-base-local
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    pwd && ls -la \
+    && uv sync --locked --active --no-editable --package grizzly-loadtester
+# // python-venv-base-local (no mq extras, local install) -->
+
+# <!-- python-venv-mq-local (mq extras, local install)
+FROM python-venv AS python-venv-mq-local
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --active --no-editable --package grizzly-loadtester --extra mq
+# // python-venv-mq-local (mq extras, local install) -->
+
+# <!-- python-venv-base-remote (no mq extras, remote install)
+FROM python-venv AS python-venv-base-remote
+
+COPY requirements.txt /build
+
+RUN --mount=type=ssh,type=cache,target=/root/.cache/uv GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=no' /bin/uv pip install -r /build/requirements.txt
+# // python-venv-base-remote (no mq extras, remote install) -->
+
+
+# <!-- python-venv-mq-remote (mq extras, remote install)
+FROM python-venv-base-remote AS python-venv-mq-remote
+# NOOP, same as without mq extras, installed from requirements.txt
+# // python-venv-mq-remote (mq extras, remote install) -->
+
+# <!-- python (simple reference to copy from)
+FROM python-venv-${GRIZZLY_EXTRA}-${GRIZZLY_INSTALL_TYPE} AS python
+# // python (simple reference to copy from) -->
+
+# <!-- entrypoint
+FROM base AS entrypoint
+
+RUN echo '#!/bin/sh\n\
+set -e\n\
+\n\
+if [ "$GRIZZLY_CONTAINER_TTY" = "true" ]; then\n\
+    stty rows $LINES cols $COLUMNS &>/dev/null || true\n\
+fi\n\
+\n\
+exec behave "$@"' >> /grizzly-entrypoint.sh
+
+RUN chmod +x /grizzly-entrypoint.sh
+# // entrypoint -->
+
+# <!-- grizzly-base
+FROM base AS grizzly-base
+
+ARG GRIZZLY_UID
+ARG GRIZZLY_GID
+
+# remove group and user if UID/GID already exists
+RUN test "${GRIZZLY_GID}" != "0" && awk -F: '/:'"${GRIZZLY_GID}"':/ {print "groupdel -f "$1}' /etc/group | bash \
+    && test "${GRIZZLY_UID}" != "0" && awk -F: '/:x:'"${GRIZZLY_UID}"':/ {print "userdel -f "$1}' /etc/passwd | bash
+
+RUN groupadd \
+        -g "${GRIZZLY_GID}" \
+        grizzly \
+    && \
+    useradd \
+        -u "${GRIZZLY_UID}" \
+        -G grizzly \
+        -N \
+        -s /bin/bash \
+        -m \
+        grizzly
+
+RUN apt-get install -y --no-install-recommends \
+    lsof \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=python --chown=grizzly:grizzly /venv /venv
+COPY --from=entrypoint /grizzly-entrypoint.sh /grizzly-entrypoint.sh
+
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+ENV PATH="/venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/srv/grizzly
+# // grizzly-base -->
+
+# <!-- grizzly-mq
+FROM grizzly-base AS grizzly-mq
+
+COPY --from=mq /opt/mqm /opt/mqm
+
+ENV LD_LIBRARY_PATH="/opt/mqm/lib64"
+
+RUN mkdir -p /home/grizzly/IBM/MQ/data && \
+    chown -R grizzly:grizzly /home/grizzly/IBM \
+    && mkdir -p /srv/grizzly/features/logs \
+    && ln -sf /srv/grizzly/features/logs /home/grizzly/IBM/MQ/data/errors \
+    && rm -rf /srv/grizzly/features
+# // grizzly-mq -->
+
+# <!-- grizzly
+FROM grizzly-${GRIZZLY_EXTRA} AS grizzly
+
+USER grizzly
+
+WORKDIR /srv/grizzly
+
+ENTRYPOINT ["/grizzly-entrypoint.sh"]
+# // grizzly -->

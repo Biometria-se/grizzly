@@ -1,0 +1,100 @@
+[project]
+name = "grizzly-loadtester"
+dynamic = ["version", "readme"]
+description = "Traffic generator based on locust and behave"
+license = "MIT"
+license-files = ["LICENSE.md"]
+authors = [
+    { name = "biometria", email="opensource@biometria.se" },
+]
+maintainers = [
+    { name = "Mikael Göransson", email = "github@mgor.se" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "azure-iot-device>=2.14.0",
+    "azure-storage-blob>=12.26.0",
+    "influxdb>=5.3.2",
+    "influxdb-client>=1.49.0",
+    "locust==2.40.2",
+    "roundrobin>=0.0.4",
+    "grizzly-loadtester-common",
+    "grizzly-loadtester-extras-async-messaged",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython"
+]
+keywords = [
+    "locust",
+    "behave",
+    "load",
+    "loadtest",
+    "performance",
+    "traffic generator"
+]
+
+[project.urls]
+Documentation = "https://biometria-se.github.io/grizzly/framework"
+Code = "https://github.com/biometria-se/grizzly/"
+Tracker = "https://github.com/Biometria-se/grizzly/issues"
+
+[project.optional-dependencies]
+mq = [
+    "grizzly-loadtester-extras-async-messaged[mq]",
+]
+
+[build-system]
+requires = ["hatchling==1.27.0", "hatch-vcs==0.5.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.hooks.custom]
+path = "../hatch_build.py"
+
+[tool.hatch.metadata.hooks.custom]
+path = "../hatch_build.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/grizzly"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/grizzly", "tests/"]
+
+[tool.hatch.build.targets.sdist.force-include]
+"../LICENSE.md" = "LICENSE.md"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+tag_regex = "^framework@(?P<version>[v]\\d+(?:\\.\\d+){0,2}[^\\+]*?)(?:\\+.*)?$"
+scm.git.describe_command = "git describe --dirty --tags --long --abbrev=40 --match 'framework@v*[0-9]*'"
+version_scheme = "no-guess-dev"
+local_scheme = "no-local-version"
+root = "../"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/grizzly/__version__.py"
+
+[tool.uv.sources]
+grizzly-loadtester-common = { workspace = true }
+grizzly-loadtester-extras-async-messaged = { workspace = true }
+grizzly-loadtester-cli = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "grizzly-loadtester-cli",
+    "types-python-dateutil>=2.9.0.20250822",
+    "types-pyyaml>=6.0.12.20250822",
+    "types-requests>=2.32.4.20250809",
+]
+
+

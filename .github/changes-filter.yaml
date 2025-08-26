@@ -1,0 +1,8 @@
+workflows: '.github/workflows/**'
+framework: 'framework/**'
+common: 'common/**'
+command-line-interface: 'command-line-interface/**'
+editor-support: 'editor-support/!(clients)/**'
+editor-support/clients/vscode: 'editor-support/clients/vscode/**'
+docs: 'docs/**'
+extras/async-messaged: 'extras/async-messaged/**'

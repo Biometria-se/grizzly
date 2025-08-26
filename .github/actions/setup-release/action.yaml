@@ -1,0 +1,28 @@
+name: setup-release
+description: Prepare the release, checks latest tag for package and bumps version accordingly
+inputs:
+  project:
+    description: 'Project directory to release'
+    required: true
+  version-bump:
+    description: 'Version bump type (major, minor, patch)'
+    required: true
+  dry-run:
+    description: 'Dry run mode - if false, push tag in cleanup'
+    required: true
+  github-token:
+    description: 'GitHub token for API access'
+    required: false
+  name:
+    description: 'Job name for status checking in cleanup'
+    required: true
+outputs:
+  next-release-version:
+    description: 'Next release version'
+  next-release-tag:
+    description: 'Next release tag'
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'
+  post: 'dist/index.js'
