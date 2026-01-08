@@ -31,6 +31,7 @@ PYTEST_TIMEOUT = 500 if E2E_RUN_DIST or E2E_RUN_MODE == 'dist' else 180
 
 @pytest.fixture(autouse=True)
 def run_before_and_after_tests(tmp_path_factory: TempPathFactory) -> Generator[None, None, None]:
+    """Global setup & teardown."""
     original_tmp_path = tmp_path_factory._basetemp
     test_root = (Path(__file__).parent / '..' / '..' / '.pytest_tmp').resolve()
     tmp_path_factory._basetemp = test_root
