@@ -273,7 +273,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.force == 'true':
-        change_filters_file = Path.joinpath(Path(__file__).parent.parent.parent, '.github', 'change-filters.yaml')
+        change_filters_file = Path.joinpath(Path(__file__).parent.parent.parent, '.github', 'changes-filter.yaml')
         with change_filters_file.open('r') as fd:
             change_filters = yaml.safe_load(fd)
             workflow_input = list(change_filters.keys())
