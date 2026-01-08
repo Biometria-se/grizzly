@@ -27,12 +27,13 @@ def build_markdown_section(version: str, commits: list[str], repo_url: str, labe
 def changelog(package: str, tag_prefix: str) -> str:
     tags = command(f"git tag | grep '^{tag_prefix}@v'").splitlines()
 
-    git_remote, _ = command(['git', 'remote', '-v']).splitlines()
+    remote_output = [buffer for buffer in command(['git', 'remote', '-v']).splitlines() if 'origin' in buffer]
+    git_remote = remote_output[0]
     _, git_remote, _ = git_remote.split(maxsplit=2)
 
     repo_url = git_remote.removesuffix('.git').replace(':', '/', 1).replace('git@', 'https://', 1)
 
-    trace(f'{package}: generating changelog for tag prefix "{tag_prefix}@"')
+    trace(f'{package}: generating changelog for tag prefix "{tag_prefix}@" on {repo_url}')
 
     head_version = command(['hatch', 'version'], cwd=package)
     tags.append(f'v{head_version}')

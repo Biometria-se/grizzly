@@ -14,12 +14,12 @@ This is a monorepo for all Grizzly-related projects, managed as a [uv workspace]
 
 ### Packages
 
-1. **[grizzly-loadtester-common](../../common/)** - Shared code between packages (exceptions, constants, utilities)
-2. **[grizzly-loadtester](../../framework/)** - Core framework with locust messages, test data producer/consumer, gherkin parser, and load users
-3. **[grizzly-loadtester-cli](../../command-line-interface/)** - Command line interface for running tests, Azure Keyvault integration, TOTP generator, project scaffolding
-4. **[grizzly-loadtester-ls](../../editor-support/)** - Language server implementation using [LSP protocol](https://microsoft.github.io/language-server-protocol/)
-5. **[vscode extension](../../editor-support/clients/vscode/)** - Visual Studio Code extension integrating the language server
-6. **[grizzly-docs](../../docs/)** - MkDocs-based documentation hosted on [GitHub Pages](https://biometria-se.github.io/grizzly/)
+1. **grizzly-loadtester-common** - Shared code between packages (exceptions, constants, utilities)
+2. **[grizzly-loadtester](../framework/)** - Core framework with locust messages, test data producer/consumer, gherkin parser, and load users
+3. **[grizzly-loadtester-cli](../command-line-interface/)** - Command line interface for running tests, Azure Keyvault integration, TOTP generator, project scaffolding
+4. **[grizzly-loadtester-ls](../editor-support/)** - Language server implementation using [LSP protocol](https://microsoft.github.io/language-server-protocol/)
+5. **[vscode extension](../editor-support/clients/vscode/)** - Visual Studio Code extension integrating the language server
+6. **grizzly-docs** - MkDocs-based documentation hosted on [GitHub Pages](https://biometria-se.github.io/grizzly/)
 
 ## Setting Up Development Environment
 
