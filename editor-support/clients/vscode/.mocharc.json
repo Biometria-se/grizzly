@@ -1,0 +1,6 @@
+{
+  "require": ["out/tests/unit/setup.js"],
+  "spec": "out/tests/unit/**/*.test.js",
+  "color": true,
+  "ui": "bdd"
+}

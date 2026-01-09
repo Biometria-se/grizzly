@@ -188,8 +188,8 @@
     "lint-fix": "eslint src/ tests/ --ext .ts,.tsx --fix",
     "pretest": "npm run compile",
     "pretest:e2e": "npm run pretest",
-    "test:e2e": "node out/tests/runTest",
-    "test": "echo \"No unit tests configured\"",
+    "test:e2e": "node out/tests/e2e/runTest",
+    "test": "mocha",
     "licenses": "npm-license-crawler --noColor --production --json"
   },
   "dependencies": {
@@ -202,19 +202,18 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.7.4",
     "@types/vscode": "^1.100.0",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
-    "@typescript-eslint/parser": "^7.18.0",
+    "@typescript-eslint/eslint-plugin": "^8.52.0",
+    "@typescript-eslint/parser": "^8.52.0",
     "@vscode/test-electron": "^2.5.2",
     "chai": "^6.0.1",
     "esbuild": "^0.25.9",
     "eslint": "^8.57.1",
-    "eslint-config-love": "^62.0.1",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-n": "^17.10.3",
     "eslint-plugin-promise": "^7.1.0",
     "glob": "^11.0.3",
     "mocha": "^11.7.2",
     "npm-license-crawler": "^0.2.1",
-    "typescript": "^5.6.2"
+    "typescript": "^5.9.3"
   }
 }
