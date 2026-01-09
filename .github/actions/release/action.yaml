@@ -1,4 +1,4 @@
-name: setup-release
+name: release
 description: Prepare the release, checks latest tag for package and bumps version accordingly
 inputs:
   project:

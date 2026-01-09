@@ -1,10 +1,12 @@
 {
-  "name": "setup-release",
+  "name": "release",
   "version": "1.0.0",
+  "packageManager": "npm",
   "type": "module",
   "description": "Setup release with version bumping and tag creation",
   "main": "dist/index.js",
   "scripts": {
+    "prebuild": "npm install",
     "build": "rollup --config rollup.config.js",
     "test": "mocha test/**/*.test.js",
     "lint": "eslint src/**/*.js test/**/*.js"

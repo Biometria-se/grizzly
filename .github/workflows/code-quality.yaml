@@ -20,12 +20,7 @@ jobs:
       changes_npm: ${{ steps.mapper.outputs.changes_npm }}
 
     steps:
-    - uses: actions/checkout@v4
-
-    - name: "Setup uv job"
-      uses: ./.github/actions/setup-uv-job
-      with:
-        python-version: "3.13"
+    - uses: actions/checkout@v6
 
     - uses: dorny/paths-filter@v3
       id: filter
@@ -34,8 +29,10 @@ jobs:
 
     - name: "Map changed directories to packages"
       id: mapper
-      run: |
-        uv run ./extras/scripts/map-changes.py --changes '${{ steps.filter.outputs.changes }}' --force ${{ github.event_name == 'workflow_dispatch' }}
+      uses: ./.github/actions/changes
+      with:
+        changes: '${{ steps.filter.outputs.changes }}'
+        force: '${{ github.event_name == ''workflow_dispatch'' }}'
 
   uv-lint:
     name: "uv lint / ${{ matrix.changes.package }} / py${{ matrix.python-version }} / ${{ matrix.image }}"
@@ -57,7 +54,7 @@ jobs:
             python-version: "3.10"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: "Setup uv job"
       uses: ./.github/actions/setup-uv-job
@@ -106,7 +103,7 @@ jobs:
             python-version: "3.10"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: "Setup uv job"
       uses: ./.github/actions/setup-uv-job
@@ -147,7 +144,7 @@ jobs:
         changes: ${{ fromJSON(needs.uv-test.outputs.changes_uv || '[]') }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: "Setup uv job"
       uses: ./.github/actions/setup-uv-job
@@ -236,30 +233,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ["ubuntu-latest"]
+        image: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
+        python-version: ["3.10"]
         changes: ${{ fromJSON(needs.changes.outputs.changes_npm || '[]') }}
+        exclude:
+          - image: "windows-latest"
+          - image: "macos-15-intel"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
-    - uses: actions/setup-node@v5
+    - uses: actions/setup-node@v6
       with:
-        cache: 'npm'
         node-version: 24
-        cache-dependency-path: "${{ matrix.changes.directory }}/package-lock.json"
 
     - name: "Install dependencies"
       working-directory: ${{ matrix.changes.directory }}
-      run: |
-        npm install
+      run: npm install
 
     - name: "Lint"
       working-directory: ${{ matrix.changes.directory }}
-      run: |
-        npm run lint
+      run: npm run lint
 
     - name: "Build"
       working-directory: ${{ matrix.changes.directory }}
+      shell: bash
       run: |
         if [[ "${{ matrix.changes.directory }}" == *"vscode"* ]]; then
           npx @vscode/vsce package
@@ -283,7 +281,7 @@ jobs:
         changes: ${{ fromJSON(needs.npm-lint.outputs.changes_npm || '[]') }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: "Setup uv job"
       uses: ./.github/actions/setup-uv-job
@@ -291,11 +289,9 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/setup-node@v5
+    - uses: actions/setup-node@v6
       with:
-        cache: 'npm'
         node-version: 24
-        cache-dependency-path: "${{ matrix.changes.directory }}/package-lock.json"
 
     - name: "Install grizzly-ls and grizzly"
       if: matrix.changes.tests.e2e.local != ''
@@ -330,7 +326,7 @@ jobs:
         VIRTUAL_ENV: ${{ env.VIRTUAL_ENV }}
       with:
         working-directory: ${{ matrix.changes.directory }}
-        run: npm run e2e:test
+        run: npm run test:e2e
 
     - name: "E2E server logs"
       uses: actions/upload-artifact@v4
@@ -349,12 +345,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: "Setup uv job"
       uses: ./.github/actions/setup-uv-job
 
-    - uses: actions/setup-node@v5
+    - uses: actions/setup-node@v6
       with:
         node-version: 24
 

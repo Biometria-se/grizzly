@@ -19,7 +19,11 @@ runs:
       wget --no-verbose https://ibm.biz/IBM-MQC-Redist-LinuxX64targz -O - | tar xzf -
       popd &>/dev/null
 
-      ./extras/scripts/setup-environment.py \
-        --add-env LD_LIBRARY_PATH=$GRIZZLY_TMP_DIR/mqm/lib64 \
-        --add-env MQ_FILE_PATH=$GRIZZLY_TMP_DIR/mqm
+  - name: "Setup environment"
+    if: inputs.image == 'ubuntu-latest'
+    uses: ./.github/actions/setup-environment
+    with:
+      add-env: |
+        LD_LIBRARY_PATH=${{ env.GRIZZLY_TMP_DIR }}/mqm/lib64
+        MQ_FILE_PATH=${{ env.GRIZZLY_TMP_DIR }}/mqm
 

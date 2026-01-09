@@ -41,10 +41,7 @@ jobs:
       changes_npm: ${{ steps.mapper.outputs.changes_npm }}
 
     steps:
-    - uses: actions/checkout@v4
-
-    - name: "Setup uv job"
-      uses: ./.github/actions/setup-uv-job
+    - uses: actions/checkout@v6
 
     - name: "Check pull request"
       id: check-pr
@@ -63,8 +60,11 @@ jobs:
     - name: "Map changed directories to packages"
       if: steps.filter.outputs.changes != '[]'
       id: mapper
-      run: |
-        uv run ./extras/scripts/map-changes.py --changes '${{ steps.filter.outputs.changes }}' --force false --release
+      uses: ./.github/actions/changes
+      with:
+        changes: '${{ steps.filter.outputs.changes }}'
+        force: 'false'
+        release: 'true'
 
   uv-release:
     name: "uv release / ${{ matrix.changes.package }}"
@@ -82,7 +82,7 @@ jobs:
         changes: ${{ fromJson(needs.prerequisites.outputs.changes_uv) }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: ${{ needs.prerequisites.outputs.commit-sha }}
         fetch-tags: true
@@ -92,7 +92,7 @@ jobs:
       uses: ./.github/actions/setup-uv-job
 
     - name: "Setup release"
-      uses: ./.github/actions/setup-release
+      uses: ./.github/actions/release
       with:
         project: ${{ matrix.changes.directory }}
         version-bump: ${{ needs.prerequisites.outputs.version-bump }}
@@ -119,21 +119,19 @@ jobs:
         changes: ${{ fromJson(needs.prerequisites.outputs.changes_npm) }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: ${{ needs.prerequisites.outputs.commit-sha }}
         fetch-tags: true
         fetch-depth: 0
 
-    - uses: actions/setup-node@v5
+    - uses: actions/setup-node@v6
       with:
-        cache: 'npm'
         node-version: 24
-        cache-dependency-path: "${{ matrix.changes.directory }}/package-lock.json"
 
     - name: "Setup release"
-      id: setup-release
-      uses: ./.github/actions/setup-release
+      id: release
+      uses: ./.github/actions/release
       with:
         project: ${{ matrix.changes.directory }}
         version-bump: ${{ needs.prerequisites.outputs.version-bump }}
@@ -147,7 +145,7 @@ jobs:
 
     - name: Update version
       working-directory: ${{ matrix.changes.directory }}
-      run: npm version ${{ steps.setup-release.outputs.next-release-version }}
+      run: npm version ${{ steps.release.outputs.next-release-version }}
 
     - name: Build
       working-directory: ${{ matrix.changes.directory }}
@@ -180,7 +178,7 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-tags: true
         fetch-depth: 0
@@ -188,7 +186,7 @@ jobs:
     - name: "Setup uv job"
       uses: ./.github/actions/setup-uv-job
 
-    - uses: actions/setup-node@v5
+    - uses: actions/setup-node@v6
       with:
         node-version: 24
 
@@ -229,5 +227,5 @@ jobs:
         enable_jekyll: false
         # cname: <a better domain>
         allow_empty_commit: true
-        commit_message: 'Documentation for release ${{ steps.setup-release.outputs.next-release-tag }}'
+        commit_message: 'Documentation for release ${{ steps.release.outputs.next-release-tag }}'
 

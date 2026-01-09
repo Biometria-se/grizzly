@@ -191,7 +191,7 @@ describe('cleanup', () => {
         env,
       });
 
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.true;
       expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'])).to.be.false;
     });
 
@@ -232,8 +232,8 @@ describe('cleanup', () => {
         env,
       });
 
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.false;
-      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { ignoreReturnCode: true })).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.false;
+      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { silent: false, ignoreReturnCode: true })).to.be.true;
     });
 
     it('should delete tag when job has no steps', async () => {
@@ -310,8 +310,8 @@ describe('cleanup', () => {
         env,
       });
 
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.false;
-      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { ignoreReturnCode: true })).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.false;
+      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { silent: false, ignoreReturnCode: true })).to.be.true;
     });
 
     it('should delete tag in dry-run mode even if all steps succeeded', async () => {
@@ -351,8 +351,8 @@ describe('cleanup', () => {
         env,
       });
 
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.false;
-      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { ignoreReturnCode: true })).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.false;
+      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { silent: false, ignoreReturnCode: true })).to.be.true;
     });
 
     it('should check job status even in dry-run mode', async () => {
@@ -812,7 +812,7 @@ describe('cleanup', () => {
       });
 
       expect(coreStub.setFailed.calledWith(sinon.match(/Cleanup step \(Post\*\) not found with in_progress status or previous steps not completed/))).to.be.true;
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.false;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.false;
     });
 
     it('should wait and retry when steps are initially in progress', async function() {
@@ -883,7 +883,7 @@ describe('cleanup', () => {
       // Should have retried at least twice
       expect(octokitStub.rest.actions.listJobsForWorkflowRun.callCount).to.be.at.least(2);
       expect(coreStub.info.calledWith(sinon.match(/Cleanup step \(Post\*\) not ready or previous steps still running, waiting/))).to.be.true;
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.true;
     });
   });
 
@@ -925,7 +925,7 @@ describe('cleanup', () => {
         env,
       });
 
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.true;
       expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'])).to.be.false;
     });
 
@@ -966,7 +966,7 @@ describe('cleanup', () => {
         env,
       });
 
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.true;
       expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'])).to.be.false;
     });
 
@@ -1008,8 +1008,8 @@ describe('cleanup', () => {
       });
 
       expect(coreStub.error.calledWith(sinon.match(/Not all steps succeeded.*failed/))).to.be.true;
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.false;
-      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { ignoreReturnCode: true })).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.false;
+      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { silent: false, ignoreReturnCode: true })).to.be.true;
     });
 
     it('should fail when last step has cancelled status', async () => {
@@ -1050,8 +1050,8 @@ describe('cleanup', () => {
       });
 
       expect(coreStub.error.calledWith(sinon.match(/Not all steps succeeded.*failed/))).to.be.true;
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.false;
-      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { ignoreReturnCode: true })).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.false;
+      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { silent: false, ignoreReturnCode: true })).to.be.true;
     });
 
     it('should fail when last step has skipped status', async () => {
@@ -1092,8 +1092,8 @@ describe('cleanup', () => {
       });
 
       expect(coreStub.error.calledWith(sinon.match(/Not all steps succeeded.*failed/))).to.be.true;
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.false;
-      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { ignoreReturnCode: true })).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.false;
+      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { silent: false, ignoreReturnCode: true })).to.be.true;
     });
 
     it('should delete tag when last step is valid but other steps failed', async () => {
@@ -1134,8 +1134,8 @@ describe('cleanup', () => {
       });
 
       expect(coreStub.error.calledWith(sinon.match(/Not all steps succeeded.*failed/))).to.be.true;
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.false;
-      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { ignoreReturnCode: true })).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.false;
+      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { silent: false, ignoreReturnCode: true })).to.be.true;
     });
 
     it('should log error when last step status is invalid', async () => {
@@ -1175,7 +1175,7 @@ describe('cleanup', () => {
       });
 
       expect(coreStub.error.calledWith(sinon.match(/Not all steps succeeded.*failed/))).to.be.true;
-      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { ignoreReturnCode: true })).to.be.true;
+      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { silent: false, ignoreReturnCode: true })).to.be.true;
     });
 
     it('should fail when last step has completed status but null conclusion', async () => {
@@ -1216,8 +1216,8 @@ describe('cleanup', () => {
       });
 
       expect(coreStub.error.calledWith(sinon.match(/Not all steps succeeded.*failed/))).to.be.true;
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.false;
-      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { ignoreReturnCode: true })).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.false;
+      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { silent: false, ignoreReturnCode: true })).to.be.true;
     });
 
     it('should fail when last step has in_progress status but failure conclusion', async () => {
@@ -1258,8 +1258,8 @@ describe('cleanup', () => {
       });
 
       expect(coreStub.error.calledWith(sinon.match(/Not all steps succeeded.*failed/))).to.be.true;
-      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'])).to.be.false;
-      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { ignoreReturnCode: true })).to.be.true;
+      expect(execStub.exec.calledWith('git', ['push', 'origin', 'framework@v1.2.3'], { silent: false })).to.be.false;
+      expect(execStub.exec.calledWith('git', ['tag', '-d', 'framework@v1.2.3'], { silent: false, ignoreReturnCode: true })).to.be.true;
     });
   });
 

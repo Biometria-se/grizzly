@@ -67,7 +67,7 @@ async function installExtension(vscodeExecutablePath: string, extensionId: strin
 async function main() {
     try {
         const extensionTestsPath = path.resolve(__dirname, './index');
-        const testWorkspace: string = path.resolve(__dirname, '../../../../tests/project');
+        const testWorkspace: string = path.resolve(__dirname, '../../../../../tests/project');
         console.log(`!! dirname=${__dirname}, extenstionTestsPath=${extensionTestsPath}, testWorkspace=${testWorkspace}`);
         console.log(`!! VIRTUAL_ENV=${process.env['VIRTUAL_ENV']}`);
 
@@ -79,7 +79,8 @@ async function main() {
 
         // The folder containing the Extension Manifest package.json
         // Passed to `--extensionDevelopmentPath`
-        const extensionDevelopmentPath = [path.resolve(__dirname, '../../'), extensionDevelopmentPathExtra];
+        const extensionDevelopmentPath = [path.resolve(__dirname, '../../../'), extensionDevelopmentPathExtra];
+        console.log(`!! extensionDevelopmentPath: ${extensionDevelopmentPath}`);
 
         // The path to test runner
         // Passed to --extensionTestsPath

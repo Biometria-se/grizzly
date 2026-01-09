@@ -27,11 +27,12 @@ export function run(): Promise<void> {
         // Add files to the test suite
         files.forEach((f: string) => {
             if (tests === undefined || tests.includes(f)) {
+                console.log(`!! Adding test file: ${f}`);
                 mocha.addFile(path.resolve(testsRoot, f));
             }
         });
 
-        mocha.slow(300);
+        mocha.slow(380);
 
         try {
             // Run the mocha test

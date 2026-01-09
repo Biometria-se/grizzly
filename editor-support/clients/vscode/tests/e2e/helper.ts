@@ -7,7 +7,7 @@ export let editor: vscode.TextEditor | undefined = undefined;
 export let documentEol: string;
 export let platformEol: string;
 
-export const testWorkspace: string = path.resolve(__dirname, '../../../../tests/project');
+export const testWorkspace: string = path.resolve(__dirname, '../../../../../tests/project');
 
 /**
  * Activates the biometria-se.vscode-grizzly extension

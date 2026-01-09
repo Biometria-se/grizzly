@@ -1,4 +1,4 @@
-# setup-release
+# release
 
 GitHub Action to prepare a release by calculating the next version, creating a git tag, and handling tag lifecycle management.
 
@@ -31,7 +31,7 @@ This action automates the release preparation process for packages in a monorepo
 ```yaml
 - name: Setup release
   id: setup
-  uses: ./.github/actions/setup-release
+  uses: ./.github/actions/release
   with:
     project: ./framework
     version-bump: patch
@@ -48,7 +48,7 @@ This action automates the release preparation process for packages in a monorepo
 
 ```yaml
 - name: Setup release (dry-run)
-  uses: ./.github/actions/setup-release
+  uses: ./.github/actions/release
   with:
     project: ./command-line-interface
     version-bump: minor

@@ -6,6 +6,7 @@
   "author": "Biometria <opensource@biometria.se>",
   "license": "MIT",
   "version": "0.0.1",
+  "packageManager": "npm",
   "icon": "images/icon.png",
   "galleryBanner": {
     "theme": "dark",

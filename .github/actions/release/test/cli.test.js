@@ -11,15 +11,18 @@ const __dirname = dirname(__filename);
 describe('CLI mode', function () {
     const indexPath = resolve(__dirname, '../src/index.js');
     const workspaceRoot = resolve(__dirname, '../../../..');
-    const projectPath = 'framework';
+    const projectPath = resolve(workspaceRoot, 'framework');
 
     // Set longer timeout for CLI tests since they spawn processes
     this.timeout(5000);
 
     describe('help output', () => {
         it('should display help when --help is passed', async () => {
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
             try {
-                await execFileAsync('node', [indexPath, '--help']);
+                await execFileAsync('node', [indexPath, '--help'], { env: cleanEnv });
                 expect.fail('Should have exited with code 1');
             } catch (error) {
                 // Exit code 1 for help
@@ -31,8 +34,11 @@ describe('CLI mode', function () {
         });
 
         it('should display help when -h is passed', async () => {
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
             try {
-                await execFileAsync('node', [indexPath, '-h']);
+                await execFileAsync('node', [indexPath, '-h'], { env: cleanEnv });
                 expect.fail('Should have exited with code 1');
             } catch (error) {
                 expect(error.code).to.equal(1);
@@ -41,8 +47,11 @@ describe('CLI mode', function () {
         });
 
         it('should display help when no arguments are provided', async () => {
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
             try {
-                await execFileAsync('node', [indexPath], { cwd: workspaceRoot });
+                await execFileAsync('node', [indexPath], { env: cleanEnv, cwd: workspaceRoot });
                 expect.fail('Should have exited with code 1');
             } catch (error) {
                 expect(error.code).to.equal(1);
@@ -51,8 +60,11 @@ describe('CLI mode', function () {
         });
 
         it('should display help when only one argument is provided', async () => {
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
             try {
-                await execFileAsync('node', [indexPath, projectPath], { cwd: workspaceRoot });
+                await execFileAsync('node', [indexPath, projectPath], { env: cleanEnv, cwd: workspaceRoot });
                 expect.fail('Should have exited with code 1');
             } catch (error) {
                 expect(error.code).to.equal(1);
@@ -63,7 +75,10 @@ describe('CLI mode', function () {
 
     describe('version calculation', () => {
         it('should calculate and display patch version', async () => {
-            const { stdout } = await execFileAsync('node', [indexPath, projectPath, 'patch'], { cwd: workspaceRoot });
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
+            const { stdout } = await execFileAsync('node', [indexPath, projectPath, 'patch'], { env: cleanEnv, cwd: workspaceRoot });
 
             expect(stdout).to.include('Results:');
             expect(stdout).to.include('Next Version:');
@@ -73,22 +88,31 @@ describe('CLI mode', function () {
         });
 
         it('should calculate minor version with patch reset to 0', async () => {
-            const { stdout } = await execFileAsync('node', [indexPath, projectPath, 'minor'], { cwd: workspaceRoot });
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
+            const { stdout } = await execFileAsync('node', [indexPath, projectPath, 'minor'], { env: cleanEnv, cwd: workspaceRoot });
 
             expect(stdout).to.include('Next Version:');
             expect(stdout).to.match(/Next Version:\s+\d+\.\d+\.0/);
         });
 
         it('should calculate major version with minor and patch reset to 0', async () => {
-            const { stdout } = await execFileAsync('node', [indexPath, projectPath, 'major'], { cwd: workspaceRoot });
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
+            const { stdout } = await execFileAsync('node', [indexPath, projectPath, 'major'], { env: cleanEnv, cwd: workspaceRoot });
 
             expect(stdout).to.include('Next Version:');
             expect(stdout).to.match(/Next Version:\s+\d+\.0\.0/);
         });
 
         it('should exit with error code for invalid project path', async () => {
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
             try {
-                await execFileAsync('node', [indexPath, '/non/existent/path', 'patch']);
+                await execFileAsync('node', [indexPath, '/non/existent/path', 'patch'], { env: cleanEnv });
                 expect.fail('Should have exited with error code');
             } catch (error) {
                 expect(error.code).to.equal(1);
@@ -130,7 +154,10 @@ describe('CLI mode', function () {
 
     describe('output format', () => {
         it('should include info messages in output', async () => {
-            const { stdout } = await execFileAsync('node', [indexPath, projectPath, 'patch'], { cwd: workspaceRoot });
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
+            const { stdout } = await execFileAsync('node', [indexPath, projectPath, 'patch'], { env: cleanEnv, cwd: workspaceRoot });
 
             // Should have structured output with [INFO] messages and Results section
             expect(stdout).to.include('[INFO]');
@@ -142,7 +169,10 @@ describe('CLI mode', function () {
         });
 
         it('should show git commands in output', async () => {
-            const { stdout } = await execFileAsync('node', [indexPath, projectPath, 'patch'], { cwd: workspaceRoot });
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
+            const { stdout } = await execFileAsync('node', [indexPath, projectPath, 'patch'], { env: cleanEnv, cwd: workspaceRoot });
 
             // Git commands are logged to stdout by @actions/exec in CLI mode
             expect(stdout).to.include('[command]');

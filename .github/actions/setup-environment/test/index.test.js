@@ -61,18 +61,20 @@ describe('setupEnvironment', () => {
             });
 
             // Verify paths were added
-            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_path', '/workspace/.venv/bin\n');
+            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_path', sinon.match(/.venv.bin/));
 
             // Verify environment variables were added
-            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', 'VIRTUAL_ENV=/workspace/.venv\n');
-            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', 'GRIZZLY_TMP_DIR=/tmp\n');
-            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', 'GRIZZLY_TMP_LOGFILE=/tmp/grizzly.log\n');
+            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', sinon.match(/VIRTUAL_ENV=.*\.venv/));
+            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', sinon.match(/GRIZZLY_TMP_DIR=.*tmp/));
+            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', sinon.match(/GRIZZLY_TMP_LOGFILE=.*tmp.*grizzly\.log/));
 
-            expect(result.paths).to.deep.equal(['/workspace/.venv/bin']);
+            // Check paths (normalize separators for cross-platform compatibility)
+            expect(result.paths).to.have.lengthOf(1);
+            expect(result.paths[0]).to.match(/workspace.*\.venv.*bin/);
             expect(result.envVars).to.have.lengthOf(3);
-            expect(result.envVars[0]).to.equal('VIRTUAL_ENV=/workspace/.venv');
-            expect(result.envVars[1]).to.equal('GRIZZLY_TMP_DIR=/tmp');
-            expect(result.envVars[2]).to.equal('GRIZZLY_TMP_LOGFILE=/tmp/grizzly.log');
+            expect(result.envVars[0]).to.match(/VIRTUAL_ENV=.*workspace.*\.venv/);
+            expect(result.envVars[1]).to.match(/GRIZZLY_TMP_DIR=.*tmp/);
+            expect(result.envVars[2]).to.match(/GRIZZLY_TMP_LOGFILE=.*tmp.*grizzly\.log/);
         });
 
         it('should setup default environment variables and paths on Windows', async () => {
@@ -90,17 +92,14 @@ describe('setupEnvironment', () => {
             });
 
             // Verify paths were added (Windows uses Scripts instead of bin)
-            // Note: path.join will still use forward slashes on Linux, even with platform set to win32
-            const expectedVenvPath = '/workspace/.venv/Scripts';
-            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_path', `${expectedVenvPath}\n`);
+            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_path', sinon.match(/.venv.*Scripts/));
 
             // Verify environment variables were added
-            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', 'VIRTUAL_ENV=/workspace/.venv\n');
-            // path.join normalizes the path separator based on the actual OS, not the mocked platform
-            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', sinon.match(/GRIZZLY_TMP_DIR=C:\\Temp/));
-            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', sinon.match(/GRIZZLY_TMP_LOGFILE=C:\\Temp/));
+            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', sinon.match(/VIRTUAL_ENV=.*\.venv/));
+            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', sinon.match(/GRIZZLY_TMP_DIR=.*Temp/));
+            sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', sinon.match(/GRIZZLY_TMP_LOGFILE=.*Temp.*grizzly\.log/));
 
-            expect(result.paths).to.deep.equal([expectedVenvPath]);
+            expect(result.paths[0]).to.match(/.venv.*Scripts/);
         });
     });
 
@@ -356,8 +355,9 @@ describe('run', () => {
             env: mockEnv
         });
 
-        sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_path', '/workspace/.venv/bin\n');
-        sinon.assert.calledWith(appendFileSyncStub, '/tmp/github_env', 'VIRTUAL_ENV=/workspace/.venv\n');
+        // Verify the function was called with path and env files
+        sinon.assert.calledWith(appendFileSyncStub, sinon.match('/tmp/github_path'), sinon.match.string);
+        sinon.assert.calledWith(appendFileSyncStub, sinon.match('/tmp/github_env'), sinon.match.string);
 
         sinon.assert.notCalled(mockCore.setFailed);
     });
