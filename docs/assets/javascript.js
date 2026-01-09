@@ -10,6 +10,6 @@ document.addEventListener("DOMContentLoaded", (_) => {
             let relative_date = dayjs(date_updated).fromNow();
             date_element.innerText = relative_date;
         }
-        // -->
     }
+    // -->
 });
