@@ -1,0 +1,13 @@
+name: setup-environment
+description: Setup environment variables and PATH for GitHub Actions workflow
+inputs:
+  add-env:
+    description: 'Comma-separated list of environment variables to add (key=value format)'
+    required: false
+  add-path:
+    description: 'Comma-separated list of paths to add to PATH variable'
+    required: false
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'

@@ -177,8 +177,7 @@ jobs:
         uv sync --locked -p ${{ matrix.python-version }} --inexact --package ${{ matrix.changes.package }} --dev
 
     - name: "Setup environment"
-      run: |
-        uv run ./extras/scripts/setup-environment.py
+      uses: ./.github/actions/setup-environment
 
     - name: "Start SSH agent"
       if: matrix.image != 'windows-latest'
@@ -305,8 +304,7 @@ jobs:
           uv sync --locked -p ${{ matrix.python-version }} --inexact --package grizzly-loadtester --no-dev
 
     - name: "Setup environment"
-      run: |
-        uv run ./extras/scripts/setup-environment.py
+      uses: ./.github/actions/setup-environment
 
     - name: "Install node dependencies"
       working-directory: ${{ matrix.changes.directory }}
@@ -361,8 +359,7 @@ jobs:
         node-version: 24
 
     - name: "Setup environment"
-      run: |
-        uv run ./extras/scripts/setup-environment.py
+      uses: ./.github/actions/setup-environment
 
     - name: "Install IBM MQM"
       uses: ./.github/actions/setup-ibm-mqm

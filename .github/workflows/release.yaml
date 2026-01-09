@@ -193,8 +193,7 @@ jobs:
         node-version: 24
 
     - name: "Setup environment"
-      run: |
-        uv run ./extras/scripts/setup-environment.py
+      uses: ./.github/actions/setup-environment
 
     - name: "Install IBM MQM"
       uses: ./.github/actions/setup-ibm-mqm
