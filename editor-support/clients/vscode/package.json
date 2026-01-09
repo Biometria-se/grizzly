@@ -186,8 +186,10 @@
     "compile": "tsc -b",
     "lint": "eslint src/ tests/ --ext .ts,.tsx",
     "lint-fix": "eslint src/ tests/ --ext .ts,.tsx --fix",
-    "pretests": "npm run compile",
-    "tests": "node out/tests/runTest",
+    "pretest": "npm run compile",
+    "pretest:e2e": "npm run pretest",
+    "test:e2e": "node out/tests/runTest",
+    "test": "echo \"No unit tests configured\"",
     "licenses": "npm-license-crawler --noColor --production --json"
   },
   "dependencies": {

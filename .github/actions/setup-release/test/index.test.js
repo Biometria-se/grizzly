@@ -70,23 +70,23 @@ describe('getNextReleaseTag', () => {
 
     it('should increment version correctly for patch', async () => {
       const result = await getNextReleaseTag(frameworkPath, 'patch', mockLogger, execStub);
-      const [major, minor, patch] = result.nextVersion.split('.').map(Number);
+      const [, , patch] = result.nextVersion.split('.').map(Number);
 
       expect(patch).to.be.greaterThan(0);
     });
 
     it('should reset patch to 0 for minor bump', async () => {
       const result = await getNextReleaseTag(frameworkPath, 'minor', mockLogger, execStub);
-      const [major, minor, patch] = result.nextVersion.split('.').map(Number);
+      const [, , patch] = result.nextVersion.split('.').map(Number);
 
       expect(patch).to.equal(0);
-      expect(minor).to.be.greaterThan(0);
+      const minor = result.nextVersion.split('.')[1];
+      expect(Number(minor)).to.be.greaterThan(0);
     });
 
     it('should reset minor and patch to 0 for major bump', async () => {
       const result = await getNextReleaseTag(frameworkPath, 'major', mockLogger, execStub);
       const [major, minor, patch] = result.nextVersion.split('.').map(Number);
-
       expect(minor).to.equal(0);
       expect(patch).to.equal(0);
       expect(major).to.be.greaterThan(0);

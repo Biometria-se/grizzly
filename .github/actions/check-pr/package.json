@@ -1,12 +1,13 @@
 {
-  "name": "check-pr-action",
+  "name": "check-pr",
   "version": "1.0.0",
   "type": "module",
   "description": "Check pull request for version bump labels",
   "main": "dist/index.js",
   "scripts": {
     "build": "rollup --config rollup.config.js",
-    "test": "mocha test/**/*.test.js"
+    "test": "mocha test/**/*.test.js",
+    "lint": "eslint src/**/*.js test/**/*.js"
   },
   "keywords": [
     "github-actions",
@@ -19,9 +20,12 @@
     "@actions/github": "^6.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "chai": "^6.2.1",
+    "eslint": "^9.39.2",
+    "globals": "^17.0.0",
     "mocha": "^11.7.5",
     "rollup": "^4.53.3",
     "sinon": "^21.0.0"

@@ -1,4 +1,6 @@
 workflows: '.github/workflows/**'
+.github/actions/check-pr: '.github/actions/check-pr/**/*.js'
+.github/actions/setup-release: '.github/actions/setup-release/**/*.js'
 framework: 'framework/**'
 common: 'common/**'
 command-line-interface: 'command-line-interface/**'

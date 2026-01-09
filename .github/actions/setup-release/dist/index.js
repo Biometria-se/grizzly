@@ -36318,7 +36318,6 @@ async function cleanup(dependencies = {}) {
         core: coreModule = core$1,
         exec: execModule = exec$1,
         github: githubModule = github$1,
-        env = process.env,
         maxWaitTime = 60000,
         baseDelayMs = 1000,
         maxDelayMs = 5000,
@@ -36339,8 +36338,8 @@ async function cleanup(dependencies = {}) {
         // Always check job status
         const token = coreModule.getState('github-token');
         const jobName = coreModule.getState('job-name');
-        const runId = env.GITHUB_RUN_ID;
-        const repository = env.GITHUB_REPOSITORY;
+        const runId = process.env.GITHUB_RUN_ID;
+        const repository = process.env.GITHUB_REPOSITORY;
 
         if (!token || !runId || !repository || !jobName) {
             throw new Error('Missing required environment variables or state (GITHUB_TOKEN, GITHUB_RUN_ID, GITHUB_REPOSITORY, or job-name)');

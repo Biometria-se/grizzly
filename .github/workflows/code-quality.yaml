@@ -262,8 +262,11 @@ jobs:
     - name: "Build"
       working-directory: ${{ matrix.changes.directory }}
       run: |
-        npm version 1.0.0
-        npx @vscode/vsce package
+        if [[ "${{ matrix.changes.directory }}" == *"vscode"* ]]; then
+          npx @vscode/vsce package
+        else
+          npm run build
+        fi
 
   npm-test:
     name: "npm test / ${{ matrix.changes.package }} / ${{ matrix.image }}"
@@ -285,6 +288,7 @@ jobs:
 
     - name: "Setup uv job"
       uses: ./.github/actions/setup-uv-job
+      if: matrix.changes.tests.e2e.local != ''
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -295,6 +299,7 @@ jobs:
         cache-dependency-path: "${{ matrix.changes.directory }}/package-lock.json"
 
     - name: "Install grizzly-ls and grizzly"
+      if: matrix.changes.tests.e2e.local != ''
       run: |
           uv sync --locked -p ${{ matrix.python-version }} --inexact --package grizzly-loadtester-ls --no-dev
           uv sync --locked -p ${{ matrix.python-version }} --inexact --package grizzly-loadtester --no-dev
@@ -303,26 +308,35 @@ jobs:
       run: |
         uv run ./extras/scripts/setup-environment.py
 
-    - name: "Install dependencies"
+    - name: "Install node dependencies"
+      working-directory: ${{ matrix.changes.directory }}
+      run: npm install
+
+    - name: "Install python dependencies"
+      if: matrix.changes.tests.e2e.local != ''
       working-directory: ${{ matrix.changes.directory }}
       env:
         VIRTUAL_ENV: ${{ env.VIRTUAL_ENV }}
-      run: |
-        npm install
-        python -m pip install uv
+      run: python -m pip install uv
 
-    - name: "Tests"
+    - name: "Run unit tests"
+      if: matrix.changes.tests.unit != ''
+      working-directory: ${{ matrix.changes.directory }}
+      run: npm run test
+
+    - name: "Run E2E tests"
+      if: matrix.changes.tests.e2e.local != ''
       uses: mgor/setup-xvfb@v1
       env:
         VERBOSE: true
         VIRTUAL_ENV: ${{ env.VIRTUAL_ENV }}
       with:
         working-directory: ${{ matrix.changes.directory }}
-        run: npm run tests
+        run: npm run e2e:test
 
-    - name: "Server logs"
+    - name: "E2E server logs"
       uses: actions/upload-artifact@v4
-      if: failure()
+      if: failure() && matrix.changes.tests.e2e.local != ''
       with:
         name: "grizzly-ls-server-logs-${{ matrix.image }}"
         path: "./editor-support/tests/project/grizzly-ls.log"

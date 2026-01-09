@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
-import { dirname, join, resolve } from 'path';
+import { dirname, resolve } from 'path';
 
 const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);

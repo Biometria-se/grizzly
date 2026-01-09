@@ -86,11 +86,13 @@ class Changes(TypedDict):
     Attributes:
         npm: Set of changes for npm-managed packages
         uv: Set of changes for uv-managed Python packages
+        actions: Set of changes for GitHub Actions packages
 
     """
 
     npm: set[Change]
     uv: set[Change]
+    actions: set[Change]
 
 
 def _create_python_change(directory: str, package: str) -> Change:
@@ -210,7 +212,7 @@ def node_package(directory: str, *, release: bool) -> set[Change]:
     Note:
         - Reads package.json for package metadata and test scripts
         - For release mode, requires package.local.json with tag.pattern configuration
-        - Detects 'tests' and 'e2e-tests' npm scripts
+        - Detects 'test' and 'e2e-test' npm scripts
 
     """
     changes: set[Change] = set()
@@ -219,22 +221,23 @@ def node_package(directory: str, *, release: bool) -> set[Change]:
     if not package_json_file.exists():
         return changes
 
-    package_local_json_file = Path(directory) / 'package.local.json'
-    if not package_local_json_file.exists() and release:
-        return changes
-
-    with package_local_json_file.open('r') as fd:
-        package_local_json = json.loads(fd.read())
-
-        if package_local_json.get('tag', {}).get('pattern', None) is None:
+    if release:
+        package_local_json_file = Path(directory) / 'package.local.json'
+        if not package_local_json_file.exists():
             return changes
+
+        with package_local_json_file.open('r') as fd:
+            package_local_json = json.loads(fd.read())
+
+            if package_local_json.get('tag', {}).get('pattern', None) is None and release:
+                return changes
 
     with package_json_file.open('r') as fd:
         package_json = json.loads(fd.read())
         package_scripts = package_json.get('scripts', {})
 
-        args_unit: str = 'tests' if 'tests' in package_scripts else ''
-        args_e2e: str = 'e2e-tests' if 'e2e-tests' in package_scripts else ''
+        args_unit: str = 'test' if 'test' in package_scripts else ''
+        args_e2e: str = 'test:e2e' if 'test:e2e' in package_scripts else ''
 
         changes.add(Change(directory=directory, package=package_json['name'], tests=ChangeTests(args_unit, e2e=ChangeE2eTests(local=args_e2e, dist=''))))
 
@@ -289,7 +292,7 @@ def main() -> int:
         print('error: workflow files cannot be part of a release', file=sys.stderr)
         return 1
 
-    changes: Changes = {'uv': set(), 'npm': set()}
+    changes: Changes = {'uv': set(), 'npm': set(), 'actions': set()}
     uv_lock_file = (Path(__file__).parent / '..' / '..' / 'uv.lock').resolve()
 
     with uv_lock_file.open('rb') as fd:
@@ -306,13 +309,14 @@ def main() -> int:
 
     changes_npm = json.dumps(sorted([asdict(change) for change in changes['npm']], key=itemgetter('package')))
     changes_uv = json.dumps(sorted([asdict(change) for change in changes['uv']], key=itemgetter('package')))
+    changes_actions = json.dumps(sorted([asdict(change) for change in changes['actions']], key=itemgetter('package')))
 
-    print(f'detected changes:\nuv={changes_uv}\nnpm={changes_npm}')
+    print(f'detected changes:\nuv={changes_uv}\nnpm={changes_npm}\nactions={changes_actions}')
 
     with suppress(KeyError), Path(environ['GITHUB_OUTPUT']).open('a') as fd:
         fd.write(f'changes_uv={changes_uv}\n')
         fd.write(f'changes_npm={changes_npm}\n')
-
+        fd.write(f'changes_actions={changes_actions}\n')
     return 0
 
 

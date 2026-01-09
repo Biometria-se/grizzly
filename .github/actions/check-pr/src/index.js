@@ -124,7 +124,6 @@ export async function run(dependencies = {}) {
     const {
         core: coreModule = core,
         github: githubModule = github,
-        env = process.env,
     } = dependencies;
 
     try {

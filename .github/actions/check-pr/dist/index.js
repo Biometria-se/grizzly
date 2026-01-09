@@ -31389,7 +31389,6 @@ async function run(dependencies = {}) {
     const {
         core: coreModule = core$1,
         github: githubModule = github$1,
-        env = process.env,
     } = dependencies;
 
     try {
