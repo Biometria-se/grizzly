@@ -1,7 +1,7 @@
 import require$$0 from 'os';
 import require$$0$1 from 'crypto';
-import require$$1 from 'fs';
-import require$$1$5, { resolve } from 'path';
+import require$$1, { existsSync, readFileSync } from 'fs';
+import require$$1$5, { resolve, join } from 'path';
 import require$$2$1 from 'http';
 import require$$3$1 from 'https';
 import require$$0$4 from 'net';
@@ -1005,12 +1005,12 @@ function requireErrors () {
 	return errors;
 }
 
-var constants$4;
-var hasRequiredConstants$4;
+var constants$5;
+var hasRequiredConstants$5;
 
-function requireConstants$4 () {
-	if (hasRequiredConstants$4) return constants$4;
-	hasRequiredConstants$4 = 1;
+function requireConstants$5 () {
+	if (hasRequiredConstants$5) return constants$5;
+	hasRequiredConstants$5 = 1;
 
 	/** @type {Record<string, string | undefined>} */
 	const headerNameLowerCasedRecord = {};
@@ -1124,11 +1124,11 @@ function requireConstants$4 () {
 	// Note: object prototypes should not be able to be referenced. e.g. `Object#hasOwnProperty`.
 	Object.setPrototypeOf(headerNameLowerCasedRecord, null);
 
-	constants$4 = {
+	constants$5 = {
 	  wellknownHeaderNames,
 	  headerNameLowerCasedRecord
 	};
-	return constants$4;
+	return constants$5;
 }
 
 var util$6;
@@ -1147,7 +1147,7 @@ function requireUtil$6 () {
 	const { Blob } = require$$7;
 	const nodeUtil = require$$0$2;
 	const { stringify } = require$$8;
-	const { headerNameLowerCasedRecord } = requireConstants$4();
+	const { headerNameLowerCasedRecord } = requireConstants$5();
 
 	const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(v => Number(v));
 
@@ -3393,12 +3393,12 @@ function requireMain () {
 	return main.exports;
 }
 
-var constants$3;
-var hasRequiredConstants$3;
+var constants$4;
+var hasRequiredConstants$4;
 
-function requireConstants$3 () {
-	if (hasRequiredConstants$3) return constants$3;
-	hasRequiredConstants$3 = 1;
+function requireConstants$4 () {
+	if (hasRequiredConstants$4) return constants$4;
+	hasRequiredConstants$4 = 1;
 
 	const { MessageChannel, receiveMessageOnPort } = require$$0$8;
 
@@ -3524,7 +3524,7 @@ function requireConstants$3 () {
 	    return receiveMessageOnPort(channel.port2).message
 	  };
 
-	constants$3 = {
+	constants$4 = {
 	  DOMException,
 	  structuredClone,
 	  subresource,
@@ -3549,7 +3549,7 @@ function requireConstants$3 () {
 	  forbiddenMethodsSet,
 	  referrerPolicySet
 	};
-	return constants$3;
+	return constants$4;
 }
 
 var global$2;
@@ -3607,7 +3607,7 @@ function requireUtil$5 () {
 	if (hasRequiredUtil$5) return util$5;
 	hasRequiredUtil$5 = 1;
 
-	const { redirectStatusSet, referrerPolicySet: referrerPolicyTokens, badPortsSet } = requireConstants$3();
+	const { redirectStatusSet, referrerPolicySet: referrerPolicyTokens, badPortsSet } = requireConstants$4();
 	const { getGlobalOrigin } = requireGlobal$1();
 	const { performance } = require$$2$2;
 	const { isBlobLike, toUSVString, ReadableStreamFrom } = requireUtil$6();
@@ -6704,7 +6704,7 @@ function requireBody () {
 	const { FormData } = requireFormdata();
 	const { kState } = requireSymbols$3();
 	const { webidl } = requireWebidl();
-	const { DOMException, structuredClone } = requireConstants$3();
+	const { DOMException, structuredClone } = requireConstants$4();
 	const { Blob, File: NativeFile } = require$$7;
 	const { kBodyUsed } = requireSymbols$4();
 	const assert = require$$0$3;
@@ -8236,7 +8236,7 @@ function requireConnect () {
 	return connect;
 }
 
-var constants$2 = {};
+var constants$3 = {};
 
 var utils$2 = {};
 
@@ -8262,11 +8262,11 @@ function requireUtils$2 () {
 	return utils$2;
 }
 
-var hasRequiredConstants$2;
+var hasRequiredConstants$3;
 
-function requireConstants$2 () {
-	if (hasRequiredConstants$2) return constants$2;
-	hasRequiredConstants$2 = 1;
+function requireConstants$3 () {
+	if (hasRequiredConstants$3) return constants$3;
+	hasRequiredConstants$3 = 1;
 	(function (exports$1) {
 		Object.defineProperty(exports$1, "__esModule", { value: true });
 		exports$1.SPECIAL_HEADERS = exports$1.HEADER_STATE = exports$1.MINOR = exports$1.MAJOR = exports$1.CONNECTION_TOKEN_CHARS = exports$1.HEADER_CHARS = exports$1.TOKEN = exports$1.STRICT_TOKEN = exports$1.HEX = exports$1.URL_CHAR = exports$1.STRICT_URL_CHAR = exports$1.USERINFO_CHARS = exports$1.MARK = exports$1.ALPHANUM = exports$1.NUM = exports$1.HEX_MAP = exports$1.NUM_MAP = exports$1.ALPHA = exports$1.FINISH = exports$1.H_METHOD_MAP = exports$1.METHOD_MAP = exports$1.METHODS_RTSP = exports$1.METHODS_ICE = exports$1.METHODS_HTTP = exports$1.METHODS = exports$1.LENIENT_FLAGS = exports$1.FLAGS = exports$1.TYPE = exports$1.ERROR = void 0;
@@ -8539,8 +8539,8 @@ function requireConstants$2 () {
 		    'upgrade': HEADER_STATE.UPGRADE,
 		};
 		
-	} (constants$2));
-	return constants$2;
+	} (constants$3));
+	return constants$3;
 }
 
 var RedirectHandler_1;
@@ -9290,7 +9290,7 @@ function requireClient () {
 	  resume(client);
 	}
 
-	const constants = requireConstants$2();
+	const constants = requireConstants$3();
 	const createRedirectInterceptor = requireRedirectInterceptor();
 	const EMPTY_BUF = Buffer.alloc(0);
 
@@ -15616,7 +15616,7 @@ function requireResponse () {
 	  redirectStatusSet,
 	  nullBodyStatus,
 	  DOMException
-	} = requireConstants$3();
+	} = requireConstants$4();
 	const { kState, kHeaders, kGuard, kRealm } = requireSymbols$3();
 	const { webidl } = requireWebidl();
 	const { FormData } = requireFormdata();
@@ -16200,7 +16200,7 @@ function requireRequest () {
 	  requestCredentials,
 	  requestCache,
 	  requestDuplex
-	} = requireConstants$3();
+	} = requireConstants$4();
 	const { kEnumerableProperty } = util;
 	const { kHeaders, kSignal, kState, kGuard, kRealm } = requireSymbols$3();
 	const { webidl } = requireWebidl();
@@ -17182,7 +17182,7 @@ function requireFetch () {
 	  requestBodyHeader,
 	  subresourceSet,
 	  DOMException
-	} = requireConstants$3();
+	} = requireConstants$4();
 	const { kHeadersList } = requireSymbols$4();
 	const EE = require$$4$1;
 	const { Readable, pipeline } = require$$0$5;
@@ -19623,7 +19623,7 @@ function requireUtil$3 () {
 	} = requireSymbols$2();
 	const { ProgressEvent } = requireProgressevent();
 	const { getEncoding } = requireEncoding();
-	const { DOMException } = requireConstants$3();
+	const { DOMException } = requireConstants$4();
 	const { serializeAMimeType, parseMIMEType } = requireDataURL();
 	const { types } = require$$0$2;
 	const { StringDecoder } = require$$6;
@@ -21427,12 +21427,12 @@ function requireCachestorage () {
 	return cachestorage;
 }
 
-var constants$1;
-var hasRequiredConstants$1;
+var constants$2;
+var hasRequiredConstants$2;
 
-function requireConstants$1 () {
-	if (hasRequiredConstants$1) return constants$1;
-	hasRequiredConstants$1 = 1;
+function requireConstants$2 () {
+	if (hasRequiredConstants$2) return constants$2;
+	hasRequiredConstants$2 = 1;
 
 	// https://wicg.github.io/cookie-store/#cookie-maximum-attribute-value-size
 	const maxAttributeValueSize = 1024;
@@ -21440,11 +21440,11 @@ function requireConstants$1 () {
 	// https://wicg.github.io/cookie-store/#cookie-maximum-name-value-pair-size
 	const maxNameValuePairSize = 4096;
 
-	constants$1 = {
+	constants$2 = {
 	  maxAttributeValueSize,
 	  maxNameValuePairSize
 	};
-	return constants$1;
+	return constants$2;
 }
 
 var util$1;
@@ -21729,14 +21729,14 @@ function requireUtil$1 () {
 	return util$1;
 }
 
-var parse$1;
-var hasRequiredParse;
+var parse$2;
+var hasRequiredParse$2;
 
-function requireParse () {
-	if (hasRequiredParse) return parse$1;
-	hasRequiredParse = 1;
+function requireParse$2 () {
+	if (hasRequiredParse$2) return parse$2;
+	hasRequiredParse$2 = 1;
 
-	const { maxNameValuePairSize, maxAttributeValueSize } = requireConstants$1();
+	const { maxNameValuePairSize, maxAttributeValueSize } = requireConstants$2();
 	const { isCTLExcludingHtab } = requireUtil$1();
 	const { collectASequenceOfCodePointsFast } = requireDataURL();
 	const assert = require$$0$3;
@@ -22047,11 +22047,11 @@ function requireParse () {
 	  return parseUnparsedAttributes(unparsedAttributes, cookieAttributeList)
 	}
 
-	parse$1 = {
+	parse$2 = {
 	  parseSetCookie,
 	  parseUnparsedAttributes
 	};
-	return parse$1;
+	return parse$2;
 }
 
 var cookies;
@@ -22061,7 +22061,7 @@ function requireCookies () {
 	if (hasRequiredCookies) return cookies;
 	hasRequiredCookies = 1;
 
-	const { parseSetCookie } = requireParse();
+	const { parseSetCookie } = requireParse$2();
 	const { stringify } = requireUtil$1();
 	const { webidl } = requireWebidl();
 	const { Headers } = requireHeaders();
@@ -22245,12 +22245,12 @@ function requireCookies () {
 	return cookies;
 }
 
-var constants;
-var hasRequiredConstants;
+var constants$1;
+var hasRequiredConstants$1;
 
-function requireConstants () {
-	if (hasRequiredConstants) return constants;
-	hasRequiredConstants = 1;
+function requireConstants$1 () {
+	if (hasRequiredConstants$1) return constants$1;
+	hasRequiredConstants$1 = 1;
 
 	// This is a Globally Unique Identifier unique used
 	// to validate that the endpoint accepts websocket
@@ -22292,7 +22292,7 @@ function requireConstants () {
 
 	const emptyBuffer = Buffer.allocUnsafe(0);
 
-	constants = {
+	constants$1 = {
 	  uid,
 	  staticPropertyDescriptors,
 	  states,
@@ -22301,7 +22301,7 @@ function requireConstants () {
 	  parserStates,
 	  emptyBuffer
 	};
-	return constants;
+	return constants$1;
 }
 
 var symbols;
@@ -22643,7 +22643,7 @@ function requireUtil () {
 	hasRequiredUtil = 1;
 
 	const { kReadyState, kController, kResponse, kBinaryType, kWebSocketURL } = requireSymbols();
-	const { states, opcodes } = requireConstants();
+	const { states, opcodes } = requireConstants$1();
 	const { MessageEvent, ErrorEvent } = requireEvents();
 
 	/* globals Blob */
@@ -22851,7 +22851,7 @@ function requireConnection () {
 	hasRequiredConnection = 1;
 
 	const diagnosticsChannel = require$$0$9;
-	const { uid, states } = requireConstants();
+	const { uid, states } = requireConstants$1();
 	const {
 	  kReadyState,
 	  kSentClose,
@@ -23149,7 +23149,7 @@ function requireFrame () {
 	if (hasRequiredFrame) return frame;
 	hasRequiredFrame = 1;
 
-	const { maxUnsigned16Bit } = requireConstants();
+	const { maxUnsigned16Bit } = requireConstants$1();
 
 	/** @type {import('crypto')} */
 	let crypto;
@@ -23232,7 +23232,7 @@ function requireReceiver () {
 
 	const { Writable } = require$$0$5;
 	const diagnosticsChannel = require$$0$9;
-	const { parserStates, opcodes, states, emptyBuffer } = requireConstants();
+	const { parserStates, opcodes, states, emptyBuffer } = requireConstants$1();
 	const { kReadyState, kSentClose, kResponse, kReceivedClose } = requireSymbols();
 	const { isValidStatusCode, failWebsocketConnection, websocketMessageReceived } = requireUtil();
 	const { WebsocketFrameSend } = requireFrame();
@@ -23583,10 +23583,10 @@ function requireWebsocket () {
 	hasRequiredWebsocket = 1;
 
 	const { webidl } = requireWebidl();
-	const { DOMException } = requireConstants$3();
+	const { DOMException } = requireConstants$4();
 	const { URLSerializer } = requireDataURL();
 	const { getGlobalOrigin } = requireGlobal$1();
-	const { staticPropertyDescriptors, states, opcodes, emptyBuffer } = requireConstants();
+	const { staticPropertyDescriptors, states, opcodes, emptyBuffer } = requireConstants$1();
 	const {
 	  kWebSocketURL,
 	  kReadyState,
@@ -25595,7 +25595,7 @@ function requirePathUtils () {
 
 var platform = {};
 
-var exec = {};
+var exec$2 = {};
 
 var toolrunner = {};
 
@@ -26729,28 +26729,28 @@ function requireToolrunner () {
 var hasRequiredExec;
 
 function requireExec () {
-	if (hasRequiredExec) return exec;
+	if (hasRequiredExec) return exec$2;
 	hasRequiredExec = 1;
-	var __createBinding = (exec && exec.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+	var __createBinding = (exec$2 && exec$2.__createBinding) || (Object.create ? (function(o, m, k, k2) {
 	    if (k2 === undefined) k2 = k;
 	    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
 	}) : (function(o, m, k, k2) {
 	    if (k2 === undefined) k2 = k;
 	    o[k2] = m[k];
 	}));
-	var __setModuleDefault = (exec && exec.__setModuleDefault) || (Object.create ? (function(o, v) {
+	var __setModuleDefault = (exec$2 && exec$2.__setModuleDefault) || (Object.create ? (function(o, v) {
 	    Object.defineProperty(o, "default", { enumerable: true, value: v });
 	}) : function(o, v) {
 	    o["default"] = v;
 	});
-	var __importStar = (exec && exec.__importStar) || function (mod) {
+	var __importStar = (exec$2 && exec$2.__importStar) || function (mod) {
 	    if (mod && mod.__esModule) return mod;
 	    var result = {};
 	    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
 	    __setModuleDefault(result, mod);
 	    return result;
 	};
-	var __awaiter = (exec && exec.__awaiter) || function (thisArg, _arguments, P, generator) {
+	var __awaiter = (exec$2 && exec$2.__awaiter) || function (thisArg, _arguments, P, generator) {
 	    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
 	    return new (P || (P = Promise))(function (resolve, reject) {
 	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -26759,8 +26759,8 @@ function requireExec () {
 	        step((generator = generator.apply(thisArg, _arguments || [])).next());
 	    });
 	};
-	Object.defineProperty(exec, "__esModule", { value: true });
-	exec.getExecOutput = exec.exec = void 0;
+	Object.defineProperty(exec$2, "__esModule", { value: true });
+	exec$2.getExecOutput = exec$2.exec = void 0;
 	const string_decoder_1 = require$$6;
 	const tr = __importStar(requireToolrunner());
 	/**
@@ -26773,7 +26773,7 @@ function requireExec () {
 	 * @param     options            optional exec options.  See ExecOptions
 	 * @returns   Promise<number>    exit code
 	 */
-	function exec$1(commandLine, args, options) {
+	function exec(commandLine, args, options) {
 	    return __awaiter(this, void 0, void 0, function* () {
 	        const commandArgs = tr.argStringToArray(commandLine);
 	        if (commandArgs.length === 0) {
@@ -26786,7 +26786,7 @@ function requireExec () {
 	        return runner.exec();
 	    });
 	}
-	exec.exec = exec$1;
+	exec$2.exec = exec;
 	/**
 	 * Exec a command and get the output.
 	 * Output will be streamed to the live console.
@@ -26820,7 +26820,7 @@ function requireExec () {
 	            }
 	        };
 	        const listeners = Object.assign(Object.assign({}, options === null || options === void 0 ? void 0 : options.listeners), { stdout: stdOutListener, stderr: stdErrListener });
-	        const exitCode = yield exec$1(commandLine, args, Object.assign(Object.assign({}, options), { listeners }));
+	        const exitCode = yield exec(commandLine, args, Object.assign(Object.assign({}, options), { listeners }));
 	        //flush any remaining characters
 	        stdout += stdoutDecoder.end();
 	        stderr += stderrDecoder.end();
@@ -26831,9 +26831,9 @@ function requireExec () {
 	        };
 	    });
 	}
-	exec.getExecOutput = getExecOutput;
+	exec$2.getExecOutput = getExecOutput;
 	
-	return exec;
+	return exec$2;
 }
 
 var hasRequiredPlatform;
@@ -27299,6 +27299,14 @@ var core$1 = /*#__PURE__*/_mergeNamespaces({
 	__proto__: null,
 	default: core
 }, [coreExports]);
+
+var execExports = requireExec();
+var exec = /*@__PURE__*/getDefaultExportFromCjs(execExports);
+
+var exec$1 = /*#__PURE__*/_mergeNamespaces({
+	__proto__: null,
+	default: exec
+}, [execExports]);
 
 var github$2 = {};
 
@@ -27900,7 +27908,7 @@ function expand(template, context) {
   }
 }
 
-function parse(options) {
+function parse$1(options) {
   let method = options.method.toUpperCase();
   let url = (options.url || "/").replace(/:([a-z]\w+)/g, "{$1}");
   let headers = Object.assign({}, options.headers);
@@ -27965,7 +27973,7 @@ function parse(options) {
 }
 
 function endpointWithDefaults(defaults, route, options) {
-  return parse(merge(defaults, route, options));
+  return parse$1(merge(defaults, route, options));
 }
 
 function withDefaults$2(oldDefaults, newDefaults) {
@@ -27975,7 +27983,7 @@ function withDefaults$2(oldDefaults, newDefaults) {
     DEFAULTS,
     defaults: withDefaults$2.bind(null, DEFAULTS),
     merge: merge.bind(null, DEFAULTS),
-    parse
+    parse: parse$1
   });
 }
 
@@ -31268,185 +31276,5236 @@ var github$1 = /*#__PURE__*/_mergeNamespaces({
 	default: github
 }, [githubExports]);
 
+var re = {exports: {}};
+
+var constants;
+var hasRequiredConstants;
+
+function requireConstants () {
+	if (hasRequiredConstants) return constants;
+	hasRequiredConstants = 1;
+
+	// Note: this is the semver.org version of the spec that it implements
+	// Not necessarily the package version of this code.
+	const SEMVER_SPEC_VERSION = '2.0.0';
+
+	const MAX_LENGTH = 256;
+	const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER ||
+	/* istanbul ignore next */ 9007199254740991;
+
+	// Max safe segment length for coercion.
+	const MAX_SAFE_COMPONENT_LENGTH = 16;
+
+	// Max safe length for a build identifier. The max length minus 6 characters for
+	// the shortest version with a build 0.0.0+BUILD.
+	const MAX_SAFE_BUILD_LENGTH = MAX_LENGTH - 6;
+
+	const RELEASE_TYPES = [
+	  'major',
+	  'premajor',
+	  'minor',
+	  'preminor',
+	  'patch',
+	  'prepatch',
+	  'prerelease',
+	];
+
+	constants = {
+	  MAX_LENGTH,
+	  MAX_SAFE_COMPONENT_LENGTH,
+	  MAX_SAFE_BUILD_LENGTH,
+	  MAX_SAFE_INTEGER,
+	  RELEASE_TYPES,
+	  SEMVER_SPEC_VERSION,
+	  FLAG_INCLUDE_PRERELEASE: 0b001,
+	  FLAG_LOOSE: 0b010,
+	};
+	return constants;
+}
+
+var debug_1;
+var hasRequiredDebug;
+
+function requireDebug () {
+	if (hasRequiredDebug) return debug_1;
+	hasRequiredDebug = 1;
+
+	const debug = (
+	  typeof process === 'object' &&
+	  process.env &&
+	  process.env.NODE_DEBUG &&
+	  /\bsemver\b/i.test(process.env.NODE_DEBUG)
+	) ? (...args) => console.error('SEMVER', ...args)
+	  : () => {};
+
+	debug_1 = debug;
+	return debug_1;
+}
+
+var hasRequiredRe;
+
+function requireRe () {
+	if (hasRequiredRe) return re.exports;
+	hasRequiredRe = 1;
+	(function (module, exports$1) {
+
+		const {
+		  MAX_SAFE_COMPONENT_LENGTH,
+		  MAX_SAFE_BUILD_LENGTH,
+		  MAX_LENGTH,
+		} = requireConstants();
+		const debug = requireDebug();
+		exports$1 = module.exports = {};
+
+		// The actual regexps go on exports.re
+		const re = exports$1.re = [];
+		const safeRe = exports$1.safeRe = [];
+		const src = exports$1.src = [];
+		const safeSrc = exports$1.safeSrc = [];
+		const t = exports$1.t = {};
+		let R = 0;
+
+		const LETTERDASHNUMBER = '[a-zA-Z0-9-]';
+
+		// Replace some greedy regex tokens to prevent regex dos issues. These regex are
+		// used internally via the safeRe object since all inputs in this library get
+		// normalized first to trim and collapse all extra whitespace. The original
+		// regexes are exported for userland consumption and lower level usage. A
+		// future breaking change could export the safer regex only with a note that
+		// all input should have extra whitespace removed.
+		const safeRegexReplacements = [
+		  ['\\s', 1],
+		  ['\\d', MAX_LENGTH],
+		  [LETTERDASHNUMBER, MAX_SAFE_BUILD_LENGTH],
+		];
+
+		const makeSafeRegex = (value) => {
+		  for (const [token, max] of safeRegexReplacements) {
+		    value = value
+		      .split(`${token}*`).join(`${token}{0,${max}}`)
+		      .split(`${token}+`).join(`${token}{1,${max}}`);
+		  }
+		  return value
+		};
+
+		const createToken = (name, value, isGlobal) => {
+		  const safe = makeSafeRegex(value);
+		  const index = R++;
+		  debug(name, index, value);
+		  t[name] = index;
+		  src[index] = value;
+		  safeSrc[index] = safe;
+		  re[index] = new RegExp(value, isGlobal ? 'g' : undefined);
+		  safeRe[index] = new RegExp(safe, isGlobal ? 'g' : undefined);
+		};
+
+		// The following Regular Expressions can be used for tokenizing,
+		// validating, and parsing SemVer version strings.
+
+		// ## Numeric Identifier
+		// A single `0`, or a non-zero digit followed by zero or more digits.
+
+		createToken('NUMERICIDENTIFIER', '0|[1-9]\\d*');
+		createToken('NUMERICIDENTIFIERLOOSE', '\\d+');
+
+		// ## Non-numeric Identifier
+		// Zero or more digits, followed by a letter or hyphen, and then zero or
+		// more letters, digits, or hyphens.
+
+		createToken('NONNUMERICIDENTIFIER', `\\d*[a-zA-Z-]${LETTERDASHNUMBER}*`);
+
+		// ## Main Version
+		// Three dot-separated numeric identifiers.
+
+		createToken('MAINVERSION', `(${src[t.NUMERICIDENTIFIER]})\\.` +
+		                   `(${src[t.NUMERICIDENTIFIER]})\\.` +
+		                   `(${src[t.NUMERICIDENTIFIER]})`);
+
+		createToken('MAINVERSIONLOOSE', `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.` +
+		                        `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.` +
+		                        `(${src[t.NUMERICIDENTIFIERLOOSE]})`);
+
+		// ## Pre-release Version Identifier
+		// A numeric identifier, or a non-numeric identifier.
+		// Non-numberic identifiers include numberic identifiers but can be longer.
+		// Therefore non-numberic identifiers must go first.
+
+		createToken('PRERELEASEIDENTIFIER', `(?:${src[t.NONNUMERICIDENTIFIER]
+		}|${src[t.NUMERICIDENTIFIER]})`);
+
+		createToken('PRERELEASEIDENTIFIERLOOSE', `(?:${src[t.NONNUMERICIDENTIFIER]
+		}|${src[t.NUMERICIDENTIFIERLOOSE]})`);
+
+		// ## Pre-release Version
+		// Hyphen, followed by one or more dot-separated pre-release version
+		// identifiers.
+
+		createToken('PRERELEASE', `(?:-(${src[t.PRERELEASEIDENTIFIER]
+		}(?:\\.${src[t.PRERELEASEIDENTIFIER]})*))`);
+
+		createToken('PRERELEASELOOSE', `(?:-?(${src[t.PRERELEASEIDENTIFIERLOOSE]
+		}(?:\\.${src[t.PRERELEASEIDENTIFIERLOOSE]})*))`);
+
+		// ## Build Metadata Identifier
+		// Any combination of digits, letters, or hyphens.
+
+		createToken('BUILDIDENTIFIER', `${LETTERDASHNUMBER}+`);
+
+		// ## Build Metadata
+		// Plus sign, followed by one or more period-separated build metadata
+		// identifiers.
+
+		createToken('BUILD', `(?:\\+(${src[t.BUILDIDENTIFIER]
+		}(?:\\.${src[t.BUILDIDENTIFIER]})*))`);
+
+		// ## Full Version String
+		// A main version, followed optionally by a pre-release version and
+		// build metadata.
+
+		// Note that the only major, minor, patch, and pre-release sections of
+		// the version string are capturing groups.  The build metadata is not a
+		// capturing group, because it should not ever be used in version
+		// comparison.
+
+		createToken('FULLPLAIN', `v?${src[t.MAINVERSION]
+		}${src[t.PRERELEASE]}?${
+		  src[t.BUILD]}?`);
+
+		createToken('FULL', `^${src[t.FULLPLAIN]}$`);
+
+		// like full, but allows v1.2.3 and =1.2.3, which people do sometimes.
+		// also, 1.0.0alpha1 (prerelease without the hyphen) which is pretty
+		// common in the npm registry.
+		createToken('LOOSEPLAIN', `[v=\\s]*${src[t.MAINVERSIONLOOSE]
+		}${src[t.PRERELEASELOOSE]}?${
+		  src[t.BUILD]}?`);
+
+		createToken('LOOSE', `^${src[t.LOOSEPLAIN]}$`);
+
+		createToken('GTLT', '((?:<|>)?=?)');
+
+		// Something like "2.*" or "1.2.x".
+		// Note that "x.x" is a valid xRange identifer, meaning "any version"
+		// Only the first item is strictly required.
+		createToken('XRANGEIDENTIFIERLOOSE', `${src[t.NUMERICIDENTIFIERLOOSE]}|x|X|\\*`);
+		createToken('XRANGEIDENTIFIER', `${src[t.NUMERICIDENTIFIER]}|x|X|\\*`);
+
+		createToken('XRANGEPLAIN', `[v=\\s]*(${src[t.XRANGEIDENTIFIER]})` +
+		                   `(?:\\.(${src[t.XRANGEIDENTIFIER]})` +
+		                   `(?:\\.(${src[t.XRANGEIDENTIFIER]})` +
+		                   `(?:${src[t.PRERELEASE]})?${
+		                     src[t.BUILD]}?` +
+		                   `)?)?`);
+
+		createToken('XRANGEPLAINLOOSE', `[v=\\s]*(${src[t.XRANGEIDENTIFIERLOOSE]})` +
+		                        `(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})` +
+		                        `(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})` +
+		                        `(?:${src[t.PRERELEASELOOSE]})?${
+		                          src[t.BUILD]}?` +
+		                        `)?)?`);
+
+		createToken('XRANGE', `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAIN]}$`);
+		createToken('XRANGELOOSE', `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAINLOOSE]}$`);
+
+		// Coercion.
+		// Extract anything that could conceivably be a part of a valid semver
+		createToken('COERCEPLAIN', `${'(^|[^\\d])' +
+		              '(\\d{1,'}${MAX_SAFE_COMPONENT_LENGTH}})` +
+		              `(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?` +
+		              `(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?`);
+		createToken('COERCE', `${src[t.COERCEPLAIN]}(?:$|[^\\d])`);
+		createToken('COERCEFULL', src[t.COERCEPLAIN] +
+		              `(?:${src[t.PRERELEASE]})?` +
+		              `(?:${src[t.BUILD]})?` +
+		              `(?:$|[^\\d])`);
+		createToken('COERCERTL', src[t.COERCE], true);
+		createToken('COERCERTLFULL', src[t.COERCEFULL], true);
+
+		// Tilde ranges.
+		// Meaning is "reasonably at or greater than"
+		createToken('LONETILDE', '(?:~>?)');
+
+		createToken('TILDETRIM', `(\\s*)${src[t.LONETILDE]}\\s+`, true);
+		exports$1.tildeTrimReplace = '$1~';
+
+		createToken('TILDE', `^${src[t.LONETILDE]}${src[t.XRANGEPLAIN]}$`);
+		createToken('TILDELOOSE', `^${src[t.LONETILDE]}${src[t.XRANGEPLAINLOOSE]}$`);
+
+		// Caret ranges.
+		// Meaning is "at least and backwards compatible with"
+		createToken('LONECARET', '(?:\\^)');
+
+		createToken('CARETTRIM', `(\\s*)${src[t.LONECARET]}\\s+`, true);
+		exports$1.caretTrimReplace = '$1^';
+
+		createToken('CARET', `^${src[t.LONECARET]}${src[t.XRANGEPLAIN]}$`);
+		createToken('CARETLOOSE', `^${src[t.LONECARET]}${src[t.XRANGEPLAINLOOSE]}$`);
+
+		// A simple gt/lt/eq thing, or just "" to indicate "any version"
+		createToken('COMPARATORLOOSE', `^${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]})$|^$`);
+		createToken('COMPARATOR', `^${src[t.GTLT]}\\s*(${src[t.FULLPLAIN]})$|^$`);
+
+		// An expression to strip any whitespace between the gtlt and the thing
+		// it modifies, so that `> 1.2.3` ==> `>1.2.3`
+		createToken('COMPARATORTRIM', `(\\s*)${src[t.GTLT]
+		}\\s*(${src[t.LOOSEPLAIN]}|${src[t.XRANGEPLAIN]})`, true);
+		exports$1.comparatorTrimReplace = '$1$2$3';
+
+		// Something like `1.2.3 - 1.2.4`
+		// Note that these all use the loose form, because they'll be
+		// checked against either the strict or loose comparator form
+		// later.
+		createToken('HYPHENRANGE', `^\\s*(${src[t.XRANGEPLAIN]})` +
+		                   `\\s+-\\s+` +
+		                   `(${src[t.XRANGEPLAIN]})` +
+		                   `\\s*$`);
+
+		createToken('HYPHENRANGELOOSE', `^\\s*(${src[t.XRANGEPLAINLOOSE]})` +
+		                        `\\s+-\\s+` +
+		                        `(${src[t.XRANGEPLAINLOOSE]})` +
+		                        `\\s*$`);
+
+		// Star ranges basically just allow anything at all.
+		createToken('STAR', '(<|>)?=?\\s*\\*');
+		// >=0.0.0 is like a star
+		createToken('GTE0', '^\\s*>=\\s*0\\.0\\.0\\s*$');
+		createToken('GTE0PRE', '^\\s*>=\\s*0\\.0\\.0-0\\s*$'); 
+	} (re, re.exports));
+	return re.exports;
+}
+
+var parseOptions_1;
+var hasRequiredParseOptions;
+
+function requireParseOptions () {
+	if (hasRequiredParseOptions) return parseOptions_1;
+	hasRequiredParseOptions = 1;
+
+	// parse out just the options we care about
+	const looseOption = Object.freeze({ loose: true });
+	const emptyOpts = Object.freeze({ });
+	const parseOptions = options => {
+	  if (!options) {
+	    return emptyOpts
+	  }
+
+	  if (typeof options !== 'object') {
+	    return looseOption
+	  }
+
+	  return options
+	};
+	parseOptions_1 = parseOptions;
+	return parseOptions_1;
+}
+
+var identifiers;
+var hasRequiredIdentifiers;
+
+function requireIdentifiers () {
+	if (hasRequiredIdentifiers) return identifiers;
+	hasRequiredIdentifiers = 1;
+
+	const numeric = /^[0-9]+$/;
+	const compareIdentifiers = (a, b) => {
+	  if (typeof a === 'number' && typeof b === 'number') {
+	    return a === b ? 0 : a < b ? -1 : 1
+	  }
+
+	  const anum = numeric.test(a);
+	  const bnum = numeric.test(b);
+
+	  if (anum && bnum) {
+	    a = +a;
+	    b = +b;
+	  }
+
+	  return a === b ? 0
+	    : (anum && !bnum) ? -1
+	    : (bnum && !anum) ? 1
+	    : a < b ? -1
+	    : 1
+	};
+
+	const rcompareIdentifiers = (a, b) => compareIdentifiers(b, a);
+
+	identifiers = {
+	  compareIdentifiers,
+	  rcompareIdentifiers,
+	};
+	return identifiers;
+}
+
+var semver$1;
+var hasRequiredSemver$1;
+
+function requireSemver$1 () {
+	if (hasRequiredSemver$1) return semver$1;
+	hasRequiredSemver$1 = 1;
+
+	const debug = requireDebug();
+	const { MAX_LENGTH, MAX_SAFE_INTEGER } = requireConstants();
+	const { safeRe: re, t } = requireRe();
+
+	const parseOptions = requireParseOptions();
+	const { compareIdentifiers } = requireIdentifiers();
+	class SemVer {
+	  constructor (version, options) {
+	    options = parseOptions(options);
+
+	    if (version instanceof SemVer) {
+	      if (version.loose === !!options.loose &&
+	        version.includePrerelease === !!options.includePrerelease) {
+	        return version
+	      } else {
+	        version = version.version;
+	      }
+	    } else if (typeof version !== 'string') {
+	      throw new TypeError(`Invalid version. Must be a string. Got type "${typeof version}".`)
+	    }
+
+	    if (version.length > MAX_LENGTH) {
+	      throw new TypeError(
+	        `version is longer than ${MAX_LENGTH} characters`
+	      )
+	    }
+
+	    debug('SemVer', version, options);
+	    this.options = options;
+	    this.loose = !!options.loose;
+	    // this isn't actually relevant for versions, but keep it so that we
+	    // don't run into trouble passing this.options around.
+	    this.includePrerelease = !!options.includePrerelease;
+
+	    const m = version.trim().match(options.loose ? re[t.LOOSE] : re[t.FULL]);
+
+	    if (!m) {
+	      throw new TypeError(`Invalid Version: ${version}`)
+	    }
+
+	    this.raw = version;
+
+	    // these are actually numbers
+	    this.major = +m[1];
+	    this.minor = +m[2];
+	    this.patch = +m[3];
+
+	    if (this.major > MAX_SAFE_INTEGER || this.major < 0) {
+	      throw new TypeError('Invalid major version')
+	    }
+
+	    if (this.minor > MAX_SAFE_INTEGER || this.minor < 0) {
+	      throw new TypeError('Invalid minor version')
+	    }
+
+	    if (this.patch > MAX_SAFE_INTEGER || this.patch < 0) {
+	      throw new TypeError('Invalid patch version')
+	    }
+
+	    // numberify any prerelease numeric ids
+	    if (!m[4]) {
+	      this.prerelease = [];
+	    } else {
+	      this.prerelease = m[4].split('.').map((id) => {
+	        if (/^[0-9]+$/.test(id)) {
+	          const num = +id;
+	          if (num >= 0 && num < MAX_SAFE_INTEGER) {
+	            return num
+	          }
+	        }
+	        return id
+	      });
+	    }
+
+	    this.build = m[5] ? m[5].split('.') : [];
+	    this.format();
+	  }
+
+	  format () {
+	    this.version = `${this.major}.${this.minor}.${this.patch}`;
+	    if (this.prerelease.length) {
+	      this.version += `-${this.prerelease.join('.')}`;
+	    }
+	    return this.version
+	  }
+
+	  toString () {
+	    return this.version
+	  }
+
+	  compare (other) {
+	    debug('SemVer.compare', this.version, this.options, other);
+	    if (!(other instanceof SemVer)) {
+	      if (typeof other === 'string' && other === this.version) {
+	        return 0
+	      }
+	      other = new SemVer(other, this.options);
+	    }
+
+	    if (other.version === this.version) {
+	      return 0
+	    }
+
+	    return this.compareMain(other) || this.comparePre(other)
+	  }
+
+	  compareMain (other) {
+	    if (!(other instanceof SemVer)) {
+	      other = new SemVer(other, this.options);
+	    }
+
+	    if (this.major < other.major) {
+	      return -1
+	    }
+	    if (this.major > other.major) {
+	      return 1
+	    }
+	    if (this.minor < other.minor) {
+	      return -1
+	    }
+	    if (this.minor > other.minor) {
+	      return 1
+	    }
+	    if (this.patch < other.patch) {
+	      return -1
+	    }
+	    if (this.patch > other.patch) {
+	      return 1
+	    }
+	    return 0
+	  }
+
+	  comparePre (other) {
+	    if (!(other instanceof SemVer)) {
+	      other = new SemVer(other, this.options);
+	    }
+
+	    // NOT having a prerelease is > having one
+	    if (this.prerelease.length && !other.prerelease.length) {
+	      return -1
+	    } else if (!this.prerelease.length && other.prerelease.length) {
+	      return 1
+	    } else if (!this.prerelease.length && !other.prerelease.length) {
+	      return 0
+	    }
+
+	    let i = 0;
+	    do {
+	      const a = this.prerelease[i];
+	      const b = other.prerelease[i];
+	      debug('prerelease compare', i, a, b);
+	      if (a === undefined && b === undefined) {
+	        return 0
+	      } else if (b === undefined) {
+	        return 1
+	      } else if (a === undefined) {
+	        return -1
+	      } else if (a === b) {
+	        continue
+	      } else {
+	        return compareIdentifiers(a, b)
+	      }
+	    } while (++i)
+	  }
+
+	  compareBuild (other) {
+	    if (!(other instanceof SemVer)) {
+	      other = new SemVer(other, this.options);
+	    }
+
+	    let i = 0;
+	    do {
+	      const a = this.build[i];
+	      const b = other.build[i];
+	      debug('build compare', i, a, b);
+	      if (a === undefined && b === undefined) {
+	        return 0
+	      } else if (b === undefined) {
+	        return 1
+	      } else if (a === undefined) {
+	        return -1
+	      } else if (a === b) {
+	        continue
+	      } else {
+	        return compareIdentifiers(a, b)
+	      }
+	    } while (++i)
+	  }
+
+	  // preminor will bump the version up to the next minor release, and immediately
+	  // down to pre-release. premajor and prepatch work the same way.
+	  inc (release, identifier, identifierBase) {
+	    if (release.startsWith('pre')) {
+	      if (!identifier && identifierBase === false) {
+	        throw new Error('invalid increment argument: identifier is empty')
+	      }
+	      // Avoid an invalid semver results
+	      if (identifier) {
+	        const match = `-${identifier}`.match(this.options.loose ? re[t.PRERELEASELOOSE] : re[t.PRERELEASE]);
+	        if (!match || match[1] !== identifier) {
+	          throw new Error(`invalid identifier: ${identifier}`)
+	        }
+	      }
+	    }
+
+	    switch (release) {
+	      case 'premajor':
+	        this.prerelease.length = 0;
+	        this.patch = 0;
+	        this.minor = 0;
+	        this.major++;
+	        this.inc('pre', identifier, identifierBase);
+	        break
+	      case 'preminor':
+	        this.prerelease.length = 0;
+	        this.patch = 0;
+	        this.minor++;
+	        this.inc('pre', identifier, identifierBase);
+	        break
+	      case 'prepatch':
+	        // If this is already a prerelease, it will bump to the next version
+	        // drop any prereleases that might already exist, since they are not
+	        // relevant at this point.
+	        this.prerelease.length = 0;
+	        this.inc('patch', identifier, identifierBase);
+	        this.inc('pre', identifier, identifierBase);
+	        break
+	      // If the input is a non-prerelease version, this acts the same as
+	      // prepatch.
+	      case 'prerelease':
+	        if (this.prerelease.length === 0) {
+	          this.inc('patch', identifier, identifierBase);
+	        }
+	        this.inc('pre', identifier, identifierBase);
+	        break
+	      case 'release':
+	        if (this.prerelease.length === 0) {
+	          throw new Error(`version ${this.raw} is not a prerelease`)
+	        }
+	        this.prerelease.length = 0;
+	        break
+
+	      case 'major':
+	        // If this is a pre-major version, bump up to the same major version.
+	        // Otherwise increment major.
+	        // 1.0.0-5 bumps to 1.0.0
+	        // 1.1.0 bumps to 2.0.0
+	        if (
+	          this.minor !== 0 ||
+	          this.patch !== 0 ||
+	          this.prerelease.length === 0
+	        ) {
+	          this.major++;
+	        }
+	        this.minor = 0;
+	        this.patch = 0;
+	        this.prerelease = [];
+	        break
+	      case 'minor':
+	        // If this is a pre-minor version, bump up to the same minor version.
+	        // Otherwise increment minor.
+	        // 1.2.0-5 bumps to 1.2.0
+	        // 1.2.1 bumps to 1.3.0
+	        if (this.patch !== 0 || this.prerelease.length === 0) {
+	          this.minor++;
+	        }
+	        this.patch = 0;
+	        this.prerelease = [];
+	        break
+	      case 'patch':
+	        // If this is not a pre-release version, it will increment the patch.
+	        // If it is a pre-release it will bump up to the same patch version.
+	        // 1.2.0-5 patches to 1.2.0
+	        // 1.2.0 patches to 1.2.1
+	        if (this.prerelease.length === 0) {
+	          this.patch++;
+	        }
+	        this.prerelease = [];
+	        break
+	      // This probably shouldn't be used publicly.
+	      // 1.0.0 'pre' would become 1.0.0-0 which is the wrong direction.
+	      case 'pre': {
+	        const base = Number(identifierBase) ? 1 : 0;
+
+	        if (this.prerelease.length === 0) {
+	          this.prerelease = [base];
+	        } else {
+	          let i = this.prerelease.length;
+	          while (--i >= 0) {
+	            if (typeof this.prerelease[i] === 'number') {
+	              this.prerelease[i]++;
+	              i = -2;
+	            }
+	          }
+	          if (i === -1) {
+	            // didn't increment anything
+	            if (identifier === this.prerelease.join('.') && identifierBase === false) {
+	              throw new Error('invalid increment argument: identifier already exists')
+	            }
+	            this.prerelease.push(base);
+	          }
+	        }
+	        if (identifier) {
+	          // 1.2.0-beta.1 bumps to 1.2.0-beta.2,
+	          // 1.2.0-beta.fooblz or 1.2.0-beta bumps to 1.2.0-beta.0
+	          let prerelease = [identifier, base];
+	          if (identifierBase === false) {
+	            prerelease = [identifier];
+	          }
+	          if (compareIdentifiers(this.prerelease[0], identifier) === 0) {
+	            if (isNaN(this.prerelease[1])) {
+	              this.prerelease = prerelease;
+	            }
+	          } else {
+	            this.prerelease = prerelease;
+	          }
+	        }
+	        break
+	      }
+	      default:
+	        throw new Error(`invalid increment argument: ${release}`)
+	    }
+	    this.raw = this.format();
+	    if (this.build.length) {
+	      this.raw += `+${this.build.join('.')}`;
+	    }
+	    return this
+	  }
+	}
+
+	semver$1 = SemVer;
+	return semver$1;
+}
+
+var parse_1;
+var hasRequiredParse$1;
+
+function requireParse$1 () {
+	if (hasRequiredParse$1) return parse_1;
+	hasRequiredParse$1 = 1;
+
+	const SemVer = requireSemver$1();
+	const parse = (version, options, throwErrors = false) => {
+	  if (version instanceof SemVer) {
+	    return version
+	  }
+	  try {
+	    return new SemVer(version, options)
+	  } catch (er) {
+	    if (!throwErrors) {
+	      return null
+	    }
+	    throw er
+	  }
+	};
+
+	parse_1 = parse;
+	return parse_1;
+}
+
+var valid_1;
+var hasRequiredValid$1;
+
+function requireValid$1 () {
+	if (hasRequiredValid$1) return valid_1;
+	hasRequiredValid$1 = 1;
+
+	const parse = requireParse$1();
+	const valid = (version, options) => {
+	  const v = parse(version, options);
+	  return v ? v.version : null
+	};
+	valid_1 = valid;
+	return valid_1;
+}
+
+var clean_1;
+var hasRequiredClean;
+
+function requireClean () {
+	if (hasRequiredClean) return clean_1;
+	hasRequiredClean = 1;
+
+	const parse = requireParse$1();
+	const clean = (version, options) => {
+	  const s = parse(version.trim().replace(/^[=v]+/, ''), options);
+	  return s ? s.version : null
+	};
+	clean_1 = clean;
+	return clean_1;
+}
+
+var inc_1;
+var hasRequiredInc;
+
+function requireInc () {
+	if (hasRequiredInc) return inc_1;
+	hasRequiredInc = 1;
+
+	const SemVer = requireSemver$1();
+
+	const inc = (version, release, options, identifier, identifierBase) => {
+	  if (typeof (options) === 'string') {
+	    identifierBase = identifier;
+	    identifier = options;
+	    options = undefined;
+	  }
+
+	  try {
+	    return new SemVer(
+	      version instanceof SemVer ? version.version : version,
+	      options
+	    ).inc(release, identifier, identifierBase).version
+	  } catch (er) {
+	    return null
+	  }
+	};
+	inc_1 = inc;
+	return inc_1;
+}
+
+var diff_1;
+var hasRequiredDiff;
+
+function requireDiff () {
+	if (hasRequiredDiff) return diff_1;
+	hasRequiredDiff = 1;
+
+	const parse = requireParse$1();
+
+	const diff = (version1, version2) => {
+	  const v1 = parse(version1, null, true);
+	  const v2 = parse(version2, null, true);
+	  const comparison = v1.compare(v2);
+
+	  if (comparison === 0) {
+	    return null
+	  }
+
+	  const v1Higher = comparison > 0;
+	  const highVersion = v1Higher ? v1 : v2;
+	  const lowVersion = v1Higher ? v2 : v1;
+	  const highHasPre = !!highVersion.prerelease.length;
+	  const lowHasPre = !!lowVersion.prerelease.length;
+
+	  if (lowHasPre && !highHasPre) {
+	    // Going from prerelease -> no prerelease requires some special casing
+
+	    // If the low version has only a major, then it will always be a major
+	    // Some examples:
+	    // 1.0.0-1 -> 1.0.0
+	    // 1.0.0-1 -> 1.1.1
+	    // 1.0.0-1 -> 2.0.0
+	    if (!lowVersion.patch && !lowVersion.minor) {
+	      return 'major'
+	    }
+
+	    // If the main part has no difference
+	    if (lowVersion.compareMain(highVersion) === 0) {
+	      if (lowVersion.minor && !lowVersion.patch) {
+	        return 'minor'
+	      }
+	      return 'patch'
+	    }
+	  }
+
+	  // add the `pre` prefix if we are going to a prerelease version
+	  const prefix = highHasPre ? 'pre' : '';
+
+	  if (v1.major !== v2.major) {
+	    return prefix + 'major'
+	  }
+
+	  if (v1.minor !== v2.minor) {
+	    return prefix + 'minor'
+	  }
+
+	  if (v1.patch !== v2.patch) {
+	    return prefix + 'patch'
+	  }
+
+	  // high and low are preleases
+	  return 'prerelease'
+	};
+
+	diff_1 = diff;
+	return diff_1;
+}
+
+var major_1;
+var hasRequiredMajor;
+
+function requireMajor () {
+	if (hasRequiredMajor) return major_1;
+	hasRequiredMajor = 1;
+
+	const SemVer = requireSemver$1();
+	const major = (a, loose) => new SemVer(a, loose).major;
+	major_1 = major;
+	return major_1;
+}
+
+var minor_1;
+var hasRequiredMinor;
+
+function requireMinor () {
+	if (hasRequiredMinor) return minor_1;
+	hasRequiredMinor = 1;
+
+	const SemVer = requireSemver$1();
+	const minor = (a, loose) => new SemVer(a, loose).minor;
+	minor_1 = minor;
+	return minor_1;
+}
+
+var patch_1;
+var hasRequiredPatch;
+
+function requirePatch () {
+	if (hasRequiredPatch) return patch_1;
+	hasRequiredPatch = 1;
+
+	const SemVer = requireSemver$1();
+	const patch = (a, loose) => new SemVer(a, loose).patch;
+	patch_1 = patch;
+	return patch_1;
+}
+
+var prerelease_1;
+var hasRequiredPrerelease;
+
+function requirePrerelease () {
+	if (hasRequiredPrerelease) return prerelease_1;
+	hasRequiredPrerelease = 1;
+
+	const parse = requireParse$1();
+	const prerelease = (version, options) => {
+	  const parsed = parse(version, options);
+	  return (parsed && parsed.prerelease.length) ? parsed.prerelease : null
+	};
+	prerelease_1 = prerelease;
+	return prerelease_1;
+}
+
+var compare_1;
+var hasRequiredCompare;
+
+function requireCompare () {
+	if (hasRequiredCompare) return compare_1;
+	hasRequiredCompare = 1;
+
+	const SemVer = requireSemver$1();
+	const compare = (a, b, loose) =>
+	  new SemVer(a, loose).compare(new SemVer(b, loose));
+
+	compare_1 = compare;
+	return compare_1;
+}
+
+var rcompare_1;
+var hasRequiredRcompare;
+
+function requireRcompare () {
+	if (hasRequiredRcompare) return rcompare_1;
+	hasRequiredRcompare = 1;
+
+	const compare = requireCompare();
+	const rcompare = (a, b, loose) => compare(b, a, loose);
+	rcompare_1 = rcompare;
+	return rcompare_1;
+}
+
+var compareLoose_1;
+var hasRequiredCompareLoose;
+
+function requireCompareLoose () {
+	if (hasRequiredCompareLoose) return compareLoose_1;
+	hasRequiredCompareLoose = 1;
+
+	const compare = requireCompare();
+	const compareLoose = (a, b) => compare(a, b, true);
+	compareLoose_1 = compareLoose;
+	return compareLoose_1;
+}
+
+var compareBuild_1;
+var hasRequiredCompareBuild;
+
+function requireCompareBuild () {
+	if (hasRequiredCompareBuild) return compareBuild_1;
+	hasRequiredCompareBuild = 1;
+
+	const SemVer = requireSemver$1();
+	const compareBuild = (a, b, loose) => {
+	  const versionA = new SemVer(a, loose);
+	  const versionB = new SemVer(b, loose);
+	  return versionA.compare(versionB) || versionA.compareBuild(versionB)
+	};
+	compareBuild_1 = compareBuild;
+	return compareBuild_1;
+}
+
+var sort_1;
+var hasRequiredSort;
+
+function requireSort () {
+	if (hasRequiredSort) return sort_1;
+	hasRequiredSort = 1;
+
+	const compareBuild = requireCompareBuild();
+	const sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose));
+	sort_1 = sort;
+	return sort_1;
+}
+
+var rsort_1;
+var hasRequiredRsort;
+
+function requireRsort () {
+	if (hasRequiredRsort) return rsort_1;
+	hasRequiredRsort = 1;
+
+	const compareBuild = requireCompareBuild();
+	const rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose));
+	rsort_1 = rsort;
+	return rsort_1;
+}
+
+var gt_1;
+var hasRequiredGt;
+
+function requireGt () {
+	if (hasRequiredGt) return gt_1;
+	hasRequiredGt = 1;
+
+	const compare = requireCompare();
+	const gt = (a, b, loose) => compare(a, b, loose) > 0;
+	gt_1 = gt;
+	return gt_1;
+}
+
+var lt_1;
+var hasRequiredLt;
+
+function requireLt () {
+	if (hasRequiredLt) return lt_1;
+	hasRequiredLt = 1;
+
+	const compare = requireCompare();
+	const lt = (a, b, loose) => compare(a, b, loose) < 0;
+	lt_1 = lt;
+	return lt_1;
+}
+
+var eq_1;
+var hasRequiredEq;
+
+function requireEq () {
+	if (hasRequiredEq) return eq_1;
+	hasRequiredEq = 1;
+
+	const compare = requireCompare();
+	const eq = (a, b, loose) => compare(a, b, loose) === 0;
+	eq_1 = eq;
+	return eq_1;
+}
+
+var neq_1;
+var hasRequiredNeq;
+
+function requireNeq () {
+	if (hasRequiredNeq) return neq_1;
+	hasRequiredNeq = 1;
+
+	const compare = requireCompare();
+	const neq = (a, b, loose) => compare(a, b, loose) !== 0;
+	neq_1 = neq;
+	return neq_1;
+}
+
+var gte_1;
+var hasRequiredGte;
+
+function requireGte () {
+	if (hasRequiredGte) return gte_1;
+	hasRequiredGte = 1;
+
+	const compare = requireCompare();
+	const gte = (a, b, loose) => compare(a, b, loose) >= 0;
+	gte_1 = gte;
+	return gte_1;
+}
+
+var lte_1;
+var hasRequiredLte;
+
+function requireLte () {
+	if (hasRequiredLte) return lte_1;
+	hasRequiredLte = 1;
+
+	const compare = requireCompare();
+	const lte = (a, b, loose) => compare(a, b, loose) <= 0;
+	lte_1 = lte;
+	return lte_1;
+}
+
+var cmp_1;
+var hasRequiredCmp;
+
+function requireCmp () {
+	if (hasRequiredCmp) return cmp_1;
+	hasRequiredCmp = 1;
+
+	const eq = requireEq();
+	const neq = requireNeq();
+	const gt = requireGt();
+	const gte = requireGte();
+	const lt = requireLt();
+	const lte = requireLte();
+
+	const cmp = (a, op, b, loose) => {
+	  switch (op) {
+	    case '===':
+	      if (typeof a === 'object') {
+	        a = a.version;
+	      }
+	      if (typeof b === 'object') {
+	        b = b.version;
+	      }
+	      return a === b
+
+	    case '!==':
+	      if (typeof a === 'object') {
+	        a = a.version;
+	      }
+	      if (typeof b === 'object') {
+	        b = b.version;
+	      }
+	      return a !== b
+
+	    case '':
+	    case '=':
+	    case '==':
+	      return eq(a, b, loose)
+
+	    case '!=':
+	      return neq(a, b, loose)
+
+	    case '>':
+	      return gt(a, b, loose)
+
+	    case '>=':
+	      return gte(a, b, loose)
+
+	    case '<':
+	      return lt(a, b, loose)
+
+	    case '<=':
+	      return lte(a, b, loose)
+
+	    default:
+	      throw new TypeError(`Invalid operator: ${op}`)
+	  }
+	};
+	cmp_1 = cmp;
+	return cmp_1;
+}
+
+var coerce_1;
+var hasRequiredCoerce;
+
+function requireCoerce () {
+	if (hasRequiredCoerce) return coerce_1;
+	hasRequiredCoerce = 1;
+
+	const SemVer = requireSemver$1();
+	const parse = requireParse$1();
+	const { safeRe: re, t } = requireRe();
+
+	const coerce = (version, options) => {
+	  if (version instanceof SemVer) {
+	    return version
+	  }
+
+	  if (typeof version === 'number') {
+	    version = String(version);
+	  }
+
+	  if (typeof version !== 'string') {
+	    return null
+	  }
+
+	  options = options || {};
+
+	  let match = null;
+	  if (!options.rtl) {
+	    match = version.match(options.includePrerelease ? re[t.COERCEFULL] : re[t.COERCE]);
+	  } else {
+	    // Find the right-most coercible string that does not share
+	    // a terminus with a more left-ward coercible string.
+	    // Eg, '1.2.3.4' wants to coerce '2.3.4', not '3.4' or '4'
+	    // With includePrerelease option set, '1.2.3.4-rc' wants to coerce '2.3.4-rc', not '2.3.4'
+	    //
+	    // Walk through the string checking with a /g regexp
+	    // Manually set the index so as to pick up overlapping matches.
+	    // Stop when we get a match that ends at the string end, since no
+	    // coercible string can be more right-ward without the same terminus.
+	    const coerceRtlRegex = options.includePrerelease ? re[t.COERCERTLFULL] : re[t.COERCERTL];
+	    let next;
+	    while ((next = coerceRtlRegex.exec(version)) &&
+	        (!match || match.index + match[0].length !== version.length)
+	    ) {
+	      if (!match ||
+	            next.index + next[0].length !== match.index + match[0].length) {
+	        match = next;
+	      }
+	      coerceRtlRegex.lastIndex = next.index + next[1].length + next[2].length;
+	    }
+	    // leave it in a clean state
+	    coerceRtlRegex.lastIndex = -1;
+	  }
+
+	  if (match === null) {
+	    return null
+	  }
+
+	  const major = match[2];
+	  const minor = match[3] || '0';
+	  const patch = match[4] || '0';
+	  const prerelease = options.includePrerelease && match[5] ? `-${match[5]}` : '';
+	  const build = options.includePrerelease && match[6] ? `+${match[6]}` : '';
+
+	  return parse(`${major}.${minor}.${patch}${prerelease}${build}`, options)
+	};
+	coerce_1 = coerce;
+	return coerce_1;
+}
+
+var lrucache;
+var hasRequiredLrucache;
+
+function requireLrucache () {
+	if (hasRequiredLrucache) return lrucache;
+	hasRequiredLrucache = 1;
+
+	class LRUCache {
+	  constructor () {
+	    this.max = 1000;
+	    this.map = new Map();
+	  }
+
+	  get (key) {
+	    const value = this.map.get(key);
+	    if (value === undefined) {
+	      return undefined
+	    } else {
+	      // Remove the key from the map and add it to the end
+	      this.map.delete(key);
+	      this.map.set(key, value);
+	      return value
+	    }
+	  }
+
+	  delete (key) {
+	    return this.map.delete(key)
+	  }
+
+	  set (key, value) {
+	    const deleted = this.delete(key);
+
+	    if (!deleted && value !== undefined) {
+	      // If cache is full, delete the least recently used item
+	      if (this.map.size >= this.max) {
+	        const firstKey = this.map.keys().next().value;
+	        this.delete(firstKey);
+	      }
+
+	      this.map.set(key, value);
+	    }
+
+	    return this
+	  }
+	}
+
+	lrucache = LRUCache;
+	return lrucache;
+}
+
+var range;
+var hasRequiredRange;
+
+function requireRange () {
+	if (hasRequiredRange) return range;
+	hasRequiredRange = 1;
+
+	const SPACE_CHARACTERS = /\s+/g;
+
+	// hoisted class for cyclic dependency
+	class Range {
+	  constructor (range, options) {
+	    options = parseOptions(options);
+
+	    if (range instanceof Range) {
+	      if (
+	        range.loose === !!options.loose &&
+	        range.includePrerelease === !!options.includePrerelease
+	      ) {
+	        return range
+	      } else {
+	        return new Range(range.raw, options)
+	      }
+	    }
+
+	    if (range instanceof Comparator) {
+	      // just put it in the set and return
+	      this.raw = range.value;
+	      this.set = [[range]];
+	      this.formatted = undefined;
+	      return this
+	    }
+
+	    this.options = options;
+	    this.loose = !!options.loose;
+	    this.includePrerelease = !!options.includePrerelease;
+
+	    // First reduce all whitespace as much as possible so we do not have to rely
+	    // on potentially slow regexes like \s*. This is then stored and used for
+	    // future error messages as well.
+	    this.raw = range.trim().replace(SPACE_CHARACTERS, ' ');
+
+	    // First, split on ||
+	    this.set = this.raw
+	      .split('||')
+	      // map the range to a 2d array of comparators
+	      .map(r => this.parseRange(r.trim()))
+	      // throw out any comparator lists that are empty
+	      // this generally means that it was not a valid range, which is allowed
+	      // in loose mode, but will still throw if the WHOLE range is invalid.
+	      .filter(c => c.length);
+
+	    if (!this.set.length) {
+	      throw new TypeError(`Invalid SemVer Range: ${this.raw}`)
+	    }
+
+	    // if we have any that are not the null set, throw out null sets.
+	    if (this.set.length > 1) {
+	      // keep the first one, in case they're all null sets
+	      const first = this.set[0];
+	      this.set = this.set.filter(c => !isNullSet(c[0]));
+	      if (this.set.length === 0) {
+	        this.set = [first];
+	      } else if (this.set.length > 1) {
+	        // if we have any that are *, then the range is just *
+	        for (const c of this.set) {
+	          if (c.length === 1 && isAny(c[0])) {
+	            this.set = [c];
+	            break
+	          }
+	        }
+	      }
+	    }
+
+	    this.formatted = undefined;
+	  }
+
+	  get range () {
+	    if (this.formatted === undefined) {
+	      this.formatted = '';
+	      for (let i = 0; i < this.set.length; i++) {
+	        if (i > 0) {
+	          this.formatted += '||';
+	        }
+	        const comps = this.set[i];
+	        for (let k = 0; k < comps.length; k++) {
+	          if (k > 0) {
+	            this.formatted += ' ';
+	          }
+	          this.formatted += comps[k].toString().trim();
+	        }
+	      }
+	    }
+	    return this.formatted
+	  }
+
+	  format () {
+	    return this.range
+	  }
+
+	  toString () {
+	    return this.range
+	  }
+
+	  parseRange (range) {
+	    // memoize range parsing for performance.
+	    // this is a very hot path, and fully deterministic.
+	    const memoOpts =
+	      (this.options.includePrerelease && FLAG_INCLUDE_PRERELEASE) |
+	      (this.options.loose && FLAG_LOOSE);
+	    const memoKey = memoOpts + ':' + range;
+	    const cached = cache.get(memoKey);
+	    if (cached) {
+	      return cached
+	    }
+
+	    const loose = this.options.loose;
+	    // `1.2.3 - 1.2.4` => `>=1.2.3 <=1.2.4`
+	    const hr = loose ? re[t.HYPHENRANGELOOSE] : re[t.HYPHENRANGE];
+	    range = range.replace(hr, hyphenReplace(this.options.includePrerelease));
+	    debug('hyphen replace', range);
+
+	    // `> 1.2.3 < 1.2.5` => `>1.2.3 <1.2.5`
+	    range = range.replace(re[t.COMPARATORTRIM], comparatorTrimReplace);
+	    debug('comparator trim', range);
+
+	    // `~ 1.2.3` => `~1.2.3`
+	    range = range.replace(re[t.TILDETRIM], tildeTrimReplace);
+	    debug('tilde trim', range);
+
+	    // `^ 1.2.3` => `^1.2.3`
+	    range = range.replace(re[t.CARETTRIM], caretTrimReplace);
+	    debug('caret trim', range);
+
+	    // At this point, the range is completely trimmed and
+	    // ready to be split into comparators.
+
+	    let rangeList = range
+	      .split(' ')
+	      .map(comp => parseComparator(comp, this.options))
+	      .join(' ')
+	      .split(/\s+/)
+	      // >=0.0.0 is equivalent to *
+	      .map(comp => replaceGTE0(comp, this.options));
+
+	    if (loose) {
+	      // in loose mode, throw out any that are not valid comparators
+	      rangeList = rangeList.filter(comp => {
+	        debug('loose invalid filter', comp, this.options);
+	        return !!comp.match(re[t.COMPARATORLOOSE])
+	      });
+	    }
+	    debug('range list', rangeList);
+
+	    // if any comparators are the null set, then replace with JUST null set
+	    // if more than one comparator, remove any * comparators
+	    // also, don't include the same comparator more than once
+	    const rangeMap = new Map();
+	    const comparators = rangeList.map(comp => new Comparator(comp, this.options));
+	    for (const comp of comparators) {
+	      if (isNullSet(comp)) {
+	        return [comp]
+	      }
+	      rangeMap.set(comp.value, comp);
+	    }
+	    if (rangeMap.size > 1 && rangeMap.has('')) {
+	      rangeMap.delete('');
+	    }
+
+	    const result = [...rangeMap.values()];
+	    cache.set(memoKey, result);
+	    return result
+	  }
+
+	  intersects (range, options) {
+	    if (!(range instanceof Range)) {
+	      throw new TypeError('a Range is required')
+	    }
+
+	    return this.set.some((thisComparators) => {
+	      return (
+	        isSatisfiable(thisComparators, options) &&
+	        range.set.some((rangeComparators) => {
+	          return (
+	            isSatisfiable(rangeComparators, options) &&
+	            thisComparators.every((thisComparator) => {
+	              return rangeComparators.every((rangeComparator) => {
+	                return thisComparator.intersects(rangeComparator, options)
+	              })
+	            })
+	          )
+	        })
+	      )
+	    })
+	  }
+
+	  // if ANY of the sets match ALL of its comparators, then pass
+	  test (version) {
+	    if (!version) {
+	      return false
+	    }
+
+	    if (typeof version === 'string') {
+	      try {
+	        version = new SemVer(version, this.options);
+	      } catch (er) {
+	        return false
+	      }
+	    }
+
+	    for (let i = 0; i < this.set.length; i++) {
+	      if (testSet(this.set[i], version, this.options)) {
+	        return true
+	      }
+	    }
+	    return false
+	  }
+	}
+
+	range = Range;
+
+	const LRU = requireLrucache();
+	const cache = new LRU();
+
+	const parseOptions = requireParseOptions();
+	const Comparator = requireComparator();
+	const debug = requireDebug();
+	const SemVer = requireSemver$1();
+	const {
+	  safeRe: re,
+	  t,
+	  comparatorTrimReplace,
+	  tildeTrimReplace,
+	  caretTrimReplace,
+	} = requireRe();
+	const { FLAG_INCLUDE_PRERELEASE, FLAG_LOOSE } = requireConstants();
+
+	const isNullSet = c => c.value === '<0.0.0-0';
+	const isAny = c => c.value === '';
+
+	// take a set of comparators and determine whether there
+	// exists a version which can satisfy it
+	const isSatisfiable = (comparators, options) => {
+	  let result = true;
+	  const remainingComparators = comparators.slice();
+	  let testComparator = remainingComparators.pop();
+
+	  while (result && remainingComparators.length) {
+	    result = remainingComparators.every((otherComparator) => {
+	      return testComparator.intersects(otherComparator, options)
+	    });
+
+	    testComparator = remainingComparators.pop();
+	  }
+
+	  return result
+	};
+
+	// comprised of xranges, tildes, stars, and gtlt's at this point.
+	// already replaced the hyphen ranges
+	// turn into a set of JUST comparators.
+	const parseComparator = (comp, options) => {
+	  comp = comp.replace(re[t.BUILD], '');
+	  debug('comp', comp, options);
+	  comp = replaceCarets(comp, options);
+	  debug('caret', comp);
+	  comp = replaceTildes(comp, options);
+	  debug('tildes', comp);
+	  comp = replaceXRanges(comp, options);
+	  debug('xrange', comp);
+	  comp = replaceStars(comp, options);
+	  debug('stars', comp);
+	  return comp
+	};
+
+	const isX = id => !id || id.toLowerCase() === 'x' || id === '*';
+
+	// ~, ~> --> * (any, kinda silly)
+	// ~2, ~2.x, ~2.x.x, ~>2, ~>2.x ~>2.x.x --> >=2.0.0 <3.0.0-0
+	// ~2.0, ~2.0.x, ~>2.0, ~>2.0.x --> >=2.0.0 <2.1.0-0
+	// ~1.2, ~1.2.x, ~>1.2, ~>1.2.x --> >=1.2.0 <1.3.0-0
+	// ~1.2.3, ~>1.2.3 --> >=1.2.3 <1.3.0-0
+	// ~1.2.0, ~>1.2.0 --> >=1.2.0 <1.3.0-0
+	// ~0.0.1 --> >=0.0.1 <0.1.0-0
+	const replaceTildes = (comp, options) => {
+	  return comp
+	    .trim()
+	    .split(/\s+/)
+	    .map((c) => replaceTilde(c, options))
+	    .join(' ')
+	};
+
+	const replaceTilde = (comp, options) => {
+	  const r = options.loose ? re[t.TILDELOOSE] : re[t.TILDE];
+	  return comp.replace(r, (_, M, m, p, pr) => {
+	    debug('tilde', comp, _, M, m, p, pr);
+	    let ret;
+
+	    if (isX(M)) {
+	      ret = '';
+	    } else if (isX(m)) {
+	      ret = `>=${M}.0.0 <${+M + 1}.0.0-0`;
+	    } else if (isX(p)) {
+	      // ~1.2 == >=1.2.0 <1.3.0-0
+	      ret = `>=${M}.${m}.0 <${M}.${+m + 1}.0-0`;
+	    } else if (pr) {
+	      debug('replaceTilde pr', pr);
+	      ret = `>=${M}.${m}.${p}-${pr
+	      } <${M}.${+m + 1}.0-0`;
+	    } else {
+	      // ~1.2.3 == >=1.2.3 <1.3.0-0
+	      ret = `>=${M}.${m}.${p
+	      } <${M}.${+m + 1}.0-0`;
+	    }
+
+	    debug('tilde return', ret);
+	    return ret
+	  })
+	};
+
+	// ^ --> * (any, kinda silly)
+	// ^2, ^2.x, ^2.x.x --> >=2.0.0 <3.0.0-0
+	// ^2.0, ^2.0.x --> >=2.0.0 <3.0.0-0
+	// ^1.2, ^1.2.x --> >=1.2.0 <2.0.0-0
+	// ^1.2.3 --> >=1.2.3 <2.0.0-0
+	// ^1.2.0 --> >=1.2.0 <2.0.0-0
+	// ^0.0.1 --> >=0.0.1 <0.0.2-0
+	// ^0.1.0 --> >=0.1.0 <0.2.0-0
+	const replaceCarets = (comp, options) => {
+	  return comp
+	    .trim()
+	    .split(/\s+/)
+	    .map((c) => replaceCaret(c, options))
+	    .join(' ')
+	};
+
+	const replaceCaret = (comp, options) => {
+	  debug('caret', comp, options);
+	  const r = options.loose ? re[t.CARETLOOSE] : re[t.CARET];
+	  const z = options.includePrerelease ? '-0' : '';
+	  return comp.replace(r, (_, M, m, p, pr) => {
+	    debug('caret', comp, _, M, m, p, pr);
+	    let ret;
+
+	    if (isX(M)) {
+	      ret = '';
+	    } else if (isX(m)) {
+	      ret = `>=${M}.0.0${z} <${+M + 1}.0.0-0`;
+	    } else if (isX(p)) {
+	      if (M === '0') {
+	        ret = `>=${M}.${m}.0${z} <${M}.${+m + 1}.0-0`;
+	      } else {
+	        ret = `>=${M}.${m}.0${z} <${+M + 1}.0.0-0`;
+	      }
+	    } else if (pr) {
+	      debug('replaceCaret pr', pr);
+	      if (M === '0') {
+	        if (m === '0') {
+	          ret = `>=${M}.${m}.${p}-${pr
+	          } <${M}.${m}.${+p + 1}-0`;
+	        } else {
+	          ret = `>=${M}.${m}.${p}-${pr
+	          } <${M}.${+m + 1}.0-0`;
+	        }
+	      } else {
+	        ret = `>=${M}.${m}.${p}-${pr
+	        } <${+M + 1}.0.0-0`;
+	      }
+	    } else {
+	      debug('no pr');
+	      if (M === '0') {
+	        if (m === '0') {
+	          ret = `>=${M}.${m}.${p
+	          }${z} <${M}.${m}.${+p + 1}-0`;
+	        } else {
+	          ret = `>=${M}.${m}.${p
+	          }${z} <${M}.${+m + 1}.0-0`;
+	        }
+	      } else {
+	        ret = `>=${M}.${m}.${p
+	        } <${+M + 1}.0.0-0`;
+	      }
+	    }
+
+	    debug('caret return', ret);
+	    return ret
+	  })
+	};
+
+	const replaceXRanges = (comp, options) => {
+	  debug('replaceXRanges', comp, options);
+	  return comp
+	    .split(/\s+/)
+	    .map((c) => replaceXRange(c, options))
+	    .join(' ')
+	};
+
+	const replaceXRange = (comp, options) => {
+	  comp = comp.trim();
+	  const r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE];
+	  return comp.replace(r, (ret, gtlt, M, m, p, pr) => {
+	    debug('xRange', comp, ret, gtlt, M, m, p, pr);
+	    const xM = isX(M);
+	    const xm = xM || isX(m);
+	    const xp = xm || isX(p);
+	    const anyX = xp;
+
+	    if (gtlt === '=' && anyX) {
+	      gtlt = '';
+	    }
+
+	    // if we're including prereleases in the match, then we need
+	    // to fix this to -0, the lowest possible prerelease value
+	    pr = options.includePrerelease ? '-0' : '';
+
+	    if (xM) {
+	      if (gtlt === '>' || gtlt === '<') {
+	        // nothing is allowed
+	        ret = '<0.0.0-0';
+	      } else {
+	        // nothing is forbidden
+	        ret = '*';
+	      }
+	    } else if (gtlt && anyX) {
+	      // we know patch is an x, because we have any x at all.
+	      // replace X with 0
+	      if (xm) {
+	        m = 0;
+	      }
+	      p = 0;
+
+	      if (gtlt === '>') {
+	        // >1 => >=2.0.0
+	        // >1.2 => >=1.3.0
+	        gtlt = '>=';
+	        if (xm) {
+	          M = +M + 1;
+	          m = 0;
+	          p = 0;
+	        } else {
+	          m = +m + 1;
+	          p = 0;
+	        }
+	      } else if (gtlt === '<=') {
+	        // <=0.7.x is actually <0.8.0, since any 0.7.x should
+	        // pass.  Similarly, <=7.x is actually <8.0.0, etc.
+	        gtlt = '<';
+	        if (xm) {
+	          M = +M + 1;
+	        } else {
+	          m = +m + 1;
+	        }
+	      }
+
+	      if (gtlt === '<') {
+	        pr = '-0';
+	      }
+
+	      ret = `${gtlt + M}.${m}.${p}${pr}`;
+	    } else if (xm) {
+	      ret = `>=${M}.0.0${pr} <${+M + 1}.0.0-0`;
+	    } else if (xp) {
+	      ret = `>=${M}.${m}.0${pr
+	      } <${M}.${+m + 1}.0-0`;
+	    }
+
+	    debug('xRange return', ret);
+
+	    return ret
+	  })
+	};
+
+	// Because * is AND-ed with everything else in the comparator,
+	// and '' means "any version", just remove the *s entirely.
+	const replaceStars = (comp, options) => {
+	  debug('replaceStars', comp, options);
+	  // Looseness is ignored here.  star is always as loose as it gets!
+	  return comp
+	    .trim()
+	    .replace(re[t.STAR], '')
+	};
+
+	const replaceGTE0 = (comp, options) => {
+	  debug('replaceGTE0', comp, options);
+	  return comp
+	    .trim()
+	    .replace(re[options.includePrerelease ? t.GTE0PRE : t.GTE0], '')
+	};
+
+	// This function is passed to string.replace(re[t.HYPHENRANGE])
+	// M, m, patch, prerelease, build
+	// 1.2 - 3.4.5 => >=1.2.0 <=3.4.5
+	// 1.2.3 - 3.4 => >=1.2.0 <3.5.0-0 Any 3.4.x will do
+	// 1.2 - 3.4 => >=1.2.0 <3.5.0-0
+	// TODO build?
+	const hyphenReplace = incPr => ($0,
+	  from, fM, fm, fp, fpr, fb,
+	  to, tM, tm, tp, tpr) => {
+	  if (isX(fM)) {
+	    from = '';
+	  } else if (isX(fm)) {
+	    from = `>=${fM}.0.0${incPr ? '-0' : ''}`;
+	  } else if (isX(fp)) {
+	    from = `>=${fM}.${fm}.0${incPr ? '-0' : ''}`;
+	  } else if (fpr) {
+	    from = `>=${from}`;
+	  } else {
+	    from = `>=${from}${incPr ? '-0' : ''}`;
+	  }
+
+	  if (isX(tM)) {
+	    to = '';
+	  } else if (isX(tm)) {
+	    to = `<${+tM + 1}.0.0-0`;
+	  } else if (isX(tp)) {
+	    to = `<${tM}.${+tm + 1}.0-0`;
+	  } else if (tpr) {
+	    to = `<=${tM}.${tm}.${tp}-${tpr}`;
+	  } else if (incPr) {
+	    to = `<${tM}.${tm}.${+tp + 1}-0`;
+	  } else {
+	    to = `<=${to}`;
+	  }
+
+	  return `${from} ${to}`.trim()
+	};
+
+	const testSet = (set, version, options) => {
+	  for (let i = 0; i < set.length; i++) {
+	    if (!set[i].test(version)) {
+	      return false
+	    }
+	  }
+
+	  if (version.prerelease.length && !options.includePrerelease) {
+	    // Find the set of versions that are allowed to have prereleases
+	    // For example, ^1.2.3-pr.1 desugars to >=1.2.3-pr.1 <2.0.0
+	    // That should allow `1.2.3-pr.2` to pass.
+	    // However, `1.2.4-alpha.notready` should NOT be allowed,
+	    // even though it's within the range set by the comparators.
+	    for (let i = 0; i < set.length; i++) {
+	      debug(set[i].semver);
+	      if (set[i].semver === Comparator.ANY) {
+	        continue
+	      }
+
+	      if (set[i].semver.prerelease.length > 0) {
+	        const allowed = set[i].semver;
+	        if (allowed.major === version.major &&
+	            allowed.minor === version.minor &&
+	            allowed.patch === version.patch) {
+	          return true
+	        }
+	      }
+	    }
+
+	    // Version has a -pre, but it's not one of the ones we like.
+	    return false
+	  }
+
+	  return true
+	};
+	return range;
+}
+
+var comparator;
+var hasRequiredComparator;
+
+function requireComparator () {
+	if (hasRequiredComparator) return comparator;
+	hasRequiredComparator = 1;
+
+	const ANY = Symbol('SemVer ANY');
+	// hoisted class for cyclic dependency
+	class Comparator {
+	  static get ANY () {
+	    return ANY
+	  }
+
+	  constructor (comp, options) {
+	    options = parseOptions(options);
+
+	    if (comp instanceof Comparator) {
+	      if (comp.loose === !!options.loose) {
+	        return comp
+	      } else {
+	        comp = comp.value;
+	      }
+	    }
+
+	    comp = comp.trim().split(/\s+/).join(' ');
+	    debug('comparator', comp, options);
+	    this.options = options;
+	    this.loose = !!options.loose;
+	    this.parse(comp);
+
+	    if (this.semver === ANY) {
+	      this.value = '';
+	    } else {
+	      this.value = this.operator + this.semver.version;
+	    }
+
+	    debug('comp', this);
+	  }
+
+	  parse (comp) {
+	    const r = this.options.loose ? re[t.COMPARATORLOOSE] : re[t.COMPARATOR];
+	    const m = comp.match(r);
+
+	    if (!m) {
+	      throw new TypeError(`Invalid comparator: ${comp}`)
+	    }
+
+	    this.operator = m[1] !== undefined ? m[1] : '';
+	    if (this.operator === '=') {
+	      this.operator = '';
+	    }
+
+	    // if it literally is just '>' or '' then allow anything.
+	    if (!m[2]) {
+	      this.semver = ANY;
+	    } else {
+	      this.semver = new SemVer(m[2], this.options.loose);
+	    }
+	  }
+
+	  toString () {
+	    return this.value
+	  }
+
+	  test (version) {
+	    debug('Comparator.test', version, this.options.loose);
+
+	    if (this.semver === ANY || version === ANY) {
+	      return true
+	    }
+
+	    if (typeof version === 'string') {
+	      try {
+	        version = new SemVer(version, this.options);
+	      } catch (er) {
+	        return false
+	      }
+	    }
+
+	    return cmp(version, this.operator, this.semver, this.options)
+	  }
+
+	  intersects (comp, options) {
+	    if (!(comp instanceof Comparator)) {
+	      throw new TypeError('a Comparator is required')
+	    }
+
+	    if (this.operator === '') {
+	      if (this.value === '') {
+	        return true
+	      }
+	      return new Range(comp.value, options).test(this.value)
+	    } else if (comp.operator === '') {
+	      if (comp.value === '') {
+	        return true
+	      }
+	      return new Range(this.value, options).test(comp.semver)
+	    }
+
+	    options = parseOptions(options);
+
+	    // Special cases where nothing can possibly be lower
+	    if (options.includePrerelease &&
+	      (this.value === '<0.0.0-0' || comp.value === '<0.0.0-0')) {
+	      return false
+	    }
+	    if (!options.includePrerelease &&
+	      (this.value.startsWith('<0.0.0') || comp.value.startsWith('<0.0.0'))) {
+	      return false
+	    }
+
+	    // Same direction increasing (> or >=)
+	    if (this.operator.startsWith('>') && comp.operator.startsWith('>')) {
+	      return true
+	    }
+	    // Same direction decreasing (< or <=)
+	    if (this.operator.startsWith('<') && comp.operator.startsWith('<')) {
+	      return true
+	    }
+	    // same SemVer and both sides are inclusive (<= or >=)
+	    if (
+	      (this.semver.version === comp.semver.version) &&
+	      this.operator.includes('=') && comp.operator.includes('=')) {
+	      return true
+	    }
+	    // opposite directions less than
+	    if (cmp(this.semver, '<', comp.semver, options) &&
+	      this.operator.startsWith('>') && comp.operator.startsWith('<')) {
+	      return true
+	    }
+	    // opposite directions greater than
+	    if (cmp(this.semver, '>', comp.semver, options) &&
+	      this.operator.startsWith('<') && comp.operator.startsWith('>')) {
+	      return true
+	    }
+	    return false
+	  }
+	}
+
+	comparator = Comparator;
+
+	const parseOptions = requireParseOptions();
+	const { safeRe: re, t } = requireRe();
+	const cmp = requireCmp();
+	const debug = requireDebug();
+	const SemVer = requireSemver$1();
+	const Range = requireRange();
+	return comparator;
+}
+
+var satisfies_1;
+var hasRequiredSatisfies;
+
+function requireSatisfies () {
+	if (hasRequiredSatisfies) return satisfies_1;
+	hasRequiredSatisfies = 1;
+
+	const Range = requireRange();
+	const satisfies = (version, range, options) => {
+	  try {
+	    range = new Range(range, options);
+	  } catch (er) {
+	    return false
+	  }
+	  return range.test(version)
+	};
+	satisfies_1 = satisfies;
+	return satisfies_1;
+}
+
+var toComparators_1;
+var hasRequiredToComparators;
+
+function requireToComparators () {
+	if (hasRequiredToComparators) return toComparators_1;
+	hasRequiredToComparators = 1;
+
+	const Range = requireRange();
+
+	// Mostly just for testing and legacy API reasons
+	const toComparators = (range, options) =>
+	  new Range(range, options).set
+	    .map(comp => comp.map(c => c.value).join(' ').trim().split(' '));
+
+	toComparators_1 = toComparators;
+	return toComparators_1;
+}
+
+var maxSatisfying_1;
+var hasRequiredMaxSatisfying;
+
+function requireMaxSatisfying () {
+	if (hasRequiredMaxSatisfying) return maxSatisfying_1;
+	hasRequiredMaxSatisfying = 1;
+
+	const SemVer = requireSemver$1();
+	const Range = requireRange();
+
+	const maxSatisfying = (versions, range, options) => {
+	  let max = null;
+	  let maxSV = null;
+	  let rangeObj = null;
+	  try {
+	    rangeObj = new Range(range, options);
+	  } catch (er) {
+	    return null
+	  }
+	  versions.forEach((v) => {
+	    if (rangeObj.test(v)) {
+	      // satisfies(v, range, options)
+	      if (!max || maxSV.compare(v) === -1) {
+	        // compare(max, v, true)
+	        max = v;
+	        maxSV = new SemVer(max, options);
+	      }
+	    }
+	  });
+	  return max
+	};
+	maxSatisfying_1 = maxSatisfying;
+	return maxSatisfying_1;
+}
+
+var minSatisfying_1;
+var hasRequiredMinSatisfying;
+
+function requireMinSatisfying () {
+	if (hasRequiredMinSatisfying) return minSatisfying_1;
+	hasRequiredMinSatisfying = 1;
+
+	const SemVer = requireSemver$1();
+	const Range = requireRange();
+	const minSatisfying = (versions, range, options) => {
+	  let min = null;
+	  let minSV = null;
+	  let rangeObj = null;
+	  try {
+	    rangeObj = new Range(range, options);
+	  } catch (er) {
+	    return null
+	  }
+	  versions.forEach((v) => {
+	    if (rangeObj.test(v)) {
+	      // satisfies(v, range, options)
+	      if (!min || minSV.compare(v) === 1) {
+	        // compare(min, v, true)
+	        min = v;
+	        minSV = new SemVer(min, options);
+	      }
+	    }
+	  });
+	  return min
+	};
+	minSatisfying_1 = minSatisfying;
+	return minSatisfying_1;
+}
+
+var minVersion_1;
+var hasRequiredMinVersion;
+
+function requireMinVersion () {
+	if (hasRequiredMinVersion) return minVersion_1;
+	hasRequiredMinVersion = 1;
+
+	const SemVer = requireSemver$1();
+	const Range = requireRange();
+	const gt = requireGt();
+
+	const minVersion = (range, loose) => {
+	  range = new Range(range, loose);
+
+	  let minver = new SemVer('0.0.0');
+	  if (range.test(minver)) {
+	    return minver
+	  }
+
+	  minver = new SemVer('0.0.0-0');
+	  if (range.test(minver)) {
+	    return minver
+	  }
+
+	  minver = null;
+	  for (let i = 0; i < range.set.length; ++i) {
+	    const comparators = range.set[i];
+
+	    let setMin = null;
+	    comparators.forEach((comparator) => {
+	      // Clone to avoid manipulating the comparator's semver object.
+	      const compver = new SemVer(comparator.semver.version);
+	      switch (comparator.operator) {
+	        case '>':
+	          if (compver.prerelease.length === 0) {
+	            compver.patch++;
+	          } else {
+	            compver.prerelease.push(0);
+	          }
+	          compver.raw = compver.format();
+	          /* fallthrough */
+	        case '':
+	        case '>=':
+	          if (!setMin || gt(compver, setMin)) {
+	            setMin = compver;
+	          }
+	          break
+	        case '<':
+	        case '<=':
+	          /* Ignore maximum versions */
+	          break
+	        /* istanbul ignore next */
+	        default:
+	          throw new Error(`Unexpected operation: ${comparator.operator}`)
+	      }
+	    });
+	    if (setMin && (!minver || gt(minver, setMin))) {
+	      minver = setMin;
+	    }
+	  }
+
+	  if (minver && range.test(minver)) {
+	    return minver
+	  }
+
+	  return null
+	};
+	minVersion_1 = minVersion;
+	return minVersion_1;
+}
+
+var valid;
+var hasRequiredValid;
+
+function requireValid () {
+	if (hasRequiredValid) return valid;
+	hasRequiredValid = 1;
+
+	const Range = requireRange();
+	const validRange = (range, options) => {
+	  try {
+	    // Return '*' instead of '' so that truthiness works.
+	    // This will throw if it's invalid anyway
+	    return new Range(range, options).range || '*'
+	  } catch (er) {
+	    return null
+	  }
+	};
+	valid = validRange;
+	return valid;
+}
+
+var outside_1;
+var hasRequiredOutside;
+
+function requireOutside () {
+	if (hasRequiredOutside) return outside_1;
+	hasRequiredOutside = 1;
+
+	const SemVer = requireSemver$1();
+	const Comparator = requireComparator();
+	const { ANY } = Comparator;
+	const Range = requireRange();
+	const satisfies = requireSatisfies();
+	const gt = requireGt();
+	const lt = requireLt();
+	const lte = requireLte();
+	const gte = requireGte();
+
+	const outside = (version, range, hilo, options) => {
+	  version = new SemVer(version, options);
+	  range = new Range(range, options);
+
+	  let gtfn, ltefn, ltfn, comp, ecomp;
+	  switch (hilo) {
+	    case '>':
+	      gtfn = gt;
+	      ltefn = lte;
+	      ltfn = lt;
+	      comp = '>';
+	      ecomp = '>=';
+	      break
+	    case '<':
+	      gtfn = lt;
+	      ltefn = gte;
+	      ltfn = gt;
+	      comp = '<';
+	      ecomp = '<=';
+	      break
+	    default:
+	      throw new TypeError('Must provide a hilo val of "<" or ">"')
+	  }
+
+	  // If it satisfies the range it is not outside
+	  if (satisfies(version, range, options)) {
+	    return false
+	  }
+
+	  // From now on, variable terms are as if we're in "gtr" mode.
+	  // but note that everything is flipped for the "ltr" function.
+
+	  for (let i = 0; i < range.set.length; ++i) {
+	    const comparators = range.set[i];
+
+	    let high = null;
+	    let low = null;
+
+	    comparators.forEach((comparator) => {
+	      if (comparator.semver === ANY) {
+	        comparator = new Comparator('>=0.0.0');
+	      }
+	      high = high || comparator;
+	      low = low || comparator;
+	      if (gtfn(comparator.semver, high.semver, options)) {
+	        high = comparator;
+	      } else if (ltfn(comparator.semver, low.semver, options)) {
+	        low = comparator;
+	      }
+	    });
+
+	    // If the edge version comparator has a operator then our version
+	    // isn't outside it
+	    if (high.operator === comp || high.operator === ecomp) {
+	      return false
+	    }
+
+	    // If the lowest version comparator has an operator and our version
+	    // is less than it then it isn't higher than the range
+	    if ((!low.operator || low.operator === comp) &&
+	        ltefn(version, low.semver)) {
+	      return false
+	    } else if (low.operator === ecomp && ltfn(version, low.semver)) {
+	      return false
+	    }
+	  }
+	  return true
+	};
+
+	outside_1 = outside;
+	return outside_1;
+}
+
+var gtr_1;
+var hasRequiredGtr;
+
+function requireGtr () {
+	if (hasRequiredGtr) return gtr_1;
+	hasRequiredGtr = 1;
+
+	// Determine if version is greater than all the versions possible in the range.
+	const outside = requireOutside();
+	const gtr = (version, range, options) => outside(version, range, '>', options);
+	gtr_1 = gtr;
+	return gtr_1;
+}
+
+var ltr_1;
+var hasRequiredLtr;
+
+function requireLtr () {
+	if (hasRequiredLtr) return ltr_1;
+	hasRequiredLtr = 1;
+
+	const outside = requireOutside();
+	// Determine if version is less than all the versions possible in the range
+	const ltr = (version, range, options) => outside(version, range, '<', options);
+	ltr_1 = ltr;
+	return ltr_1;
+}
+
+var intersects_1;
+var hasRequiredIntersects;
+
+function requireIntersects () {
+	if (hasRequiredIntersects) return intersects_1;
+	hasRequiredIntersects = 1;
+
+	const Range = requireRange();
+	const intersects = (r1, r2, options) => {
+	  r1 = new Range(r1, options);
+	  r2 = new Range(r2, options);
+	  return r1.intersects(r2, options)
+	};
+	intersects_1 = intersects;
+	return intersects_1;
+}
+
+var simplify;
+var hasRequiredSimplify;
+
+function requireSimplify () {
+	if (hasRequiredSimplify) return simplify;
+	hasRequiredSimplify = 1;
+
+	// given a set of versions and a range, create a "simplified" range
+	// that includes the same versions that the original range does
+	// If the original range is shorter than the simplified one, return that.
+	const satisfies = requireSatisfies();
+	const compare = requireCompare();
+	simplify = (versions, range, options) => {
+	  const set = [];
+	  let first = null;
+	  let prev = null;
+	  const v = versions.sort((a, b) => compare(a, b, options));
+	  for (const version of v) {
+	    const included = satisfies(version, range, options);
+	    if (included) {
+	      prev = version;
+	      if (!first) {
+	        first = version;
+	      }
+	    } else {
+	      if (prev) {
+	        set.push([first, prev]);
+	      }
+	      prev = null;
+	      first = null;
+	    }
+	  }
+	  if (first) {
+	    set.push([first, null]);
+	  }
+
+	  const ranges = [];
+	  for (const [min, max] of set) {
+	    if (min === max) {
+	      ranges.push(min);
+	    } else if (!max && min === v[0]) {
+	      ranges.push('*');
+	    } else if (!max) {
+	      ranges.push(`>=${min}`);
+	    } else if (min === v[0]) {
+	      ranges.push(`<=${max}`);
+	    } else {
+	      ranges.push(`${min} - ${max}`);
+	    }
+	  }
+	  const simplified = ranges.join(' || ');
+	  const original = typeof range.raw === 'string' ? range.raw : String(range);
+	  return simplified.length < original.length ? simplified : range
+	};
+	return simplify;
+}
+
+var subset_1;
+var hasRequiredSubset;
+
+function requireSubset () {
+	if (hasRequiredSubset) return subset_1;
+	hasRequiredSubset = 1;
+
+	const Range = requireRange();
+	const Comparator = requireComparator();
+	const { ANY } = Comparator;
+	const satisfies = requireSatisfies();
+	const compare = requireCompare();
+
+	// Complex range `r1 || r2 || ...` is a subset of `R1 || R2 || ...` iff:
+	// - Every simple range `r1, r2, ...` is a null set, OR
+	// - Every simple range `r1, r2, ...` which is not a null set is a subset of
+	//   some `R1, R2, ...`
+	//
+	// Simple range `c1 c2 ...` is a subset of simple range `C1 C2 ...` iff:
+	// - If c is only the ANY comparator
+	//   - If C is only the ANY comparator, return true
+	//   - Else if in prerelease mode, return false
+	//   - else replace c with `[>=0.0.0]`
+	// - If C is only the ANY comparator
+	//   - if in prerelease mode, return true
+	//   - else replace C with `[>=0.0.0]`
+	// - Let EQ be the set of = comparators in c
+	// - If EQ is more than one, return true (null set)
+	// - Let GT be the highest > or >= comparator in c
+	// - Let LT be the lowest < or <= comparator in c
+	// - If GT and LT, and GT.semver > LT.semver, return true (null set)
+	// - If any C is a = range, and GT or LT are set, return false
+	// - If EQ
+	//   - If GT, and EQ does not satisfy GT, return true (null set)
+	//   - If LT, and EQ does not satisfy LT, return true (null set)
+	//   - If EQ satisfies every C, return true
+	//   - Else return false
+	// - If GT
+	//   - If GT.semver is lower than any > or >= comp in C, return false
+	//   - If GT is >=, and GT.semver does not satisfy every C, return false
+	//   - If GT.semver has a prerelease, and not in prerelease mode
+	//     - If no C has a prerelease and the GT.semver tuple, return false
+	// - If LT
+	//   - If LT.semver is greater than any < or <= comp in C, return false
+	//   - If LT is <=, and LT.semver does not satisfy every C, return false
+	//   - If GT.semver has a prerelease, and not in prerelease mode
+	//     - If no C has a prerelease and the LT.semver tuple, return false
+	// - Else return true
+
+	const subset = (sub, dom, options = {}) => {
+	  if (sub === dom) {
+	    return true
+	  }
+
+	  sub = new Range(sub, options);
+	  dom = new Range(dom, options);
+	  let sawNonNull = false;
+
+	  OUTER: for (const simpleSub of sub.set) {
+	    for (const simpleDom of dom.set) {
+	      const isSub = simpleSubset(simpleSub, simpleDom, options);
+	      sawNonNull = sawNonNull || isSub !== null;
+	      if (isSub) {
+	        continue OUTER
+	      }
+	    }
+	    // the null set is a subset of everything, but null simple ranges in
+	    // a complex range should be ignored.  so if we saw a non-null range,
+	    // then we know this isn't a subset, but if EVERY simple range was null,
+	    // then it is a subset.
+	    if (sawNonNull) {
+	      return false
+	    }
+	  }
+	  return true
+	};
+
+	const minimumVersionWithPreRelease = [new Comparator('>=0.0.0-0')];
+	const minimumVersion = [new Comparator('>=0.0.0')];
+
+	const simpleSubset = (sub, dom, options) => {
+	  if (sub === dom) {
+	    return true
+	  }
+
+	  if (sub.length === 1 && sub[0].semver === ANY) {
+	    if (dom.length === 1 && dom[0].semver === ANY) {
+	      return true
+	    } else if (options.includePrerelease) {
+	      sub = minimumVersionWithPreRelease;
+	    } else {
+	      sub = minimumVersion;
+	    }
+	  }
+
+	  if (dom.length === 1 && dom[0].semver === ANY) {
+	    if (options.includePrerelease) {
+	      return true
+	    } else {
+	      dom = minimumVersion;
+	    }
+	  }
+
+	  const eqSet = new Set();
+	  let gt, lt;
+	  for (const c of sub) {
+	    if (c.operator === '>' || c.operator === '>=') {
+	      gt = higherGT(gt, c, options);
+	    } else if (c.operator === '<' || c.operator === '<=') {
+	      lt = lowerLT(lt, c, options);
+	    } else {
+	      eqSet.add(c.semver);
+	    }
+	  }
+
+	  if (eqSet.size > 1) {
+	    return null
+	  }
+
+	  let gtltComp;
+	  if (gt && lt) {
+	    gtltComp = compare(gt.semver, lt.semver, options);
+	    if (gtltComp > 0) {
+	      return null
+	    } else if (gtltComp === 0 && (gt.operator !== '>=' || lt.operator !== '<=')) {
+	      return null
+	    }
+	  }
+
+	  // will iterate one or zero times
+	  for (const eq of eqSet) {
+	    if (gt && !satisfies(eq, String(gt), options)) {
+	      return null
+	    }
+
+	    if (lt && !satisfies(eq, String(lt), options)) {
+	      return null
+	    }
+
+	    for (const c of dom) {
+	      if (!satisfies(eq, String(c), options)) {
+	        return false
+	      }
+	    }
+
+	    return true
+	  }
+
+	  let higher, lower;
+	  let hasDomLT, hasDomGT;
+	  // if the subset has a prerelease, we need a comparator in the superset
+	  // with the same tuple and a prerelease, or it's not a subset
+	  let needDomLTPre = lt &&
+	    !options.includePrerelease &&
+	    lt.semver.prerelease.length ? lt.semver : false;
+	  let needDomGTPre = gt &&
+	    !options.includePrerelease &&
+	    gt.semver.prerelease.length ? gt.semver : false;
+	  // exception: <1.2.3-0 is the same as <1.2.3
+	  if (needDomLTPre && needDomLTPre.prerelease.length === 1 &&
+	      lt.operator === '<' && needDomLTPre.prerelease[0] === 0) {
+	    needDomLTPre = false;
+	  }
+
+	  for (const c of dom) {
+	    hasDomGT = hasDomGT || c.operator === '>' || c.operator === '>=';
+	    hasDomLT = hasDomLT || c.operator === '<' || c.operator === '<=';
+	    if (gt) {
+	      if (needDomGTPre) {
+	        if (c.semver.prerelease && c.semver.prerelease.length &&
+	            c.semver.major === needDomGTPre.major &&
+	            c.semver.minor === needDomGTPre.minor &&
+	            c.semver.patch === needDomGTPre.patch) {
+	          needDomGTPre = false;
+	        }
+	      }
+	      if (c.operator === '>' || c.operator === '>=') {
+	        higher = higherGT(gt, c, options);
+	        if (higher === c && higher !== gt) {
+	          return false
+	        }
+	      } else if (gt.operator === '>=' && !satisfies(gt.semver, String(c), options)) {
+	        return false
+	      }
+	    }
+	    if (lt) {
+	      if (needDomLTPre) {
+	        if (c.semver.prerelease && c.semver.prerelease.length &&
+	            c.semver.major === needDomLTPre.major &&
+	            c.semver.minor === needDomLTPre.minor &&
+	            c.semver.patch === needDomLTPre.patch) {
+	          needDomLTPre = false;
+	        }
+	      }
+	      if (c.operator === '<' || c.operator === '<=') {
+	        lower = lowerLT(lt, c, options);
+	        if (lower === c && lower !== lt) {
+	          return false
+	        }
+	      } else if (lt.operator === '<=' && !satisfies(lt.semver, String(c), options)) {
+	        return false
+	      }
+	    }
+	    if (!c.operator && (lt || gt) && gtltComp !== 0) {
+	      return false
+	    }
+	  }
+
+	  // if there was a < or >, and nothing in the dom, then must be false
+	  // UNLESS it was limited by another range in the other direction.
+	  // Eg, >1.0.0 <1.0.1 is still a subset of <2.0.0
+	  if (gt && hasDomLT && !lt && gtltComp !== 0) {
+	    return false
+	  }
+
+	  if (lt && hasDomGT && !gt && gtltComp !== 0) {
+	    return false
+	  }
+
+	  // we needed a prerelease range in a specific tuple, but didn't get one
+	  // then this isn't a subset.  eg >=1.2.3-pre is not a subset of >=1.0.0,
+	  // because it includes prereleases in the 1.2.3 tuple
+	  if (needDomGTPre || needDomLTPre) {
+	    return false
+	  }
+
+	  return true
+	};
+
+	// >=1.2.3 is lower than >1.2.3
+	const higherGT = (a, b, options) => {
+	  if (!a) {
+	    return b
+	  }
+	  const comp = compare(a.semver, b.semver, options);
+	  return comp > 0 ? a
+	    : comp < 0 ? b
+	    : b.operator === '>' && a.operator === '>=' ? b
+	    : a
+	};
+
+	// <=1.2.3 is higher than <1.2.3
+	const lowerLT = (a, b, options) => {
+	  if (!a) {
+	    return b
+	  }
+	  const comp = compare(a.semver, b.semver, options);
+	  return comp < 0 ? a
+	    : comp > 0 ? b
+	    : b.operator === '<' && a.operator === '<=' ? b
+	    : a
+	};
+
+	subset_1 = subset;
+	return subset_1;
+}
+
+var semver;
+var hasRequiredSemver;
+
+function requireSemver () {
+	if (hasRequiredSemver) return semver;
+	hasRequiredSemver = 1;
+
+	// just pre-load all the stuff that index.js lazily exports
+	const internalRe = requireRe();
+	const constants = requireConstants();
+	const SemVer = requireSemver$1();
+	const identifiers = requireIdentifiers();
+	const parse = requireParse$1();
+	const valid = requireValid$1();
+	const clean = requireClean();
+	const inc = requireInc();
+	const diff = requireDiff();
+	const major = requireMajor();
+	const minor = requireMinor();
+	const patch = requirePatch();
+	const prerelease = requirePrerelease();
+	const compare = requireCompare();
+	const rcompare = requireRcompare();
+	const compareLoose = requireCompareLoose();
+	const compareBuild = requireCompareBuild();
+	const sort = requireSort();
+	const rsort = requireRsort();
+	const gt = requireGt();
+	const lt = requireLt();
+	const eq = requireEq();
+	const neq = requireNeq();
+	const gte = requireGte();
+	const lte = requireLte();
+	const cmp = requireCmp();
+	const coerce = requireCoerce();
+	const Comparator = requireComparator();
+	const Range = requireRange();
+	const satisfies = requireSatisfies();
+	const toComparators = requireToComparators();
+	const maxSatisfying = requireMaxSatisfying();
+	const minSatisfying = requireMinSatisfying();
+	const minVersion = requireMinVersion();
+	const validRange = requireValid();
+	const outside = requireOutside();
+	const gtr = requireGtr();
+	const ltr = requireLtr();
+	const intersects = requireIntersects();
+	const simplifyRange = requireSimplify();
+	const subset = requireSubset();
+	semver = {
+	  parse,
+	  valid,
+	  clean,
+	  inc,
+	  diff,
+	  major,
+	  minor,
+	  patch,
+	  prerelease,
+	  compare,
+	  rcompare,
+	  compareLoose,
+	  compareBuild,
+	  sort,
+	  rsort,
+	  gt,
+	  lt,
+	  eq,
+	  neq,
+	  gte,
+	  lte,
+	  cmp,
+	  coerce,
+	  Comparator,
+	  Range,
+	  satisfies,
+	  toComparators,
+	  maxSatisfying,
+	  minSatisfying,
+	  minVersion,
+	  validRange,
+	  outside,
+	  gtr,
+	  ltr,
+	  intersects,
+	  simplifyRange,
+	  subset,
+	  SemVer,
+	  re: internalRe.re,
+	  src: internalRe.src,
+	  tokens: internalRe.t,
+	  SEMVER_SPEC_VERSION: constants.SEMVER_SPEC_VERSION,
+	  RELEASE_TYPES: constants.RELEASE_TYPES,
+	  compareIdentifiers: identifiers.compareIdentifiers,
+	  rcompareIdentifiers: identifiers.rcompareIdentifiers,
+	};
+	return semver;
+}
+
+var semverExports = requireSemver();
+
+var toml = {};
+
+var parse = {exports: {}};
+
+var tomlParser = {exports: {}};
+
+var parser;
+var hasRequiredParser;
+
+function requireParser () {
+	if (hasRequiredParser) return parser;
+	hasRequiredParser = 1;
+	const ParserEND = 0x110000;
+	class ParserError extends Error {
+	  /* istanbul ignore next */
+	  constructor (msg, filename, linenumber) {
+	    super('[ParserError] ' + msg, filename, linenumber);
+	    this.name = 'ParserError';
+	    this.code = 'ParserError';
+	    if (Error.captureStackTrace) Error.captureStackTrace(this, ParserError);
+	  }
+	}
+	class State {
+	  constructor (parser) {
+	    this.parser = parser;
+	    this.buf = '';
+	    this.returned = null;
+	    this.result = null;
+	    this.resultTable = null;
+	    this.resultArr = null;
+	  }
+	}
+	class Parser {
+	  constructor () {
+	    this.pos = 0;
+	    this.col = 0;
+	    this.line = 0;
+	    this.obj = {};
+	    this.ctx = this.obj;
+	    this.stack = [];
+	    this._buf = '';
+	    this.char = null;
+	    this.ii = 0;
+	    this.state = new State(this.parseStart);
+	  }
+
+	  parse (str) {
+	    /* istanbul ignore next */
+	    if (str.length === 0 || str.length == null) return
+
+	    this._buf = String(str);
+	    this.ii = -1;
+	    this.char = -1;
+	    let getNext;
+	    while (getNext === false || this.nextChar()) {
+	      getNext = this.runOne();
+	    }
+	    this._buf = null;
+	  }
+	  nextChar () {
+	    if (this.char === 0x0A) {
+	      ++this.line;
+	      this.col = -1;
+	    }
+	    ++this.ii;
+	    this.char = this._buf.codePointAt(this.ii);
+	    ++this.pos;
+	    ++this.col;
+	    return this.haveBuffer()
+	  }
+	  haveBuffer () {
+	    return this.ii < this._buf.length
+	  }
+	  runOne () {
+	    return this.state.parser.call(this, this.state.returned)
+	  }
+	  finish () {
+	    this.char = ParserEND;
+	    let last;
+	    do {
+	      last = this.state.parser;
+	      this.runOne();
+	    } while (this.state.parser !== last)
+
+	    this.ctx = null;
+	    this.state = null;
+	    this._buf = null;
+
+	    return this.obj
+	  }
+	  next (fn) {
+	    /* istanbul ignore next */
+	    if (typeof fn !== 'function') throw new ParserError('Tried to set state to non-existent state: ' + JSON.stringify(fn))
+	    this.state.parser = fn;
+	  }
+	  goto (fn) {
+	    this.next(fn);
+	    return this.runOne()
+	  }
+	  call (fn, returnWith) {
+	    if (returnWith) this.next(returnWith);
+	    this.stack.push(this.state);
+	    this.state = new State(fn);
+	  }
+	  callNow (fn, returnWith) {
+	    this.call(fn, returnWith);
+	    return this.runOne()
+	  }
+	  return (value) {
+	    /* istanbul ignore next */
+	    if (this.stack.length === 0) throw this.error(new ParserError('Stack underflow'))
+	    if (value === undefined) value = this.state.buf;
+	    this.state = this.stack.pop();
+	    this.state.returned = value;
+	  }
+	  returnNow (value) {
+	    this.return(value);
+	    return this.runOne()
+	  }
+	  consume () {
+	    /* istanbul ignore next */
+	    if (this.char === ParserEND) throw this.error(new ParserError('Unexpected end-of-buffer'))
+	    this.state.buf += this._buf[this.ii];
+	  }
+	  error (err) {
+	    err.line = this.line;
+	    err.col = this.col;
+	    err.pos = this.pos;
+	    return err
+	  }
+	  /* istanbul ignore next */
+	  parseStart () {
+	    throw new ParserError('Must declare a parseStart method')
+	  }
+	}
+	Parser.END = ParserEND;
+	Parser.Error = ParserError;
+	parser = Parser;
+	return parser;
+}
+
+var createDatetime;
+var hasRequiredCreateDatetime;
+
+function requireCreateDatetime () {
+	if (hasRequiredCreateDatetime) return createDatetime;
+	hasRequiredCreateDatetime = 1;
+	createDatetime = value => {
+	  const date = new Date(value);
+	  /* istanbul ignore if */
+	  if (isNaN(date)) {
+	    throw new TypeError('Invalid Datetime')
+	  } else {
+	    return date
+	  }
+	};
+	return createDatetime;
+}
+
+var formatNum;
+var hasRequiredFormatNum;
+
+function requireFormatNum () {
+	if (hasRequiredFormatNum) return formatNum;
+	hasRequiredFormatNum = 1;
+	formatNum = (d, num) => {
+	  num = String(num);
+	  while (num.length < d) num = '0' + num;
+	  return num
+	};
+	return formatNum;
+}
+
+var createDatetimeFloat;
+var hasRequiredCreateDatetimeFloat;
+
+function requireCreateDatetimeFloat () {
+	if (hasRequiredCreateDatetimeFloat) return createDatetimeFloat;
+	hasRequiredCreateDatetimeFloat = 1;
+	const f = requireFormatNum();
+
+	class FloatingDateTime extends Date {
+	  constructor (value) {
+	    super(value + 'Z');
+	    this.isFloating = true;
+	  }
+	  toISOString () {
+	    const date = `${this.getUTCFullYear()}-${f(2, this.getUTCMonth() + 1)}-${f(2, this.getUTCDate())}`;
+	    const time = `${f(2, this.getUTCHours())}:${f(2, this.getUTCMinutes())}:${f(2, this.getUTCSeconds())}.${f(3, this.getUTCMilliseconds())}`;
+	    return `${date}T${time}`
+	  }
+	}
+
+	createDatetimeFloat = value => {
+	  const date = new FloatingDateTime(value);
+	  /* istanbul ignore if */
+	  if (isNaN(date)) {
+	    throw new TypeError('Invalid Datetime')
+	  } else {
+	    return date
+	  }
+	};
+	return createDatetimeFloat;
+}
+
+var createDate;
+var hasRequiredCreateDate;
+
+function requireCreateDate () {
+	if (hasRequiredCreateDate) return createDate;
+	hasRequiredCreateDate = 1;
+	const f = requireFormatNum();
+	const DateTime = commonjsGlobal.Date;
+
+	class Date extends DateTime {
+	  constructor (value) {
+	    super(value);
+	    this.isDate = true;
+	  }
+	  toISOString () {
+	    return `${this.getUTCFullYear()}-${f(2, this.getUTCMonth() + 1)}-${f(2, this.getUTCDate())}`
+	  }
+	}
+
+	createDate = value => {
+	  const date = new Date(value);
+	  /* istanbul ignore if */
+	  if (isNaN(date)) {
+	    throw new TypeError('Invalid Datetime')
+	  } else {
+	    return date
+	  }
+	};
+	return createDate;
+}
+
+var createTime;
+var hasRequiredCreateTime;
+
+function requireCreateTime () {
+	if (hasRequiredCreateTime) return createTime;
+	hasRequiredCreateTime = 1;
+	const f = requireFormatNum();
+
+	class Time extends Date {
+	  constructor (value) {
+	    super(`0000-01-01T${value}Z`);
+	    this.isTime = true;
+	  }
+	  toISOString () {
+	    return `${f(2, this.getUTCHours())}:${f(2, this.getUTCMinutes())}:${f(2, this.getUTCSeconds())}.${f(3, this.getUTCMilliseconds())}`
+	  }
+	}
+
+	createTime = value => {
+	  const date = new Time(value);
+	  /* istanbul ignore if */
+	  if (isNaN(date)) {
+	    throw new TypeError('Invalid Datetime')
+	  } else {
+	    return date
+	  }
+	};
+	return createTime;
+}
+
+var hasRequiredTomlParser;
+
+function requireTomlParser () {
+	if (hasRequiredTomlParser) return tomlParser.exports;
+	hasRequiredTomlParser = 1;
+	/* eslint-disable no-new-wrappers, no-eval, camelcase, operator-linebreak */
+	tomlParser.exports = makeParserClass(requireParser());
+	tomlParser.exports.makeParserClass = makeParserClass;
+
+	class TomlError extends Error {
+	  constructor (msg) {
+	    super(msg);
+	    this.name = 'TomlError';
+	    /* istanbul ignore next */
+	    if (Error.captureStackTrace) Error.captureStackTrace(this, TomlError);
+	    this.fromTOML = true;
+	    this.wrapped = null;
+	  }
+	}
+	TomlError.wrap = err => {
+	  const terr = new TomlError(err.message);
+	  terr.code = err.code;
+	  terr.wrapped = err;
+	  return terr
+	};
+	tomlParser.exports.TomlError = TomlError;
+
+	const createDateTime = requireCreateDatetime();
+	const createDateTimeFloat = requireCreateDatetimeFloat();
+	const createDate = requireCreateDate();
+	const createTime = requireCreateTime();
+
+	const CTRL_I = 0x09;
+	const CTRL_J = 0x0A;
+	const CTRL_M = 0x0D;
+	const CTRL_CHAR_BOUNDARY = 0x1F; // the last non-character in the latin1 region of unicode, except DEL
+	const CHAR_SP = 0x20;
+	const CHAR_QUOT = 0x22;
+	const CHAR_NUM = 0x23;
+	const CHAR_APOS = 0x27;
+	const CHAR_PLUS = 0x2B;
+	const CHAR_COMMA = 0x2C;
+	const CHAR_HYPHEN = 0x2D;
+	const CHAR_PERIOD = 0x2E;
+	const CHAR_0 = 0x30;
+	const CHAR_1 = 0x31;
+	const CHAR_7 = 0x37;
+	const CHAR_9 = 0x39;
+	const CHAR_COLON = 0x3A;
+	const CHAR_EQUALS = 0x3D;
+	const CHAR_A = 0x41;
+	const CHAR_E = 0x45;
+	const CHAR_F = 0x46;
+	const CHAR_T = 0x54;
+	const CHAR_U = 0x55;
+	const CHAR_Z = 0x5A;
+	const CHAR_LOWBAR = 0x5F;
+	const CHAR_a = 0x61;
+	const CHAR_b = 0x62;
+	const CHAR_e = 0x65;
+	const CHAR_f = 0x66;
+	const CHAR_i = 0x69;
+	const CHAR_l = 0x6C;
+	const CHAR_n = 0x6E;
+	const CHAR_o = 0x6F;
+	const CHAR_r = 0x72;
+	const CHAR_s = 0x73;
+	const CHAR_t = 0x74;
+	const CHAR_u = 0x75;
+	const CHAR_x = 0x78;
+	const CHAR_z = 0x7A;
+	const CHAR_LCUB = 0x7B;
+	const CHAR_RCUB = 0x7D;
+	const CHAR_LSQB = 0x5B;
+	const CHAR_BSOL = 0x5C;
+	const CHAR_RSQB = 0x5D;
+	const CHAR_DEL = 0x7F;
+	const SURROGATE_FIRST = 0xD800;
+	const SURROGATE_LAST = 0xDFFF;
+
+	const escapes = {
+	  [CHAR_b]: '\u0008',
+	  [CHAR_t]: '\u0009',
+	  [CHAR_n]: '\u000A',
+	  [CHAR_f]: '\u000C',
+	  [CHAR_r]: '\u000D',
+	  [CHAR_QUOT]: '\u0022',
+	  [CHAR_BSOL]: '\u005C'
+	};
+
+	function isDigit (cp) {
+	  return cp >= CHAR_0 && cp <= CHAR_9
+	}
+	function isHexit (cp) {
+	  return (cp >= CHAR_A && cp <= CHAR_F) || (cp >= CHAR_a && cp <= CHAR_f) || (cp >= CHAR_0 && cp <= CHAR_9)
+	}
+	function isBit (cp) {
+	  return cp === CHAR_1 || cp === CHAR_0
+	}
+	function isOctit (cp) {
+	  return (cp >= CHAR_0 && cp <= CHAR_7)
+	}
+	function isAlphaNumQuoteHyphen (cp) {
+	  return (cp >= CHAR_A && cp <= CHAR_Z)
+	      || (cp >= CHAR_a && cp <= CHAR_z)
+	      || (cp >= CHAR_0 && cp <= CHAR_9)
+	      || cp === CHAR_APOS
+	      || cp === CHAR_QUOT
+	      || cp === CHAR_LOWBAR
+	      || cp === CHAR_HYPHEN
+	}
+	function isAlphaNumHyphen (cp) {
+	  return (cp >= CHAR_A && cp <= CHAR_Z)
+	      || (cp >= CHAR_a && cp <= CHAR_z)
+	      || (cp >= CHAR_0 && cp <= CHAR_9)
+	      || cp === CHAR_LOWBAR
+	      || cp === CHAR_HYPHEN
+	}
+	const _type = Symbol('type');
+	const _declared = Symbol('declared');
+
+	const hasOwnProperty = Object.prototype.hasOwnProperty;
+	const defineProperty = Object.defineProperty;
+	const descriptor = {configurable: true, enumerable: true, writable: true, value: undefined};
+
+	function hasKey (obj, key) {
+	  if (hasOwnProperty.call(obj, key)) return true
+	  if (key === '__proto__') defineProperty(obj, '__proto__', descriptor);
+	  return false
+	}
+
+	const INLINE_TABLE = Symbol('inline-table');
+	function InlineTable () {
+	  return Object.defineProperties({}, {
+	    [_type]: {value: INLINE_TABLE}
+	  })
+	}
+	function isInlineTable (obj) {
+	  if (obj === null || typeof (obj) !== 'object') return false
+	  return obj[_type] === INLINE_TABLE
+	}
+
+	const TABLE = Symbol('table');
+	function Table () {
+	  return Object.defineProperties({}, {
+	    [_type]: {value: TABLE},
+	    [_declared]: {value: false, writable: true}
+	  })
+	}
+	function isTable (obj) {
+	  if (obj === null || typeof (obj) !== 'object') return false
+	  return obj[_type] === TABLE
+	}
+
+	const _contentType = Symbol('content-type');
+	const INLINE_LIST = Symbol('inline-list');
+	function InlineList (type) {
+	  return Object.defineProperties([], {
+	    [_type]: {value: INLINE_LIST},
+	    [_contentType]: {value: type}
+	  })
+	}
+	function isInlineList (obj) {
+	  if (obj === null || typeof (obj) !== 'object') return false
+	  return obj[_type] === INLINE_LIST
+	}
+
+	const LIST = Symbol('list');
+	function List () {
+	  return Object.defineProperties([], {
+	    [_type]: {value: LIST}
+	  })
+	}
+	function isList (obj) {
+	  if (obj === null || typeof (obj) !== 'object') return false
+	  return obj[_type] === LIST
+	}
+
+	// in an eval, to let bundlers not slurp in a util proxy
+	let _custom;
+	try {
+	  const utilInspect = eval("require('util').inspect");
+	  _custom = utilInspect.custom;
+	} catch (_) {
+	  /* eval require not available in transpiled bundle */
+	}
+	/* istanbul ignore next */
+	const _inspect = _custom || 'inspect';
+
+	class BoxedBigInt {
+	  constructor (value) {
+	    try {
+	      this.value = commonjsGlobal.BigInt.asIntN(64, value);
+	    } catch (_) {
+	      /* istanbul ignore next */
+	      this.value = null;
+	    }
+	    Object.defineProperty(this, _type, {value: INTEGER});
+	  }
+	  isNaN () {
+	    return this.value === null
+	  }
+	  /* istanbul ignore next */
+	  toString () {
+	    return String(this.value)
+	  }
+	  /* istanbul ignore next */
+	  [_inspect] () {
+	    return `[BigInt: ${this.toString()}]}`
+	  }
+	  valueOf () {
+	    return this.value
+	  }
+	}
+
+	const INTEGER = Symbol('integer');
+	function Integer (value) {
+	  let num = Number(value);
+	  // -0 is a float thing, not an int thing
+	  if (Object.is(num, -0)) num = 0;
+	  /* istanbul ignore else */
+	  if (commonjsGlobal.BigInt && !Number.isSafeInteger(num)) {
+	    return new BoxedBigInt(value)
+	  } else {
+	    /* istanbul ignore next */
+	    return Object.defineProperties(new Number(num), {
+	      isNaN: {value: function () { return isNaN(this) }},
+	      [_type]: {value: INTEGER},
+	      [_inspect]: {value: () => `[Integer: ${value}]`}
+	    })
+	  }
+	}
+	function isInteger (obj) {
+	  if (obj === null || typeof (obj) !== 'object') return false
+	  return obj[_type] === INTEGER
+	}
+
+	const FLOAT = Symbol('float');
+	function Float (value) {
+	  /* istanbul ignore next */
+	  return Object.defineProperties(new Number(value), {
+	    [_type]: {value: FLOAT},
+	    [_inspect]: {value: () => `[Float: ${value}]`}
+	  })
+	}
+	function isFloat (obj) {
+	  if (obj === null || typeof (obj) !== 'object') return false
+	  return obj[_type] === FLOAT
+	}
+
+	function tomlType (value) {
+	  const type = typeof value;
+	  if (type === 'object') {
+	    /* istanbul ignore if */
+	    if (value === null) return 'null'
+	    if (value instanceof Date) return 'datetime'
+	    /* istanbul ignore else */
+	    if (_type in value) {
+	      switch (value[_type]) {
+	        case INLINE_TABLE: return 'inline-table'
+	        case INLINE_LIST: return 'inline-list'
+	        /* istanbul ignore next */
+	        case TABLE: return 'table'
+	        /* istanbul ignore next */
+	        case LIST: return 'list'
+	        case FLOAT: return 'float'
+	        case INTEGER: return 'integer'
+	      }
+	    }
+	  }
+	  return type
+	}
+
+	function makeParserClass (Parser) {
+	  class TOMLParser extends Parser {
+	    constructor () {
+	      super();
+	      this.ctx = this.obj = Table();
+	    }
+
+	    /* MATCH HELPER */
+	    atEndOfWord () {
+	      return this.char === CHAR_NUM || this.char === CTRL_I || this.char === CHAR_SP || this.atEndOfLine()
+	    }
+	    atEndOfLine () {
+	      return this.char === Parser.END || this.char === CTRL_J || this.char === CTRL_M
+	    }
+
+	    parseStart () {
+	      if (this.char === Parser.END) {
+	        return null
+	      } else if (this.char === CHAR_LSQB) {
+	        return this.call(this.parseTableOrList)
+	      } else if (this.char === CHAR_NUM) {
+	        return this.call(this.parseComment)
+	      } else if (this.char === CTRL_J || this.char === CHAR_SP || this.char === CTRL_I || this.char === CTRL_M) {
+	        return null
+	      } else if (isAlphaNumQuoteHyphen(this.char)) {
+	        return this.callNow(this.parseAssignStatement)
+	      } else {
+	        throw this.error(new TomlError(`Unknown character "${this.char}"`))
+	      }
+	    }
+
+	    // HELPER, this strips any whitespace and comments to the end of the line
+	    // then RETURNS. Last state in a production.
+	    parseWhitespaceToEOL () {
+	      if (this.char === CHAR_SP || this.char === CTRL_I || this.char === CTRL_M) {
+	        return null
+	      } else if (this.char === CHAR_NUM) {
+	        return this.goto(this.parseComment)
+	      } else if (this.char === Parser.END || this.char === CTRL_J) {
+	        return this.return()
+	      } else {
+	        throw this.error(new TomlError('Unexpected character, expected only whitespace or comments till end of line'))
+	      }
+	    }
+
+	    /* ASSIGNMENT: key = value */
+	    parseAssignStatement () {
+	      return this.callNow(this.parseAssign, this.recordAssignStatement)
+	    }
+	    recordAssignStatement (kv) {
+	      let target = this.ctx;
+	      let finalKey = kv.key.pop();
+	      for (let kw of kv.key) {
+	        if (hasKey(target, kw) && (!isTable(target[kw]) || target[kw][_declared])) {
+	          throw this.error(new TomlError("Can't redefine existing key"))
+	        }
+	        target = target[kw] = target[kw] || Table();
+	      }
+	      if (hasKey(target, finalKey)) {
+	        throw this.error(new TomlError("Can't redefine existing key"))
+	      }
+	      // unbox our numbers
+	      if (isInteger(kv.value) || isFloat(kv.value)) {
+	        target[finalKey] = kv.value.valueOf();
+	      } else {
+	        target[finalKey] = kv.value;
+	      }
+	      return this.goto(this.parseWhitespaceToEOL)
+	    }
+
+	    /* ASSSIGNMENT expression, key = value possibly inside an inline table */
+	    parseAssign () {
+	      return this.callNow(this.parseKeyword, this.recordAssignKeyword)
+	    }
+	    recordAssignKeyword (key) {
+	      if (this.state.resultTable) {
+	        this.state.resultTable.push(key);
+	      } else {
+	        this.state.resultTable = [key];
+	      }
+	      return this.goto(this.parseAssignKeywordPreDot)
+	    }
+	    parseAssignKeywordPreDot () {
+	      if (this.char === CHAR_PERIOD) {
+	        return this.next(this.parseAssignKeywordPostDot)
+	      } else if (this.char !== CHAR_SP && this.char !== CTRL_I) {
+	        return this.goto(this.parseAssignEqual)
+	      }
+	    }
+	    parseAssignKeywordPostDot () {
+	      if (this.char !== CHAR_SP && this.char !== CTRL_I) {
+	        return this.callNow(this.parseKeyword, this.recordAssignKeyword)
+	      }
+	    }
+
+	    parseAssignEqual () {
+	      if (this.char === CHAR_EQUALS) {
+	        return this.next(this.parseAssignPreValue)
+	      } else {
+	        throw this.error(new TomlError('Invalid character, expected "="'))
+	      }
+	    }
+	    parseAssignPreValue () {
+	      if (this.char === CHAR_SP || this.char === CTRL_I) {
+	        return null
+	      } else {
+	        return this.callNow(this.parseValue, this.recordAssignValue)
+	      }
+	    }
+	    recordAssignValue (value) {
+	      return this.returnNow({key: this.state.resultTable, value: value})
+	    }
+
+	    /* COMMENTS: #...eol */
+	    parseComment () {
+	      do {
+	        if (this.char === Parser.END || this.char === CTRL_J) {
+	          return this.return()
+	        }
+	      } while (this.nextChar())
+	    }
+
+	    /* TABLES AND LISTS, [foo] and [[foo]] */
+	    parseTableOrList () {
+	      if (this.char === CHAR_LSQB) {
+	        this.next(this.parseList);
+	      } else {
+	        return this.goto(this.parseTable)
+	      }
+	    }
+
+	    /* TABLE [foo.bar.baz] */
+	    parseTable () {
+	      this.ctx = this.obj;
+	      return this.goto(this.parseTableNext)
+	    }
+	    parseTableNext () {
+	      if (this.char === CHAR_SP || this.char === CTRL_I) {
+	        return null
+	      } else {
+	        return this.callNow(this.parseKeyword, this.parseTableMore)
+	      }
+	    }
+	    parseTableMore (keyword) {
+	      if (this.char === CHAR_SP || this.char === CTRL_I) {
+	        return null
+	      } else if (this.char === CHAR_RSQB) {
+	        if (hasKey(this.ctx, keyword) && (!isTable(this.ctx[keyword]) || this.ctx[keyword][_declared])) {
+	          throw this.error(new TomlError("Can't redefine existing key"))
+	        } else {
+	          this.ctx = this.ctx[keyword] = this.ctx[keyword] || Table();
+	          this.ctx[_declared] = true;
+	        }
+	        return this.next(this.parseWhitespaceToEOL)
+	      } else if (this.char === CHAR_PERIOD) {
+	        if (!hasKey(this.ctx, keyword)) {
+	          this.ctx = this.ctx[keyword] = Table();
+	        } else if (isTable(this.ctx[keyword])) {
+	          this.ctx = this.ctx[keyword];
+	        } else if (isList(this.ctx[keyword])) {
+	          this.ctx = this.ctx[keyword][this.ctx[keyword].length - 1];
+	        } else {
+	          throw this.error(new TomlError("Can't redefine existing key"))
+	        }
+	        return this.next(this.parseTableNext)
+	      } else {
+	        throw this.error(new TomlError('Unexpected character, expected whitespace, . or ]'))
+	      }
+	    }
+
+	    /* LIST [[a.b.c]] */
+	    parseList () {
+	      this.ctx = this.obj;
+	      return this.goto(this.parseListNext)
+	    }
+	    parseListNext () {
+	      if (this.char === CHAR_SP || this.char === CTRL_I) {
+	        return null
+	      } else {
+	        return this.callNow(this.parseKeyword, this.parseListMore)
+	      }
+	    }
+	    parseListMore (keyword) {
+	      if (this.char === CHAR_SP || this.char === CTRL_I) {
+	        return null
+	      } else if (this.char === CHAR_RSQB) {
+	        if (!hasKey(this.ctx, keyword)) {
+	          this.ctx[keyword] = List();
+	        }
+	        if (isInlineList(this.ctx[keyword])) {
+	          throw this.error(new TomlError("Can't extend an inline array"))
+	        } else if (isList(this.ctx[keyword])) {
+	          const next = Table();
+	          this.ctx[keyword].push(next);
+	          this.ctx = next;
+	        } else {
+	          throw this.error(new TomlError("Can't redefine an existing key"))
+	        }
+	        return this.next(this.parseListEnd)
+	      } else if (this.char === CHAR_PERIOD) {
+	        if (!hasKey(this.ctx, keyword)) {
+	          this.ctx = this.ctx[keyword] = Table();
+	        } else if (isInlineList(this.ctx[keyword])) {
+	          throw this.error(new TomlError("Can't extend an inline array"))
+	        } else if (isInlineTable(this.ctx[keyword])) {
+	          throw this.error(new TomlError("Can't extend an inline table"))
+	        } else if (isList(this.ctx[keyword])) {
+	          this.ctx = this.ctx[keyword][this.ctx[keyword].length - 1];
+	        } else if (isTable(this.ctx[keyword])) {
+	          this.ctx = this.ctx[keyword];
+	        } else {
+	          throw this.error(new TomlError("Can't redefine an existing key"))
+	        }
+	        return this.next(this.parseListNext)
+	      } else {
+	        throw this.error(new TomlError('Unexpected character, expected whitespace, . or ]'))
+	      }
+	    }
+	    parseListEnd (keyword) {
+	      if (this.char === CHAR_RSQB) {
+	        return this.next(this.parseWhitespaceToEOL)
+	      } else {
+	        throw this.error(new TomlError('Unexpected character, expected whitespace, . or ]'))
+	      }
+	    }
+
+	    /* VALUE string, number, boolean, inline list, inline object */
+	    parseValue () {
+	      if (this.char === Parser.END) {
+	        throw this.error(new TomlError('Key without value'))
+	      } else if (this.char === CHAR_QUOT) {
+	        return this.next(this.parseDoubleString)
+	      } if (this.char === CHAR_APOS) {
+	        return this.next(this.parseSingleString)
+	      } else if (this.char === CHAR_HYPHEN || this.char === CHAR_PLUS) {
+	        return this.goto(this.parseNumberSign)
+	      } else if (this.char === CHAR_i) {
+	        return this.next(this.parseInf)
+	      } else if (this.char === CHAR_n) {
+	        return this.next(this.parseNan)
+	      } else if (isDigit(this.char)) {
+	        return this.goto(this.parseNumberOrDateTime)
+	      } else if (this.char === CHAR_t || this.char === CHAR_f) {
+	        return this.goto(this.parseBoolean)
+	      } else if (this.char === CHAR_LSQB) {
+	        return this.call(this.parseInlineList, this.recordValue)
+	      } else if (this.char === CHAR_LCUB) {
+	        return this.call(this.parseInlineTable, this.recordValue)
+	      } else {
+	        throw this.error(new TomlError('Unexpected character, expecting string, number, datetime, boolean, inline array or inline table'))
+	      }
+	    }
+	    recordValue (value) {
+	      return this.returnNow(value)
+	    }
+
+	    parseInf () {
+	      if (this.char === CHAR_n) {
+	        return this.next(this.parseInf2)
+	      } else {
+	        throw this.error(new TomlError('Unexpected character, expected "inf", "+inf" or "-inf"'))
+	      }
+	    }
+	    parseInf2 () {
+	      if (this.char === CHAR_f) {
+	        if (this.state.buf === '-') {
+	          return this.return(-Infinity)
+	        } else {
+	          return this.return(Infinity)
+	        }
+	      } else {
+	        throw this.error(new TomlError('Unexpected character, expected "inf", "+inf" or "-inf"'))
+	      }
+	    }
+
+	    parseNan () {
+	      if (this.char === CHAR_a) {
+	        return this.next(this.parseNan2)
+	      } else {
+	        throw this.error(new TomlError('Unexpected character, expected "nan"'))
+	      }
+	    }
+	    parseNan2 () {
+	      if (this.char === CHAR_n) {
+	        return this.return(NaN)
+	      } else {
+	        throw this.error(new TomlError('Unexpected character, expected "nan"'))
+	      }
+	    }
+
+	    /* KEYS, barewords or basic, literal, or dotted */
+	    parseKeyword () {
+	      if (this.char === CHAR_QUOT) {
+	        return this.next(this.parseBasicString)
+	      } else if (this.char === CHAR_APOS) {
+	        return this.next(this.parseLiteralString)
+	      } else {
+	        return this.goto(this.parseBareKey)
+	      }
+	    }
+
+	    /* KEYS: barewords */
+	    parseBareKey () {
+	      do {
+	        if (this.char === Parser.END) {
+	          throw this.error(new TomlError('Key ended without value'))
+	        } else if (isAlphaNumHyphen(this.char)) {
+	          this.consume();
+	        } else if (this.state.buf.length === 0) {
+	          throw this.error(new TomlError('Empty bare keys are not allowed'))
+	        } else {
+	          return this.returnNow()
+	        }
+	      } while (this.nextChar())
+	    }
+
+	    /* STRINGS, single quoted (literal) */
+	    parseSingleString () {
+	      if (this.char === CHAR_APOS) {
+	        return this.next(this.parseLiteralMultiStringMaybe)
+	      } else {
+	        return this.goto(this.parseLiteralString)
+	      }
+	    }
+	    parseLiteralString () {
+	      do {
+	        if (this.char === CHAR_APOS) {
+	          return this.return()
+	        } else if (this.atEndOfLine()) {
+	          throw this.error(new TomlError('Unterminated string'))
+	        } else if (this.char === CHAR_DEL || (this.char <= CTRL_CHAR_BOUNDARY && this.char !== CTRL_I)) {
+	          throw this.errorControlCharInString()
+	        } else {
+	          this.consume();
+	        }
+	      } while (this.nextChar())
+	    }
+	    parseLiteralMultiStringMaybe () {
+	      if (this.char === CHAR_APOS) {
+	        return this.next(this.parseLiteralMultiString)
+	      } else {
+	        return this.returnNow()
+	      }
+	    }
+	    parseLiteralMultiString () {
+	      if (this.char === CTRL_M) {
+	        return null
+	      } else if (this.char === CTRL_J) {
+	        return this.next(this.parseLiteralMultiStringContent)
+	      } else {
+	        return this.goto(this.parseLiteralMultiStringContent)
+	      }
+	    }
+	    parseLiteralMultiStringContent () {
+	      do {
+	        if (this.char === CHAR_APOS) {
+	          return this.next(this.parseLiteralMultiEnd)
+	        } else if (this.char === Parser.END) {
+	          throw this.error(new TomlError('Unterminated multi-line string'))
+	        } else if (this.char === CHAR_DEL || (this.char <= CTRL_CHAR_BOUNDARY && this.char !== CTRL_I && this.char !== CTRL_J && this.char !== CTRL_M)) {
+	          throw this.errorControlCharInString()
+	        } else {
+	          this.consume();
+	        }
+	      } while (this.nextChar())
+	    }
+	    parseLiteralMultiEnd () {
+	      if (this.char === CHAR_APOS) {
+	        return this.next(this.parseLiteralMultiEnd2)
+	      } else {
+	        this.state.buf += "'";
+	        return this.goto(this.parseLiteralMultiStringContent)
+	      }
+	    }
+	    parseLiteralMultiEnd2 () {
+	      if (this.char === CHAR_APOS) {
+	        return this.return()
+	      } else {
+	        this.state.buf += "''";
+	        return this.goto(this.parseLiteralMultiStringContent)
+	      }
+	    }
+
+	    /* STRINGS double quoted */
+	    parseDoubleString () {
+	      if (this.char === CHAR_QUOT) {
+	        return this.next(this.parseMultiStringMaybe)
+	      } else {
+	        return this.goto(this.parseBasicString)
+	      }
+	    }
+	    parseBasicString () {
+	      do {
+	        if (this.char === CHAR_BSOL) {
+	          return this.call(this.parseEscape, this.recordEscapeReplacement)
+	        } else if (this.char === CHAR_QUOT) {
+	          return this.return()
+	        } else if (this.atEndOfLine()) {
+	          throw this.error(new TomlError('Unterminated string'))
+	        } else if (this.char === CHAR_DEL || (this.char <= CTRL_CHAR_BOUNDARY && this.char !== CTRL_I)) {
+	          throw this.errorControlCharInString()
+	        } else {
+	          this.consume();
+	        }
+	      } while (this.nextChar())
+	    }
+	    recordEscapeReplacement (replacement) {
+	      this.state.buf += replacement;
+	      return this.goto(this.parseBasicString)
+	    }
+	    parseMultiStringMaybe () {
+	      if (this.char === CHAR_QUOT) {
+	        return this.next(this.parseMultiString)
+	      } else {
+	        return this.returnNow()
+	      }
+	    }
+	    parseMultiString () {
+	      if (this.char === CTRL_M) {
+	        return null
+	      } else if (this.char === CTRL_J) {
+	        return this.next(this.parseMultiStringContent)
+	      } else {
+	        return this.goto(this.parseMultiStringContent)
+	      }
+	    }
+	    parseMultiStringContent () {
+	      do {
+	        if (this.char === CHAR_BSOL) {
+	          return this.call(this.parseMultiEscape, this.recordMultiEscapeReplacement)
+	        } else if (this.char === CHAR_QUOT) {
+	          return this.next(this.parseMultiEnd)
+	        } else if (this.char === Parser.END) {
+	          throw this.error(new TomlError('Unterminated multi-line string'))
+	        } else if (this.char === CHAR_DEL || (this.char <= CTRL_CHAR_BOUNDARY && this.char !== CTRL_I && this.char !== CTRL_J && this.char !== CTRL_M)) {
+	          throw this.errorControlCharInString()
+	        } else {
+	          this.consume();
+	        }
+	      } while (this.nextChar())
+	    }
+	    errorControlCharInString () {
+	      let displayCode = '\\u00';
+	      if (this.char < 16) {
+	        displayCode += '0';
+	      }
+	      displayCode += this.char.toString(16);
+
+	      return this.error(new TomlError(`Control characters (codes < 0x1f and 0x7f) are not allowed in strings, use ${displayCode} instead`))
+	    }
+	    recordMultiEscapeReplacement (replacement) {
+	      this.state.buf += replacement;
+	      return this.goto(this.parseMultiStringContent)
+	    }
+	    parseMultiEnd () {
+	      if (this.char === CHAR_QUOT) {
+	        return this.next(this.parseMultiEnd2)
+	      } else {
+	        this.state.buf += '"';
+	        return this.goto(this.parseMultiStringContent)
+	      }
+	    }
+	    parseMultiEnd2 () {
+	      if (this.char === CHAR_QUOT) {
+	        return this.return()
+	      } else {
+	        this.state.buf += '""';
+	        return this.goto(this.parseMultiStringContent)
+	      }
+	    }
+	    parseMultiEscape () {
+	      if (this.char === CTRL_M || this.char === CTRL_J) {
+	        return this.next(this.parseMultiTrim)
+	      } else if (this.char === CHAR_SP || this.char === CTRL_I) {
+	        return this.next(this.parsePreMultiTrim)
+	      } else {
+	        return this.goto(this.parseEscape)
+	      }
+	    }
+	    parsePreMultiTrim () {
+	      if (this.char === CHAR_SP || this.char === CTRL_I) {
+	        return null
+	      } else if (this.char === CTRL_M || this.char === CTRL_J) {
+	        return this.next(this.parseMultiTrim)
+	      } else {
+	        throw this.error(new TomlError("Can't escape whitespace"))
+	      }
+	    }
+	    parseMultiTrim () {
+	      // explicitly whitespace here, END should follow the same path as chars
+	      if (this.char === CTRL_J || this.char === CHAR_SP || this.char === CTRL_I || this.char === CTRL_M) {
+	        return null
+	      } else {
+	        return this.returnNow()
+	      }
+	    }
+	    parseEscape () {
+	      if (this.char in escapes) {
+	        return this.return(escapes[this.char])
+	      } else if (this.char === CHAR_u) {
+	        return this.call(this.parseSmallUnicode, this.parseUnicodeReturn)
+	      } else if (this.char === CHAR_U) {
+	        return this.call(this.parseLargeUnicode, this.parseUnicodeReturn)
+	      } else {
+	        throw this.error(new TomlError('Unknown escape character: ' + this.char))
+	      }
+	    }
+	    parseUnicodeReturn (char) {
+	      try {
+	        const codePoint = parseInt(char, 16);
+	        if (codePoint >= SURROGATE_FIRST && codePoint <= SURROGATE_LAST) {
+	          throw this.error(new TomlError('Invalid unicode, character in range 0xD800 - 0xDFFF is reserved'))
+	        }
+	        return this.returnNow(String.fromCodePoint(codePoint))
+	      } catch (err) {
+	        throw this.error(TomlError.wrap(err))
+	      }
+	    }
+	    parseSmallUnicode () {
+	      if (!isHexit(this.char)) {
+	        throw this.error(new TomlError('Invalid character in unicode sequence, expected hex'))
+	      } else {
+	        this.consume();
+	        if (this.state.buf.length >= 4) return this.return()
+	      }
+	    }
+	    parseLargeUnicode () {
+	      if (!isHexit(this.char)) {
+	        throw this.error(new TomlError('Invalid character in unicode sequence, expected hex'))
+	      } else {
+	        this.consume();
+	        if (this.state.buf.length >= 8) return this.return()
+	      }
+	    }
+
+	    /* NUMBERS */
+	    parseNumberSign () {
+	      this.consume();
+	      return this.next(this.parseMaybeSignedInfOrNan)
+	    }
+	    parseMaybeSignedInfOrNan () {
+	      if (this.char === CHAR_i) {
+	        return this.next(this.parseInf)
+	      } else if (this.char === CHAR_n) {
+	        return this.next(this.parseNan)
+	      } else {
+	        return this.callNow(this.parseNoUnder, this.parseNumberIntegerStart)
+	      }
+	    }
+	    parseNumberIntegerStart () {
+	      if (this.char === CHAR_0) {
+	        this.consume();
+	        return this.next(this.parseNumberIntegerExponentOrDecimal)
+	      } else {
+	        return this.goto(this.parseNumberInteger)
+	      }
+	    }
+	    parseNumberIntegerExponentOrDecimal () {
+	      if (this.char === CHAR_PERIOD) {
+	        this.consume();
+	        return this.call(this.parseNoUnder, this.parseNumberFloat)
+	      } else if (this.char === CHAR_E || this.char === CHAR_e) {
+	        this.consume();
+	        return this.next(this.parseNumberExponentSign)
+	      } else {
+	        return this.returnNow(Integer(this.state.buf))
+	      }
+	    }
+	    parseNumberInteger () {
+	      if (isDigit(this.char)) {
+	        this.consume();
+	      } else if (this.char === CHAR_LOWBAR) {
+	        return this.call(this.parseNoUnder)
+	      } else if (this.char === CHAR_E || this.char === CHAR_e) {
+	        this.consume();
+	        return this.next(this.parseNumberExponentSign)
+	      } else if (this.char === CHAR_PERIOD) {
+	        this.consume();
+	        return this.call(this.parseNoUnder, this.parseNumberFloat)
+	      } else {
+	        const result = Integer(this.state.buf);
+	        /* istanbul ignore if */
+	        if (result.isNaN()) {
+	          throw this.error(new TomlError('Invalid number'))
+	        } else {
+	          return this.returnNow(result)
+	        }
+	      }
+	    }
+	    parseNoUnder () {
+	      if (this.char === CHAR_LOWBAR || this.char === CHAR_PERIOD || this.char === CHAR_E || this.char === CHAR_e) {
+	        throw this.error(new TomlError('Unexpected character, expected digit'))
+	      } else if (this.atEndOfWord()) {
+	        throw this.error(new TomlError('Incomplete number'))
+	      }
+	      return this.returnNow()
+	    }
+	    parseNoUnderHexOctBinLiteral () {
+	      if (this.char === CHAR_LOWBAR || this.char === CHAR_PERIOD) {
+	        throw this.error(new TomlError('Unexpected character, expected digit'))
+	      } else if (this.atEndOfWord()) {
+	        throw this.error(new TomlError('Incomplete number'))
+	      }
+	      return this.returnNow()
+	    }
+	    parseNumberFloat () {
+	      if (this.char === CHAR_LOWBAR) {
+	        return this.call(this.parseNoUnder, this.parseNumberFloat)
+	      } else if (isDigit(this.char)) {
+	        this.consume();
+	      } else if (this.char === CHAR_E || this.char === CHAR_e) {
+	        this.consume();
+	        return this.next(this.parseNumberExponentSign)
+	      } else {
+	        return this.returnNow(Float(this.state.buf))
+	      }
+	    }
+	    parseNumberExponentSign () {
+	      if (isDigit(this.char)) {
+	        return this.goto(this.parseNumberExponent)
+	      } else if (this.char === CHAR_HYPHEN || this.char === CHAR_PLUS) {
+	        this.consume();
+	        this.call(this.parseNoUnder, this.parseNumberExponent);
+	      } else {
+	        throw this.error(new TomlError('Unexpected character, expected -, + or digit'))
+	      }
+	    }
+	    parseNumberExponent () {
+	      if (isDigit(this.char)) {
+	        this.consume();
+	      } else if (this.char === CHAR_LOWBAR) {
+	        return this.call(this.parseNoUnder)
+	      } else {
+	        return this.returnNow(Float(this.state.buf))
+	      }
+	    }
+
+	    /* NUMBERS or DATETIMES  */
+	    parseNumberOrDateTime () {
+	      if (this.char === CHAR_0) {
+	        this.consume();
+	        return this.next(this.parseNumberBaseOrDateTime)
+	      } else {
+	        return this.goto(this.parseNumberOrDateTimeOnly)
+	      }
+	    }
+	    parseNumberOrDateTimeOnly () {
+	      // note, if two zeros are in a row then it MUST be a date
+	      if (this.char === CHAR_LOWBAR) {
+	        return this.call(this.parseNoUnder, this.parseNumberInteger)
+	      } else if (isDigit(this.char)) {
+	        this.consume();
+	        if (this.state.buf.length > 4) this.next(this.parseNumberInteger);
+	      } else if (this.char === CHAR_E || this.char === CHAR_e) {
+	        this.consume();
+	        return this.next(this.parseNumberExponentSign)
+	      } else if (this.char === CHAR_PERIOD) {
+	        this.consume();
+	        return this.call(this.parseNoUnder, this.parseNumberFloat)
+	      } else if (this.char === CHAR_HYPHEN) {
+	        return this.goto(this.parseDateTime)
+	      } else if (this.char === CHAR_COLON) {
+	        return this.goto(this.parseOnlyTimeHour)
+	      } else {
+	        return this.returnNow(Integer(this.state.buf))
+	      }
+	    }
+	    parseDateTimeOnly () {
+	      if (this.state.buf.length < 4) {
+	        if (isDigit(this.char)) {
+	          return this.consume()
+	        } else if (this.char === CHAR_COLON) {
+	          return this.goto(this.parseOnlyTimeHour)
+	        } else {
+	          throw this.error(new TomlError('Expected digit while parsing year part of a date'))
+	        }
+	      } else {
+	        if (this.char === CHAR_HYPHEN) {
+	          return this.goto(this.parseDateTime)
+	        } else {
+	          throw this.error(new TomlError('Expected hyphen (-) while parsing year part of date'))
+	        }
+	      }
+	    }
+	    parseNumberBaseOrDateTime () {
+	      if (this.char === CHAR_b) {
+	        this.consume();
+	        return this.call(this.parseNoUnderHexOctBinLiteral, this.parseIntegerBin)
+	      } else if (this.char === CHAR_o) {
+	        this.consume();
+	        return this.call(this.parseNoUnderHexOctBinLiteral, this.parseIntegerOct)
+	      } else if (this.char === CHAR_x) {
+	        this.consume();
+	        return this.call(this.parseNoUnderHexOctBinLiteral, this.parseIntegerHex)
+	      } else if (this.char === CHAR_PERIOD) {
+	        return this.goto(this.parseNumberInteger)
+	      } else if (isDigit(this.char)) {
+	        return this.goto(this.parseDateTimeOnly)
+	      } else {
+	        return this.returnNow(Integer(this.state.buf))
+	      }
+	    }
+	    parseIntegerHex () {
+	      if (isHexit(this.char)) {
+	        this.consume();
+	      } else if (this.char === CHAR_LOWBAR) {
+	        return this.call(this.parseNoUnderHexOctBinLiteral)
+	      } else {
+	        const result = Integer(this.state.buf);
+	        /* istanbul ignore if */
+	        if (result.isNaN()) {
+	          throw this.error(new TomlError('Invalid number'))
+	        } else {
+	          return this.returnNow(result)
+	        }
+	      }
+	    }
+	    parseIntegerOct () {
+	      if (isOctit(this.char)) {
+	        this.consume();
+	      } else if (this.char === CHAR_LOWBAR) {
+	        return this.call(this.parseNoUnderHexOctBinLiteral)
+	      } else {
+	        const result = Integer(this.state.buf);
+	        /* istanbul ignore if */
+	        if (result.isNaN()) {
+	          throw this.error(new TomlError('Invalid number'))
+	        } else {
+	          return this.returnNow(result)
+	        }
+	      }
+	    }
+	    parseIntegerBin () {
+	      if (isBit(this.char)) {
+	        this.consume();
+	      } else if (this.char === CHAR_LOWBAR) {
+	        return this.call(this.parseNoUnderHexOctBinLiteral)
+	      } else {
+	        const result = Integer(this.state.buf);
+	        /* istanbul ignore if */
+	        if (result.isNaN()) {
+	          throw this.error(new TomlError('Invalid number'))
+	        } else {
+	          return this.returnNow(result)
+	        }
+	      }
+	    }
+
+	    /* DATETIME */
+	    parseDateTime () {
+	      // we enter here having just consumed the year and about to consume the hyphen
+	      if (this.state.buf.length < 4) {
+	        throw this.error(new TomlError('Years less than 1000 must be zero padded to four characters'))
+	      }
+	      this.state.result = this.state.buf;
+	      this.state.buf = '';
+	      return this.next(this.parseDateMonth)
+	    }
+	    parseDateMonth () {
+	      if (this.char === CHAR_HYPHEN) {
+	        if (this.state.buf.length < 2) {
+	          throw this.error(new TomlError('Months less than 10 must be zero padded to two characters'))
+	        }
+	        this.state.result += '-' + this.state.buf;
+	        this.state.buf = '';
+	        return this.next(this.parseDateDay)
+	      } else if (isDigit(this.char)) {
+	        this.consume();
+	      } else {
+	        throw this.error(new TomlError('Incomplete datetime'))
+	      }
+	    }
+	    parseDateDay () {
+	      if (this.char === CHAR_T || this.char === CHAR_SP) {
+	        if (this.state.buf.length < 2) {
+	          throw this.error(new TomlError('Days less than 10 must be zero padded to two characters'))
+	        }
+	        this.state.result += '-' + this.state.buf;
+	        this.state.buf = '';
+	        return this.next(this.parseStartTimeHour)
+	      } else if (this.atEndOfWord()) {
+	        return this.returnNow(createDate(this.state.result + '-' + this.state.buf))
+	      } else if (isDigit(this.char)) {
+	        this.consume();
+	      } else {
+	        throw this.error(new TomlError('Incomplete datetime'))
+	      }
+	    }
+	    parseStartTimeHour () {
+	      if (this.atEndOfWord()) {
+	        return this.returnNow(createDate(this.state.result))
+	      } else {
+	        return this.goto(this.parseTimeHour)
+	      }
+	    }
+	    parseTimeHour () {
+	      if (this.char === CHAR_COLON) {
+	        if (this.state.buf.length < 2) {
+	          throw this.error(new TomlError('Hours less than 10 must be zero padded to two characters'))
+	        }
+	        this.state.result += 'T' + this.state.buf;
+	        this.state.buf = '';
+	        return this.next(this.parseTimeMin)
+	      } else if (isDigit(this.char)) {
+	        this.consume();
+	      } else {
+	        throw this.error(new TomlError('Incomplete datetime'))
+	      }
+	    }
+	    parseTimeMin () {
+	      if (this.state.buf.length < 2 && isDigit(this.char)) {
+	        this.consume();
+	      } else if (this.state.buf.length === 2 && this.char === CHAR_COLON) {
+	        this.state.result += ':' + this.state.buf;
+	        this.state.buf = '';
+	        return this.next(this.parseTimeSec)
+	      } else {
+	        throw this.error(new TomlError('Incomplete datetime'))
+	      }
+	    }
+	    parseTimeSec () {
+	      if (isDigit(this.char)) {
+	        this.consume();
+	        if (this.state.buf.length === 2) {
+	          this.state.result += ':' + this.state.buf;
+	          this.state.buf = '';
+	          return this.next(this.parseTimeZoneOrFraction)
+	        }
+	      } else {
+	        throw this.error(new TomlError('Incomplete datetime'))
+	      }
+	    }
+
+	    parseOnlyTimeHour () {
+	      /* istanbul ignore else */
+	      if (this.char === CHAR_COLON) {
+	        if (this.state.buf.length < 2) {
+	          throw this.error(new TomlError('Hours less than 10 must be zero padded to two characters'))
+	        }
+	        this.state.result = this.state.buf;
+	        this.state.buf = '';
+	        return this.next(this.parseOnlyTimeMin)
+	      } else {
+	        throw this.error(new TomlError('Incomplete time'))
+	      }
+	    }
+	    parseOnlyTimeMin () {
+	      if (this.state.buf.length < 2 && isDigit(this.char)) {
+	        this.consume();
+	      } else if (this.state.buf.length === 2 && this.char === CHAR_COLON) {
+	        this.state.result += ':' + this.state.buf;
+	        this.state.buf = '';
+	        return this.next(this.parseOnlyTimeSec)
+	      } else {
+	        throw this.error(new TomlError('Incomplete time'))
+	      }
+	    }
+	    parseOnlyTimeSec () {
+	      if (isDigit(this.char)) {
+	        this.consume();
+	        if (this.state.buf.length === 2) {
+	          return this.next(this.parseOnlyTimeFractionMaybe)
+	        }
+	      } else {
+	        throw this.error(new TomlError('Incomplete time'))
+	      }
+	    }
+	    parseOnlyTimeFractionMaybe () {
+	      this.state.result += ':' + this.state.buf;
+	      if (this.char === CHAR_PERIOD) {
+	        this.state.buf = '';
+	        this.next(this.parseOnlyTimeFraction);
+	      } else {
+	        return this.return(createTime(this.state.result))
+	      }
+	    }
+	    parseOnlyTimeFraction () {
+	      if (isDigit(this.char)) {
+	        this.consume();
+	      } else if (this.atEndOfWord()) {
+	        if (this.state.buf.length === 0) throw this.error(new TomlError('Expected digit in milliseconds'))
+	        return this.returnNow(createTime(this.state.result + '.' + this.state.buf))
+	      } else {
+	        throw this.error(new TomlError('Unexpected character in datetime, expected period (.), minus (-), plus (+) or Z'))
+	      }
+	    }
+
+	    parseTimeZoneOrFraction () {
+	      if (this.char === CHAR_PERIOD) {
+	        this.consume();
+	        this.next(this.parseDateTimeFraction);
+	      } else if (this.char === CHAR_HYPHEN || this.char === CHAR_PLUS) {
+	        this.consume();
+	        this.next(this.parseTimeZoneHour);
+	      } else if (this.char === CHAR_Z) {
+	        this.consume();
+	        return this.return(createDateTime(this.state.result + this.state.buf))
+	      } else if (this.atEndOfWord()) {
+	        return this.returnNow(createDateTimeFloat(this.state.result + this.state.buf))
+	      } else {
+	        throw this.error(new TomlError('Unexpected character in datetime, expected period (.), minus (-), plus (+) or Z'))
+	      }
+	    }
+	    parseDateTimeFraction () {
+	      if (isDigit(this.char)) {
+	        this.consume();
+	      } else if (this.state.buf.length === 1) {
+	        throw this.error(new TomlError('Expected digit in milliseconds'))
+	      } else if (this.char === CHAR_HYPHEN || this.char === CHAR_PLUS) {
+	        this.consume();
+	        this.next(this.parseTimeZoneHour);
+	      } else if (this.char === CHAR_Z) {
+	        this.consume();
+	        return this.return(createDateTime(this.state.result + this.state.buf))
+	      } else if (this.atEndOfWord()) {
+	        return this.returnNow(createDateTimeFloat(this.state.result + this.state.buf))
+	      } else {
+	        throw this.error(new TomlError('Unexpected character in datetime, expected period (.), minus (-), plus (+) or Z'))
+	      }
+	    }
+	    parseTimeZoneHour () {
+	      if (isDigit(this.char)) {
+	        this.consume();
+	        // FIXME: No more regexps
+	        if (/\d\d$/.test(this.state.buf)) return this.next(this.parseTimeZoneSep)
+	      } else {
+	        throw this.error(new TomlError('Unexpected character in datetime, expected digit'))
+	      }
+	    }
+	    parseTimeZoneSep () {
+	      if (this.char === CHAR_COLON) {
+	        this.consume();
+	        this.next(this.parseTimeZoneMin);
+	      } else {
+	        throw this.error(new TomlError('Unexpected character in datetime, expected colon'))
+	      }
+	    }
+	    parseTimeZoneMin () {
+	      if (isDigit(this.char)) {
+	        this.consume();
+	        if (/\d\d$/.test(this.state.buf)) return this.return(createDateTime(this.state.result + this.state.buf))
+	      } else {
+	        throw this.error(new TomlError('Unexpected character in datetime, expected digit'))
+	      }
+	    }
+
+	    /* BOOLEAN */
+	    parseBoolean () {
+	      /* istanbul ignore else */
+	      if (this.char === CHAR_t) {
+	        this.consume();
+	        return this.next(this.parseTrue_r)
+	      } else if (this.char === CHAR_f) {
+	        this.consume();
+	        return this.next(this.parseFalse_a)
+	      }
+	    }
+	    parseTrue_r () {
+	      if (this.char === CHAR_r) {
+	        this.consume();
+	        return this.next(this.parseTrue_u)
+	      } else {
+	        throw this.error(new TomlError('Invalid boolean, expected true or false'))
+	      }
+	    }
+	    parseTrue_u () {
+	      if (this.char === CHAR_u) {
+	        this.consume();
+	        return this.next(this.parseTrue_e)
+	      } else {
+	        throw this.error(new TomlError('Invalid boolean, expected true or false'))
+	      }
+	    }
+	    parseTrue_e () {
+	      if (this.char === CHAR_e) {
+	        return this.return(true)
+	      } else {
+	        throw this.error(new TomlError('Invalid boolean, expected true or false'))
+	      }
+	    }
+
+	    parseFalse_a () {
+	      if (this.char === CHAR_a) {
+	        this.consume();
+	        return this.next(this.parseFalse_l)
+	      } else {
+	        throw this.error(new TomlError('Invalid boolean, expected true or false'))
+	      }
+	    }
+
+	    parseFalse_l () {
+	      if (this.char === CHAR_l) {
+	        this.consume();
+	        return this.next(this.parseFalse_s)
+	      } else {
+	        throw this.error(new TomlError('Invalid boolean, expected true or false'))
+	      }
+	    }
+
+	    parseFalse_s () {
+	      if (this.char === CHAR_s) {
+	        this.consume();
+	        return this.next(this.parseFalse_e)
+	      } else {
+	        throw this.error(new TomlError('Invalid boolean, expected true or false'))
+	      }
+	    }
+
+	    parseFalse_e () {
+	      if (this.char === CHAR_e) {
+	        return this.return(false)
+	      } else {
+	        throw this.error(new TomlError('Invalid boolean, expected true or false'))
+	      }
+	    }
+
+	    /* INLINE LISTS */
+	    parseInlineList () {
+	      if (this.char === CHAR_SP || this.char === CTRL_I || this.char === CTRL_M || this.char === CTRL_J) {
+	        return null
+	      } else if (this.char === Parser.END) {
+	        throw this.error(new TomlError('Unterminated inline array'))
+	      } else if (this.char === CHAR_NUM) {
+	        return this.call(this.parseComment)
+	      } else if (this.char === CHAR_RSQB) {
+	        return this.return(this.state.resultArr || InlineList())
+	      } else {
+	        return this.callNow(this.parseValue, this.recordInlineListValue)
+	      }
+	    }
+	    recordInlineListValue (value) {
+	      if (this.state.resultArr) {
+	        const listType = this.state.resultArr[_contentType];
+	        const valueType = tomlType(value);
+	        if (listType !== valueType) {
+	          throw this.error(new TomlError(`Inline lists must be a single type, not a mix of ${listType} and ${valueType}`))
+	        }
+	      } else {
+	        this.state.resultArr = InlineList(tomlType(value));
+	      }
+	      if (isFloat(value) || isInteger(value)) {
+	        // unbox now that we've verified they're ok
+	        this.state.resultArr.push(value.valueOf());
+	      } else {
+	        this.state.resultArr.push(value);
+	      }
+	      return this.goto(this.parseInlineListNext)
+	    }
+	    parseInlineListNext () {
+	      if (this.char === CHAR_SP || this.char === CTRL_I || this.char === CTRL_M || this.char === CTRL_J) {
+	        return null
+	      } else if (this.char === CHAR_NUM) {
+	        return this.call(this.parseComment)
+	      } else if (this.char === CHAR_COMMA) {
+	        return this.next(this.parseInlineList)
+	      } else if (this.char === CHAR_RSQB) {
+	        return this.goto(this.parseInlineList)
+	      } else {
+	        throw this.error(new TomlError('Invalid character, expected whitespace, comma (,) or close bracket (])'))
+	      }
+	    }
+
+	    /* INLINE TABLE */
+	    parseInlineTable () {
+	      if (this.char === CHAR_SP || this.char === CTRL_I) {
+	        return null
+	      } else if (this.char === Parser.END || this.char === CHAR_NUM || this.char === CTRL_J || this.char === CTRL_M) {
+	        throw this.error(new TomlError('Unterminated inline array'))
+	      } else if (this.char === CHAR_RCUB) {
+	        return this.return(this.state.resultTable || InlineTable())
+	      } else {
+	        if (!this.state.resultTable) this.state.resultTable = InlineTable();
+	        return this.callNow(this.parseAssign, this.recordInlineTableValue)
+	      }
+	    }
+	    recordInlineTableValue (kv) {
+	      let target = this.state.resultTable;
+	      let finalKey = kv.key.pop();
+	      for (let kw of kv.key) {
+	        if (hasKey(target, kw) && (!isTable(target[kw]) || target[kw][_declared])) {
+	          throw this.error(new TomlError("Can't redefine existing key"))
+	        }
+	        target = target[kw] = target[kw] || Table();
+	      }
+	      if (hasKey(target, finalKey)) {
+	        throw this.error(new TomlError("Can't redefine existing key"))
+	      }
+	      if (isInteger(kv.value) || isFloat(kv.value)) {
+	        target[finalKey] = kv.value.valueOf();
+	      } else {
+	        target[finalKey] = kv.value;
+	      }
+	      return this.goto(this.parseInlineTableNext)
+	    }
+	    parseInlineTableNext () {
+	      if (this.char === CHAR_SP || this.char === CTRL_I) {
+	        return null
+	      } else if (this.char === Parser.END || this.char === CHAR_NUM || this.char === CTRL_J || this.char === CTRL_M) {
+	        throw this.error(new TomlError('Unterminated inline array'))
+	      } else if (this.char === CHAR_COMMA) {
+	        return this.next(this.parseInlineTable)
+	      } else if (this.char === CHAR_RCUB) {
+	        return this.goto(this.parseInlineTable)
+	      } else {
+	        throw this.error(new TomlError('Invalid character, expected whitespace, comma (,) or close bracket (])'))
+	      }
+	    }
+	  }
+	  return TOMLParser
+	}
+	return tomlParser.exports;
+}
+
+var parsePrettyError;
+var hasRequiredParsePrettyError;
+
+function requireParsePrettyError () {
+	if (hasRequiredParsePrettyError) return parsePrettyError;
+	hasRequiredParsePrettyError = 1;
+	parsePrettyError = prettyError;
+
+	function prettyError (err, buf) {
+	  /* istanbul ignore if */
+	  if (err.pos == null || err.line == null) return err
+	  let msg = err.message;
+	  msg += ` at row ${err.line + 1}, col ${err.col + 1}, pos ${err.pos}:\n`;
+
+	  /* istanbul ignore else */
+	  if (buf && buf.split) {
+	    const lines = buf.split(/\n/);
+	    const lineNumWidth = String(Math.min(lines.length, err.line + 3)).length;
+	    let linePadding = ' ';
+	    while (linePadding.length < lineNumWidth) linePadding += ' ';
+	    for (let ii = Math.max(0, err.line - 1); ii < Math.min(lines.length, err.line + 2); ++ii) {
+	      let lineNum = String(ii + 1);
+	      if (lineNum.length < lineNumWidth) lineNum = ' ' + lineNum;
+	      if (err.line === ii) {
+	        msg += lineNum + '> ' + lines[ii] + '\n';
+	        msg += linePadding + '  ';
+	        for (let hh = 0; hh < err.col; ++hh) {
+	          msg += ' ';
+	        }
+	        msg += '^\n';
+	      } else {
+	        msg += lineNum + ': ' + lines[ii] + '\n';
+	      }
+	    }
+	  }
+	  err.message = msg + '\n';
+	  return err
+	}
+	return parsePrettyError;
+}
+
+var parseString_1;
+var hasRequiredParseString;
+
+function requireParseString () {
+	if (hasRequiredParseString) return parseString_1;
+	hasRequiredParseString = 1;
+	parseString_1 = parseString;
+
+	const TOMLParser = requireTomlParser();
+	const prettyError = requireParsePrettyError();
+
+	function parseString (str) {
+	  if (commonjsGlobal.Buffer && commonjsGlobal.Buffer.isBuffer(str)) {
+	    str = str.toString('utf8');
+	  }
+	  const parser = new TOMLParser();
+	  try {
+	    parser.parse(str);
+	    return parser.finish()
+	  } catch (err) {
+	    throw prettyError(err, str)
+	  }
+	}
+	return parseString_1;
+}
+
+var parseAsync_1;
+var hasRequiredParseAsync;
+
+function requireParseAsync () {
+	if (hasRequiredParseAsync) return parseAsync_1;
+	hasRequiredParseAsync = 1;
+	parseAsync_1 = parseAsync;
+
+	const TOMLParser = requireTomlParser();
+	const prettyError = requireParsePrettyError();
+
+	function parseAsync (str, opts) {
+	  if (!opts) opts = {};
+	  const index = 0;
+	  const blocksize = opts.blocksize || 40960;
+	  const parser = new TOMLParser();
+	  return new Promise((resolve, reject) => {
+	    setImmediate(parseAsyncNext, index, blocksize, resolve, reject);
+	  })
+	  function parseAsyncNext (index, blocksize, resolve, reject) {
+	    if (index >= str.length) {
+	      try {
+	        return resolve(parser.finish())
+	      } catch (err) {
+	        return reject(prettyError(err, str))
+	      }
+	    }
+	    try {
+	      parser.parse(str.slice(index, index + blocksize));
+	      setImmediate(parseAsyncNext, index + blocksize, blocksize, resolve, reject);
+	    } catch (err) {
+	      reject(prettyError(err, str));
+	    }
+	  }
+	}
+	return parseAsync_1;
+}
+
+var parseStream_1;
+var hasRequiredParseStream;
+
+function requireParseStream () {
+	if (hasRequiredParseStream) return parseStream_1;
+	hasRequiredParseStream = 1;
+	parseStream_1 = parseStream;
+
+	const stream = require$$0$5;
+	const TOMLParser = requireTomlParser();
+
+	function parseStream (stm) {
+	  if (stm) {
+	    return parseReadable(stm)
+	  } else {
+	    return parseTransform()
+	  }
+	}
+
+	function parseReadable (stm) {
+	  const parser = new TOMLParser();
+	  stm.setEncoding('utf8');
+	  return new Promise((resolve, reject) => {
+	    let readable;
+	    let ended = false;
+	    let errored = false;
+	    function finish () {
+	      ended = true;
+	      if (readable) return
+	      try {
+	        resolve(parser.finish());
+	      } catch (err) {
+	        reject(err);
+	      }
+	    }
+	    function error (err) {
+	      errored = true;
+	      reject(err);
+	    }
+	    stm.once('end', finish);
+	    stm.once('error', error);
+	    readNext();
+
+	    function readNext () {
+	      readable = true;
+	      let data;
+	      while ((data = stm.read()) !== null) {
+	        try {
+	          parser.parse(data);
+	        } catch (err) {
+	          return error(err)
+	        }
+	      }
+	      readable = false;
+	      /* istanbul ignore if */
+	      if (ended) return finish()
+	      /* istanbul ignore if */
+	      if (errored) return
+	      stm.once('readable', readNext);
+	    }
+	  })
+	}
+
+	function parseTransform () {
+	  const parser = new TOMLParser();
+	  return new stream.Transform({
+	    objectMode: true,
+	    transform (chunk, encoding, cb) {
+	      try {
+	        parser.parse(chunk.toString(encoding));
+	      } catch (err) {
+	        this.emit('error', err);
+	      }
+	      cb();
+	    },
+	    flush (cb) {
+	      try {
+	        this.push(parser.finish());
+	      } catch (err) {
+	        this.emit('error', err);
+	      }
+	      cb();
+	    }
+	  })
+	}
+	return parseStream_1;
+}
+
+var hasRequiredParse;
+
+function requireParse () {
+	if (hasRequiredParse) return parse.exports;
+	hasRequiredParse = 1;
+	parse.exports = requireParseString();
+	parse.exports.async = requireParseAsync();
+	parse.exports.stream = requireParseStream();
+	parse.exports.prettyError = requireParsePrettyError();
+	return parse.exports;
+}
+
+var stringify = {exports: {}};
+
+var hasRequiredStringify;
+
+function requireStringify () {
+	if (hasRequiredStringify) return stringify.exports;
+	hasRequiredStringify = 1;
+	stringify.exports = stringify$1;
+	stringify.exports.value = stringifyInline;
+
+	function stringify$1 (obj) {
+	  if (obj === null) throw typeError('null')
+	  if (obj === void 0) throw typeError('undefined')
+	  if (typeof obj !== 'object') throw typeError(typeof obj)
+
+	  if (typeof obj.toJSON === 'function') obj = obj.toJSON();
+	  if (obj == null) return null
+	  const type = tomlType(obj);
+	  if (type !== 'table') throw typeError(type)
+	  return stringifyObject('', '', obj)
+	}
+
+	function typeError (type) {
+	  return new Error('Can only stringify objects, not ' + type)
+	}
+
+	function arrayOneTypeError () {
+	  return new Error("Array values can't have mixed types")
+	}
+
+	function getInlineKeys (obj) {
+	  return Object.keys(obj).filter(key => isInline(obj[key]))
+	}
+	function getComplexKeys (obj) {
+	  return Object.keys(obj).filter(key => !isInline(obj[key]))
+	}
+
+	function toJSON (obj) {
+	  let nobj = Array.isArray(obj) ? [] : Object.prototype.hasOwnProperty.call(obj, '__proto__') ? {['__proto__']: undefined} : {};
+	  for (let prop of Object.keys(obj)) {
+	    if (obj[prop] && typeof obj[prop].toJSON === 'function' && !('toISOString' in obj[prop])) {
+	      nobj[prop] = obj[prop].toJSON();
+	    } else {
+	      nobj[prop] = obj[prop];
+	    }
+	  }
+	  return nobj
+	}
+
+	function stringifyObject (prefix, indent, obj) {
+	  obj = toJSON(obj);
+	  var inlineKeys;
+	  var complexKeys;
+	  inlineKeys = getInlineKeys(obj);
+	  complexKeys = getComplexKeys(obj);
+	  var result = [];
+	  var inlineIndent = indent || '';
+	  inlineKeys.forEach(key => {
+	    var type = tomlType(obj[key]);
+	    if (type !== 'undefined' && type !== 'null') {
+	      result.push(inlineIndent + stringifyKey(key) + ' = ' + stringifyAnyInline(obj[key], true));
+	    }
+	  });
+	  if (result.length > 0) result.push('');
+	  var complexIndent = prefix && inlineKeys.length > 0 ? indent + '  ' : '';
+	  complexKeys.forEach(key => {
+	    result.push(stringifyComplex(prefix, complexIndent, key, obj[key]));
+	  });
+	  return result.join('\n')
+	}
+
+	function isInline (value) {
+	  switch (tomlType(value)) {
+	    case 'undefined':
+	    case 'null':
+	    case 'integer':
+	    case 'nan':
+	    case 'float':
+	    case 'boolean':
+	    case 'string':
+	    case 'datetime':
+	      return true
+	    case 'array':
+	      return value.length === 0 || tomlType(value[0]) !== 'table'
+	    case 'table':
+	      return Object.keys(value).length === 0
+	    /* istanbul ignore next */
+	    default:
+	      return false
+	  }
+	}
+
+	function tomlType (value) {
+	  if (value === undefined) {
+	    return 'undefined'
+	  } else if (value === null) {
+	    return 'null'
+	  /* eslint-disable valid-typeof */
+	  } else if (typeof value === 'bigint' || (Number.isInteger(value) && !Object.is(value, -0))) {
+	    return 'integer'
+	  } else if (typeof value === 'number') {
+	    return 'float'
+	  } else if (typeof value === 'boolean') {
+	    return 'boolean'
+	  } else if (typeof value === 'string') {
+	    return 'string'
+	  } else if ('toISOString' in value) {
+	    return isNaN(value) ? 'undefined' : 'datetime'
+	  } else if (Array.isArray(value)) {
+	    return 'array'
+	  } else {
+	    return 'table'
+	  }
+	}
+
+	function stringifyKey (key) {
+	  var keyStr = String(key);
+	  if (/^[-A-Za-z0-9_]+$/.test(keyStr)) {
+	    return keyStr
+	  } else {
+	    return stringifyBasicString(keyStr)
+	  }
+	}
+
+	function stringifyBasicString (str) {
+	  return '"' + escapeString(str).replace(/"/g, '\\"') + '"'
+	}
+
+	function stringifyLiteralString (str) {
+	  return "'" + str + "'"
+	}
+
+	function numpad (num, str) {
+	  while (str.length < num) str = '0' + str;
+	  return str
+	}
+
+	function escapeString (str) {
+	  return str.replace(/\\/g, '\\\\')
+	    .replace(/[\b]/g, '\\b')
+	    .replace(/\t/g, '\\t')
+	    .replace(/\n/g, '\\n')
+	    .replace(/\f/g, '\\f')
+	    .replace(/\r/g, '\\r')
+	    /* eslint-disable no-control-regex */
+	    .replace(/([\u0000-\u001f\u007f])/, c => '\\u' + numpad(4, c.codePointAt(0).toString(16)))
+	    /* eslint-enable no-control-regex */
+	}
+
+	function stringifyMultilineString (str) {
+	  let escaped = str.split(/\n/).map(str => {
+	    return escapeString(str).replace(/"(?="")/g, '\\"')
+	  }).join('\n');
+	  if (escaped.slice(-1) === '"') escaped += '\\\n';
+	  return '"""\n' + escaped + '"""'
+	}
+
+	function stringifyAnyInline (value, multilineOk) {
+	  let type = tomlType(value);
+	  if (type === 'string') {
+	    if (multilineOk && /\n/.test(value)) {
+	      type = 'string-multiline';
+	    } else if (!/[\b\t\n\f\r']/.test(value) && /"/.test(value)) {
+	      type = 'string-literal';
+	    }
+	  }
+	  return stringifyInline(value, type)
+	}
+
+	function stringifyInline (value, type) {
+	  /* istanbul ignore if */
+	  if (!type) type = tomlType(value);
+	  switch (type) {
+	    case 'string-multiline':
+	      return stringifyMultilineString(value)
+	    case 'string':
+	      return stringifyBasicString(value)
+	    case 'string-literal':
+	      return stringifyLiteralString(value)
+	    case 'integer':
+	      return stringifyInteger(value)
+	    case 'float':
+	      return stringifyFloat(value)
+	    case 'boolean':
+	      return stringifyBoolean(value)
+	    case 'datetime':
+	      return stringifyDatetime(value)
+	    case 'array':
+	      return stringifyInlineArray(value.filter(_ => tomlType(_) !== 'null' && tomlType(_) !== 'undefined' && tomlType(_) !== 'nan'))
+	    case 'table':
+	      return stringifyInlineTable(value)
+	    /* istanbul ignore next */
+	    default:
+	      throw typeError(type)
+	  }
+	}
+
+	function stringifyInteger (value) {
+	  /* eslint-disable security/detect-unsafe-regex */
+	  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, '_')
+	}
+
+	function stringifyFloat (value) {
+	  if (value === Infinity) {
+	    return 'inf'
+	  } else if (value === -Infinity) {
+	    return '-inf'
+	  } else if (Object.is(value, NaN)) {
+	    return 'nan'
+	  } else if (Object.is(value, -0)) {
+	    return '-0.0'
+	  }
+	  var chunks = String(value).split('.');
+	  var int = chunks[0];
+	  var dec = chunks[1] || 0;
+	  return stringifyInteger(int) + '.' + dec
+	}
+
+	function stringifyBoolean (value) {
+	  return String(value)
+	}
+
+	function stringifyDatetime (value) {
+	  return value.toISOString()
+	}
+
+	function isNumber (type) {
+	  return type === 'float' || type === 'integer'
+	}
+	function arrayType (values) {
+	  var contentType = tomlType(values[0]);
+	  if (values.every(_ => tomlType(_) === contentType)) return contentType
+	  // mixed integer/float, emit as floats
+	  if (values.every(_ => isNumber(tomlType(_)))) return 'float'
+	  return 'mixed'
+	}
+	function validateArray (values) {
+	  const type = arrayType(values);
+	  if (type === 'mixed') {
+	    throw arrayOneTypeError()
+	  }
+	  return type
+	}
+
+	function stringifyInlineArray (values) {
+	  values = toJSON(values);
+	  const type = validateArray(values);
+	  var result = '[';
+	  var stringified = values.map(_ => stringifyInline(_, type));
+	  if (stringified.join(', ').length > 60 || /\n/.test(stringified)) {
+	    result += '\n  ' + stringified.join(',\n  ') + '\n';
+	  } else {
+	    result += ' ' + stringified.join(', ') + (stringified.length > 0 ? ' ' : '');
+	  }
+	  return result + ']'
+	}
+
+	function stringifyInlineTable (value) {
+	  value = toJSON(value);
+	  var result = [];
+	  Object.keys(value).forEach(key => {
+	    result.push(stringifyKey(key) + ' = ' + stringifyAnyInline(value[key], false));
+	  });
+	  return '{ ' + result.join(', ') + (result.length > 0 ? ' ' : '') + '}'
+	}
+
+	function stringifyComplex (prefix, indent, key, value) {
+	  var valueType = tomlType(value);
+	  /* istanbul ignore else */
+	  if (valueType === 'array') {
+	    return stringifyArrayOfTables(prefix, indent, key, value)
+	  } else if (valueType === 'table') {
+	    return stringifyComplexTable(prefix, indent, key, value)
+	  } else {
+	    throw typeError(valueType)
+	  }
+	}
+
+	function stringifyArrayOfTables (prefix, indent, key, values) {
+	  values = toJSON(values);
+	  validateArray(values);
+	  var firstValueType = tomlType(values[0]);
+	  /* istanbul ignore if */
+	  if (firstValueType !== 'table') throw typeError(firstValueType)
+	  var fullKey = prefix + stringifyKey(key);
+	  var result = '';
+	  values.forEach(table => {
+	    if (result.length > 0) result += '\n';
+	    result += indent + '[[' + fullKey + ']]\n';
+	    result += stringifyObject(fullKey + '.', indent, table);
+	  });
+	  return result
+	}
+
+	function stringifyComplexTable (prefix, indent, key, value) {
+	  var fullKey = prefix + stringifyKey(key);
+	  var result = '';
+	  if (getInlineKeys(value).length > 0) {
+	    result += indent + '[' + fullKey + ']\n';
+	  }
+	  return result + stringifyObject(fullKey + '.', indent, value)
+	}
+	return stringify.exports;
+}
+
+var hasRequiredToml;
+
+function requireToml () {
+	if (hasRequiredToml) return toml;
+	hasRequiredToml = 1;
+	toml.parse = requireParse();
+	toml.stringify = requireStringify();
+	return toml;
+}
+
+var tomlExports = requireToml();
+
 /**
- * Check pull request for version bump labels
- * @param {object} context - GitHub context
- * @param {object} octokit - GitHub API client
- * @param {string|null} prNumber - PR number from manual trigger (null for automatic)
+ * Get the next release tag based on project configuration
+ * @param {string} projectPath - Path to the project directory
+ * @param {string} bump - Version bump type (major, minor, patch)
  * @param {object} logger - Logger object with info, warning, error methods (defaults to core)
- * @returns {Promise<{shouldRelease: boolean, versionBump: string|null, prNumber: number, commitSha: string, baseCommitSha: string}>}
+ * @param {object} execModule - Exec module for running commands (defaults to exec)
+ * @returns {Promise<{nextVersion: string, nextTag: string}>}
  */
-async function checkPullRequest(context, octokit, prNumber = null, logger = core$1) {
-    let pr;
-    let commitSha;
+async function getNextReleaseTag(projectPath, bump, logger = core$1, execModule = exec$1) {
+    let tagPattern;
 
-    if (prNumber !== null) {
-        // Manual trigger: get PR by number
-        logger.info(`manual trigger for PR #${prNumber}`);
+    // Check for pyproject.toml first
+    const pyprojectPath = join(projectPath, 'pyproject.toml');
+    if (existsSync(pyprojectPath)) {
+        const pyprojectContent = readFileSync(pyprojectPath, 'utf8');
+        const pyproject = tomlExports.parse(pyprojectContent);
 
-        const prResponse = await octokit.rest.pulls.get({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            pull_number: prNumber
-        });
-
-        pr = prResponse.data;
-
-        // Verify PR is merged
-        if (!pr.merged) {
-            throw new Error(`PR #${prNumber} is not merged`);
+        const describeCommand = pyproject?.tool?.hatch?.version?.['raw-options']?.scm?.git?.describe_command;
+        if (!describeCommand) {
+            throw new Error('no git.scm.describe_command found in pyproject.toml');
         }
 
-        commitSha = pr.merge_commit_sha;
-        logger.info(`PR #${prNumber} merged at commit: ${commitSha}`);
+        const regex = /git.*--match ['"]([^'"]+)['"]/;
+        const match = describeCommand.match(regex);
+
+        if (!match) {
+            throw new Error('no tag pattern found in git.scm.describe_command');
+        }
+
+        tagPattern = match[1];
     } else {
-        // Automatic trigger: find PR associated with the commit
-        commitSha = context.sha;
-        logger.info(`finding PR associated with commit: ${commitSha}`);
-
-        const { data: prs } = await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            commit_sha: commitSha
-        });
-
-        if (!prs || prs.length === 0) {
-            logger.info(`no PR found associated with commit ${commitSha}, skipping`);
-            return {
-                shouldRelease: false,
-                versionBump: null,
-                prNumber: null,
-                commitSha,
-                baseCommitSha: null
-            };
+        // Check for package.local.json
+        const packageJsonPath = join(projectPath, 'package.local.json');
+        if (!existsSync(packageJsonPath)) {
+            throw new Error('no recognized project file found in the specified directory');
         }
 
-        // Get the first (most recent) PR
-        pr = prs[0];
-        logger.info(`found PR #${pr.number} associated with commit`);
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+        tagPattern = packageJson.tag?.pattern;
 
-        // Verify PR is merged
-        if (!pr.merged_at) {
-            logger.info(`PR #${pr.number} is not merged, skipping`);
-            return {
-                shouldRelease: false,
-                versionBump: null,
-                prNumber: pr.number,
-                commitSha,
-                baseCommitSha: pr.base.sha
-            };
+        if (!tagPattern) {
+            throw new Error('no version pattern found in package.local.json');
         }
     }
 
-    const labels = pr.labels.map(label => label.name);
-    logger.info(`PR #${pr.number} labels: ${labels.join(', ')}`);
+    logger.info(`Tag pattern: ${tagPattern}`);
 
-    // Get the base commit (the commit that the PR was merged onto)
-    const baseCommitSha = pr.base.sha;
-    logger.info(`PR base commit: ${baseCommitSha}`);
-
-    // Check for version bump labels
-    const versionLabels = ['major', 'minor', 'patch'];
-    const versionLabel = versionLabels.find(label => labels.includes(label));
-
-    if (versionLabel) {
-        logger.info(`found version label: ${versionLabel}`);
-        return {
-            shouldRelease: true,
-            versionBump: versionLabel,
-            prNumber: pr.number,
-            commitSha,
-            baseCommitSha
-        };
-    } else {
-        if (prNumber !== null) {
-            // Manual trigger: fail if no version label
-            logger.info('no version release label (major/minor/patch) found');
-            throw new Error(`no version release label found on PR #${pr.number}`);
-        } else {
-            // Automatic trigger: skip if no version label
-            logger.info('no version release label (major/minor/patch) found, skipping');
-            return {
-                shouldRelease: false,
-                versionBump: null,
-                prNumber: pr.number,
-                commitSha,
-                baseCommitSha
-            };
+    // Get existing tags
+    const gitTagArgs = [
+        'tag',
+        '-l',
+        tagPattern,
+        '--sort=-version:refname',
+        '--format=%(refname:lstrip=2)'
+    ];
+    
+    // Log command for visibility (especially in CLI mode)
+    if (logger.info) {
+        logger.info(`[command]git ${gitTagArgs.join(' ')}`);
+    }
+    
+    let stdout = '';
+    await execModule.exec('git', gitTagArgs, {
+        silent: false,
+        listeners: {
+            stdout: (data) => {
+                stdout += data.toString();
+            }
         }
+    });
+
+    const tags = stdout.trim().split('\n').filter(t => t);
+    const previousTag = tags.length > 0 ? tags[0] : tagPattern.replace('v*[0-9]*', 'v0.0.1');
+
+    logger.info(`Previous tag    : ${previousTag}`);
+
+    // Split tag into prefix and version
+    const [tagPrefix, previousTagVersion] = previousTag.split('@');
+    const previousVersion = previousTagVersion.replace(/^v/, '');
+
+    logger.info(`Tag prefix      : ${tagPrefix}`);
+    logger.info(`Previous version: ${previousVersion}`);
+
+    // Parse and bump version
+    const currentVersion = semverExports.parse(previousVersion);
+    if (!currentVersion) {
+        throw new Error(`Invalid semver version: ${previousVersion}`);
+    }
+
+    const nextVersion = semverExports.inc(currentVersion, bump);
+    if (!nextVersion) {
+        throw new Error(`Invalid bump type: ${bump}`);
+    }
+
+    const nextTag = `${tagPrefix}@v${nextVersion}`;
+
+    logger.info(`Next version    : ${nextVersion}`);
+    logger.info(`Next tag        : ${nextTag}`);
+
+    return { nextVersion, nextTag };
+}
+
+async function run() {
+    try {
+        const project = coreExports.getInput('project', { required: true });
+        const versionBump = coreExports.getInput('version-bump', { required: true });
+        const dryRun = coreExports.getInput('dry-run') === 'true'; const token = coreExports.getInput('github-token', { required: true });
+        const jobName = coreExports.getInput('name', { required: true });
+
+        // Store token and job name in state for cleanup phase
+        coreExports.saveState('github-token', token);
+        coreExports.saveState('job-name', jobName);
+        coreExports.info(`Starting release with version bump: ${versionBump}`);
+        coreExports.info(`Dry run mode: ${dryRun}`);
+
+        // Get next release version and tag
+        const { nextVersion, nextTag } = await getNextReleaseTag(project, versionBump);
+
+        // Set outputs
+        coreExports.setOutput('next-release-version', nextVersion);
+        coreExports.setOutput('next-release-tag', nextTag);
+
+        // Save state for post-job cleanup
+        coreExports.saveState('next-release-tag', nextTag);
+        coreExports.saveState('dry-run', dryRun.toString());
+
+        // Configure git
+        await execExports.exec('git', ['config', 'user.name', process.env.GITHUB_ACTOR]);
+        await execExports.exec('git', ['config', 'user.email', `${process.env.GITHUB_ACTOR}@users.noreply.github.com`]);
+
+        // Create tag
+        await execExports.exec('git', ['tag', '-a', nextTag, '-m', `Automatic release ${nextVersion}`]);
+
+        coreExports.info('Release setup completed successfully');
+    } catch (error) {
+        coreExports.setFailed(error.message);
     }
 }
 
 /**
- * Run the action in GitHub Actions mode
+ * Cleanup function to push or delete tags based on job status
  * @param {object} dependencies - Dependency injection object
  * @param {object} dependencies.core - GitHub Actions core module
+ * @param {object} dependencies.exec - GitHub Actions exec module
  * @param {object} dependencies.github - GitHub Actions github module
  * @param {object} dependencies.env - Environment variables object (defaults to process.env)
+ * @param {number} dependencies.maxWaitTime - Maximum time to wait for steps to complete in milliseconds (defaults to 60000)
+ * @param {number} dependencies.baseDelayMs - Base delay for exponential backoff in milliseconds (defaults to 1000)
+ * @param {number} dependencies.maxDelayMs - Maximum delay cap for backoff in milliseconds (defaults to 5000)
  * @returns {Promise<void>}
  */
-async function run(dependencies = {}) {
+async function cleanup(dependencies = {}) {
     const {
         core: coreModule = core$1,
+        exec: execModule = exec$1,
         github: githubModule = github$1,
+        env = process.env,
+        maxWaitTime = 60000,
+        baseDelayMs = 1000,
+        maxDelayMs = 5000,
     } = dependencies;
 
     try {
-        const prNumberInput = coreModule.getInput('pr-number');
-        const token = coreModule.getInput('github-token', { required: true });
+        const nextTag = coreModule.getState('next-release-tag');
+        const dryRun = coreModule.getState('dry-run') === 'true';
 
+        if (!nextTag) {
+            throw new Error('No next-release-tag found in state for cleanup');
+        }
+
+        coreModule.info('Running post-job cleanup...');
+
+        let shouldPushTag = false;
+
+        // Always check job status
+        const token = coreModule.getState('github-token');
+        const jobName = coreModule.getState('job-name');
+        const runId = env.GITHUB_RUN_ID;
+        const repository = env.GITHUB_REPOSITORY;
+
+        if (!token || !runId || !repository || !jobName) {
+            throw new Error('Missing required environment variables or state (GITHUB_TOKEN, GITHUB_RUN_ID, GITHUB_REPOSITORY, or job-name)');
+        }
+
+        const [owner, repo] = repository.split('/');
         const octokit = githubModule.getOctokit(token);
-        const context = githubModule.context;
 
-        // Determine if this is a manual or automatic trigger
-        const prNumber = prNumberInput ? parseInt(prNumberInput, 10) : null;
+        coreModule.info(`Checking job status for run ${runId}...`);
 
-        coreModule.info('Checking pull request for version bump labels...');
+        // Poll until the first Post* step is in_progress and all steps before it are completed
+        const startTime = Date.now();
+        let attempt = 0;
+        let currentJob = null;
+        let postStepReady = false;
 
-        const result = await checkPullRequest(context, octokit, prNumber, coreModule);
+        while (!postStepReady && (Date.now() - startTime) < maxWaitTime) {
+            attempt++;
 
-        // Set outputs
-        coreModule.setOutput('should-release', result.shouldRelease.toString());
-        coreModule.setOutput('version-bump', result.versionBump || '');
-        coreModule.setOutput('pr-number', result.prNumber ? result.prNumber.toString() : '');
-        coreModule.setOutput('commit-sha', result.commitSha);
-        coreModule.setOutput('base-commit-sha', result.baseCommitSha || '');
+            // Get jobs for this workflow run
+            const { data: { jobs } } = await octokit.rest.actions.listJobsForWorkflowRun({
+                owner,
+                repo,
+                run_id: parseInt(runId, 10),
+            });
 
-        coreModule.info('Pull request check completed successfully');
+            if (attempt === 1) {
+                // Log available jobs for debugging on first attempt
+                coreModule.info(`Found ${jobs.length} jobs in workflow run`);
+                jobs.forEach(job => {
+                    coreModule.info(`  Job: name="${job.name}", id=${job.id}, status=${job.status}, conclusion=${job.conclusion || 'none'}`);
+                });
+                coreModule.info(`Looking for job with name: ${jobName}`);
+            }
+
+            // Find the current job by name
+            currentJob = jobs.find(job => job.name === jobName);
+
+            if (!currentJob) {
+                throw new Error(`Could not find current job with name '${jobName}' in workflow run`);
+            }
+
+            const steps = currentJob.steps || [];
+
+            // Find our cleanup step: first step starting with "Post" that is currently in_progress
+            // All steps before it must be completed before we can validate their conclusions
+            const postStepIndex = steps.findIndex(step => step.name.startsWith('Post') && step.status === 'in_progress');
+
+            // Early exit conditions:
+            // 1. No steps at all - can't find Post step
+            // 2. Post step is first (index 0) - no steps to validate before it
+            // 3. Job is completed with non-success conclusion and no Post step - won't appear
+            if (steps.length === 0 || postStepIndex === 0) {
+                break; // Exit polling loop immediately
+            }
+
+            if (postStepIndex > 0) {
+                const stepsBeforePost = steps.slice(0, postStepIndex);
+                postStepReady = stepsBeforePost.every(step => step.status === 'completed');
+            }
+
+            if (!postStepReady) {
+                coreModule.info(`Attempt ${attempt}: Cleanup step (Post*) not ready or previous steps still running, waiting...`);
+
+                // Calculate exponential backoff with jitter: base * 2^(attempt-1) + random jitter up to 500ms
+                const baseDelay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs);
+                const jitter = Math.random() * 500;
+                const delay = baseDelay + jitter;
+
+                await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+                // Log all steps on successful final attempt
+                coreModule.info(`Attempt ${attempt}: Found ${steps.length} steps:`);
+                steps.forEach((step, index) => {
+                    coreModule.info(`  Step ${index + 1}: name="${step.name}", status=${step.status}, conclusion=${step.conclusion || 'none'}`);
+                });
+            }
+        }
+
+        if (!postStepReady) {
+            throw new Error(`Timeout after ${(maxWaitTime / 1000).toFixed(2)}s: Cleanup step (Post*) not found with in_progress status or previous steps not completed`);
+        }
+
+        coreModule.info(`Job status: ${currentJob.status}, conclusion: ${currentJob.conclusion || 'none'}`);
+
+        // Check if all steps before first Post step succeeded
+        const steps = currentJob.steps || [];
+
+        // Find the cleanup step (guaranteed to exist since we waited for it in the polling loop)
+        const postStepIndex = steps.findIndex(step => step.name.startsWith('Post') && step.status === 'in_progress');
+
+        if (postStepIndex === -1) {
+            throw new Error('Cleanup step (Post*) unexpectedly not found - this should not happen');
+        }
+
+        // Get all steps before first Post step
+        const stepsToCheck = steps.slice(0, postStepIndex);
+        const allStepsSucceeded = stepsToCheck.every(step => step.conclusion === 'success');
+
+        if (allStepsSucceeded && stepsToCheck.length > 0) {
+            // All steps before first Post step succeeded
+            shouldPushTag = !dryRun;
+        } else {
+            // Some steps failed, were cancelled, skipped, or no steps to validate
+            if (stepsToCheck.length === 0) {
+                coreModule.error(`No steps found before cleanup step - cannot validate`);
+            } else {
+                const failedSteps = stepsToCheck.filter(step => step.conclusion !== 'success');
+                coreModule.error(`Not all steps succeeded (${failedSteps.length}/${stepsToCheck.length} failed)`);
+            }
+            shouldPushTag = false;
+        }
+
+        if (shouldPushTag) {
+            coreModule.info(`Pushing tag ${nextTag} to remote`);
+            coreModule.info(`[command]git push origin ${nextTag}`);
+            await execModule.exec('git', ['push', 'origin', nextTag], { silent: false });
+        } else {
+            const reason = dryRun ? 'dry-run mode' : 'job failed or was cancelled';
+            coreModule.info(`Deleting tag ${nextTag} (${reason})`);
+            coreModule.info(`[command]git tag -d ${nextTag}`);
+            await execModule.exec('git', ['tag', '-d', nextTag], {
+                silent: false,
+                ignoreReturnCode: true
+            });
+        }
     } catch (error) {
-        coreModule.setOutput('should-release', 'false');
-        coreModule.setFailed(error.message);
+        coreModule.setFailed(`Cleanup failed: ${error.message}`);
     }
 }
 
-// Only run if this is the main module being executed
+// Only run CLI or GitHub Actions code if this is the main module being executed
+// When imported as a module, none of this code should run
 const isMainModule = process.argv[1] && resolve(fileURLToPath(import.meta.url)) === resolve(process.argv[1]);
 
 if (isMainModule) {
-    // Check if we're NOT running in GitHub Actions
+    // CLI mode for testing
+    // Check if we're NOT running in GitHub Actions (GITHUB_ACTIONS is always set to 'true' in GitHub Actions)
+    // See: https://docs.github.com/en/actions/reference/workflows-and-actions/variables
     const isCliMode = !process.env.GITHUB_ACTIONS;
 
     if (isCliMode) {
         const args = process.argv.slice(2);
 
-        if (args.length < 1 || args[0] === '--help' || args[0] === '-h') {
-            console.log('Usage: node index.js <pr-number>');
+        if (args.length < 2 || args[0] === '--help' || args[0] === '-h') {
+            console.log('Usage: node index.js <project-path> <bump-type>');
             console.log('');
             console.log('Arguments:');
-            console.log('  pr-number   Pull request number to check');
+            console.log('  project-path   Path to the project directory');
+            console.log('  bump-type      Version bump type (major, minor, patch)');
             console.log('');
             console.log('Example:');
-            console.log('  node index.js 123');
-            process.exit(args.length < 1 ? 1 : 0);
+            console.log('  node index.js ./framework patch');
+            process.exit(args.length < 2 ? 1 : 0);
         }
 
-        const [prNumberArg] = args;
-        const prNumber = parseInt(prNumberArg, 10);
-
-        if (isNaN(prNumber)) {
-            console.error(`Error: Invalid PR number: ${prNumberArg}`);
-            process.exit(1);
-        }
+        const [projectPath, bumpType] = args;
 
         // Create a simple logger for CLI mode
         const cliLogger = {
@@ -31455,26 +36514,13 @@ if (isMainModule) {
             error: (msg) => console.error(`[ERROR] ${msg}`)
         };
 
-        // For CLI mode, we need a GitHub token
-        const token = process.env.GITHUB_TOKEN;
-        if (!token) {
-            console.error('Error: GITHUB_TOKEN environment variable is required');
-            process.exit(1);
-        }
-
-        const octokit = githubExports.getOctokit(token);
-        const context = githubExports.context;
-
-        // Call checkPullRequest with CLI logger
-        checkPullRequest(context, octokit, prNumber, cliLogger)
-            .then((result) => {
+        // Call getNextReleaseTag with CLI logger
+        getNextReleaseTag(projectPath, bumpType, cliLogger)
+            .then(({ nextVersion, nextTag }) => {
                 console.log('');
                 console.log('Results:');
-                console.log(`  Should Release  : ${result.shouldRelease}`);
-                console.log(`  Version Bump    : ${result.versionBump}`);
-                console.log(`  PR Number       : ${result.prNumber}`);
-                console.log(`  Commit SHA      : ${result.commitSha}`);
-                console.log(`  Base Commit SHA : ${result.baseCommitSha}`);
+                console.log(`  Next Version: ${nextVersion}`);
+                console.log(`  Next Tag    : ${nextTag}`);
                 process.exit(0);
             })
             .catch((error) => {
@@ -31484,8 +36530,14 @@ if (isMainModule) {
             });
     } else {
         // GitHub Actions mode
-        run();
+        // Check if we're in post-job cleanup phase
+        if (coreExports.getState('isPost') === 'true') {
+            cleanup();
+        } else {
+            coreExports.saveState('isPost', 'true');
+            run();
+        }
     }
 }
 
-export { checkPullRequest, run };
+export { cleanup, getNextReleaseTag };

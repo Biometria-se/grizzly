@@ -255,7 +255,7 @@ For a package to be releasable:
 
 ### Tag Management
 
-The `setup-release` action creates tags during the job and manages them in a cleanup phase:
+The `release` action creates tags during the job and manages them in a cleanup phase:
 
 - **Success**: Tag is pushed to the repository
 - **Failure**: Tag is deleted locally (not pushed)

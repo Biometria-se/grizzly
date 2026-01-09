@@ -1,0 +1,22 @@
+name: changes
+description: Map changed directories to package changes and their test configurations
+inputs:
+  changes:
+    description: 'JSON string of list of directories that had changes'
+    required: true
+  force:
+    description: 'Force run on all packages (true/false)'
+    required: true
+  release:
+    description: 'Indicates if this is a release run'
+    required: false
+    default: 'false'
+outputs:
+  changes_uv:
+    description: 'JSON string of Python (uv) package changes'
+  changes_npm:
+    description: 'JSON string of npm package changes'
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'

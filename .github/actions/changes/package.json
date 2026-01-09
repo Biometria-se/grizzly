@@ -1,9 +1,9 @@
 {
-  "name": "check-pr",
+  "name": "changes",
   "version": "1.0.0",
   "packageManager": "npm",
   "type": "module",
-  "description": "Check pull request for version bump labels",
+  "description": "Map changed directories to package changes and their test configurations",
   "main": "dist/index.js",
   "scripts": {
     "prebuild": "npm install",
@@ -13,18 +13,21 @@
   },
   "keywords": [
     "github-actions",
-    "pull-request"
+    "changes",
+    "testing"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.10.1",
-    "@actions/github": "^6.0.0"
+    "@iarna/toml": "^2.2.5",
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-json": "^6.1.0",
     "chai": "^6.2.1",
     "eslint": "^9.39.2",
     "globals": "^17.0.0",

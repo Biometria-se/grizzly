@@ -55,14 +55,22 @@ export async function getNextReleaseTag(projectPath, bump, logger = core, execMo
     logger.info(`Tag pattern: ${tagPattern}`);
 
     // Get existing tags
-    let stdout = '';
-    await execModule.exec('git', [
+    const gitTagArgs = [
         'tag',
         '-l',
         tagPattern,
         '--sort=-version:refname',
         '--format=%(refname:lstrip=2)'
-    ], {
+    ];
+
+    // Log command for visibility (especially in CLI mode)
+    if (logger.info) {
+        logger.info(`[command]git ${gitTagArgs.join(' ')}`);
+    }
+
+    let stdout = '';
+    await execModule.exec('git', gitTagArgs, {
+        silent: false,
         listeners: {
             stdout: (data) => {
                 stdout += data.toString();
@@ -293,11 +301,14 @@ export async function cleanup(dependencies = {}) {
 
         if (shouldPushTag) {
             coreModule.info(`Pushing tag ${nextTag} to remote`);
-            await execModule.exec('git', ['push', 'origin', nextTag]);
+            coreModule.info(`[command]git push origin ${nextTag}`);
+            await execModule.exec('git', ['push', 'origin', nextTag], { silent: false });
         } else {
             const reason = dryRun ? 'dry-run mode' : 'job failed or was cancelled';
             coreModule.info(`Deleting tag ${nextTag} (${reason})`);
+            coreModule.info(`[command]git tag -d ${nextTag}`);
             await execModule.exec('git', ['tag', '-d', nextTag], {
+                silent: false,
                 ignoreReturnCode: true
             });
         }

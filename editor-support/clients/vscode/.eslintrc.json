@@ -9,6 +9,12 @@
         "plugin:@typescript-eslint/recommended"
     ],
     "overrides": [
+        {
+            "files": ["tests/**/*.ts"],
+            "rules": {
+                "@typescript-eslint/no-unused-expressions": "off"
+            }
+        }
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
