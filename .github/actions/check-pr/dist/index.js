@@ -31300,10 +31300,42 @@ async function checkPullRequest(context, octokit, prNumber = null, logger = core
         commitSha = pr.merge_commit_sha;
         logger.info(`PR #${prNumber} merged at commit: ${commitSha}`);
     } else {
-        // Automatic trigger: PR was just merged
-        pr = context.payload.pull_request;
-        commitSha = pr.merge_commit_sha;
-        logger.info(`PR #${pr.number} merged at commit: ${commitSha}`);
+        // Automatic trigger: find PR associated with the commit
+        commitSha = context.sha;
+        logger.info(`finding PR associated with commit: ${commitSha}`);
+
+        const { data: prs } = await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            commit_sha: commitSha
+        });
+
+        if (!prs || prs.length === 0) {
+            logger.info(`no PR found associated with commit ${commitSha}, skipping`);
+            return {
+                shouldRelease: false,
+                versionBump: null,
+                prNumber: null,
+                commitSha,
+                baseCommitSha: null
+            };
+        }
+
+        // Get the first (most recent) PR
+        pr = prs[0];
+        logger.info(`found PR #${pr.number} associated with commit`);
+
+        // Verify PR is merged
+        if (!pr.merged_at) {
+            logger.info(`PR #${pr.number} is not merged, skipping`);
+            return {
+                shouldRelease: false,
+                versionBump: null,
+                prNumber: pr.number,
+                commitSha,
+                baseCommitSha: pr.base.sha
+            };
+        }
     }
 
     const labels = pr.labels.map(label => label.name);
@@ -31327,8 +31359,21 @@ async function checkPullRequest(context, octokit, prNumber = null, logger = core
             baseCommitSha
         };
     } else {
-        logger.info('no version release label (major/minor/patch) found');
-        throw new Error(`no version release label found on PR #${pr.number}`);
+        if (prNumber !== null) {
+            // Manual trigger: fail if no version label
+            logger.info('no version release label (major/minor/patch) found');
+            throw new Error(`no version release label found on PR #${pr.number}`);
+        } else {
+            // Automatic trigger: skip if no version label
+            logger.info('no version release label (major/minor/patch) found, skipping');
+            return {
+                shouldRelease: false,
+                versionBump: null,
+                prNumber: pr.number,
+                commitSha,
+                baseCommitSha
+            };
+        }
     }
 }
 
@@ -31363,10 +31408,10 @@ async function run(dependencies = {}) {
 
         // Set outputs
         coreModule.setOutput('should-release', result.shouldRelease.toString());
-        coreModule.setOutput('version-bump', result.versionBump);
-        coreModule.setOutput('pr-number', result.prNumber.toString());
+        coreModule.setOutput('version-bump', result.versionBump || '');
+        coreModule.setOutput('pr-number', result.prNumber ? result.prNumber.toString() : '');
         coreModule.setOutput('commit-sha', result.commitSha);
-        coreModule.setOutput('base-commit-sha', result.baseCommitSha);
+        coreModule.setOutput('base-commit-sha', result.baseCommitSha || '');
 
         coreModule.info('Pull request check completed successfully');
     } catch (error) {

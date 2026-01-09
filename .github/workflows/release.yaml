@@ -1,15 +1,18 @@
 # build with uv build --out-dir dist/ --package <package> --wheel --sdist
 # without --wheel and --sdist, the wheel will be built from the source distribution, and the custom hatch build hooks in ../hatch_build.py will be
 # missing.
+
+
 name: Release
 
 run-name: |
-  ${{ github.event_name == 'workflow_dispatch' && format('Release PR #{0} (manually)', inputs.pr-number) || format('Release PR #{0} (automatic)', github.event.pull_request.number) }}
+  ${{ github.event_name == 'workflow_dispatch'
+      && format('Release PR #{0} ({1})', inputs.pr-number, inputs.dry-run && 'dry run' || 'manually')
+      || format('Release commit {0} (automatic)', github.sha)
+  }}
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - main
 
@@ -27,12 +30,7 @@ on:
 jobs:
   prerequisites:
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.merged == true &&
-       (contains(github.event.pull_request.labels.*.name, 'major') ||
-        contains(github.event.pull_request.labels.*.name, 'minor') ||
-        contains(github.event.pull_request.labels.*.name, 'patch')))
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     outputs:
       should-release: ${{ steps.check-pr.outputs.should-release }}
       version-bump: ${{ steps.check-pr.outputs.version-bump }}
