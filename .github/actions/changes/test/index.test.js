@@ -18,7 +18,6 @@ describe('mapChanges', () => {
         sinon.stub(console, 'log'); // Suppress console.log output in tests
 
         mockLogger = {
-            log: sinon.stub(),
             info: sinon.stub(),
             error: sinon.stub()
         };
@@ -82,7 +81,24 @@ describe('mapChanges', () => {
             }
         });
 
-        it('should throw error if workflows modified during release', async () => {
+        it('should warn and return empty results if workflows modified during automatic release', async () => {
+            const mockUvLock = 'package = []';
+            readFileSyncStub.withArgs(sinon.match(/uv\.lock/)).returns(mockUvLock);
+
+            const result = await mapChanges({
+                changes: '["workflows"]',
+                force: false,
+                release: true,
+                manual: false,
+                workspaceRoot: '/workspace',
+                logger: mockLogger
+            });
+
+            expect(result.changes_uv).to.have.lengthOf(0);
+            expect(result.changes_npm).to.have.lengthOf(0);
+        });
+
+        it('should throw error if workflows modified during manual release', async () => {
             const mockUvLock = 'package = []';
             readFileSyncStub.withArgs(sinon.match(/uv\.lock/)).returns(mockUvLock);
 
@@ -91,6 +107,7 @@ describe('mapChanges', () => {
                     changes: '["workflows"]',
                     force: false,
                     release: true,
+                    manual: true,
                     workspaceRoot: '/workspace',
                     logger: mockLogger
                 });

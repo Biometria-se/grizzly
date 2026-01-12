@@ -33491,6 +33491,7 @@ function nodePackage(directory, relativeDirectory, release = false) {
  * @param {string} options.changes - JSON string of list of directories that had changes
  * @param {boolean} options.force - Force run on all packages
  * @param {boolean} options.release - Indicates if this is a release run
+ * @param {boolean} options.manual - Indicates if this is a manual release (workflow_dispatch)
  * @param {string} options.workspaceRoot - Root directory of the workspace
  * @param {Object} options.logger - Logger object (defaults to console)
  * @returns {Promise<Object>} Object with changes_uv, changes_npm, and changes_actions arrays
@@ -33500,6 +33501,7 @@ async function mapChanges(options = {}) {
         changes,
         force = false,
         release = false,
+        manual = false,
         workspaceRoot = process.cwd(),
         logger = console
     } = options;
@@ -33522,7 +33524,21 @@ async function mapChanges(options = {}) {
 
     // Fail if workflow files were modified during release
     if (release && workflowInput.some(dir => dir.includes('workflows'))) {
-        throw new Error('Workflow files cannot be part of a release');
+        if (manual) {
+            // Manual release: throw error
+            throw new Error('Workflow files cannot be part of a release');
+        } else {
+            // Automatic release: warn and skip
+            const warningMsg = 'Workflow files cannot be part of a release - skipping change detection';
+            const warnMethod = logger.warning || logger.warn;
+            if (warnMethod) {
+                warnMethod.call(logger, warningMsg);
+            }
+            return {
+                changes_uv: [],
+                changes_npm: []
+            };
+        }
     }
 
     const changesMap = {
@@ -33563,11 +33579,7 @@ async function mapChanges(options = {}) {
     };
 
     const logMessage = `Detected changes:\nuv=${JSON.stringify(changesUv)}\nnpm=${JSON.stringify(changesNpm)}`;
-    if (logger.log) {
-        logger.log(logMessage);
-    } else if (logger.info) {
-        logger.info(logMessage);
-    }
+    logger.info(logMessage);
 
     return result;
 }
@@ -33589,6 +33601,7 @@ async function run(dependencies = {}) {
         const changesInput = coreModule.getInput('changes', { required: true });
         const forceInput = coreModule.getInput('force', { required: true });
         const releaseInput = coreModule.getInput('release') === 'true';
+        const manualInput = coreModule.getInput('manual') === 'true';
 
         const force = forceInput === 'true';
 
@@ -33601,6 +33614,7 @@ async function run(dependencies = {}) {
             changes: changesInput,
             force,
             release: releaseInput,
+            manual: manualInput,
             workspaceRoot,
             logger: coreModule
         });
