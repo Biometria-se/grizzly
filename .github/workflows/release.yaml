@@ -51,6 +51,7 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - uses: dorny/paths-filter@v3
+      if: steps.check-pr.outputs.should-release == 'true'
       id: filter
       with:
         filters: ./.github/changes-filter.yaml
@@ -58,13 +59,14 @@ jobs:
         base: ${{ steps.check-pr.outputs.base-commit-sha }}
 
     - name: "Map changed directories to packages"
-      if: steps.filter.outputs.changes != '[]'
+      if: steps.check-pr.outputs.should-release == 'true' && steps.filter.outputs.changes != '[]'
       id: mapper
       uses: ./.github/actions/changes
       with:
         changes: '${{ steps.filter.outputs.changes }}'
         force: 'false'
         release: 'true'
+        manual: ${{ github.event_name == 'workflow_dispatch' }}
 
   uv-release:
     name: "uv release / ${{ matrix.changes.package }}"

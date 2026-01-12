@@ -11,6 +11,10 @@ inputs:
     description: 'Indicates if this is a release run'
     required: false
     default: 'false'
+  manual:
+    description: 'Indicates if this is a manual release (workflow_dispatch)'
+    required: false
+    default: 'false'
 outputs:
   changes_uv:
     description: 'JSON string of Python (uv) package changes'
