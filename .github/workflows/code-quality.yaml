@@ -84,7 +84,7 @@ jobs:
   uv-test:
     name: "uv test / ${{ matrix.changes.package }} / py${{ matrix.python-version }} / ${{ matrix.image }}"
     needs: uv-lint
-    if: always()
+    if: always() && needs.uv-lint.result == 'success'
     continue-on-error: true
     timeout-minutes: 5
     outputs:
@@ -131,7 +131,7 @@ jobs:
   uv-test-e2e:
     name: "uv test-e2e / ${{ matrix.changes.package }} / py${{ matrix.python-version }} / ${{ matrix.image }}"
     needs: uv-test
-    if: always() && (inputs.skip-e2e-tests || 'false') == 'false'
+    if: always() && (inputs.skip-e2e-tests || 'false') == 'false' && (needs.uv-test.result == 'success' || needs.uv-test.result == 'failure')
     timeout-minutes: 40
     outputs:
       changes_uv: ${{ needs.uv-test.outputs.changes_uv || '[]' }}
@@ -341,7 +341,11 @@ jobs:
     needs:
       - npm-test
       - uv-test-e2e
-    if: always()
+    if: |
+      always() &&
+      needs.npm-test.result != 'failure' &&
+      needs.uv-test-e2e.result != 'failure' &&
+      (needs.npm-test.result == 'success' || needs.uv-test-e2e.result == 'success')
     runs-on: ubuntu-latest
 
     steps:
