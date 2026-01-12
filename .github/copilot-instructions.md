@@ -54,6 +54,18 @@ hatch run lint:check
 uv sync --locked -p {python-version} --active --all-packages --all-groups
 ```
 
+### Terminal Usage
+**IMPORTANT**: Always activate the Python virtual environment when starting a new terminal session:
+```bash
+source /workspaces/grizzly/.venv/bin/activate
+```
+
+This is required for:
+- Running Python commands and scripts
+- Executing e2e tests (especially for VSCode extension which depends on `grizzly_ls`)
+- Using `hatch` commands
+- Any operation that imports grizzly packages
+
 ## Key Development Patterns
 
 1. Package Dependencies:
@@ -99,6 +111,8 @@ in theory, the language server should work with any feature files that is using 
 #### [vscode extension](../editor-support/clients/vscode) - visual studio code extension
 
 this is the visual studio code extension that provides the integration with the language server. in general is does not contain any logic, only integrations towards [grizzly-loadtester-ls](../editor-support) features.
+
+**Important**: When updating `@types/vscode` in `package.json`, the `engines.vscode` field must be updated to match the same major.minor version. For example, if `@types/vscode` is `1.108.1`, then `engines.vscode` should be `^1.108.0`.
 
 ### [grizzly-docs](../docs) - documentation
 
