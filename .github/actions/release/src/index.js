@@ -114,7 +114,7 @@ async function run() {
         const project = core.getInput('project', { required: true });
         const versionBump = core.getInput('version-bump', { required: true });
         const dryRun = core.getInput('dry-run') === 'true'; const token = core.getInput('github-token', { required: true });
-        const jobName = core.getInput('name', { required: true });
+        const jobName = core.getInput('job-name', { required: true });
 
         // Store token and job name in state for cleanup phase
         core.saveState('github-token', token);
