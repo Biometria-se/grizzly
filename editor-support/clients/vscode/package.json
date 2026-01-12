@@ -32,7 +32,7 @@
   "qna": "false",
   "engines": {
     "node": ">=22",
-    "vscode": "^1.100.0"
+    "vscode": "^1.108.0"
   },
   "extensionDependencies": [
     "ms-python.python"
@@ -201,18 +201,18 @@
   "devDependencies": {
     "@types/chai": "^5.2.2",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^22.7.4",
-    "@types/vscode": "^1.100.0",
+    "@types/node": "^22.19.5",
+    "@types/vscode": "^1.108.1",
     "@typescript-eslint/eslint-plugin": "^8.52.0",
     "@typescript-eslint/parser": "^8.52.0",
     "@vscode/test-electron": "^2.5.2",
     "chai": "^6.0.1",
-    "esbuild": "^0.25.9",
-    "eslint": "^8.57.1",
+    "esbuild": "^0.27.2",
+    "eslint": "^9.39.2",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-n": "^17.10.3",
     "eslint-plugin-promise": "^7.1.0",
-    "glob": "^11.0.3",
+    "glob": "^13.0.0",
     "mocha": "^11.7.2",
     "npm-license-crawler": "^0.2.1",
     "typescript": "^5.9.3"
