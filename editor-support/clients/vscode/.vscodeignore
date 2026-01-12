@@ -4,4 +4,7 @@
 node_modules/
 src/
 **/tests/
-**/tsconfig*.json
+**/tsconfig*
+.mocharc.json
+package.local.json
+eslint.config.js
