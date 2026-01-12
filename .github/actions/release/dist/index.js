@@ -36225,12 +36225,12 @@ async function getNextReleaseTag(projectPath, bump, logger = core$1, execModule 
         '--sort=-version:refname',
         '--format=%(refname:lstrip=2)'
     ];
-    
+
     // Log command for visibility (especially in CLI mode)
     if (logger.info) {
         logger.info(`[command]git ${gitTagArgs.join(' ')}`);
     }
-    
+
     let stdout = '';
     await execModule.exec('git', gitTagArgs, {
         silent: false,
@@ -36277,7 +36277,7 @@ async function run() {
         const project = coreExports.getInput('project', { required: true });
         const versionBump = coreExports.getInput('version-bump', { required: true });
         const dryRun = coreExports.getInput('dry-run') === 'true'; const token = coreExports.getInput('github-token', { required: true });
-        const jobName = coreExports.getInput('name', { required: true });
+        const jobName = coreExports.getInput('job-name', { required: true });
 
         // Store token and job name in state for cleanup phase
         coreExports.saveState('github-token', token);

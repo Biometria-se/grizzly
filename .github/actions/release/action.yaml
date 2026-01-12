@@ -13,7 +13,7 @@ inputs:
   github-token:
     description: 'GitHub token for API access'
     required: false
-  name:
+  job-name:
     description: 'Job name for status checking in cleanup'
     required: true
 outputs:
