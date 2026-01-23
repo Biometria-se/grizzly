@@ -46,7 +46,7 @@ class AtomicVariableSettable(metaclass=ABCMeta):
     def __setitem__(self, key: str, value: Any) -> None: ...
 
 
-class AtomicVariable(Generic[T], AbstractAtomicClass):
+class AtomicVariable(AbstractAtomicClass, Generic[T]):
     __base_type__: Callable | None = None
     __dependencies__: ClassVar[GrizzlyDependencies] = set()
     __on_consumer__ = False

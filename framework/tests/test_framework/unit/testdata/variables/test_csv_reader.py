@@ -105,7 +105,7 @@ class TestAtomicCsvReader:
             instance = AtomicCsvReader(scenario=scenario2, variable='test3', value='3.csv')
             assert len(instance._rows['test3']) == 3
 
-            with pytest.raises(ValueError, match='AtomicCsvReader.test3: headerXX does not exists'):
+            with pytest.raises(ValueError, match=r'AtomicCsvReader\.test3: headerXX does not exists'):
                 instance['test3.headerXX']
 
             assert instance['test3'] == {'header13': 'value113', 'header23': 'value213', 'header33': 'value313'}

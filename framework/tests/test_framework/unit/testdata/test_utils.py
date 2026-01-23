@@ -291,7 +291,7 @@ def test_create_context_variable(grizzly_fixture: GrizzlyFixture) -> None:
             },
         }
 
-        with pytest.raises(AssertionError, match='configuration variable "test.auth.user.username" is not set'):
+        with pytest.raises(AssertionError, match=r'configuration variable "test\.auth\.user\.username" is not set'):
             create_context_variable(grizzly.scenario, 'test.value', '$conf::test.auth.user.username$')
 
         grizzly.state.configuration['test.auth.user.username'] = 'username'
@@ -385,7 +385,7 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR
         with pytest.raises(ValueError, match='is not a correctly specified templating variable, variables must match'):
             resolve_variable(grizzly.scenario, '$conf::sut.host')
 
-        with pytest.raises(AssertionError, match='configuration variable "sut.host" is not set'):
+        with pytest.raises(AssertionError, match=r'configuration variable "sut\.host" is not set'):
             resolve_variable(grizzly.scenario, '$conf::sut.host$')
 
         grizzly.state.configuration['sut.host'] = 'http://host.docker.internal:8003'

@@ -28,12 +28,12 @@ def test_atomiccsvwriter__base_type__(grizzly_fixture: GrizzlyFixture) -> None:
     with pytest.raises(ValueError, match='AtomicCsvWriter: argument headers is required'):
         atomiccsvwriter__base_type__('foobar | overwrite=True')
 
-    with pytest.raises(ValueError, match='AtomicCsvWriter: foobar must be a CSV file with file extension .csv'):
+    with pytest.raises(ValueError, match=r'AtomicCsvWriter: foobar must be a CSV file with file extension \.csv'):
         atomiccsvwriter__base_type__('foobar | headers="foo,bar"')
 
     (grizzly_fixture.test_context / 'requests' / 'foobar.csv').touch()
 
-    with pytest.raises(ValueError, match='AtomicCsvWriter: foobar.csv already exists, remove existing file or add argument overwrite=True'):
+    with pytest.raises(ValueError, match=r'AtomicCsvWriter: foobar\.csv already exists, remove existing file or add argument overwrite=True'):
         atomiccsvwriter__base_type__('foobar.csv | headers="foo,bar"')
 
     atomiccsvwriter__base_type__('foobar.csv | headers="foo,bar", overwrite=True')
@@ -93,7 +93,7 @@ class TestAtomicCsvWriter:
         scenario1 = grizzly.scenario
         scenario2 = grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('second'))
         try:
-            with pytest.raises(ValueError, match='AtomicCsvWriter.output.foo is not a valid CSV destination name, must be: AtomicCsvWriter.<name>'):
+            with pytest.raises(ValueError, match=r'AtomicCsvWriter\.output\.foo is not a valid CSV destination name, must be: AtomicCsvWriter.<name>'):
                 AtomicCsvWriter(scenario=scenario1, variable='output.foo', value='foobar')
 
             t = AtomicCsvWriter(scenario=scenario1, variable='output', value='foobar.csv | headers="foo,bar"')
@@ -168,13 +168,13 @@ class TestAtomicCsvWriter:
 
             assert not hasattr(t, '_buffer')
 
-            with pytest.raises(ValueError, match='AtomicCsvWriter.world is not a valid reference'):
+            with pytest.raises(ValueError, match=r'AtomicCsvWriter\.world is not a valid reference'):
                 t['world'] = 'hello'
 
-            with pytest.raises(ValueError, match=r'AtomicCsvWriter.output: less values \(1\) than headers \(2\)'):
+            with pytest.raises(ValueError, match=r'AtomicCsvWriter\.output: less values \(1\) than headers \(2\)'):
                 t['output'] = 'hello'
 
-            with pytest.raises(ValueError, match=r'AtomicCsvWriter.output: more values \(3\) than headers \(2\)'):
+            with pytest.raises(ValueError, match=r'AtomicCsvWriter\.output: more values \(3\) than headers \(2\)'):
                 t['output'] = 'hello,world,foo'
 
             t['output'] = 'hello, world'
@@ -189,7 +189,7 @@ class TestAtomicCsvWriter:
             )
             send_message_mock.reset_mock()
 
-            with pytest.raises(ValueError, match='AtomicCsvWriter.output.foo is not a valid reference'):
+            with pytest.raises(ValueError, match=r'AtomicCsvWriter\.output\.foo is not a valid reference'):
                 t['output.foo'] = 'world'
 
             send_message_mock.assert_not_called()

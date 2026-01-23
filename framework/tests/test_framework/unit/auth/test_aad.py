@@ -568,12 +568,12 @@ class TestAzureAadCredential:
 
             mock_request_session(Error.REQUEST_2_HTTP_STATUS)
 
-            with pytest.raises(AzureAadFlowError, match='user auth request 2: https://login.example.com/GetCredentialType had unexpected status code 400'):
+            with pytest.raises(AzureAadFlowError, match=r'user auth request 2: https:\/\/login.example.com\/GetCredentialType had unexpected status code 400'):
                 credential.get_oauth_authorization()
 
             mock_request_session(Error.REQUEST_3_HTTP_STATUS)
 
-            with pytest.raises(AzureAadFlowError, match='user auth request 3: https://login.example.com/login had unexpected status code 400'):
+            with pytest.raises(AzureAadFlowError, match=r'user auth request 3: https:\/\/login.example.com\/login had unexpected status code 400'):
                 credential.get_oauth_authorization()
 
             mock_request_session(Error.REQUEST_3_ERROR_MESSAGE)
@@ -629,7 +629,7 @@ class TestAzureAadCredential:
                 credential.get_oauth_authorization()
 
             mock_request_session(Error.REQUEST_2_ERROR_MESSAGE)
-            with pytest.raises(AzureAadFlowError, match='error response from https://login.example.com/GetCredentialType: code=12345678, message=error! error!'):
+            with pytest.raises(AzureAadFlowError, match=r'error response from https:\/\/login.example.com\/GetCredentialType: code=12345678, message=error! error!'):
                 credential.get_oauth_authorization()
 
             # successful login sequence
@@ -653,7 +653,7 @@ class TestAzureAadCredential:
 
             if login_start == 'initialize_uri':
                 mock_request_session(Error.REQUEST_5_HTTP_STATUS)
-                with pytest.raises(AzureAadFlowError, match='user auth request 5: https://www.example.com/app/login/signin-oidc had unexpected status code 500'):
+                with pytest.raises(AzureAadFlowError, match=r'user auth request 5: https:\/\/www\.example\.com\/app\/login\/signin-oidc had unexpected status code 500'):
                     credential.get_oauth_authorization()
 
                 mock_request_session(Error.REQUEST_5_NO_COOKIE)
@@ -668,7 +668,7 @@ class TestAzureAadCredential:
 
             credential.otp_secret = None
 
-            with caplog.at_level(logging.ERROR), pytest.raises(AzureAadFlowError, match='test-user@example.com requires TOTP for MFA, but auth.user.otp_secret is not set'):
+            with caplog.at_level(logging.ERROR), pytest.raises(AzureAadFlowError, match=r'test-user@example.com requires TOTP for MFA, but auth.user.otp_secret is not set'):
                 credential.get_oauth_authorization()
 
             # LC_ALL=C tr -dc 'A-Z2-7' </dev/urandom | head -c 16; echo
@@ -680,7 +680,7 @@ class TestAzureAadCredential:
                 caplog.at_level(logging.ERROR),
                 pytest.raises(
                     AzureAadFlowError,
-                    match='user auth request BeginAuth: https://test.nu/common/SAS/BeginAuth had unexpected status code 400',
+                    match=r'user auth request BeginAuth: https:\/\/test\.nu\/common\/SAS\/BeginAuth had unexpected status code 400',
                 ),
             ):
                 credential.get_oauth_authorization()
@@ -703,7 +703,7 @@ class TestAzureAadCredential:
                 caplog.at_level(logging.ERROR),
                 pytest.raises(
                     AzureAadFlowError,
-                    match='user auth request EndAuth: https://test.nu/common/SAS/EndAuth had unexpected status code 400',
+                    match=r'user auth request EndAuth: https:\/\/test\.nu\/common\/SAS\/EndAuth had unexpected status code 400',
                 ),
             ):
                 credential.get_oauth_authorization()
@@ -726,7 +726,7 @@ class TestAzureAadCredential:
                 caplog.at_level(logging.ERROR),
                 pytest.raises(
                     AzureAadFlowError,
-                    match='user auth request ProcessAuth: https://test.nu/common/SAS/ProcessAuth had unexpected status code 500',
+                    match=r'user auth request ProcessAuth: https:\/\/test\.nu\/common\/SAS\/ProcessAuth had unexpected status code 500',
                 ),
             ):
                 credential.get_oauth_authorization()

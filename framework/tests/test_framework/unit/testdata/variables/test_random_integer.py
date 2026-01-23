@@ -14,7 +14,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def test_atomicrandominteger__base_type__() -> None:
-    with pytest.raises(ValueError, match='10 is not a valid value format, must be: "a..b"'):
+    with pytest.raises(ValueError, match=r'10 is not a valid value format, must be: "a\.\.b"'):
         atomicrandominteger__base_type__('10')
 
     with pytest.raises(ValueError, match='a is not a valid integer'):

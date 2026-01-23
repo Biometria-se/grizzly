@@ -525,7 +525,7 @@ class TestAsyncMessageQueueHandler:
             'get',
             side_effect=[pymqi.MQMIError(pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_UNEXPECTED_ERROR)],
         )
-        with pytest.raises(AsyncMessageError, match='MQI Error. Comp: 2, Reason 2195: FAILED: MQRC_UNEXPECTED_ERROR'):
+        with pytest.raises(AsyncMessageError, match=r'MQI Error\. Comp: 2, Reason 2195: FAILED: MQRC_UNEXPECTED_ERROR'):
             response = handler._request(request)
 
         mocked_qmgr_commit.assert_not_called()
@@ -739,7 +739,7 @@ class TestAsyncMessageQueueHandler:
 
         # Queue.get returning unexpected error
         DummyQueue.error_list.append((pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_SSL_INITIALIZATION_ERROR))
-        with pytest.raises(AsyncMessageError, match='MQI Error. Comp: 2, Reason 2393: FAILED: MQRC_SSL_INITIALIZATION_ERROR'):
+        with pytest.raises(AsyncMessageError, match=r'MQI Error\. Comp: 2, Reason 2393: FAILED: MQRC_SSL_INITIALIZATION_ERROR'):
             response = handlers[request['action']](handler, request)
         mocked_qmgr_backout.assert_not_called()
         mocked_qmgr_commit.assert_not_called()
@@ -795,7 +795,7 @@ class TestAsyncMessageQueueHandler:
         # Error thrown for _request get with message id --> retries and finally gets the message
         DummyQueue.error_list.append((pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_UNEXPECTED_ERROR))
         request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='9']"
-        with pytest.raises(AsyncMessageError, match='MQI Error. Comp: 2, Reason 2195: FAILED: MQRC_UNEXPECTED_ERROR'):
+        with pytest.raises(AsyncMessageError, match=r'MQI Error\. Comp: 2, Reason 2195: FAILED: MQRC_UNEXPECTED_ERROR'):
             response = handlers[request['action']](handler, request)
         mocked_qmgr_backout.assert_called_once_with()
         mocked_qmgr_backout.reset_mock()

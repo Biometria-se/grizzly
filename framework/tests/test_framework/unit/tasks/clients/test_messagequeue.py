@@ -156,13 +156,13 @@ class TestMessageQueueClientTask:
                 task_factory.create_context()
 
             task_factory.endpoint = 'mq://mq.example.io'
-            with pytest.raises(AssertionError, match='MessageQueueClientTask: no valid path component found in "mq://mq.example.io"'):
+            with pytest.raises(AssertionError, match=r'MessageQueueClientTask: no valid path component found in "mq:\/\/mq.example.io"'):
                 task_factory.create_context()
 
             task_factory.endpoint = 'mqs://mq.example.io/topic:INCOMING.MSG'
             with pytest.raises(
                 AssertionError,
-                match='MessageQueueClientTask: QueueManager and Channel must be specified in the query string of "mqs://mq.example.io/topic:INCOMING.MSG"',
+                match=r'MessageQueueClientTask: QueueManager and Channel must be specified in the query string of "mqs:\/\/mq.example.io\/topic:INCOMING.MSG"',
             ):
                 task_factory.create_context()
 

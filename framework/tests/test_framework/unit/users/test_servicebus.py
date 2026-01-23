@@ -172,7 +172,7 @@ class TestServiceBusUser:
 
         assert issubclass(test_cls, ServiceBusUser)
 
-        with pytest.raises(ValueError, match='ServiceBusTestUser: does not have context variable auth.tenant set while auth.user is'):
+        with pytest.raises(ValueError, match=r'ServiceBusTestUser: does not have context variable auth\.tenant set while auth\.user is'):
             test_cls(environment=behave_fixture.locust.environment)
 
         test_cls.__context__['auth']['tenant'] = 'example.com'
