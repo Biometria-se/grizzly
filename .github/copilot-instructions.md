@@ -5,6 +5,10 @@ the language is python, the package manager is [uv](https://docs.astral.sh/uv/) 
 
 linting and formatting is done with [ruff](https://docs.astral.sh/ruff/).
 
+## Important Rules
+
+**Git Operations**: NEVER suggest or execute git write operations (`git add`, `git commit`, `git push`, or any other commands that modify the git repository). The user will handle all git operations themselves.
+
 **Grizzly is a framework to be able to easily define load scenarios, and is primarily built on-top of two other frameworks.**
 
 > [Locust](https://locust.io): Define user behaviour with Python code, and swarm your system with millions of simultaneous users.

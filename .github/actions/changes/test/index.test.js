@@ -66,6 +66,49 @@ describe('mapChanges', () => {
             sinon.assert.calledWith(readFileSyncStub, sinon.match(/changes-filter\.yaml/));
         });
 
+        it('should load all packages from changes-filter.yaml when "uv" is in changes', async () => {
+            const mockUvLock = 'package = []';
+            const mockChangeFilters = 'workflows: ".github/workflows/**"\nframework: "framework/**"\nuv: "uv.lock"';
+
+            readFileSyncStub.withArgs(sinon.match(/changes-filter\.yaml/)).returns(mockChangeFilters);
+            readFileSyncStub.withArgs(sinon.match(/uv\.lock/)).returns(mockUvLock);
+            existsSyncStub.returns(false);
+
+            const result = await mapChanges({
+                changes: '["uv"]',
+                force: false,
+                release: false,
+                workspaceRoot: '/workspace',
+                logger: mockLogger
+            });
+
+            expect(result).to.have.property('changes_uv');
+            expect(result).to.have.property('changes_npm');
+            sinon.assert.calledWith(readFileSyncStub, sinon.match(/changes-filter\.yaml/));
+        });
+
+        it('should load all packages when "uv" is included with other changes', async () => {
+            const mockUvLock = 'package = []';
+            const mockChangeFilters = 'workflows: ".github/workflows/**"\nframework: "framework/**"\nuv: "uv.lock"';
+
+            readFileSyncStub.withArgs(sinon.match(/changes-filter\.yaml/)).returns(mockChangeFilters);
+            readFileSyncStub.withArgs(sinon.match(/uv\.lock/)).returns(mockUvLock);
+            existsSyncStub.returns(false);
+
+            const result = await mapChanges({
+                changes: '["framework", "uv", "common"]',
+                force: false,
+                release: false,
+                workspaceRoot: '/workspace',
+                logger: mockLogger
+            });
+
+            expect(result).to.have.property('changes_uv');
+            expect(result).to.have.property('changes_npm');
+            // Should have loaded from changes-filter.yaml instead of processing individual directories
+            sinon.assert.calledWith(readFileSyncStub, sinon.match(/changes-filter\.yaml/));
+        });
+
         it('should throw error on invalid JSON in changes', async () => {
             try {
                 await mapChanges({
@@ -115,6 +158,50 @@ describe('mapChanges', () => {
             } catch (error) {
                 expect(error.message).to.include('Workflow files cannot be part of a release');
             }
+        });
+
+        it('should not load all packages when force=true during a release', async () => {
+            const mockUvLock = 'package = []';
+            const mockChangeFilters = 'workflows: ".github/workflows/**"\nframework: "framework/**"';
+
+            readFileSyncStub.withArgs(sinon.match(/uv\.lock/)).returns(mockUvLock);
+            readFileSyncStub.withArgs(sinon.match(/changes-filter\.yaml/)).returns(mockChangeFilters);
+            existsSyncStub.returns(false);
+
+            const result = await mapChanges({
+                changes: '["framework"]',
+                force: true,
+                release: true,
+                workspaceRoot: '/workspace',
+                logger: mockLogger
+            });
+
+            expect(result).to.have.property('changes_uv');
+            expect(result).to.have.property('changes_npm');
+            // Should NOT have loaded from changes-filter.yaml during release
+            sinon.assert.neverCalledWith(readFileSyncStub, sinon.match(/changes-filter\.yaml/));
+        });
+
+        it('should not load all packages when "uv" in changes during a release', async () => {
+            const mockUvLock = 'package = []';
+            const mockChangeFilters = 'workflows: ".github/workflows/**"\nframework: "framework/**"\nuv: "uv.lock"';
+
+            readFileSyncStub.withArgs(sinon.match(/uv\.lock/)).returns(mockUvLock);
+            readFileSyncStub.withArgs(sinon.match(/changes-filter\.yaml/)).returns(mockChangeFilters);
+            existsSyncStub.returns(false);
+
+            const result = await mapChanges({
+                changes: '["framework", "uv"]',
+                force: false,
+                release: true,
+                workspaceRoot: '/workspace',
+                logger: mockLogger
+            });
+
+            expect(result).to.have.property('changes_uv');
+            expect(result).to.have.property('changes_npm');
+            // Should NOT have loaded from changes-filter.yaml during release
+            sinon.assert.neverCalledWith(readFileSyncStub, sinon.match(/changes-filter\.yaml/));
         });
     });
 

@@ -226,7 +226,14 @@ describe('checkPullRequest', () => {
                 data: []
             });
 
-            const result = await checkPullRequest(mockContext, mockOctokit, null, mockLogger);
+            const clock = sinon.useFakeTimers();
+
+            const resultPromise = checkPullRequest(mockContext, mockOctokit, null, mockLogger);
+
+            // Fast-forward through all retry delays (1s, 2s, 4s, 8s)
+            await clock.tickAsync(1000 + 2000 + 4000 + 8000);
+
+            const result = await resultPromise;
 
             expect(result).to.deep.equal({
                 shouldRelease: false,
@@ -235,6 +242,78 @@ describe('checkPullRequest', () => {
                 commitSha: 'nopr123',
                 baseCommitSha: null
             });
+
+            clock.restore();
+        });
+
+        it('should retry when PR not found initially (eventual consistency)', async () => {
+            const mockPR = {
+                number: 888,
+                merged_at: '2024-01-05T00:00:00Z',
+                merge_commit_sha: 'retry123',
+                base: { sha: 'base888' },
+                labels: [{ name: 'patch' }]
+            };
+
+            mockContext.sha = 'retry123';
+
+            // First call returns empty, second call returns the PR (simulating eventual consistency)
+            mockOctokit.rest.repos.listPullRequestsAssociatedWithCommit
+                .onFirstCall().resolves({ data: [] })
+                .onSecondCall().resolves({ data: [mockPR] });
+
+            const clock = sinon.useFakeTimers();
+
+            const resultPromise = checkPullRequest(mockContext, mockOctokit, null, mockLogger);
+
+            // Fast-forward through the retry delay
+            await clock.tickAsync(1000);
+
+            const result = await resultPromise;
+
+            expect(result).to.deep.equal({
+                shouldRelease: true,
+                versionBump: 'patch',
+                prNumber: 888,
+                commitSha: 'retry123',
+                baseCommitSha: 'base888'
+            });
+
+            // Verify it called the API twice
+            sinon.assert.calledTwice(mockOctokit.rest.repos.listPullRequestsAssociatedWithCommit);
+
+            clock.restore();
+        });
+
+        it('should give up after max retries when PR never found', async () => {
+            mockContext.sha = 'neverFound123';
+
+            // Always return empty
+            mockOctokit.rest.repos.listPullRequestsAssociatedWithCommit.resolves({
+                data: []
+            });
+
+            const clock = sinon.useFakeTimers();
+
+            const resultPromise = checkPullRequest(mockContext, mockOctokit, null, mockLogger);
+
+            // Fast-forward through all retry delays (1s, 2s, 4s, 8s)
+            await clock.tickAsync(1000 + 2000 + 4000 + 8000);
+
+            const result = await resultPromise;
+
+            expect(result).to.deep.equal({
+                shouldRelease: false,
+                versionBump: null,
+                prNumber: null,
+                commitSha: 'neverFound123',
+                baseCommitSha: null
+            });
+
+            // Verify it called the API 5 times (initial + 4 retries)
+            expect(mockOctokit.rest.repos.listPullRequestsAssociatedWithCommit.callCount).to.equal(5);
+
+            clock.restore();
         });
 
         it('should skip when PR is not merged', async () => {

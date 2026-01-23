@@ -213,22 +213,22 @@ export async function mapChanges(options = {}) {
 
     let workflowInput;
 
-    if (force) {
+    try {
+        workflowInput = JSON.parse(changes);
+    } catch {
+        throw new Error(`Invalid JSON in changes: "${changes}"`);
+    }
+
+    if (!release && (force || (workflowInput !== undefined && workflowInput.includes('uv')))) {
         // Load all packages from changes-filter.yaml
         const changeFiltersFile = path.join(workspaceRoot, '.github', 'changes-filter.yaml');
         const changeFiltersContent = fs.readFileSync(changeFiltersFile, 'utf8');
         const changeFilters = yaml.load(changeFiltersContent);
         workflowInput = Object.keys(changeFilters);
-    } else {
-        try {
-            workflowInput = JSON.parse(changes);
-        } catch {
-            throw new Error(`Invalid JSON in changes: "${changes}"`);
-        }
     }
 
     // Fail if workflow files were modified during release
-    if (release && workflowInput.some(dir => dir.includes('workflows'))) {
+    if (release && workflowInput && workflowInput.some(dir => dir.includes('workflows'))) {
         if (manual) {
             // Manual release: throw error
             throw new Error('Workflow files cannot be part of a release');
