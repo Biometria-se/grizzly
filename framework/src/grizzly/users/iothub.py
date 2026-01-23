@@ -433,6 +433,10 @@ class IotHubUser(GrizzlyUser):
                         error_message = f'Unhandled request content_encoding in IotHubUser: {content_encoding}'
                         raise RuntimeError(error_message)
                     else:
+                        if request.source is None:
+                            message = f'Cannot upload empty payload to blob {filename} in IotHubUser'
+                            raise RuntimeError(message)
+
                         metadata = blob_client.upload_blob(request.source)
                 except ResourceExistsError:
                     if (request.arguments or {}).get('allow_already_exist', 'False').lower() == 'true':

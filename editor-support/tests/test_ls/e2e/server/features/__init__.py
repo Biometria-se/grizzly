@@ -9,7 +9,7 @@ from lsprotocol import types as lsp
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from pygls.server import LanguageServer
+    from pygls.lsp.server import LanguageServer
 
 
 def initialize(
@@ -49,12 +49,12 @@ def initialize(
         logger.setLevel(logging.DEBUG)
 
         # INITIALIZE takes time...
-        client.lsp.send_request(
+        client.protocol.send_request(
             lsp.INITIALIZE,
             params,
         ).result(timeout=299)
 
-        client.lsp.send_request(FEATURE_INSTALL).result(timeout=299)
+        client.protocol.send_request(FEATURE_INSTALL).result(timeout=299)
     finally:
         logger.setLevel(level)
 
@@ -63,7 +63,7 @@ def open_text_document(client: LanguageServer, path: Path, text: str | None = No
     if text is None:
         text = path.read_text()
 
-    client.lsp.notify(
+    client.protocol.notify(
         lsp.TEXT_DOCUMENT_DID_OPEN,
         lsp.DidOpenTextDocumentParams(
             text_document=lsp.TextDocumentItem(

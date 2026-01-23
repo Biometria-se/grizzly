@@ -177,7 +177,7 @@ def main() -> int:
     server.verbose = args.verbose
 
     if not args.socket:
-        server.start_io(sys.stdin.buffer, sys.stdout.buffer)  # type: ignore[arg-type]
+        server.start_io(sys.stdin.buffer, sys.stdout.buffer)
     else:
         server.start_tcp('127.0.0.1', args.socket_port)
 

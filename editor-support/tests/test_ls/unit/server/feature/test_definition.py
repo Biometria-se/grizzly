@@ -61,7 +61,7 @@ def test_get_step_definition(lsp_fixture: LspFixture) -> None:
 def test_get_file_url_definition(lsp_fixture: LspFixture, caplog: LogCaptureFixture) -> None:
     ls = lsp_fixture.server
     ls.root_path = GRIZZLY_PROJECT
-    ls.lsp._workspace = Workspace(ls.root_path.as_uri())
+    ls.protocol._workspace = Workspace(ls.root_path.as_uri())
 
     test_feature_file = ls.root_path / 'features' / 'empty.feature'
     test_file = ls.root_path / 'features' / 'requests' / 'test.txt'

@@ -9,7 +9,7 @@ from test_ls.e2e.server.features import initialize, open_text_document
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from pygls.server import LanguageServer
+    from pygls.lsp.server import LanguageServer
 
     from test_ls.fixtures import LspFixture
 
@@ -32,7 +32,7 @@ def hover(
         position=position,
     )
 
-    response = client.lsp.send_request(lsp.TEXT_DOCUMENT_HOVER, params).result(timeout=3)
+    response = client.protocol.send_request(lsp.TEXT_DOCUMENT_HOVER, params).result(timeout=3)
 
     assert response is None or isinstance(response, lsp.Hover)
 

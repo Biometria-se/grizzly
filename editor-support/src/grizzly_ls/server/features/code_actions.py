@@ -17,6 +17,7 @@ from grizzly_ls.constants import (
 from grizzly_ls.text import get_step_parts, normalize_text
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Sequence
     from pathlib import Path
 
     from pygls.workspace import TextDocument
@@ -175,7 +176,7 @@ def quick_fix_lang_wrong_line(text_document: TextDocument, diagnostic: lsp.Diagn
 def generate_quick_fixes(
     ls: GrizzlyLanguageServer,
     text_document: TextDocument,
-    diagnostics: list[lsp.Diagnostic],
+    diagnostics: Sequence[lsp.Diagnostic],
 ) -> list[lsp.CodeAction] | None:
     quick_fixes: list[lsp.CodeAction] = []
 

@@ -22,7 +22,7 @@ class Progress:
     logger: LogOutputChannelLogger
 
     def __init__(self, ls: GrizzlyLanguageServer, title: str) -> None:
-        self.progress = ls.progress
+        self.progress = ls.work_done_progress
         self.title = title
         self.token = str(uuid4())
         self.logger = ls.logger

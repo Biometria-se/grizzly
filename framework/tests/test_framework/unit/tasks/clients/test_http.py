@@ -35,7 +35,7 @@ class TestHttpClientTask:
         grizzly.scenario.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
 
         HttpClientTask.__scenario__ = grizzly.scenario
-        with pytest.raises(ValueError, match=r'either \.\* or \.\* does not exist'):
+        with pytest.raises(ValueError, match=r'either .* or .* does not exist'):
             HttpClientTask(
                 RequestDirection.FROM,
                 'http://example.org | timeout=1800, client_cert=hello.crt, client_key=hello.key',

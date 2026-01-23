@@ -19,7 +19,7 @@ def test_progress(lsp_fixture: LspFixture, mocker: MockerFixture) -> None:
 
     progress = Progress(server, title='test')
 
-    assert progress.progress is server.progress
+    assert progress.progress is server.work_done_progress
     assert progress.title == 'test'
     assert progress.logger is server.logger
     assert isinstance(progress.token, str)
