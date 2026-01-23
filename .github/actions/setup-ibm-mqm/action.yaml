@@ -16,7 +16,7 @@ runs:
     run: |
       mkdir -p $GRIZZLY_TMP_DIR/mqm
       pushd $GRIZZLY_TMP_DIR/mqm &>/dev/null
-      wget --no-verbose https://ibm.biz/IBM-MQC-Redist-LinuxX64targz -O - | tar xzf -
+      wget --no-verbose https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/9.4.0.6-IBM-MQC-Redist-LinuxX64.tar.gz -O - | tar xzf -
       popd &>/dev/null
 
   - name: "Setup environment"

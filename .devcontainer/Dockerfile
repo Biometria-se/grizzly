@@ -7,7 +7,7 @@ FROM alpine:latest as dependencies
 USER root
 
 RUN mkdir /root/ibm && cd /root/ibm && \
-    wget https://ibm.biz/IBM-MQC-Redist-LinuxX64targz -O - | tar xzf -
+    wget https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/9.4.0.6-IBM-MQC-Redist-LinuxX64.tar.gz -O - | tar xzf -
 
 # End IBM MQ libraries dependencies
 # See here for image contents: https://github.com/microsoft/vscode-dev-containers/tree/v0.209.5/containers/python-3/.devcontainer/base.Dockerfile
