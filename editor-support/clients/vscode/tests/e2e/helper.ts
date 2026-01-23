@@ -69,7 +69,7 @@ export async function acceptAndAssertSuggestion(position: vscode.Position, expec
     // move cursor
     editor.selection = new vscode.Selection(position, position);
 
-    const time: number = 125;
+    const time: number = 145;
 
     vscode.commands.executeCommand('editor.action.triggerSuggest');
     await sleep(time);

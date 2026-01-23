@@ -274,7 +274,7 @@ class TestGrizzlyLanguageServer:
 
         caplog.clear()
 
-        show_message_mock = mocker.patch.object(ls, 'show_message', autospec=True)
+        window_show_message_mock = mocker.patch.object(ls, 'window_show_message', autospec=True)
 
         with caplog.at_level(logging.ERROR):
             assert sorted(
@@ -289,7 +289,7 @@ class TestGrizzlyLanguageServer:
             )
 
         assert caplog.messages == []
-        show_message_mock.assert_not_called()
+        window_show_message_mock.assert_not_called()
 
         with caplog.at_level(logging.ERROR):
             assert sorted(
@@ -304,7 +304,7 @@ class TestGrizzlyLanguageServer:
             )
 
         assert caplog.messages == []
-        show_message_mock.assert_not_called()
+        window_show_message_mock.assert_not_called()
 
     def test__find_help(self, lsp_fixture: LspFixture) -> None:
         ls = lsp_fixture.server
@@ -746,7 +746,7 @@ class TestInstall(ServerInstall):
         self.pip_install_upgrade_mock.assert_not_called()
         self.compile_inventory_mock.assert_not_called()
 
-    def test_extension_done_publish_diagnostics(self) -> None:
+    def test_extension_done_text_document_publish_diagnostics(self) -> None:
         """Test when install is successful, and has_venv is True."""
         text_documents: dict[str, TextDocument] = {
             'first.feature': TextDocument(uri='first.feature', language_id=LANGUAGE_ID),
@@ -785,7 +785,7 @@ class TestInstall(ServerInstall):
         self.pip_install_upgrade_mock.assert_called_once_with(self.ls, self.test_context.stem, 'python', self.requirements_file, {})
         self.compile_inventory_mock.assert_called_once_with(self.ls)
         self.validate_gherkin_mock.assert_called_once_with(self.ls, text_documents['first.feature'])
-        self.ls_publish_diagnostics.assert_called_once_with(text_documents['first.feature'].uri, [])
+        self.ls_text_document_publish_diagnostics.assert_called_once_with(lsp.PublishDiagnosticsParams(uri=text_documents['first.feature'].uri, diagnostics=[]))
         # // -->
 
         self.reset_mocks()
@@ -805,7 +805,7 @@ class TestInstall(ServerInstall):
         self.pip_install_upgrade_mock.assert_called_once_with(self.ls, self.test_context.stem, 'python', self.requirements_file, {})
         self.compile_inventory_mock.assert_called_once_with(self.ls)
         self.validate_gherkin_mock.assert_called_once_with(self.ls, text_documents['first.feature'])
-        self.ls_publish_diagnostics.assert_not_called()
+        self.ls_text_document_publish_diagnostics.assert_not_called()
         # // -->
 
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import os
 import sys
 from contextlib import suppress
@@ -108,7 +107,7 @@ class LspFixture:
         self._server_thread = Thread(target=start, args=(self.server, cstdio, sstdout), daemon=True)
         self._server_thread.start()
 
-        self.client = DummyClient(loop=asyncio.new_event_loop(), name='dummy client', version='0.0.0')
+        self.client = DummyClient(name='dummy client', version='0.0.0')
         self._client_thread = Thread(target=start, args=(self.client, sstdio, cstdout), daemon=True)
         self._client_thread.start()
 
@@ -192,7 +191,7 @@ class ServerInstall(GrizzlyTestFixture):
     pip_install_upgrade_mock: MagicMock
     compile_inventory_mock: MagicMock
     validate_gherkin_mock: MagicMock
-    ls_publish_diagnostics: MagicMock
+    ls_text_document_publish_diagnostics: MagicMock
     requirements_file: Path
 
 
@@ -209,7 +208,7 @@ class ServerInstallFixture(ServerInstall):
         self.pip_install_upgrade_mock = mocker.patch('grizzly_ls.server.pip_install_upgrade', return_value=None)
         self.compile_inventory_mock = mocker.patch('grizzly_ls.server.compile_inventory', return_value=None)
         self.validate_gherkin_mock = mocker.patch('grizzly_ls.server.validate_gherkin', return_value=None)
-        self.ls_publish_diagnostics = mocker.patch.object(self.ls, 'publish_diagnostics', return_value=None)
+        self.ls_text_document_publish_diagnostics = mocker.patch.object(self.ls, 'text_document_publish_diagnostics', return_value=None)
         self.requirements_file = self.test_context / 'requirements.txt'
         self.ls.protocol._workspace = Workspace(root_uri=(self.test_context / f'grizzly-ls-{self.project_name}').as_posix())
 
@@ -221,7 +220,7 @@ class ServerInstallFixture(ServerInstall):
             self.pip_install_upgrade_mock,
             self.compile_inventory_mock,
             self.validate_gherkin_mock,
-            self.ls_publish_diagnostics,
+            self.ls_text_document_publish_diagnostics,
         ]
 
         mocker.patch('grizzly_ls.server.environ.copy', return_value={})
