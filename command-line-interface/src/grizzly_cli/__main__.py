@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+from importlib.metadata import version as get_version
 from pathlib import Path
 from shutil import which
 from traceback import format_exc
@@ -65,7 +66,19 @@ def _parse_show_version(args: argparse.Namespace) -> None:
     if args.version == 'all':
         grizzly_versions, locust_version = get_dependency_versions(local_install=False)
     else:
-        grizzly_versions, locust_version = None, None
+        # Try to get grizzly version even without 'all' flag
+        try:
+            grizzly_version: str | None = get_version('grizzly-loadtester')
+            # Handle 0.0.0 from editable installs
+            if grizzly_version == '0.0.0':
+                try:
+                    from grizzly.__version__ import __version__ as grizzly_version  # noqa: PLC0415
+                except ImportError:
+                    grizzly_version = None
+            grizzly_versions = (grizzly_version, None) if grizzly_version else None
+        except Exception:
+            grizzly_versions = None
+        locust_version = None
 
     tree_branch = '├' if grizzly_versions is not None else '└'
 

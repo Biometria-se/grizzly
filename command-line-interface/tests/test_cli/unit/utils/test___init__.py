@@ -6,8 +6,6 @@ from argparse import Namespace
 from contextlib import ExitStack
 from importlib import reload
 from json.decoder import JSONDecodeError
-from pathlib import Path
-from tempfile import gettempdir
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any, Union
 from unittest.mock import mock_open
@@ -1139,7 +1137,7 @@ def test_get_dependency_versions_git_branch_with_version_file(mocker: MockerFixt
     mocker.patch('grizzly_cli.EXECUTION_CONTEXT', str(test_context))
 
     try:
-        requirements_file.write_text('git+https://github.com/Biometria-se/grizzly.git@v1.5.3#egg=grizzly-loadtester')
+        requirements_file.write_text('git+https://github.com/Biometria-se/grizzly.git@v2.5.3#egg=grizzly-loadtester')
 
         import subprocess
 
@@ -1150,12 +1148,12 @@ def test_get_dependency_versions_git_branch_with_version_file(mocker: MockerFixt
             with unittest_patch(
                 'grizzly_cli.utils.Path.open',
                 side_effect=[
-                    mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v1.5.3#egg=grizzly-loadtester\n').return_value,
-                    mock_open(read_data="__version__ = '1.5.3'").return_value,
+                    mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v2.5.3#egg=grizzly-loadtester\n').return_value,
+                    mock_open(read_data="__version__ = '2.5.3'").return_value,
                     mock_open(read_data='locust==2.2.1 \\ ').return_value,
                 ],
             ):
-                assert get_dependency_versions(local_install=False) == (('1.5.3', []), '2.2.1')
+                assert get_dependency_versions(local_install=False) == (('2.5.3', []), '2.2.1')
 
                 capture = capsys.readouterr()
                 assert capture.err == ''
@@ -1171,7 +1169,7 @@ def test_get_dependency_versions_git_branch_with_subdirectory(mocker: MockerFixt
     mocker.patch('grizzly_cli.EXECUTION_CONTEXT', str(test_context))
 
     try:
-        requirements_file.write_text('git+https://github.com/Biometria-se/grizzly.git@v1.5.3#egg=grizzly-loadtester&subdirectory=framework')
+        requirements_file.write_text('git+https://github.com/Biometria-se/grizzly.git@v2.5.3#egg=grizzly-loadtester&subdirectory=framework')
 
         import subprocess
 
@@ -1182,12 +1180,12 @@ def test_get_dependency_versions_git_branch_with_subdirectory(mocker: MockerFixt
             with unittest_patch(
                 'grizzly_cli.utils.Path.open',
                 side_effect=[
-                    mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v1.5.3#egg=grizzly-loadtester&subdirectory=framework\n').return_value,
-                    mock_open(read_data="__version__ = '1.5.3'").return_value,
+                    mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v2.5.3#egg=grizzly-loadtester&subdirectory=framework\n').return_value,
+                    mock_open(read_data="__version__ = '2.5.3'").return_value,
                     mock_open(read_data='locust==2.2.1 \\ ').return_value,
                 ],
             ):
-                assert get_dependency_versions(local_install=False) == (('1.5.3', []), '2.2.1')
+                assert get_dependency_versions(local_install=False) == (('2.5.3', []), '2.2.1')
 
                 capture = capsys.readouterr()
                 assert capture.err == ''
@@ -1267,7 +1265,7 @@ def test_get_dependency_versions_git_with_extras(mocker: MockerFixture, tmp_path
     mocker.patch('grizzly_cli.EXECUTION_CONTEXT', str(test_context))
 
     try:
-        requirements_file.write_text('git+https://github.com/Biometria-se/grizzly.git@v1.5.3#egg=grizzly-loadtester[dev,mq]')
+        requirements_file.write_text('git+https://github.com/Biometria-se/grizzly.git@v2.5.3#egg=grizzly-loadtester[dev,mq]')
 
         import subprocess
 
@@ -1278,12 +1276,12 @@ def test_get_dependency_versions_git_with_extras(mocker: MockerFixture, tmp_path
             with unittest_patch(
                 'grizzly_cli.utils.Path.open',
                 side_effect=[
-                    mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v1.5.3#egg=grizzly-loadtester[dev,mq]\n').return_value,
-                    mock_open(read_data="__version__ = '1.5.3'").return_value,
+                    mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v2.5.3#egg=grizzly-loadtester[dev,mq]\n').return_value,
+                    mock_open(read_data="__version__ = '2.5.3'").return_value,
                     mock_open(read_data='locust==2.2.1 \\ ').return_value,
                 ],
             ):
-                assert get_dependency_versions(local_install=False) == (('1.5.3', ['dev', 'mq']), '2.2.1')
+                assert get_dependency_versions(local_install=False) == (('2.5.3', ['dev', 'mq']), '2.2.1')
 
                 capture = capsys.readouterr()
                 assert capture.err == ''
@@ -1371,10 +1369,10 @@ def test_get_dependency_versions_git_errors(mocker: MockerFixture, tmp_path_fact
         assert capture.err == f'!! unable to find grizzly dependency in {requirements_file.absolute()}\n'
 
         # Test: missing egg fragment
-        requirements_file.write_text('git+https://github.com/Biometria-se/grizzly.git@v1.5.3')
+        requirements_file.write_text('git+https://github.com/Biometria-se/grizzly.git@v2.5.3')
         assert get_dependency_versions(local_install=False) == (('(unknown)', None), '(unknown)')
         capture = capsys.readouterr()
-        assert capture.err == '!! "egg" not found in fragments for git+https://github.com/Biometria-se/grizzly.git@v1.5.3\n'
+        assert capture.err == '!! "egg" not found in fragments for git+https://github.com/Biometria-se/grizzly.git@v2.5.3\n'
 
         # Test: malformed git dependency
         requirements_file.write_text('grizzly-loadtester[mq] % git+https://github.com/Biometria-se/grizzly.git@main')
@@ -1383,7 +1381,7 @@ def test_get_dependency_versions_git_errors(mocker: MockerFixture, tmp_path_fact
         assert capture.err == f'!! unable to find properly formatted grizzly dependency in {requirements_file}\n'
 
         # Test: git clone fails
-        requirements_file.write_text('git+https://github.com/Biometria-se/grizzly.git@v1.5.3#egg=grizzly-loadtester')
+        requirements_file.write_text('git+https://github.com/Biometria-se/grizzly.git@v2.5.3#egg=grizzly-loadtester')
         import subprocess
 
         mocker.patch.object(subprocess, 'check_call', return_value=1)
@@ -1406,7 +1404,7 @@ def test_get_dependency_versions_git_errors(mocker: MockerFixture, tmp_path_fact
 
         assert get_dependency_versions(local_install=False) == (('(unknown)', None), '(unknown)')
         capture = capsys.readouterr()
-        assert capture.err == '!! unable to checkout branch v1.5.3 from git repo https://github.com/Biometria-se/grizzly.git\n'
+        assert capture.err == '!! unable to checkout branch v2.5.3 from git repo https://github.com/Biometria-se/grizzly.git\n'
 
         # Test: __version__.py not found or empty
         mocker.patch.object(subprocess, 'check_call', return_value=0)
@@ -1415,7 +1413,7 @@ def test_get_dependency_versions_git_errors(mocker: MockerFixture, tmp_path_fact
         with unittest_patch(
             'grizzly_cli.utils.Path.open',
             side_effect=[
-                mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v1.5.3#egg=grizzly-loadtester\n').return_value,
+                mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v2.5.3#egg=grizzly-loadtester\n').return_value,
                 mock_open(read_data='').return_value,
             ],
         ):
@@ -1427,7 +1425,7 @@ def test_get_dependency_versions_git_errors(mocker: MockerFixture, tmp_path_fact
         with unittest_patch(
             'grizzly_cli.utils.Path.open',
             side_effect=[
-                mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v1.5.3#egg=grizzly-loadtester\n').return_value,
+                mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v2.5.3#egg=grizzly-loadtester\n').return_value,
                 mock_open(read_data="__version__ = '0.0.0'").return_value,
                 mock_open(read_data='').return_value,
             ],
@@ -1440,12 +1438,12 @@ def test_get_dependency_versions_git_errors(mocker: MockerFixture, tmp_path_fact
         with unittest_patch(
             'grizzly_cli.utils.Path.open',
             side_effect=[
-                mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v1.5.3#egg=grizzly-loadtester[dev,mq]\n').return_value,
-                mock_open(read_data="__version__ = '1.5.3'").return_value,
+                mock_open(read_data='git+https://github.com/Biometria-se/grizzly.git@v2.5.3#egg=grizzly-loadtester[dev,mq]\n').return_value,
+                mock_open(read_data="__version__ = '2.5.3'").return_value,
                 mock_open(read_data='locust').return_value,
             ],
         ):
-            assert get_dependency_versions(local_install=False) == (('1.5.3', ['dev', 'mq']), '(unknown)')
+            assert get_dependency_versions(local_install=False) == (('2.5.3', ['dev', 'mq']), '(unknown)')
             capture = capsys.readouterr()
             assert capture.err == '!! unable to find locust version in "locust" specified in requirements.txt from https://github.com/Biometria-se/grizzly.git\n'
 
@@ -1461,6 +1459,11 @@ def test_get_dependency_versions_pypi(mocker: MockerFixture, tmp_path_factory: T
     mocker.patch('grizzly_cli.EXECUTION_CONTEXT', str(test_context))
 
     try:
+        # Mock get_version in grizzly_cli.utils to raise exception so fallback returns (None, None)
+        from importlib.metadata import PackageNotFoundError
+
+        mocker.patch('grizzly_cli.utils.get_version', side_effect=PackageNotFoundError)
+
         grizzly_versions, locust_version = get_dependency_versions(local_install=False)
 
         assert grizzly_versions == (None, None)

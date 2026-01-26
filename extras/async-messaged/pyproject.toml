@@ -60,5 +60,11 @@ root = "../../"
 [tool.hatch.build.hooks.vcs]
 version-file = "src/async_messaged/__version__.py"
 
+[tool.hatch.build.targets.wheel.hooks.vcs]
+version-file = "src/async_messaged/__version__.py"
+
+[tool.hatch.build.targets.editable.hooks.vcs]
+version-file = "src/async_messaged/__version__.py"
+
 [dependency-groups]
 dev = []

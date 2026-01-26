@@ -208,9 +208,13 @@ def test__parse_argument_version(capsys: CaptureFixture, mocker: MockerFixture, 
 
             expected_version = '0.0.0'
             expected_common_version = '1.2.3'
+            expected_grizzly_version = '3.0.1'
 
             mocker.patch('grizzly_cli.__main__.__version__', expected_version)
             mocker.patch('grizzly_cli.__main__.__common_version__', expected_common_version)
+
+            # Mock get_version in _parse_show_version to return expected grizzly version
+            mocker.patch('grizzly_cli.__main__.get_version', return_value=expected_grizzly_version)
 
             with pytest.raises(SystemExit) as se:
                 _parse_arguments()
@@ -218,7 +222,7 @@ def test__parse_argument_version(capsys: CaptureFixture, mocker: MockerFixture, 
 
             capture = capsys.readouterr()
             assert capture.err == ''
-            assert capture.out == f'grizzly-cli {expected_version}\n└── grizzly-common {expected_common_version}\n'
+            assert capture.out == f'grizzly-cli {expected_version}\n├── grizzly-common {expected_common_version}\n└── grizzly {expected_grizzly_version}\n'
 
             sys.argv = ['grizzly-cli', '--version', 'foo']
 
@@ -278,7 +282,24 @@ def test__parse_argument_version(capsys: CaptureFixture, mocker: MockerFixture, 
 
             mocker.patch('grizzly_cli.utils.mkdtemp', mocked_mkdtemp)
             mocker.patch('grizzly_cli.utils.subprocess.check_call', return_value=0)
-            mocker.patch('grizzly_cli.utils.subprocess.check_output', return_value='main\n')
+            # Multiple subprocess.check_output calls:
+            # 1. git rev-parse HEAD -> 'main\n'
+            # 2. hatch --version -> 'hatch 1.14.0\n'
+            # 3. hatch version -> '0.0.0\n'
+            # 4. git rev-parse HEAD (second test) -> 'main\n'
+            # 5. hatch --version (second test) -> 'hatch 1.14.0\n'
+            # 6. hatch version (second test) -> '0.0.0\n'
+            mocker.patch(
+                'grizzly_cli.utils.subprocess.check_output',
+                side_effect=[
+                    'main\n',
+                    'hatch 1.14.0\n',
+                    '0.0.0\n',
+                    'main\n',
+                    'hatch 1.14.0\n',
+                    '0.0.0\n',
+                ],
+            )
 
             repo = 'git+https://git@github.com/biometria-se/grizzly.git@main#egg=grizzly-loadtester'
             repo_suffix = sha1(repo.encode('utf-8')).hexdigest()  # noqa: S324

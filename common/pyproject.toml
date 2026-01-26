@@ -78,6 +78,12 @@ root = "../"
 [tool.hatch.build.hooks.vcs]
 version-file = "src/grizzly_common/__version__.py"
 
+[tool.hatch.build.targets.wheel.hooks.vcs]
+version-file = "src/grizzly_common/__version__.py"
+
+[tool.hatch.build.targets.editable.hooks.vcs]
+version-file = "src/grizzly_common/__version__.py"
+
 [dependency-groups]
 dev = [
     "types-python-dateutil>=2.9.0.20250822,<3.0.0",

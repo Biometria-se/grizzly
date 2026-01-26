@@ -54,37 +54,33 @@ def run_command(command: list[str], env: dict[str, str] | None = None, cwd: Path
         stderr=subprocess.STDOUT,
         stdout=subprocess.PIPE,
         stdin=subprocess.PIPE,
+        text=True,  # Use text mode for better buffering behavior
+        bufsize=1,  # Line buffered
     )
 
     if stdin is not None:
         assert process.stdin is not None
-        process.stdin.write(f'{stdin}\n'.encode())
+        process.stdin.write(f'{stdin}\n')
+        process.stdin.flush()
+
+    # Always close stdin to prevent subprocess from hanging waiting for EOF
+    if process.stdin is not None:
         process.stdin.close()
 
     try:
-        while process.poll() is None:
-            stdout = process.stdout
-            if stdout is None:
-                break
+        # Use iterator which handles EOF properly
+        if process.stdout is not None:
+            for line in process.stdout:
+                normalized_line = line.replace(os.linesep, '\n') if sys.platform == 'win32' else line
+                output.append(normalized_line)
 
-            buffer = stdout.readline()
-            if not buffer:
-                break
-
-            line = buffer.decode('utf-8')
-            if sys.platform == 'win32':
-                line = line.replace(os.linesep, '\n')
-
-            output.append(line)
-
-        process.terminate()
+        process.wait()
     except KeyboardInterrupt:
         pass
     finally:
         with suppress(Exception):
             process.kill()
-
-    process.wait()
+            process.wait()
 
     return process.returncode, output
 

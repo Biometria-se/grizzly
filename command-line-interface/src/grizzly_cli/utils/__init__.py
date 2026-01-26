@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import wraps
 from hashlib import sha1
-from importlib.util import find_spec
+from importlib.metadata import version as get_version
 from json import loads as jsonloads
 from math import ceil
 from os import environ
@@ -218,6 +218,26 @@ def get_dependency_versions(*, local_install: Union[bool, str]) -> tuple[tuple[s
                     grizzly_requirement = line.strip()
                     break
     except:
+        # If no requirements.txt, try to get version from installed packages
+        if not local_install:
+            with suppress(Exception):
+                grizzly_version = get_version('grizzly-loadtester')
+                # Handle 0.0.0 from editable installs
+                if grizzly_version == '0.0.0':
+                    try:
+                        from grizzly.__version__ import __version__ as grizzly_version  # noqa: PLC0415
+                    except ImportError:
+                        grizzly_version = None
+
+                if grizzly_version:
+                    # Try to get locust version too
+                    try:
+                        locust_version = get_version('locust')
+                    except:
+                        locust_version = None
+
+                    return (grizzly_version, None), locust_version
+
         return (None, None), None
 
     if grizzly_requirement is None:
@@ -387,23 +407,30 @@ def get_dependency_versions(*, local_install: Union[bool, str]) -> tuple[tuple[s
                         stderr=subprocess.DEVNULL,
                     )
                 except (subprocess.CalledProcessError, FileNotFoundError):
-                    rc = subprocess.check_call(
+                    subprocess.run(
                         [
                             sys.executable,
                             '-m',
                             'pip',
                             'install',
                             'hatch',
-                        ]
+                        ],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        check=True,
                     )
 
                 try:
-                    grizzly_version = subprocess.check_output(
+                    hatch_output = subprocess.check_output(
                         ['hatch', 'version'],
                         shell=False,
                         universal_newlines=True,
                         cwd=repo_destination,
+                        stderr=subprocess.DEVNULL,
                     ).strip()
+                    # hatch version may output build information before the version
+                    # so we take the last non-empty line as the version
+                    grizzly_version = [line for line in hatch_output.splitlines() if line.strip()][-1].strip()
                 except subprocess.CalledProcessError as e:  # pragma: no cover
                     print(f'!! unable to get hatch version from {url}', file=sys.stderr)
                     raise RuntimeError from e  # abort
@@ -430,9 +457,12 @@ def get_dependency_versions(*, local_install: Union[bool, str]) -> tuple[tuple[s
                         if not dependency.startswith('locust'):
                             continue
 
-                        _, locust_version = dependency.strip().split(' ', 1)
-
-                        break
+                        # Parse locust version from dependency string like "locust==2.40.2" or "locust >=2.8.4,<3.0.0"
+                        # Handle both "locust==version" and "locust >=version" (with or without space)
+                        match = re.match(r'^locust\s*([><=!]+.*?)$', dependency.strip())
+                        if match:
+                            locust_version = match.group(1).strip()
+                            break
         except RuntimeError:
             pass
         finally:

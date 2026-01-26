@@ -103,6 +103,12 @@ local_scheme = "no-local-version"
 [tool.hatch.build.hooks.vcs]
 version-file = "./__version__.py"
 
+[tool.hatch.build.targets.wheel.hooks.vcs]
+version-file = "./__version__.py"
+
+[tool.hatch.build.targets.editable.hooks.vcs]
+version-file = "./__version__.py"
+
 [tool.uv.workspace]
 members = [
     "framework",
