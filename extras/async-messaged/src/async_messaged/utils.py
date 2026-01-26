@@ -32,7 +32,7 @@ def tohex(value: Any) -> str:
         return value.hex()
 
     if isinstance(value, int):
-        return hex(value)[2:]
+        return f'{value:x}'
 
     message = f'{value} has an unsupported type {type(value)}'
     raise ValueError(message)

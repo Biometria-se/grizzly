@@ -165,7 +165,7 @@ def test_get_context_root(tmp_path_factory: TempPathFactory, mocker: MockerFixtu
 
         rglob_mock.return_value = iter([])
 
-        with pytest.raises(ValueError, match='context root not found, are you in a grizzly project?'):
+        with pytest.raises(ValueError, match=r'context root not found, are you in a grizzly project\?'):
             get_context_root()
     finally:
         rm_rf(test_context)
@@ -344,7 +344,7 @@ def test_load_configuration(mocker: MockerFixture, tmp_path_factory: TempPathFac
         load_configuration_keyvault_mock.reset_mock()
 
         dummy_file = test_context / 'dummy.txt'
-        with pytest.raises(ValueError, match='dummy.txt does not exist'):
+        with pytest.raises(ValueError, match=r'dummy\.txt does not exist'):
             load_configuration(dummy_file)
 
         dummy_file.touch()

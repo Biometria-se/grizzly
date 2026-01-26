@@ -106,6 +106,33 @@ describe('CLI mode', function () {
             expect(stdout).to.include('UV Changes');
         });
 
+        it('should load all packages when "uv" is in changes list', async () => {
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
+            const { stdout } = await execFileAsync('node',
+                [indexPath, '--changes', '["uv"]', '--force', 'false'],
+                { env: cleanEnv, cwd: workspaceRoot }
+            );
+
+            expect(stdout).to.include('Results:');
+            expect(stdout).to.include('UV Changes');
+            expect(stdout).to.include('NPM Changes');
+        });
+
+        it('should load all packages when "uv" is included with other changes', async () => {
+            const cleanEnv = { ...process.env };
+            delete cleanEnv.GITHUB_ACTIONS;
+
+            const { stdout } = await execFileAsync('node',
+                [indexPath, '--changes', '["framework", "uv", "common"]', '--force', 'false'],
+                { env: cleanEnv, cwd: workspaceRoot }
+            );
+
+            expect(stdout).to.include('Results:');
+            expect(stdout).to.include('UV Changes');
+        });
+
         it('should handle release flag', async () => {
             const cleanEnv = { ...process.env };
             delete cleanEnv.GITHUB_ACTIONS;

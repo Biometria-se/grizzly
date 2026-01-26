@@ -23,7 +23,7 @@ from lsprotocol import types as lsp
 from pip._internal.configuration import Configuration as PipConfiguration
 from pip._internal.exceptions import ConfigurationError as PipConfigurationError
 from pygls.capabilities import get_capability
-from pygls.server import LanguageServer
+from pygls.lsp.server import LanguageServer
 
 from grizzly_ls import __version__
 from grizzly_ls.constants import COMMAND_REBUILD_INVENTORY, COMMAND_RENDER_GHERKIN, COMMAND_RUN_DIAGNOSTICS, FEATURE_INSTALL, LANGUAGE_ID
@@ -52,6 +52,7 @@ from .inventory import compile_inventory, compile_keyword_inventory
 from .progress import Progress
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Sequence
     from types import FrameType
 
     from pygls.workspace import TextDocument
@@ -442,7 +443,7 @@ def install(ls: GrizzlyLanguageServer, *_args: Any) -> None:
                 continue
 
             diagnostics = validate_gherkin(ls, text_document)
-            ls.publish_diagnostics(text_document.uri, diagnostics)
+            ls.text_document_publish_diagnostics(lsp.PublishDiagnosticsParams(uri=text_document.uri, diagnostics=diagnostics))
     except:
         ls.logger.exception('failed to run diagnostics on all opened files', notify=True)
 
@@ -536,7 +537,7 @@ def initialize(ls: GrizzlyLanguageServer, params: lsp.InitializeParams) -> None:
         if client_settings is not None:
             ls.client_settings = cast('dict[str, Any]', client_settings)
 
-        markup_supported: list[lsp.MarkupKind] = get_capability(
+        markup_supported: Sequence[lsp.MarkupKind] = get_capability(
             params.capabilities,
             'text_document.completion.completion_item.documentation_format',
             [lsp.MarkupKind.Markdown],
@@ -710,7 +711,7 @@ def text_document_did_open(ls: GrizzlyLanguageServer, params: lsp.DidOpenTextDoc
     if ls.client_settings.get('diagnostics_on_save_only', True):
         try:
             diagnostics = validate_gherkin(ls, text_document)
-            ls.publish_diagnostics(text_document.uri, diagnostics)
+            ls.text_document_publish_diagnostics(lsp.PublishDiagnosticsParams(uri=text_document.uri, diagnostics=diagnostics))
         except:
             ls.logger.exception('failed to run diagnostics on opened file', notify=True)
 
@@ -719,7 +720,7 @@ def text_document_did_open(ls: GrizzlyLanguageServer, params: lsp.DidOpenTextDoc
 def text_document_did_close(ls: GrizzlyLanguageServer, params: lsp.DidCloseTextDocumentParams) -> None:
     # always clear diagnostics when file is closed
     try:
-        ls.publish_diagnostics(params.text_document.uri, None)
+        ls.text_document_publish_diagnostics(lsp.PublishDiagnosticsParams(uri=params.text_document.uri, diagnostics=[]))
     except:
         ls.logger.exception('failed to clear diagnostics for closed file', notify=True)
 
@@ -735,7 +736,7 @@ def text_document_did_save(ls: GrizzlyLanguageServer, params: lsp.DidSaveTextDoc
     if ls.client_settings.get('diagnostics_on_save_only', True):
         try:
             diagnostics = validate_gherkin(ls, text_document)
-            ls.publish_diagnostics(text_document.uri, diagnostics)
+            ls.text_document_publish_diagnostics(lsp.PublishDiagnosticsParams(uri=text_document.uri, diagnostics=diagnostics))
         except:
             ls.logger.exception('failed to run diagnostics on save', notify=True)
 
@@ -848,7 +849,7 @@ def command_rebuild_inventory(ls: GrizzlyLanguageServer, *_args: Any, **_kwargs:
                 continue
 
             diagnostics = validate_gherkin(ls, text_document)
-            ls.publish_diagnostics(text_document.uri, diagnostics)
+            ls.text_document_publish_diagnostics(lsp.PublishDiagnosticsParams(uri=text_document.uri, diagnostics=diagnostics))
     except:
         ls.logger.exception('failed to rebuild inventory', notify=True)
 
@@ -863,7 +864,7 @@ def command_run_diagnostics(ls: GrizzlyLanguageServer, *args: Any, **_kwargs: An
         text_document = ls.workspace.get_text_document(uri)
 
         diagnostics = validate_gherkin(ls, text_document)
-        ls.publish_diagnostics(text_document.uri, diagnostics)
+        ls.text_document_publish_diagnostics(lsp.PublishDiagnosticsParams(uri=text_document.uri, diagnostics=diagnostics))
     except Exception:
         ls.logger.exception(f'failed to run diagnostics on {uri}', notify=True)
 

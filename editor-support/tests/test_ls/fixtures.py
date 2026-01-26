@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import os
 import sys
 from contextlib import suppress
@@ -15,7 +14,7 @@ from grizzly_ls.utils import LogOutputChannelLogger
 from lsprotocol import types as lsp
 from lsprotocol.types import EXIT
 from pip._internal.configuration import Configuration as PipConfiguration
-from pygls.server import LanguageServer
+from pygls.lsp.server import LanguageServer
 from pygls.workspace import Workspace
 from pytest_mock.plugin import MockerFixture
 from typing_extensions import Self
@@ -97,24 +96,18 @@ class LspFixture:
 
         def start(ls: LanguageServer, fdr: int, fdw: int) -> None:
             with suppress(Exception):
-                ls.start_io(os.fdopen(fdr, 'rb'), os.fdopen(fdw, 'wb'))  # type: ignore[arg-type]
+                ls.start_io(os.fdopen(fdr, 'rb'), os.fdopen(fdw, 'wb'))
 
         from grizzly_ls.server import server
 
         server.logger.logger.setLevel(DEBUG)
-
-        server.loop.close()
-        server._owns_loop = False
-        asyncio.set_event_loop(None)
-
-        server.loop = asyncio.new_event_loop()
 
         self.server = server
         self.server.language = 'en'
         self._server_thread = Thread(target=start, args=(self.server, cstdio, sstdout), daemon=True)
         self._server_thread.start()
 
-        self.client = DummyClient(loop=asyncio.new_event_loop(), name='dummy client', version='0.0.0')
+        self.client = DummyClient(name='dummy client', version='0.0.0')
         self._client_thread = Thread(target=start, args=(self.client, sstdio, cstdout), daemon=True)
         self._client_thread.start()
 
@@ -128,8 +121,8 @@ class LspFixture:
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> Literal[True]:
-        self.server.send_notification(EXIT)
-        self.client.send_notification(EXIT)
+        self.server.protocol.notify(EXIT)
+        self.client.protocol.notify(EXIT)
 
         self._server_thread.join(timeout=2.0)
         self._client_thread.join(timeout=2.0)
@@ -198,7 +191,7 @@ class ServerInstall(GrizzlyTestFixture):
     pip_install_upgrade_mock: MagicMock
     compile_inventory_mock: MagicMock
     validate_gherkin_mock: MagicMock
-    ls_publish_diagnostics: MagicMock
+    ls_text_document_publish_diagnostics: MagicMock
     requirements_file: Path
 
 
@@ -215,9 +208,9 @@ class ServerInstallFixture(ServerInstall):
         self.pip_install_upgrade_mock = mocker.patch('grizzly_ls.server.pip_install_upgrade', return_value=None)
         self.compile_inventory_mock = mocker.patch('grizzly_ls.server.compile_inventory', return_value=None)
         self.validate_gherkin_mock = mocker.patch('grizzly_ls.server.validate_gherkin', return_value=None)
-        self.ls_publish_diagnostics = mocker.patch.object(self.ls, 'publish_diagnostics', return_value=None)
+        self.ls_text_document_publish_diagnostics = mocker.patch.object(self.ls, 'text_document_publish_diagnostics', return_value=None)
         self.requirements_file = self.test_context / 'requirements.txt'
-        self.ls.lsp._workspace = Workspace(root_uri=(self.test_context / f'grizzly-ls-{self.project_name}').as_posix())
+        self.ls.protocol._workspace = Workspace(root_uri=(self.test_context / f'grizzly-ls-{self.project_name}').as_posix())
 
         self.mocks = [
             self.progress_class_mock,
@@ -227,7 +220,7 @@ class ServerInstallFixture(ServerInstall):
             self.pip_install_upgrade_mock,
             self.compile_inventory_mock,
             self.validate_gherkin_mock,
-            self.ls_publish_diagnostics,
+            self.ls_text_document_publish_diagnostics,
         ]
 
         mocker.patch('grizzly_ls.server.environ.copy', return_value={})
@@ -316,9 +309,7 @@ class ServerInitializeFixture(ServerInitialize):
 
     def get_client_capabilities(self) -> lsp.ClientCapabilities:
         return lsp.ClientCapabilities(
-            text_document=lsp.TextDocumentClientCapabilities(
-                completion=lsp.CompletionClientCapabilities(completion_item=lsp.CompletionClientCapabilitiesCompletionItemType(documentation_format=[]))
-            ),
+            text_document=lsp.TextDocumentClientCapabilities(completion=lsp.CompletionClientCapabilities(completion_item=lsp.ClientCompletionItemOptions(documentation_format=[]))),
         )
 
     def done(self) -> None:
@@ -349,7 +340,7 @@ class ServerTextDocumentCompletion(GrizzlyTestFixture):
 class ServerTextDocumentCompletionFixture(ServerTextDocumentCompletion):
     def __init__(self, lsp_fixture: LspFixture, mocker: MockerFixture) -> None:
         self.ls = lsp_fixture.server
-        self.ls.lsp._workspace = Workspace(root_uri='file:///tmp/grizzly-ls-unit-test')
+        self.ls.protocol._workspace = Workspace(root_uri='file:///tmp/grizzly-ls-unit-test')
 
         self.logger_mock = mocker.patch.object(self.ls, 'logger', spec=LogOutputChannelLogger)
         self.ls_get_text_document_mock = mocker.patch.object(self.ls.workspace, 'get_text_document', return_value=None)

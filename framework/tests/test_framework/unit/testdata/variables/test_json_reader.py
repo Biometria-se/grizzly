@@ -109,7 +109,7 @@ class TestAtomicJsonReader:
             instance = AtomicJsonReader(scenario=scenario2, variable='test3', value='3.json')
             assert len(instance._items['test3']) == 3
 
-            with pytest.raises(ValueError, match='AtomicJsonReader.test3: headerXX does not exists'):
+            with pytest.raises(ValueError, match=r'AtomicJsonReader\.test3: headerXX does not exists'):
                 instance['test3.headerXX']
 
             assert instance['test3'] == {'header13': 'value113', 'header23': 'value213', 'header33': 'value313'}

@@ -251,7 +251,7 @@ class TestAsyncServiceBusHandler:
             },
         }
 
-        with pytest.raises(AsyncMessageError, match='"asdf" is not a valid value for context.connection'):
+        with pytest.raises(AsyncMessageError, match=r'"asdf" is not a valid value for context\.connection'):
             handlers[request['action']](handler, request)
 
         assert handler._sender_cache == {}
@@ -698,7 +698,7 @@ class TestAsyncServiceBusHandler:
             },
         }
 
-        with pytest.raises(AsyncMessageError, match='"asdf" is not a valid value for context.connection'):
+        with pytest.raises(AsyncMessageError, match=r'"asdf" is not a valid value for context\.connection'):
             handlers[request['action']](handler, request)
 
         servicebusclient_connect_spy.assert_called_once_with(conn_str=f'Endpoint={request["context"]["url"]}', transport_type=TransportType.AmqpOverWebsocket)
@@ -914,7 +914,7 @@ class TestAsyncServiceBusHandler:
             },
         }
 
-        with pytest.raises(AsyncMessageError, match='"asdf" is not a valid value for context.connection'):
+        with pytest.raises(AsyncMessageError, match=r'"asdf" is not a valid value for context\.connection'):
             handlers[request['action']](handler, request)
 
         request['context']['connection'] = 'sender'

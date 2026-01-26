@@ -209,7 +209,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     parent = grizzly_fixture(user_type=RestApiUser)
     assert isinstance(parent.user, RestApiUser)
 
-    with pytest.raises(AssertionError, match='test_framework.unit.auth.test___init__.NotAnAuth is not a subclass of grizzly.auth.RefreshToken'):
+    with pytest.raises(AssertionError, match=r'test_framework\.unit\.auth\.test___init__\.NotAnAuth is not a subclass of grizzly\.auth\.RefreshToken'):
         refresh_token('test_framework.unit.auth.test___init__.NotAnAuth')
 
     # use string instead of class

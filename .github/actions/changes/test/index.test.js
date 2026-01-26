@@ -66,6 +66,49 @@ describe('mapChanges', () => {
             sinon.assert.calledWith(readFileSyncStub, sinon.match(/changes-filter\.yaml/));
         });
 
+        it('should load all packages from changes-filter.yaml when "uv" is in changes', async () => {
+            const mockUvLock = 'package = []';
+            const mockChangeFilters = 'workflows: ".github/workflows/**"\nframework: "framework/**"\nuv: "uv.lock"';
+
+            readFileSyncStub.withArgs(sinon.match(/changes-filter\.yaml/)).returns(mockChangeFilters);
+            readFileSyncStub.withArgs(sinon.match(/uv\.lock/)).returns(mockUvLock);
+            existsSyncStub.returns(false);
+
+            const result = await mapChanges({
+                changes: '["uv"]',
+                force: false,
+                release: false,
+                workspaceRoot: '/workspace',
+                logger: mockLogger
+            });
+
+            expect(result).to.have.property('changes_uv');
+            expect(result).to.have.property('changes_npm');
+            sinon.assert.calledWith(readFileSyncStub, sinon.match(/changes-filter\.yaml/));
+        });
+
+        it('should load all packages when "uv" is included with other changes', async () => {
+            const mockUvLock = 'package = []';
+            const mockChangeFilters = 'workflows: ".github/workflows/**"\nframework: "framework/**"\nuv: "uv.lock"';
+
+            readFileSyncStub.withArgs(sinon.match(/changes-filter\.yaml/)).returns(mockChangeFilters);
+            readFileSyncStub.withArgs(sinon.match(/uv\.lock/)).returns(mockUvLock);
+            existsSyncStub.returns(false);
+
+            const result = await mapChanges({
+                changes: '["framework", "uv", "common"]',
+                force: false,
+                release: false,
+                workspaceRoot: '/workspace',
+                logger: mockLogger
+            });
+
+            expect(result).to.have.property('changes_uv');
+            expect(result).to.have.property('changes_npm');
+            // Should have loaded from changes-filter.yaml instead of processing individual directories
+            sinon.assert.calledWith(readFileSyncStub, sinon.match(/changes-filter\.yaml/));
+        });
+
         it('should throw error on invalid JSON in changes', async () => {
             try {
                 await mapChanges({
@@ -115,6 +158,50 @@ describe('mapChanges', () => {
             } catch (error) {
                 expect(error.message).to.include('Workflow files cannot be part of a release');
             }
+        });
+
+        it('should not load all packages when force=true during a release', async () => {
+            const mockUvLock = 'package = []';
+            const mockChangeFilters = 'workflows: ".github/workflows/**"\nframework: "framework/**"';
+
+            readFileSyncStub.withArgs(sinon.match(/uv\.lock/)).returns(mockUvLock);
+            readFileSyncStub.withArgs(sinon.match(/changes-filter\.yaml/)).returns(mockChangeFilters);
+            existsSyncStub.returns(false);
+
+            const result = await mapChanges({
+                changes: '["framework"]',
+                force: true,
+                release: true,
+                workspaceRoot: '/workspace',
+                logger: mockLogger
+            });
+
+            expect(result).to.have.property('changes_uv');
+            expect(result).to.have.property('changes_npm');
+            // Should NOT have loaded from changes-filter.yaml during release
+            sinon.assert.neverCalledWith(readFileSyncStub, sinon.match(/changes-filter\.yaml/));
+        });
+
+        it('should not load all packages when "uv" in changes during a release', async () => {
+            const mockUvLock = 'package = []';
+            const mockChangeFilters = 'workflows: ".github/workflows/**"\nframework: "framework/**"\nuv: "uv.lock"';
+
+            readFileSyncStub.withArgs(sinon.match(/uv\.lock/)).returns(mockUvLock);
+            readFileSyncStub.withArgs(sinon.match(/changes-filter\.yaml/)).returns(mockChangeFilters);
+            existsSyncStub.returns(false);
+
+            const result = await mapChanges({
+                changes: '["framework", "uv"]',
+                force: false,
+                release: true,
+                workspaceRoot: '/workspace',
+                logger: mockLogger
+            });
+
+            expect(result).to.have.property('changes_uv');
+            expect(result).to.have.property('changes_npm');
+            // Should NOT have loaded from changes-filter.yaml during release
+            sinon.assert.neverCalledWith(readFileSyncStub, sinon.match(/changes-filter\.yaml/));
         });
     });
 
@@ -278,6 +365,88 @@ name = "grizzly-loadtester-common"
             expect(result.changes_uv).to.have.lengthOf(2);
             const packages = result.changes_uv.map(c => c.package).sort();
             expect(packages).to.deep.equal(['grizzly-loadtester', 'grizzly-loadtester-common']);
+        });
+
+        it('should deduplicate packages when multiple directories trigger same reverse dependencies', async () => {
+            const mockUvLock = `
+[[package]]
+name = "grizzly-loadtester-common"
+source = { editable = "common" }
+
+[[package]]
+name = "grizzly-loadtester"
+source = { editable = "framework" }
+dependencies = [
+    { name = "grizzly-loadtester-common" }
+]
+
+[[package]]
+name = "grizzly-loadtester-cli"
+source = { editable = "command-line-interface" }
+dependencies = [
+    { name = "grizzly-loadtester-common" }
+]
+
+[[package]]
+name = "grizzly-loadtester-ls"
+source = { editable = "editor-support" }
+dependencies = [
+    { name = "grizzly-loadtester-common" }
+]
+`;
+            const mockCommonPyproject = `
+[project]
+name = "grizzly-loadtester-common"
+`;
+            const mockFrameworkPyproject = `
+[project]
+name = "grizzly-loadtester"
+`;
+            const mockCliPyproject = `
+[project]
+name = "grizzly-loadtester-cli"
+`;
+            const mockLsPyproject = `
+[project]
+name = "grizzly-loadtester-ls"
+`;
+
+            readFileSyncStub.withArgs(sinon.match(/uv\.lock/)).returns(mockUvLock);
+            readFileSyncStub.withArgs(sinon.match(/common[/\\]pyproject\.toml/)).returns(mockCommonPyproject);
+            readFileSyncStub.withArgs(sinon.match(/framework[/\\]pyproject\.toml/)).returns(mockFrameworkPyproject);
+            readFileSyncStub.withArgs(sinon.match(/command-line-interface[/\\]pyproject\.toml/)).returns(mockCliPyproject);
+            readFileSyncStub.withArgs(sinon.match(/editor-support[/\\]pyproject\.toml/)).returns(mockLsPyproject);
+
+            existsSyncStub.withArgs(sinon.match(/pyproject\.toml$/)).returns(true);
+            existsSyncStub.withArgs(sinon.match(/tests$/)).returns(false);
+            existsSyncStub.callThrough();
+
+            // Test with multiple directories that would trigger overlapping reverse dependencies
+            // Don't include "uv" to avoid triggering force mode from changes-filter.yaml
+            const result = await mapChanges({
+                changes: '["framework","common","command-line-interface","editor-support"]',
+                force: false,
+                release: false,
+                workspaceRoot: '/workspace',
+                logger: mockLogger
+            });
+
+            // Collect directories to verify no duplicates
+            const directories = result.changes_uv.map(c => c.directory);
+            const uniqueDirectories = [...new Set(directories)];
+
+            // Each directory should appear exactly once
+            expect(directories).to.have.lengthOf(uniqueDirectories.length);
+            expect(directories.sort()).to.deep.equal(uniqueDirectories.sort());
+
+            // Verify we have the expected packages (common appears once despite multiple reverse deps)
+            const packages = result.changes_uv.map(c => c.package).sort();
+            expect(packages).to.deep.equal([
+                'grizzly-loadtester',
+                'grizzly-loadtester-cli',
+                'grizzly-loadtester-common',
+                'grizzly-loadtester-ls'
+            ]);
         });
     });
 

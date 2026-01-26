@@ -12,11 +12,11 @@ maintainers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "colorama>=0.4.6",
-    "ordered-set>=4.1.0",
-    "pip>=25.2",
-    "pygls>=1.3.1",
-    "random-word>=1.0.13",
+    "colorama>=0.4.6,<1.0.0",
+    "ordered-set>=4.1.0,<5.0.0",
+    "pip>=25.2,<26.0",
+    "pygls>=2.0.0,<3.0.0",
+    "random-word>=1.0.13,<2.0.0",
     "grizzly-loadtester-common",
 ]
 classifiers = [
@@ -81,11 +81,11 @@ root = "../"
 
 [dependency-groups]
 debug = [
-    "debugpy>=1.8.16",
+    "debugpy>=1.8.16,<2.0.0",
 ]
 dev = [
     "grizzly-loadtester",
-    "types-colorama>=0.4.15.20250801",
+    "types-colorama>=0.4.15.20250801,<1.0.0",
 ]
 
 [tool.hatch.build.hooks.vcs]

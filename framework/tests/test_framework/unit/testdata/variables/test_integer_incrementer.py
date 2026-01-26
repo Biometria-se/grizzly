@@ -32,13 +32,13 @@ def test_atomicintegerincrementer__base_type__() -> None:
     with pytest.raises(ValueError, match='incorrect format in arguments: "asdf"'):
         atomicintegerincrementer__base_type__('10 | asdf')
 
-    with pytest.raises(ValueError, match='"|" is not a valid initial value'):
+    with pytest.raises(ValueError, match=r'"\|" is not a valid initial value'):
         atomicintegerincrementer__base_type__('|')
 
-    with pytest.raises(ValueError, match='"asdf|" is not a valid initial value'):
+    with pytest.raises(ValueError, match=r'"asdf\|" is not a valid initial value'):
         atomicintegerincrementer__base_type__('asdf|')
 
-    with pytest.raises(ValueError, match='"asdf| step=asdf" is not a valid initial value'):
+    with pytest.raises(ValueError, match=r'"asdf\| step=asdf" is not a valid initial value'):
         atomicintegerincrementer__base_type__('asdf| step=asdf')
 
     with pytest.raises(ValueError, match=r"invalid literal for int\(\) with base 10: 'asdf'"):
@@ -82,7 +82,7 @@ class TestAtomicIntegerIncrementer:
             assert t['test'] == 10
             assert t['test'] == 20
 
-            with pytest.raises(ValueError, match='AtomicIntegerIncrementer.message_id should not be persisted'):
+            with pytest.raises(ValueError, match=r'AtomicIntegerIncrementer\.message_id should not be persisted'):
                 t.generate_initial_value('message_id')
 
             assert t.generate_initial_value('test') == '30 | step=10, persist=True'
@@ -154,7 +154,7 @@ class TestAtomicIntegerIncrementer:
             assert t['test'] == 10
             assert t['test'] == 30
 
-            with pytest.raises(ValueError, match='AtomicIntegerIncrementer.test should not be persisted'):
+            with pytest.raises(ValueError, match=r'AtomicIntegerIncrementer\.test should not be persisted'):
                 t.generate_initial_value('test')
 
             assert t.generate_initial_value('message_id') == '24 | step=10, persist=True'

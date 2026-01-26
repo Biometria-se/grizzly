@@ -59,7 +59,7 @@ class TestUntilRequestTask:
         assert task.wait == 100
         assert task.retries == 10
 
-        with pytest.raises(AssertionError, match='wait argument cannot be less than 0.1 seconds'):
+        with pytest.raises(AssertionError, match=r'wait argument cannot be less than 0\.1 seconds'):
             UntilRequestTask(request, '$.`this`[?status="ready"] | wait=0.0, retries=10')
 
         with pytest.raises(AssertionError, match='retries argument cannot be less than 1'):

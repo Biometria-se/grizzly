@@ -213,22 +213,22 @@ export async function mapChanges(options = {}) {
 
     let workflowInput;
 
-    if (force) {
+    try {
+        workflowInput = JSON.parse(changes);
+    } catch {
+        throw new Error(`Invalid JSON in changes: "${changes}"`);
+    }
+
+    if (!release && (force || (workflowInput !== undefined && workflowInput.includes('uv')))) {
         // Load all packages from changes-filter.yaml
         const changeFiltersFile = path.join(workspaceRoot, '.github', 'changes-filter.yaml');
         const changeFiltersContent = fs.readFileSync(changeFiltersFile, 'utf8');
         const changeFilters = yaml.load(changeFiltersContent);
         workflowInput = Object.keys(changeFilters);
-    } else {
-        try {
-            workflowInput = JSON.parse(changes);
-        } catch {
-            throw new Error(`Invalid JSON in changes: "${changes}"`);
-        }
     }
 
     // Fail if workflow files were modified during release
-    if (release && workflowInput.some(dir => dir.includes('workflows'))) {
+    if (release && workflowInput && workflowInput.some(dir => dir.includes('workflows'))) {
         if (manual) {
             // Manual release: throw error
             throw new Error('Workflow files cannot be part of a release');
@@ -247,8 +247,8 @@ export async function mapChanges(options = {}) {
     }
 
     const changesMap = {
-        uv: new Set(),
-        npm: new Set()
+        uv: new Map(),
+        npm: new Map()
     };
 
     // Load uv.lock file
@@ -264,19 +264,19 @@ export async function mapChanges(options = {}) {
         // Python packages
         const pythonChanges = pythonPackage(fullPath, directory, uvLockPackages, workspaceRoot, release);
         for (const change of pythonChanges) {
-            changesMap.uv.add(change);
+            changesMap.uv.set(change.directory, change);
         }
 
         // Node packages
         const npmChanges = nodePackage(fullPath, directory, release);
         for (const change of npmChanges) {
-            changesMap.npm.add(change);
+            changesMap.npm.set(change.directory, change);
         }
     }
 
-    // Convert sets to sorted arrays
-    const changesUv = Array.from(changesMap.uv).sort((a, b) => a.package.localeCompare(b.package));
-    const changesNpm = Array.from(changesMap.npm).sort((a, b) => a.package.localeCompare(b.package));
+    // Convert maps to sorted arrays
+    const changesUv = Array.from(changesMap.uv.values()).sort((a, b) => a.package.localeCompare(b.package));
+    const changesNpm = Array.from(changesMap.npm.values()).sort((a, b) => a.package.localeCompare(b.package));
 
     const result = {
         changes_uv: changesUv,

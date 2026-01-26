@@ -129,10 +129,10 @@ class LogOutputChannelLogger:
         if self.embedded:
             if exc_info:
                 message = f'{message}\n{self.get_current_exception()}'
-            self.ls.show_message_log(message, msg_type=msg_type)
+            self.ls.window_log_message(lsp.LogMessageParams(type=msg_type, message=message))
 
         if notify:
-            self.ls.show_message(message, msg_type=msg_type)
+            self.ls.window_show_message(lsp.ShowMessageParams(type=msg_type, message=message))
 
     def info(self, message: str, *, notify: bool = False) -> None:
         self.log(logging.INFO, message, exc_info=False, notify=notify)

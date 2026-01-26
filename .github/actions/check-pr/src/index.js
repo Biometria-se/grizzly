@@ -39,14 +39,32 @@ export async function checkPullRequest(context, octokit, prNumber = null, logger
         commitSha = context.sha;
         logger.info(`finding PR associated with commit: ${commitSha}`);
 
-        const { data: prs } = await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            commit_sha: commitSha
-        });
+        // Retry mechanism with exponential backoff for eventual consistency
+        const maxRetries = 5;
+        const baseDelay = 1000; // 1 second
+        let prs = [];
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            if (attempt > 0) {
+                const delay = baseDelay * Math.pow(2, attempt - 1);
+                logger.info(`retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+
+            const { data } = await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: commitSha
+            });
+
+            if (data && data.length > 0) {
+                prs = data;
+                break;
+            }
+        }
 
         if (!prs || prs.length === 0) {
-            logger.info(`no PR found associated with commit ${commitSha}, skipping`);
+            logger.info(`no PR found associated with commit ${commitSha} after ${maxRetries} attempts, skipping`);
             return {
                 shouldRelease: false,
                 versionBump: null,

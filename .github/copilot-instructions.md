@@ -5,6 +5,10 @@ the language is python, the package manager is [uv](https://docs.astral.sh/uv/) 
 
 linting and formatting is done with [ruff](https://docs.astral.sh/ruff/).
 
+## Important Rules
+
+**Git Operations**: NEVER suggest or execute git write operations (`git add`, `git commit`, `git push`, or any other commands that modify the git repository). The user will handle all git operations themselves.
+
 **Grizzly is a framework to be able to easily define load scenarios, and is primarily built on-top of two other frameworks.**
 
 > [Locust](https://locust.io): Define user behaviour with Python code, and swarm your system with millions of simultaneous users.
@@ -65,6 +69,21 @@ This is required for:
 - Executing e2e tests (especially for VSCode extension which depends on `grizzly_ls`)
 - Using `hatch` commands
 - Any operation that imports grizzly packages
+
+### Node.js/npm Development
+**IMPORTANT**: When making changes to Node.js/JavaScript code (GitHub Actions, VSCode extension, etc.), ALWAYS run these commands in order:
+```bash
+npm run build   # Build distribution files
+npm run lint    # Check code quality
+npm run test    # Run all tests
+```
+
+This is required for:
+- GitHub Actions in `.github/actions/*/` directories (they run from `dist/` folder)
+- VSCode extension in `editor-support/clients/vscode/`
+- Any Node.js package with a build step
+
+The `dist/` folder contains the compiled code that actually runs in production, so changes to `src/` files won't take effect until built.
 
 ## Key Development Patterns
 

@@ -311,13 +311,13 @@ value1,value2
         try:
             t = GrizzlyVariables(scenarios=grizzly.scenarios)
 
-            with pytest.raises(ValueError, match='10 is not a valid value format, must be: "a..b"'):
+            with pytest.raises(ValueError, match=r'10 is not a valid value format, must be: "a\.\.b"'):
                 t['AtomicRandomInteger.test1'] = '10'
 
-            with pytest.raises(ValueError, match='1.17 is not a valid integer'):
+            with pytest.raises(ValueError, match=r'1\.17 is not a valid integer'):
                 t['AtomicRandomInteger.test2'] = '1.17..5.0'
 
-            with pytest.raises(ValueError, match='1.0 is not a valid integer'):
+            with pytest.raises(ValueError, match=r'1\.0 is not a valid integer'):
                 t['AtomicRandomInteger.test3'] = '1.0..3.5'
 
             with pytest.raises(ValueError, match='first value needs to be less than second value'):

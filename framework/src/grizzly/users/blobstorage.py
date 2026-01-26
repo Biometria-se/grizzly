@@ -154,6 +154,10 @@ class BlobStorageUser(GrizzlyUser):
 
         with self.blob_client.get_blob_client(container=container, blob=blob) as blob_client:
             if request.method.direction == RequestDirection.TO:
+                if request.source is None:
+                    message = f'{self.__class__.__name__} cannot upload an empty blob'
+                    raise RuntimeError(message)
+
                 blob_client.upload_blob(request.source, overwrite=True)
             else:
                 downloader = blob_client.download_blob()

@@ -77,7 +77,7 @@ class TestAsyncRequestGroup:
         requests = cast('list[RequestTask]', task_factory.tasks)
         task = task_factory()
 
-        with pytest.raises(NotImplementedError, match='test_framework.helpers.TestUser_001 does not inherit AsyncRequests'):
+        with pytest.raises(NotImplementedError, match=r'test_framework\.helpers\.TestUser_001 does not inherit AsyncRequests'):
             task(parent)
 
         parent = grizzly_fixture(user_type=RestApiUser)

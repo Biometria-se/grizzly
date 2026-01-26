@@ -7,9 +7,10 @@ from lsprotocol import types as lsp
 from test_ls.e2e.server.features import initialize, open_text_document
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
-    from pygls.server import LanguageServer
+    from pygls.lsp.server import LanguageServer
 
     from test_ls.fixtures import LspFixture
 
@@ -46,7 +47,7 @@ def completion(
         work_done_token=None,
     )
 
-    response = client.lsp.send_request(lsp.TEXT_DOCUMENT_COMPLETION, params).result(timeout=3)
+    response = client.protocol.send_request(lsp.TEXT_DOCUMENT_COMPLETION, params).result(timeout=3)
 
     assert response is None or isinstance(response, lsp.CompletionList)
 
@@ -57,7 +58,7 @@ def test_completion_keywords(lsp_fixture: LspFixture) -> None:
     client = lsp_fixture.client
 
     def filter_keyword_properties(
-        items: list[lsp.CompletionItem],
+        items: Sequence[lsp.CompletionItem],
     ) -> list[dict[str, Any]]:
         return [
             {
