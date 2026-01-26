@@ -70,6 +70,21 @@ This is required for:
 - Using `hatch` commands
 - Any operation that imports grizzly packages
 
+### Node.js/npm Development
+**IMPORTANT**: When making changes to Node.js/JavaScript code (GitHub Actions, VSCode extension, etc.), ALWAYS run these commands in order:
+```bash
+npm run build   # Build distribution files
+npm run lint    # Check code quality
+npm run test    # Run all tests
+```
+
+This is required for:
+- GitHub Actions in `.github/actions/*/` directories (they run from `dist/` folder)
+- VSCode extension in `editor-support/clients/vscode/`
+- Any Node.js package with a build step
+
+The `dist/` folder contains the compiled code that actually runs in production, so changes to `src/` files won't take effect until built.
+
 ## Key Development Patterns
 
 1. Package Dependencies:

@@ -33794,8 +33794,8 @@ async function mapChanges(options = {}) {
     }
 
     const changesMap = {
-        uv: new Set(),
-        npm: new Set()
+        uv: new Map(),
+        npm: new Map()
     };
 
     // Load uv.lock file
@@ -33811,19 +33811,19 @@ async function mapChanges(options = {}) {
         // Python packages
         const pythonChanges = pythonPackage(fullPath, directory, uvLockPackages, workspaceRoot, release);
         for (const change of pythonChanges) {
-            changesMap.uv.add(change);
+            changesMap.uv.set(change.directory, change);
         }
 
         // Node packages
         const npmChanges = nodePackage(fullPath, directory, release);
         for (const change of npmChanges) {
-            changesMap.npm.add(change);
+            changesMap.npm.set(change.directory, change);
         }
     }
 
-    // Convert sets to sorted arrays
-    const changesUv = Array.from(changesMap.uv).sort((a, b) => a.package.localeCompare(b.package));
-    const changesNpm = Array.from(changesMap.npm).sort((a, b) => a.package.localeCompare(b.package));
+    // Convert maps to sorted arrays
+    const changesUv = Array.from(changesMap.uv.values()).sort((a, b) => a.package.localeCompare(b.package));
+    const changesNpm = Array.from(changesMap.npm.values()).sort((a, b) => a.package.localeCompare(b.package));
 
     const result = {
         changes_uv: changesUv,
