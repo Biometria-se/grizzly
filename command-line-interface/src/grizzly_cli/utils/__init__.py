@@ -25,6 +25,7 @@ from pathlib import Path
 from shutil import rmtree, which
 from tempfile import mkdtemp
 from typing import TYPE_CHECKING, Any, ClassVar, Union, cast
+from urllib.parse import parse_qs, urlparse
 
 import requests
 import tomli
@@ -198,6 +199,7 @@ def get_dependency_versions(*, local_install: Union[bool, str]) -> tuple[tuple[s
     locust_version: str | None = None
     grizzly_version: str | None = None
     grizzly_extras: list[str] | None = None
+    directory: str | None = None
 
     args: tuple[str, ...] = ()
     if isinstance(local_install, str):
@@ -225,18 +227,29 @@ def get_dependency_versions(*, local_install: Union[bool, str]) -> tuple[tuple[s
     # check if it's a repo or not
     if 'git+' in grizzly_requirement:
         if grizzly_requirement.startswith('git+'):
-            url, egg_part = grizzly_requirement.rsplit('#', 1)
-            _, grizzly_requirement_egg = egg_part.split('=', 1)
+            parsed_url = urlparse(grizzly_requirement)
+            parsed_fragments = parse_qs(parsed_url.fragment)
+            if 'egg' not in parsed_fragments:
+                print(f'!! "egg" not found in fragments for {grizzly_requirement}', file=sys.stderr)
+                return ('(unknown)', None), '(unknown)'
+
+            grizzly_requirement_egg = parsed_fragments.get('egg', [''])[0]
         elif grizzly_requirement.index('@') < grizzly_requirement.index('git+'):
             grizzly_requirement_egg, url = grizzly_requirement.split('@', 1)
             grizzly_requirement_egg = grizzly_requirement_egg.strip()
-            url = url.strip()
+            parsed_url = urlparse(url.strip())
+            parsed_fragments = parse_qs(parsed_url.fragment)
         else:
             print(f'!! unable to find properly formatted grizzly dependency in {project_requirements}', file=sys.stderr)
             return ('(unknown)', None), '(unknown)'
 
+        directory = parsed_fragments.get('subdirectory', [None])[0]
+        parsed_url = parsed_url._replace(scheme=parsed_url.scheme.replace('git+', ''), fragment='')
+        if parsed_url.scheme == 'https':
+            parsed_url = parsed_url._replace()
+        url = parsed_url.geturl()
+
         url, branch = url.rsplit('@', 1)
-        url = url[4:]  # remove git+
         suffix = sha1(grizzly_requirement.encode('utf-8')).hexdigest()  # noqa: S324
 
         # extras_requirement normalization
@@ -351,51 +364,49 @@ def get_dependency_versions(*, local_install: Union[bool, str]) -> tuple[tuple[s
                         print(f'!! unable to checkout branch {branch} from git repo {url}', file=sys.stderr)
                         raise RuntimeError  # abort
 
+            if directory is not None:
+                repo_destination = Path.joinpath(repo_destination, directory)
+
             if not Path.joinpath(repo_destination, 'pyproject.toml').exists():
-                with Path.joinpath(repo_destination, 'grizzly', '__init__.py').open(encoding='utf-8') as fd:
+                # No pyproject.toml, check grizzly/__version__.py
+                with Path.joinpath(repo_destination, 'grizzly', '__version__.py').open(encoding='utf-8') as fd:
                     version_raw = [line.strip() for line in fd.readlines() if line.strip().startswith('__version__ =')]
 
                 if len(version_raw) != 1:
-                    print(f'!! unable to find "__version__" declaration in grizzly/__init__.py from {url}', file=sys.stderr)
+                    print(f'!! unable to find "__version__" declaration in grizzly/__version__.py from {url}', file=sys.stderr)
                     raise RuntimeError  # abort
 
                 _, grizzly_version, _ = version_raw[-1].split("'")
             else:
+                # pyproject.toml exists, use hatch to get version
+                # Check if hatch is installed, install if not
                 try:
-                    with Path.joinpath(repo_destination, 'setup.cfg').open(encoding='utf-8') as fd:
-                        version_raw = [line.strip() for line in fd.readlines() if line.strip().startswith('version = ')]
+                    subprocess.check_output(
+                        ['hatch', '--version'],
+                        shell=False,
+                        stderr=subprocess.DEVNULL,
+                    )
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    rc = subprocess.check_call(
+                        [
+                            sys.executable,
+                            '-m',
+                            'pip',
+                            'install',
+                            'hatch',
+                        ]
+                    )
 
-                    if len(version_raw) != 1:
-                        print(f'!! unable to find "version" declaration in setup.cfg from {url}', file=sys.stderr)
-                        raise RuntimeError  # abort
-
-                    _, grizzly_version = version_raw[-1].split(' = ')
-                except FileNotFoundError:
-                    if find_spec('setuptools_scm') is None:
-                        rc = subprocess.check_call(
-                            [
-                                sys.executable,
-                                '-m',
-                                'pip',
-                                'install',
-                                'setuptools_scm',
-                            ]
-                        )
-
-                    try:
-                        grizzly_version = subprocess.check_output(
-                            [
-                                sys.executable,
-                                '-m',
-                                'setuptools_scm',
-                            ],
-                            shell=False,
-                            universal_newlines=True,
-                            cwd=repo_destination,
-                        ).strip()
-                    except subprocess.CalledProcessError as e:  # pragma: no cover
-                        print(f'!! unable to get setuptools_scm version from {url}', file=sys.stderr)
-                        raise RuntimeError from e  # abort
+                try:
+                    grizzly_version = subprocess.check_output(
+                        ['hatch', 'version'],
+                        shell=False,
+                        universal_newlines=True,
+                        cwd=repo_destination,
+                    ).strip()
+                except subprocess.CalledProcessError as e:  # pragma: no cover
+                    print(f'!! unable to get hatch version from {url}', file=sys.stderr)
+                    raise RuntimeError from e  # abort
 
             try:
                 with Path.joinpath(repo_destination, 'requirements.txt').open(encoding='utf-8') as fd:
@@ -426,6 +437,7 @@ def get_dependency_versions(*, local_install: Union[bool, str]) -> tuple[tuple[s
             pass
         finally:
             rm_rf(tmp_workspace)
+
     else:
         response = requests.get(
             'https://pypi.org/pypi/grizzly-loadtester/json',
