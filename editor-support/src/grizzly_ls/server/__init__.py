@@ -300,6 +300,7 @@ def use_virtual_environment(ls: GrizzlyLanguageServer, project_name: str, env: d
 
 def pip_install_upgrade(ls: GrizzlyLanguageServer, project_name: str, executable: str, requirements_file: Path, env: dict[str, str]) -> None:
     project_path = Path(gettempdir()) / f'grizzly-ls-{project_name}'
+    project_path.mkdir(exist_ok=True)
     project_age_file = project_path / '.age'
 
     if project_age_file.exists() and requirements_file.lstat().st_mtime <= project_age_file.lstat().st_mtime:
