@@ -3543,17 +3543,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#test-matrix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Test Matrix
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -4233,17 +4222,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#test-matrix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Test Matrix
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -4747,63 +4725,59 @@
 <h3 id="development-container">Development Container</h3>
 <p>This repository includes a dev container configuration for VS Code, which provides a pre-configured development environment with all necessary tools.</p>
 <h2 id="running-tests">Running Tests</h2>
-<p>The repository uses <code>hatch</code> environments for running tests across different Python versions.</p>
+<p>The repository uses <code>pytest</code> with <code>uv</code> for running tests.</p>
 <h3 id="unit-tests">Unit Tests</h3>
 <p>Run unit tests for a specific package:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Framework</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:framework-unit
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>framework/tests/test_framework/unit
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># CLI</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:cli-unit
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>command-line-interface/tests/test_cli/unit
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Language Server</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:ls-unit
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>editor-support/tests/test_ls/unit
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># Common</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:common-unit
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>common/tests/test_common/unit
 </span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
 </span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># Docs</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:docs-unit
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>docs/tests/test_docs/unit
 </span></code></pre></div>
 <h3 id="end-to-end-tests">End-to-End Tests</h3>
 <p>Run e2e tests for packages that support them:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Framework (local mode)</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:framework-e2e-local
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>framework/tests/test_framework/e2e/test_local.py
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Framework (distributed mode)</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:framework-e2e-dist
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>framework/tests/test_framework/e2e/test_distributed.py
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Framework (example tests)</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:framework-e2e-example
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>framework/tests/test_framework/e2e/test_example.py
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># CLI</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:cli-e2e
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>command-line-interface/tests/test_cli/e2e
 </span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1"># Language Server</span>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:ls-e2e
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>editor-support/tests/test_ls/e2e
 </span></code></pre></div>
 <h3 id="all-tests">All Tests</h3>
 <p>Run all tests (unit + e2e) for a package:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:framework-all
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:cli-all
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>hatch<span class="w"> </span>run<span class="w"> </span>test:ls-all
-</span></code></pre></div>
-<h3 id="test-matrix">Test Matrix</h3>
-<p>Tests run across multiple Python versions (3.10, 3.11, 3.12, 3.13). Use the matrix syntax:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>+py<span class="o">=</span><span class="m">3</span>.13<span class="w"> </span>test:framework-unit
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>framework/tests
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>command-line-interface/tests
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>editor-support/tests
 </span></code></pre></div>
 <h2 id="code-quality">Code Quality</h2>
 <h3 id="formatting">Formatting</h3>
 <p>Format all code using ruff:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>lint:format
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>lint:format
 </span></code></pre></div>
 <h3 id="type-checking">Type Checking</h3>
 <p>Run mypy type checking:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>lint:types
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>lint:types
 </span></code></pre></div>
 <h3 id="linting">Linting</h3>
 <p>Run ruff linting checks:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>lint:check
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>lint:check
 </span></code></pre></div>
 <h2 id="development-patterns">Development Patterns</h2>
 <h3 id="code-style">Code Style</h3>
@@ -4821,10 +4795,10 @@
 </li>
 <li>
 <p><strong>Use workspace dependencies in <code>pyproject.toml</code></strong>
-   <div class="language-toml highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">[project]</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="s2">&quot;grizzly-loadtester-common&quot;</span><span class="p">,</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="p">]</span>
+   <div class="language-toml highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">[project]</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="s2">&quot;grizzly-loadtester-common&quot;</span><span class="p">,</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="p">]</span>
 </span></code></pre></div></p>
 </li>
 <li>
@@ -4848,7 +4822,6 @@
 <li><code>tool.pytest.ini_options</code></li>
 <li><code>tool.coverage.path</code></li>
 <li><code>tool.mypy</code></li>
-<li>Add test scripts to <code>tool.hatch.envs.test.scripts</code></li>
 <li>Run <code>uv sync --locked</code> to update the lock file</li>
 </ol>
 <h2 id="release-process">Release Process</h2>
@@ -4905,18 +4878,18 @@
 <ul>
 <li>
 <p><strong>Python packages</strong>: <code>hatch-vcs</code> with git tags matching pattern in <code>pyproject.toml</code>
-  <div class="language-toml highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">[tool.hatch.version]</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;vcs&quot;</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">raw-options</span><span class="p">.</span><span class="n">scm</span><span class="p">.</span><span class="n">git</span><span class="p">.</span><span class="n">describe_command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;git describe --tags --match &#39;framework@v*[0-9]*&#39;&quot;</span>
+  <div class="language-toml highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">[tool.hatch.version]</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;vcs&quot;</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">raw-options</span><span class="p">.</span><span class="n">scm</span><span class="p">.</span><span class="n">git</span><span class="p">.</span><span class="n">describe_command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;git describe --tags --match &#39;framework@v*[0-9]*&#39;&quot;</span>
 </span></code></pre></div></p>
 </li>
 <li>
 <p><strong>NPM packages</strong>: <code>package.local.json</code> defines the tag pattern
-  <div class="language-json highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">{</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="nt">&quot;tag&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="nt">&quot;pattern&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ls/&lt;IDE&gt;@v*[0-9]*&quot;</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span><span class="p">}</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="p">}</span>
+  <div class="language-json highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="p">{</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">&quot;tag&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="nt">&quot;pattern&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ls/&lt;IDE&gt;@v*[0-9]*&quot;</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="p">}</span>
 </span></code></pre></div></p>
 </li>
 </ul>
@@ -4960,17 +4933,17 @@
 <li>Used for API access and documentation deployment</li>
 </ol>
 <h3 id="manual-release-example">Manual Release Example</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Trigger via GitHub Actions UI</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1"># 1. Go to Actions → Release</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="c1"># 2. Click &quot;Run workflow&quot;</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># 3. Select branch: main</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="c1"># 4. Enter PR number: 123</span>
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="c1"># 5. Enable dry-run: true (optional)</span>
-</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="c1"># 6. Click &quot;Run workflow&quot;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Trigger via GitHub Actions UI</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># 1. Go to Actions → Release</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># 2. Click &quot;Run workflow&quot;</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># 3. Select branch: main</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1"># 4. Enter PR number: 123</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="c1"># 5. Enable dry-run: true (optional)</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1"># 6. Click &quot;Run workflow&quot;</span>
 </span></code></pre></div>
 <h3 id="dry-run-mode">Dry-Run Mode</h3>
 <p>Test the release process without actually publishing:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># In workflow_dispatch, set dry-run: true</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># In workflow_dispatch, set dry-run: true</span>
 </span></code></pre></div>
 <p>This will:
 - Create and validate tags
@@ -4979,16 +4952,16 @@
 - Delete tags at the end</p>
 <h2 id="vs-code-extension-development">VS Code Extension Development</h2>
 <h3 id="building-the-extension">Building the Extension</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nb">cd</span><span class="w"> </span>editor-support/clients/vscode
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>npm<span class="w"> </span>install
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>npm<span class="w"> </span>run<span class="w"> </span>compile
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nb">cd</span><span class="w"> </span>editor-support/clients/vscode
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>npm<span class="w"> </span>install
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>npm<span class="w"> </span>run<span class="w"> </span>compile
 </span></code></pre></div>
 <h3 id="watch-mode">Watch Mode</h3>
 <p>For active development with auto-rebuild:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>npm<span class="w"> </span>run<span class="w"> </span>tsc-watch
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>npm<span class="w"> </span>run<span class="w"> </span>tsc-watch
 </span></code></pre></div>
 <p>Or use the VS Code task:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Press Cmd/Ctrl+Shift+B → Select &quot;tsc watch&quot;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># Press Cmd/Ctrl+Shift+B → Select &quot;tsc watch&quot;</span>
 </span></code></pre></div>
 <h3 id="testing-the-extension">Testing the Extension</h3>
 <ol>
@@ -5005,10 +4978,10 @@
 <h2 id="documentation">Documentation</h2>
 <p>The documentation is built using MkDocs with a custom plugin for API reference generation.</p>
 <h3 id="building-documentation">Building Documentation</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>build
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>build
 </span></code></pre></div>
 <h3 id="serving-documentation-locally">Serving Documentation Locally</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>serve
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>serve
 </span></code></pre></div>
 <p>Then visit <a href="http://localhost:8000">http://localhost:8000</a></p>
 <h3 id="documentation-structure">Documentation Structure</h3>
@@ -5055,9 +5028,9 @@
 <h2 id="troubleshooting">Troubleshooting</h2>
 <h3 id="dependency-issues">Dependency Issues</h3>
 <p>If you encounter dependency conflicts:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># Remove the lock file and resync</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>rm<span class="w"> </span>uv.lock
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>uv<span class="w"> </span>sync<span class="w"> </span>-p<span class="w"> </span><span class="m">3</span>.13<span class="w"> </span>--active<span class="w"> </span>--all-packages<span class="w"> </span>--all-groups
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Remove the lock file and resync</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>rm<span class="w"> </span>uv.lock
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>uv<span class="w"> </span>sync<span class="w"> </span>-p<span class="w"> </span><span class="m">3</span>.13<span class="w"> </span>--active<span class="w"> </span>--all-packages<span class="w"> </span>--all-groups
 </span></code></pre></div>
 <h3 id="test-failures">Test Failures</h3>
 <ol>
