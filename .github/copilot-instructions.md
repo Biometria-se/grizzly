@@ -31,13 +31,13 @@ dependencies.
 ### Testing
 ```bash
 # Run unit tests for a package
-hatch run test:{package}-unit
+uv run pytest {package}/tests/test_{package_short}/unit
 
 # Run e2e tests for a package 
-hatch run test:{package}-e2e
+uv run pytest {package}/tests/test_{package_short}/e2e
 
 # Run all tests for a package
-hatch run test:{package}-all
+uv run pytest {package}/tests
 ```
 
 ### Code Quality

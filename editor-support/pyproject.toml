@@ -91,6 +91,12 @@ dev = [
 [tool.hatch.build.hooks.vcs]
 version-file = "src/grizzly_ls/__version__.py"
 
+[tool.hatch.build.targets.wheel.hooks.vcs]
+version-file = "src/grizzly_ls/__version__.py"
+
+[tool.hatch.build.targets.editable.hooks.vcs]
+version-file = "src/grizzly_ls/__version__.py"
+
 [tool.uv.sources]
 grizzly-loadtester = { workspace = true }
 grizzly-loadtester-common = { workspace = true }
