@@ -43,13 +43,13 @@ uv run pytest {package}/tests
 ### Code Quality
 ```bash
 # Format code
-hatch run lint:format
+uv run ruff format
 
 # Run type checking
-hatch run lint:types
+uv run mypy
 
 # Run linting
-hatch run lint:check
+uv run ruff check
 ```
 
 ### Dependency Management
@@ -67,7 +67,6 @@ source /workspaces/grizzly/.venv/bin/activate
 This is required for:
 - Running Python commands and scripts
 - Executing e2e tests (especially for VSCode extension which depends on `grizzly_ls`)
-- Using `hatch` commands
 - Any operation that imports grizzly packages
 
 ### Node.js/npm Development

@@ -164,11 +164,7 @@ export class GherkinPreview {
         }
 
         const [success, content]: [boolean, string | undefined] = await vscode.commands.executeCommand(
-            'grizzly-ls/render-gherkin', {
-                content: textDocument.getText(),
-                path: textDocument.uri.path,
-                on_the_fly,
-            }
+            'grizzly-ls/render-gherkin', {path: textDocument.uri.fsPath, on_the_fly: on_the_fly},
         );
 
         if (content) {
