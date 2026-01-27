@@ -1368,6 +1368,7 @@ dependencies = [
     { name = "pip" },
     { name = "pygls" },
     { name = "random-word" },
+    { name = "uv" },
 ]
 
 [package.dev-dependencies]
@@ -1387,6 +1388,7 @@ requires-dist = [
     { name = "pip", specifier = ">=25.2,<26.0" },
     { name = "pygls", specifier = ">=2.0.0,<3.0.0" },
     { name = "random-word", specifier = ">=1.0.13,<2.0.0" },
+    { name = "uv", specifier = ">=0.5.12,<1.0.0" },
 ]
 
 [package.metadata.requires-dev]

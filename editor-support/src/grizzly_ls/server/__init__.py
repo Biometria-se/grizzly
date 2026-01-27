@@ -11,7 +11,6 @@ from logging import ERROR
 from os import environ, fsdecode
 from os.path import pathsep, sep
 from pathlib import Path
-from subprocess import CalledProcessError, CompletedProcess
 from tempfile import gettempdir
 from time import sleep
 from typing import TYPE_CHECKING, Any, ClassVar, cast
@@ -198,46 +197,33 @@ class GrizzlyLanguageServer(LanguageServer):
 
 
 class InstallError(Exception):
-    def __init__(self, *args: Any, backend: str | None = None, stdout: str | bytes | None = None, stderr: str | bytes | None = None) -> None:
+    def __init__(self, *args: Any, stdout: str | bytes | None = None, stderr: str | bytes | None = None) -> None:
         super().__init__(*args)
 
         self.stdout = stdout
         self.stderr = stderr
-        self.backend = backend
 
 
 class ConfigurationError(Exception):
     pass
 
 
-def _run_uv(cmd: list[str]) -> CompletedProcess:  # pragma: no cover
+def _create_virtual_environment(path: Path, python_version: str) -> None:
+    """Create a virtual environment using uv."""
     from uv import find_uv_bin  # noqa: PLC0415
 
     uv = fsdecode(find_uv_bin())
     env = environ.copy()
     env.update({'UV_INTERNAL__PARENT_INTERPRETER': sys.executable})
 
-    return subprocess.run([uv, *cmd], check=False)
+    rc = subprocess.run(
+        [uv, 'venv', '--managed-python', '--python', python_version, path.as_posix()],
+        env=env,
+        check=False,
+    )
 
-
-def _run_venv(path: Path, *, with_pip: bool) -> None:  # pragma: no cover
-    from venv import create as venv_create  # noqa: PLC0415
-
-    venv_create(path, with_pip=with_pip)
-
-
-def _create_virtual_environment(path: Path, python_version: str) -> None:
-    # prefer uv over virtualenv
-    try:
-        rc = _run_uv(['venv', '--managed-python', '--python', python_version, path.as_posix()])
-
-        if rc.returncode != 0:
-            raise InstallError(backend='uv', stdout=rc.stdout, stderr=rc.stderr)
-    except ModuleNotFoundError:
-        try:
-            _run_venv(path, with_pip=True)
-        except CalledProcessError as e:
-            raise InstallError(backend='virtualenv', stdout=e.stdout, stderr=e.stderr) from None
+    if rc.returncode != 0:
+        raise InstallError(stdout=rc.stdout, stderr=rc.stderr)
 
 
 def use_virtual_environment(ls: GrizzlyLanguageServer, project_name: str, env: dict[str, str]) -> Path | None:
@@ -251,7 +237,7 @@ def use_virtual_environment(ls: GrizzlyLanguageServer, project_name: str, env: d
         try:
             _create_virtual_environment(virtual_environment, python_version)
         except InstallError as e:
-            ls.logger.exception(f'failed to create virtual environment with {e.backend}', notify=True)
+            ls.logger.exception('failed to create virtual environment with uv', notify=True)
 
             error: list[str] = []
             if e.stderr is not None:
@@ -281,7 +267,8 @@ def use_virtual_environment(ls: GrizzlyLanguageServer, project_name: str, env: d
         }
     )
 
-    rc, output = run_command(['python', '-m', 'ensurepip'], env=env)
+    python_executable = str(virtual_environment / bin_dir / 'python')
+    rc, output = run_command([python_executable, '-m', 'ensurepip'], env=env)
 
     if rc != 0:
         ls.logger.error(f'failed to ensure pip is installed for venv {project_name}', notify=True)
@@ -383,7 +370,6 @@ def install(ls: GrizzlyLanguageServer, *_args: Any) -> None:
             progress.report('loading extension', 1)
             # <!-- should a virtual environment be used?
             use_venv = ls.client_settings.get('use_virtual_environment', True)
-            executable = 'python' if use_venv else sys.executable
             # // -->
 
             ls.logger.debug(f'workspace root: {ls.root_path.as_posix()} (use virtual environment: {use_venv!r})')
@@ -394,8 +380,13 @@ def install(ls: GrizzlyLanguageServer, *_args: Any) -> None:
             if use_venv:
                 progress.report('setting up virtual environment', 10)
                 virtual_environment = use_virtual_environment(ls, project_name, env)
+                # Use absolute path to Python executable in virtual environment
+                assert virtual_environment is not None
+                bin_dir = 'Scripts' if platform.system() == 'Windows' else 'bin'
+                executable = str(virtual_environment / bin_dir / 'python')
             else:
                 virtual_environment = None
+                executable = sys.executable
 
             progress.report('virtual environment done', 40)
 
@@ -837,7 +828,7 @@ def text_document_code_action(ls: GrizzlyLanguageServer, params: lsp.CodeActionP
 
 
 @server.command(COMMAND_REBUILD_INVENTORY)
-def command_rebuild_inventory(ls: GrizzlyLanguageServer, *_args: Any, **_kwargs: Any) -> None:
+def command_rebuild_inventory(ls: GrizzlyLanguageServer) -> None:
     ls.logger.info(f'executing command: {COMMAND_REBUILD_INVENTORY}')
 
     try:
@@ -855,37 +846,30 @@ def command_rebuild_inventory(ls: GrizzlyLanguageServer, *_args: Any, **_kwargs:
 
 
 @server.command(COMMAND_RUN_DIAGNOSTICS)
-def command_run_diagnostics(ls: GrizzlyLanguageServer, *args: Any, **_kwargs: Any) -> None:
-    uri = '<unknown>'
-    try:
-        arg = args[0][0]
-        uri = arg.get('uri', {}).get('external', None)
+def command_run_diagnostics(ls: GrizzlyLanguageServer, params: dict[str, str]) -> None:
+    ls.logger.info(f'executing command: {COMMAND_RUN_DIAGNOSTICS}, {params=!r}')
 
-        text_document = ls.workspace.get_text_document(uri)
+    try:
+        path = params['path']
+        text_document = ls.workspace.get_text_document(path)
 
         diagnostics = validate_gherkin(ls, text_document)
         ls.text_document_publish_diagnostics(lsp.PublishDiagnosticsParams(uri=text_document.uri, diagnostics=diagnostics))
     except Exception:
-        ls.logger.exception(f'failed to run diagnostics on {uri}', notify=True)
+        ls.logger.exception(f'failed to run diagnostics on {path}', notify=True)
 
 
 @server.command(COMMAND_RENDER_GHERKIN)
-def command_render_gherkin(ls: GrizzlyLanguageServer, *args: Any, **_kwargs: Any) -> tuple[bool, str | None]:
-    options = cast('dict[str, str]', args[0][0])
+def command_render_gherkin(ls: GrizzlyLanguageServer, params: dict[str, Any]) -> tuple[bool, str | None]:
+    ls.logger.info(f'executing command: {COMMAND_RENDER_GHERKIN}, {params=!r}')
 
-    content = options.get('content', None)
-    path = options.get('path', None)
-    on_the_fly = options.get('on_the_fly', False)
-
-    if content is None or path is None:
-        content = 'no content to preview'
-        ls.logger.error(content, notify=True)
-        return False, content
+    path = params.get('path', '<unknown>')
 
     try:
-        return True, render_gherkin(path, content)
+        text_document = ls.workspace.get_text_document(path)
+        return True, render_gherkin(path, text_document.source)
     except Exception:
-        if not on_the_fly:
+        if not params.get('on_the_fly', False):
             ls.logger.exception(f'failed to render {path}', notify=True)
             return False, f'failed to render\n{ls.logger.get_current_exception()}'
 

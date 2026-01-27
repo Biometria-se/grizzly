@@ -7,7 +7,7 @@ from contextlib import suppress
 from os import pathsep, utime
 from os.path import sep
 from pathlib import Path
-from subprocess import CalledProcessError, CompletedProcess
+from subprocess import CompletedProcess
 from unittest.mock import call
 
 import gevent.monkey
@@ -403,10 +403,9 @@ Scenario: test scenario
 
 
 def test_install_error_exception() -> None:
-    e = InstallError('something went wrong', backend='uv', stdout=b'', stderr=b'major unrecoverable error')
+    e = InstallError('something went wrong', stdout=b'', stderr=b'major unrecoverable error')
     assert isinstance(e, Exception)
     assert str(e) == 'something went wrong'
-    assert e.backend == 'uv'
     assert e.stdout == b''
     assert e.stderr == b'major unrecoverable error'
 
@@ -414,44 +413,30 @@ def test_install_error_exception() -> None:
 class Test_CreateVirtualEnvironment:
     """Tests for grizzly_ls.server._create_virtual_environment."""
 
-    def test_venv(self, mocker: MockerFixture) -> None:
-        _run_uv_mock = mocker.patch('grizzly_ls.server._run_uv', side_effect=[ModuleNotFoundError])
-        _run_venv_mock = mocker.patch('grizzly_ls.server._run_venv', return_value=None)
+    def test_success(self, mocker: MockerFixture) -> None:
+        find_uv_bin_mock = mocker.patch('uv.find_uv_bin', return_value=b'/usr/bin/uv')
+        subprocess_run_mock = mocker.patch('grizzly_ls.server.subprocess.run', return_value=CompletedProcess(args=[], returncode=0))
+        environ_copy_mock = mocker.patch('grizzly_ls.server.environ.copy', return_value={'PATH': '/usr/bin'})
 
         _create_virtual_environment(Path.cwd(), '3.12')
-        _run_uv_mock.assert_called_once()
-        _run_uv_mock.reset_mock()
 
-        _run_venv_mock.assert_called_once_with(Path.cwd(), with_pip=True)
-        _run_venv_mock.reset_mock()
+        find_uv_bin_mock.assert_called_once()
+        environ_copy_mock.assert_called_once()
+        subprocess_run_mock.assert_called_once_with(
+            ['/usr/bin/uv', 'venv', '--managed-python', '--python', '3.12', Path.cwd().as_posix()],
+            env={'PATH': '/usr/bin', 'UV_INTERNAL__PARENT_INTERPRETER': sys.executable},
+            check=False,
+        )
 
-        _run_uv_mock.side_effect = [ModuleNotFoundError]
-        _run_venv_mock.side_effect = [CalledProcessError(1, cmd='rm -rf *', output=b'something', stderr=b'error')]
+    def test_failure(self, mocker: MockerFixture) -> None:
+        mocker.patch('uv.find_uv_bin', return_value=b'/usr/bin/uv')
+        mocker.patch('grizzly_ls.server.subprocess.run', return_value=CompletedProcess(args=[], returncode=1, stdout=b'something', stderr=b'error'))
+        mocker.patch('grizzly_ls.server.environ.copy', return_value={})
 
         with pytest.raises(InstallError) as e:
             _create_virtual_environment(Path.cwd(), '3.12')
 
-        assert e.value == SOME(InstallError, backend='virtualenv', stdout=b'something', stderr=b'error')
-        _run_uv_mock.assert_called_once()
-
-    def test_uv(self, mocker: MockerFixture) -> None:
-        _run_uv_mock = mocker.patch('grizzly_ls.server._run_uv', return_value=CompletedProcess(args='rm -rf *', returncode=0))
-        _run_venv_mock = mocker.patch('grizzly_ls.server._run_venv', return_value=None)
-
-        _create_virtual_environment(Path.cwd(), '3.12')
-
-        _run_venv_mock.assert_not_called()
-        _run_uv_mock.assert_called_once_with(['venv', '--managed-python', '--python', '3.12', Path.cwd().as_posix()])
-        _run_uv_mock.reset_mock()
-
-        _run_uv_mock.return_value = CompletedProcess(args='rm -rf *', returncode=1, stdout=b'something', stderr=b'error')
-
-        with pytest.raises(InstallError) as e:
-            _create_virtual_environment(Path.cwd(), '3.12')
-
-        assert e.value == SOME(InstallError, backend='uv', stdout=b'something', stderr=b'error')
-        _run_uv_mock.assert_called_once_with(['venv', '--managed-python', '--python', '3.12', Path.cwd().as_posix()])
-        _run_venv_mock.assert_not_called()
+        assert e.value == SOME(InstallError, stdout=b'something', stderr=b'error')
 
 
 class TestUseVirtualEnvironment(ServerUseVirtualEnvironment):
@@ -460,7 +445,7 @@ class TestUseVirtualEnvironment(ServerUseVirtualEnvironment):
         self._provide(server_use_virtual_environment_fixture)
 
     def test_venv_does_not_exist(self) -> None:
-        self.create_virtual_environment_mock.side_effect = [InstallError('asdf', backend='uv', stdout='hello', stderr='world')]
+        self.create_virtual_environment_mock.side_effect = [InstallError('asdf', stdout='hello', stderr='world')]
 
         rm_rf(self.venv_path)
 
@@ -480,7 +465,9 @@ class TestUseVirtualEnvironment(ServerUseVirtualEnvironment):
         with pytest.raises(InstallError):
             use_virtual_environment(self.ls, self.project_name, self.env)
 
-        self.run_command_mock.assert_called_once_with(['python', '-m', 'ensurepip'], env=self.env)
+        executables_dir = 'bin' if sys.platform != 'win32' else 'Scripts'
+        python_executable = str(self.venv_path / executables_dir / 'python')
+        self.run_command_mock.assert_called_once_with([python_executable, '-m', 'ensurepip'], env=self.env)
         assert self.logger_mock.mock_calls == [
             call.debug(f'looking for venv at {self.venv_path!s}, has_venv=True'),
             call.error('failed to ensure pip is installed for venv unit-test-project', notify=True),
@@ -500,7 +487,9 @@ class TestUseVirtualEnvironment(ServerUseVirtualEnvironment):
         with pytest.raises(InstallError):
             use_virtual_environment(self.ls, 'unit-test-project', self.env)
 
-        self.run_command_mock.assert_called_once_with(['python', '-m', 'ensurepip'], env=self.env)
+        executables_dir = 'bin' if sys.platform != 'win32' else 'Scripts'
+        python_executable = str(self.venv_path / executables_dir / 'python')
+        self.run_command_mock.assert_called_once_with([python_executable, '-m', 'ensurepip'], env=self.env)
         assert self.logger_mock.mock_calls == [
             call.debug(f'looking for venv at {self.venv_path!s}, has_venv=True'),
             call.error('global.index-url does not contain username and/or password, check your configuration!', notify=True),
@@ -781,8 +770,10 @@ class TestInstall(ServerInstall):
             call.debug('grizzly-ls/install: installing'),
             call.debug(f'workspace root: {self.test_context.as_posix()} (use virtual environment: True)'),
         ]
+        bin_dir = 'Scripts' if sys.platform == 'win32' else 'bin'
+        expected_executable = str(self.test_context / bin_dir / 'python')
         self.use_virtual_environment_mock.assert_called_once_with(self.ls, self.test_context.stem, {})
-        self.pip_install_upgrade_mock.assert_called_once_with(self.ls, self.test_context.stem, 'python', self.requirements_file, {})
+        self.pip_install_upgrade_mock.assert_called_once_with(self.ls, self.test_context.stem, expected_executable, self.requirements_file, {})
         self.compile_inventory_mock.assert_called_once_with(self.ls)
         self.validate_gherkin_mock.assert_called_once_with(self.ls, text_documents['first.feature'])
         self.ls_text_document_publish_diagnostics.assert_called_once_with(lsp.PublishDiagnosticsParams(uri=text_documents['first.feature'].uri, diagnostics=[]))
@@ -801,8 +792,10 @@ class TestInstall(ServerInstall):
             call.debug(f'workspace root: {self.test_context.as_posix()} (use virtual environment: True)'),
             call.exception('failed to run diagnostics on all opened files', notify=True),
         ]
+        bin_dir = 'Scripts' if sys.platform == 'win32' else 'bin'
+        expected_executable = str(self.test_context / bin_dir / 'python')
         self.use_virtual_environment_mock.assert_called_once_with(self.ls, self.test_context.stem, {})
-        self.pip_install_upgrade_mock.assert_called_once_with(self.ls, self.test_context.stem, 'python', self.requirements_file, {})
+        self.pip_install_upgrade_mock.assert_called_once_with(self.ls, self.test_context.stem, expected_executable, self.requirements_file, {})
         self.compile_inventory_mock.assert_called_once_with(self.ls)
         self.validate_gherkin_mock.assert_called_once_with(self.ls, text_documents['first.feature'])
         self.ls_text_document_publish_diagnostics.assert_not_called()

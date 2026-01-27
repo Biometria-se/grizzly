@@ -337,7 +337,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     context.subscriptions.push(
         vscode.commands.registerCommand('grizzly.server.inventory.rebuild', async () => {
             if (client) {
-                await vscode.window.showInformationMessage('Saving all open files before rebuilding step inventory');
                 vscode.workspace.textDocuments.forEach(async (textDocument: vscode.TextDocument) => {
                     await textDocument.save();
                 });
@@ -352,7 +351,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
             const textDocument = textEditor.document;
 
             if (textDocument.languageId === 'grizzly-gherkin') {
-                await vscode.commands.executeCommand('grizzly-ls/run-diagnostics', textDocument);
+                await vscode.commands.executeCommand('grizzly-ls/run-diagnostics', {path: textDocument.uri.fsPath});
             }
         })
     );
@@ -367,7 +366,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
             const textDocument = textEditor.document;
             if (textDocument.languageId === 'grizzly-gherkin') {
-                await vscode.commands.executeCommand('grizzly-ls/run-diagnostics', textDocument);
+                await vscode.commands.executeCommand('grizzly-ls/run-diagnostics', {path: textDocument.uri.fsPath});
                 previewer.preview(textDocument, true);
             }
         })
