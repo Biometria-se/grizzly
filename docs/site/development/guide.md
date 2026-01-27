@@ -46,7 +46,7 @@ This repository includes a dev container configuration for VS Code, which provid
 
 ## Running Tests
 
-The repository uses `hatch` environments for running tests across different Python versions.
+The repository uses `pytest` with `uv` for running tests.
 
 ### Unit Tests
 
@@ -54,19 +54,19 @@ Run unit tests for a specific package:
 
 ```bash
 # Framework
-hatch run test:framework-unit
+uv run pytest framework/tests/test_framework/unit
 
 # CLI
-hatch run test:cli-unit
+uv run pytest command-line-interface/tests/test_cli/unit
 
 # Language Server
-hatch run test:ls-unit
+uv run pytest editor-support/tests/test_ls/unit
 
 # Common
-hatch run test:common-unit
+uv run pytest common/tests/test_common/unit
 
 # Docs
-hatch run test:docs-unit
+uv run pytest docs/tests/test_docs/unit
 ```
 
 ### End-to-End Tests
@@ -75,19 +75,19 @@ Run e2e tests for packages that support them:
 
 ```bash
 # Framework (local mode)
-hatch run test:framework-e2e-local
+uv run pytest framework/tests/test_framework/e2e/test_local.py
 
 # Framework (distributed mode)
-hatch run test:framework-e2e-dist
+uv run pytest framework/tests/test_framework/e2e/test_distributed.py
 
 # Framework (example tests)
-hatch run test:framework-e2e-example
+uv run pytest framework/tests/test_framework/e2e/test_example.py
 
 # CLI
-hatch run test:cli-e2e
+uv run pytest command-line-interface/tests/test_cli/e2e
 
 # Language Server
-hatch run test:ls-e2e
+uv run pytest editor-support/tests/test_ls/e2e
 ```
 
 ### All Tests
@@ -95,17 +95,9 @@ hatch run test:ls-e2e
 Run all tests (unit + e2e) for a package:
 
 ```bash
-hatch run test:framework-all
-hatch run test:cli-all
-hatch run test:ls-all
-```
-
-### Test Matrix
-
-Tests run across multiple Python versions (3.10, 3.11, 3.12, 3.13). Use the matrix syntax:
-
-```bash
-hatch run +py=3.13 test:framework-unit
+uv run pytest framework/tests
+uv run pytest command-line-interface/tests
+uv run pytest editor-support/tests
 ```
 
 ## Code Quality
@@ -176,8 +168,7 @@ When adding a new package to the workspace:
    - `tool.pytest.ini_options`
    - `tool.coverage.path`
    - `tool.mypy`
-3. Add test scripts to `tool.hatch.envs.test.scripts`
-4. Run `uv sync --locked` to update the lock file
+3. Run `uv sync --locked` to update the lock file
 
 ## Release Process
 
