@@ -101,4 +101,5 @@ dev = [
     "grizzly-loadtester",
     "pip>=26.0",
     "requests-mock>=1.12.1,<2.0.0",
+    "types-requests>=2.32.4.20250809,<3.0.0",
 ]

@@ -526,7 +526,7 @@ class TestInfluxDblistener:
 
         datetime_mock = mocker.patch(
             'grizzly.listeners.influxdb.datetime',
-            side_effect=lambda *args, **kwargs: datetime(*args, **kwargs),  # noqa: DTZ001
+            side_effect=datetime,
         )
         datetime_mock.now.return_value = expected_datetime
 

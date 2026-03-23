@@ -87,7 +87,7 @@ def atomicdate__base_type__(value: str) -> str:
     else:
         date_value = value
 
-    if date_value in ['now']:
+    if date_value == 'now':
         return value
 
     try:

@@ -192,7 +192,7 @@ def main() -> int:
     try:
         args = _parse_arguments()
 
-        if getattr(args, 'file', None) is not None and args.command not in ['keyvault']:
+        if getattr(args, 'file', None) is not None and args.command != 'keyvault':
             args = _inject_additional_arguments_from_metadata(args)
 
         if args.command == 'local':

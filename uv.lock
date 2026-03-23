@@ -1292,6 +1292,7 @@ dev = [
     { name = "grizzly-loadtester" },
     { name = "pip" },
     { name = "requests-mock" },
+    { name = "types-requests" },
 ]
 
 [package.metadata]
@@ -1310,6 +1311,7 @@ dev = [
     { name = "grizzly-loadtester", editable = "framework" },
     { name = "pip", specifier = ">=26.0" },
     { name = "requests-mock", specifier = ">=1.12.1,<2.0.0" },
+    { name = "types-requests", specifier = ">=2.32.4.20250809,<3.0.0" },
 ]
 
 [[package]]

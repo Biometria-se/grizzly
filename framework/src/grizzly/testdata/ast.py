@@ -349,11 +349,11 @@ def _parse_templates(templates: dict[GrizzlyContextScenario, set[str]]) -> AstVa
             return None
 
         # ignore builtin modules
-        if attributes[0] in ['datetime']:
+        if attributes[0] == 'datetime':
             return None
 
         # ignore builtin methods calls
-        if attributes[-1] in ['replace']:
+        if attributes[-1] == 'replace':
             attributes = attributes[:-1]
 
         return '.'.join(attributes)

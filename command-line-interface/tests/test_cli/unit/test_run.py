@@ -260,7 +260,7 @@ bar = foo
         # dynamic csv-prefix
         datetime_mock = mocker.patch(
             'grizzly_cli.run.datetime',
-            side_effect=lambda *args, **kwargs: datetime(*args, **kwargs),  # noqa: DTZ001
+            side_effect=datetime,
         )
         datetime_mock.now.return_value = datetime(2022, 12, 6, 13, 1, 13)  # noqa: DTZ001
         arguments = parser.parse_args(

@@ -220,7 +220,7 @@ class TestAsyncTimersConsumer:
         assert timers._stop == []
 
     def test_toggle(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, static_date: datetime) -> None:
-        datetime_mock = mocker.patch('grizzly.testdata.communication.datetime', side_effect=lambda *args, **kwargs: datetime(*args, **kwargs))  # noqa: DTZ001
+        datetime_mock = mocker.patch('grizzly.testdata.communication.datetime', side_effect=datetime)
         datetime_mock.now.return_value = static_date
 
         parent = grizzly_fixture()

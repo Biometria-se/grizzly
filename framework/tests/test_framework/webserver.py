@@ -366,7 +366,7 @@ class Webserver:
             global logger  # noqa: PLW0603
             logger = logger_
 
-        self._greenlet = gevent.spawn(lambda: self._web_server.serve_forever())
+        self._greenlet = gevent.spawn(self._web_server.serve_forever)
         self.wait_for_start()
         self.wait_for_health()
         logger.debug('started webserver on port %d', self.port)

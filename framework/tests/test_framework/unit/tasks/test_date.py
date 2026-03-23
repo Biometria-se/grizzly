@@ -123,7 +123,7 @@ class TestDateTask:
         expected_datetime = dateparser('2022-05-19 07:20:00.123456+0200')
 
         datetime_mock = mocker.MagicMock(
-            side_effect=lambda *args, **kwargs: datetime(*args, **kwargs),  # noqa: DTZ001
+            side_effect=datetime,
         )
         datetime_mock.now.return_value = expected_datetime
 

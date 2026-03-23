@@ -111,7 +111,7 @@ class KeystoreTask(GrizzlyTask):
         elif self.action in ['set', 'push']:
             assert self.action_context is not None, f'action context for "{self.action}" must be declared'
             self.action_context = self.json_serialize(self.action_context)
-        elif self.action in ['del']:
+        elif self.action == 'del':
             assert self.action_context is None, f'action context for "{self.action}" cannot be declared'
         else:  # pragma: no cover
             pass
@@ -200,7 +200,7 @@ class KeystoreTask(GrizzlyTask):
                 else:
                     ambigous_key = key
 
-                if self.action not in ['pop'] or (self.action in ['pop'] and not isinstance(e, RuntimeError)):
+                if self.action != 'pop' or (self.action == 'pop' and not isinstance(e, RuntimeError)):
                     parent.user.logger.exception('keystore action %s failed: %s', self.action, error_message)
 
                 parent.user.environment.events.request.fire(

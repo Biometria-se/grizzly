@@ -31,11 +31,11 @@ class TestAsyncTimerTask:
         parent.__class__._consumer = TestdataConsumer(grizzly_fixture.behave.locust.runner, parent)
         toggle_mock = mocker.patch.object(parent.consumer.async_timers, 'toggle', return_value=None)
 
-        datetime_mock = mocker.patch('grizzly.tasks.async_timer.datetime', side_effect=lambda *args, **kwargs: datetime(*args, **kwargs))  # noqa: DTZ001
+        datetime_mock = mocker.patch('grizzly.tasks.async_timer.datetime', side_effect=datetime)
 
         expected_datetime = dateparser('2024-12-03 10:02:00.123456+0100')
         datetime_mock.now.return_value = expected_datetime
-        datetime_mock.strptime.side_effect = lambda *args, **kwargs: datetime.strptime(*args, **kwargs)  # noqa: DTZ007
+        datetime_mock.strptime.side_effect = datetime.strptime
 
         # <!-- start
         task_factory = AsyncTimerTask('timer-1', 'foobar', '1', 'start')

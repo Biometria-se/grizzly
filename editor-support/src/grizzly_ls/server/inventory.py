@@ -262,7 +262,7 @@ def compile_keyword_inventory(ls: GrizzlyLanguageServer) -> None:
     for keyword in ls.steps:
         for value in ls.localizations.get(keyword, []):
             stripped_value = value.strip()
-            if stripped_value in ['*']:
+            if stripped_value == '*':
                 continue
 
             ls.keywords.append(stripped_value)

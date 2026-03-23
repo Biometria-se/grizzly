@@ -695,7 +695,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> tuple[list[type[GrizzlyUs
         assert 'host' in scenario.context, f'variable "host" is not found in the context for scenario "{scenario.name}"'
         assert len(scenario.tasks) > 0, f'no tasks has been added to scenario "{scenario.name}"'
 
-        fixed_count = distribution.get(scenario.class_name, None)
+        fixed_count = distribution.get(scenario.class_name)
         user_class_type = create_user_class_type(scenario, grizzly.setup.global_context, fixed_count=fixed_count)
         user_class_type.host = scenario.context['host']
 

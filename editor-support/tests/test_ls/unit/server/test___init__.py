@@ -138,7 +138,7 @@ class TestGrizzlyLanguageServer:
         ls = lsp_fixture.server
 
         try:
-            assert ls.startup_messages == deque([])
+            assert ls.startup_messages == deque()
 
             ls.add_startup_error_message('something is foobar')
 
