@@ -20,6 +20,7 @@
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^2.0.2",
+    "@actions/github": "^9.0.0",
     "@iarna/toml": "^2.2.5",
     "js-yaml": "^4.1.0"
   },
@@ -34,5 +35,9 @@
     "mocha": "^11.3.0",
     "rollup": "^4.53.3",
     "sinon": "^21.0.0"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.4",
+    "diff": "^8.0.4"
   }
 }

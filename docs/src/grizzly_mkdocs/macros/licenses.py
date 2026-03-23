@@ -158,19 +158,29 @@ def get_licenses_npm(path: str) -> set[License]:
 
         output = jsonloads(fd.read().decode('utf-8').strip())
 
+    # The package itself will be in the format "package-name@version"
+    # Find it by checking the path field or by finding the shortest path
+    self_package_name = None
     for key, value in output.items():
-        if value.get('parents', None) in [None, 'Code', 'UNDEFINED']:
-            continue
+        if value.get('path', '').rstrip('/') == str(cwd):
+            self_package_name = key.rsplit('@', 1)[0]
+            break
 
+    for key, value in output.items():
         package, version = key.rsplit('@', 1)
 
+        # Skip the package itself
+        if self_package_name and package == self_package_name:
+            continue
+
+        # Skip type definition packages
         if any(package.startswith(prefix) for prefix in ['@types/']):
             continue
 
-        license = value.get('licenses', 'UNKNOWN')
-        url = value.get('licenseUrl', None)
+        license_type = value.get('licenses', 'UNKNOWN')
+        url = value.get('repository', None)
 
-        license = License(package, version, license, url)
+        license = License(package, version, license_type, url)
 
         licenses.add(license)
 

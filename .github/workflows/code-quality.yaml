@@ -373,6 +373,8 @@ jobs:
         uv sync --locked --all-packages --all-extras --all-groups
 
     - name: "Build documentation"
+      env:
+        DISABLE_MKDOCS_2_WARNING: true
       run: uv run mkdocs build
 
     - name: "Check for @TODO annotations"

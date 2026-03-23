@@ -2,17 +2,29 @@
 
 from __future__ import annotations
 
-try:
+from contextlib import suppress
+
+with suppress(ModuleNotFoundError):
     from gevent.monkey import patch_all
 
     patch_all()
-except ModuleNotFoundError:
-    pass
+
+    # Patch logging.Handler.removeHandler to suppress gevent cleanup errors
+    import logging
+
+    _original_remove_handler = logging.Logger.removeHandler
+
+    def _safe_remove_handler(self: logging.Logger, hdlr: logging.Handler) -> None:
+        """Suppress threading errors when removing logging handlers during cleanup."""
+        with suppress(TypeError, AttributeError):
+            _original_remove_handler(self, hdlr)
+
+    logging.Logger.removeHandler = _safe_remove_handler  # type: ignore[method-assign]
 
 import inspect
 import re
 import warnings
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime, timezone
 from importlib import import_module

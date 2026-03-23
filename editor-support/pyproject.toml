@@ -14,7 +14,7 @@ requires-python = ">=3.10"
 dependencies = [
     "colorama>=0.4.6,<1.0.0",
     "ordered-set>=4.1.0,<5.0.0",
-    "pip>=25.2,<26.0",
+    "pip>=26.0",
     "pygls>=2.0.0,<3.0.0",
     "random-word>=1.0.13,<2.0.0",
     "uv>=0.5.12,<1.0.0",

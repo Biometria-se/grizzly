@@ -18,6 +18,8 @@ export default {
         if (warning.code === 'EVAL') return
         if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message.includes('@actions/core')) return
         if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message.includes('/semver/')) return
+        // suppress this is undefined warning from @actions/github
+        if (warning.code === 'THIS_IS_UNDEFINED') return
         warn(warning)
     }
 };
