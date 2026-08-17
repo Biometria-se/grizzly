@@ -6,6 +6,7 @@ from gevent import monkey
 
 monkey.patch_all()
 
+import sys
 from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -39,6 +40,10 @@ E2E_RUN_DIST = environ.get('E2E_RUN_DIST', 'False').lower() == 'True'.lower()
 
 
 PYTEST_TIMEOUT = 600 if E2E_RUN_DIST or E2E_RUN_MODE == 'dist' else 180
+
+# macOS runners are consistently slower, give e2e tests more headroom there
+if sys.platform == 'darwin':
+    PYTEST_TIMEOUT = 900 if PYTEST_TIMEOUT > 180 else 400
 
 
 @pytest.fixture(autouse=True)

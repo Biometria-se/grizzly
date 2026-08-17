@@ -7,7 +7,7 @@ import logging
 import re
 from base64 import b64decode, urlsafe_b64encode
 from contextlib import suppress
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from hashlib import sha256
 from html.parser import HTMLParser
@@ -16,15 +16,15 @@ from os import environ
 from pathlib import Path
 from secrets import token_urlsafe
 from threading import Thread
-from typing import TYPE_CHECKING, Any, ClassVar, TypedDict, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Self, TypedDict, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import requests
 from azure.core.credentials import AccessToken, TokenCredential
 from pyotp import TOTP
-from requests.adapters import HTTPAdapter, Retry
-from typing_extensions import Self
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import TracebackType
@@ -589,7 +589,7 @@ class AzureAadCredential(TokenCredential):
             AzureAadFlowError: If authentication flow fails.
 
         """
-        now = datetime.now(tz=timezone.utc).timestamp()
+        now = datetime.now(tz=UTC).timestamp()
 
         if self.scope is not None and len(scopes) < 1:
             scopes += (self.scope,)
@@ -626,7 +626,7 @@ class AzureAadCredential(TokenCredential):
 
         """
         # default to 3000 seconds
-        default_exp = int(datetime.now(tz=timezone.utc).timestamp()) + 3000
+        default_exp = int(datetime.now(tz=UTC).timestamp()) + 3000
 
         try:
             # header, payload, signature
@@ -1031,7 +1031,7 @@ class AzureAadCredential(TokenCredential):
                         raise AzureAadFlowError(message)
 
                     # <!-- begin auth
-                    poll_start = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+                    poll_start = int(datetime.now(tz=UTC).timestamp() * 1000)
                     url = config['urlBeginAuth']
 
                     headers = {
@@ -1075,7 +1075,7 @@ class AzureAadCredential(TokenCredential):
                             'x-ms-request-id': response.headers.get('X-Ms-Request-Id', state['x-ms-request-id']),
                         },
                     )
-                    poll_end = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+                    poll_end = int(datetime.now(tz=UTC).timestamp() * 1000)
                     # // begin auth -->
 
                     # <!-- end auth
@@ -1247,7 +1247,7 @@ class AzureAadCredential(TokenCredential):
 
                     token = fragments['id_token'][0]
                     # be a little proactive and re-new set expire time to 10 minutes before actual time
-                    expires_on = int(datetime.now(tz=timezone.utc).timestamp()) + (int(fragments.get('expires_in', ['3600'])[0]) - 600)
+                    expires_on = int(datetime.now(tz=UTC).timestamp()) + (int(fragments.get('expires_in', ['3600'])[0]) - 600)
 
                     return AccessToken(token, expires_on)
 
@@ -1294,7 +1294,7 @@ class AzureAadCredential(TokenCredential):
                     domain = cookie.domain[1:] if cookie.domain_initial_dot else cookie.domain
 
                     if domain in initialize_uri:
-                        expires_on = (cookie.expires or int(datetime.now(tz=timezone.utc).timestamp() + 3600)) - 600
+                        expires_on = (cookie.expires or int(datetime.now(tz=UTC).timestamp() + 3600)) - 600
                         if cookie.value is None:
                             message = 'token cookie did not contain a value'
                             raise AzureAadFlowError(message)

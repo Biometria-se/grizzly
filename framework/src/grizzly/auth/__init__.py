@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from abc import ABCMeta
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 from importlib import import_module
 from inspect import getmro
@@ -137,7 +137,7 @@ class refresh_token(Generic[P]):
                 action_for = (client.credential.username or '<unknown username>') if client.credential.auth_method == AuthMethod.USER else client.credential.client_id
 
                 try:
-                    now = datetime.now(tz=timezone.utc).timestamp()
+                    now = datetime.now(tz=UTC).timestamp()
 
                     if (authorization_token is None and client.cookies == {}) or client.credential._access_token is None or client.credential._access_token.expires_on <= now:
                         logger.debug('%s asking for token', client.__class__.__name__)
@@ -163,7 +163,7 @@ class refresh_token(Generic[P]):
                         else:
                             action_name = 'claimed'
 
-                        next_refresh = datetime.fromtimestamp(access_token.expires_on, tz=timezone.utc).astimezone(tz=None)
+                        next_refresh = datetime.fromtimestamp(access_token.expires_on, tz=UTC).astimezone(tz=None)
 
                         logger.info(
                             '%s/%d %s %s %s token until %s',

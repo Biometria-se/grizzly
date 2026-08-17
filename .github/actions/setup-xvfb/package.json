@@ -1,0 +1,39 @@
+{
+  "name": "setup-xvfb",
+  "version": "1.0.0",
+  "packageManager": "npm",
+  "type": "module",
+  "description": "Run a command wrapped with Xvfb on Linux runners for headless GUI tests",
+  "main": "dist/index.js",
+  "scripts": {
+    "prebuild": "npm install",
+    "build": "rollup --config rollup.config.js",
+    "test": "mocha test/**/*.test.js",
+    "lint": "eslint src/**/*.js test/**/*.js"
+  },
+  "keywords": [
+    "github-actions",
+    "xvfb"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^2.0.2",
+    "@actions/exec": "^1.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "chai": "^6.2.1",
+    "eslint": "^9.39.2",
+    "globals": "^17.0.0",
+    "mocha": "^11.3.0",
+    "rollup": "^4.53.3",
+    "sinon": "^21.0.0"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.4",
+    "diff": "^8.0.4"
+  }
+}

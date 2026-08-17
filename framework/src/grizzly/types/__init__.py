@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from enum import Enum, auto
-from typing import Any, Concatenate, TypeVar, cast
+from typing import Any, Concatenate, ParamSpec, Self, TypeVar, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from grizzly_common.text import PermutationEnum
 from locust.rpc.protocol import Message
-from typing_extensions import ParamSpec, Self
 
 from grizzly.exceptions import RestartIteration, RestartScenario, RetryTask, StopUser
 from grizzly.types.locust import Environment

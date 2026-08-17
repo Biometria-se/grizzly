@@ -8,13 +8,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, Self, cast
 
 import yaml
 from gevent.lock import Semaphore
 from jinja2 import DebugUndefined, Environment, FileSystemLoader
 from jinja2.filters import FILTERS
-from typing_extensions import Self
 
 from grizzly.events import events
 from grizzly.testdata import GrizzlyVariables

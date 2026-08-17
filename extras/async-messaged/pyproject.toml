@@ -9,7 +9,7 @@ authors = [
 maintainers = [
     { name = "Mikael Göransson", email = "github@mgor.se" }
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "azure-servicebus>=7.14.2,<8.0.0",
     "pyzmq==27.0.2",

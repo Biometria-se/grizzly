@@ -26,7 +26,7 @@ import re
 import warnings
 from contextlib import contextmanager
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from importlib import import_module
 from json import dumps as jsondumps
 from pathlib import Path
@@ -268,7 +268,7 @@ class GrizzlyMkdocs(BasePlugin[GrizzlyMkdocsConfig]):
     ) -> str:
         # build file metadata
         title = parent_title if doc_path.stem == 'index' else self._make_human_readable(doc_path.stem)
-        date = datetime.fromtimestamp(py_module_file.lstat().st_mtime, tz=timezone.utc)
+        date = datetime.fromtimestamp(py_module_file.lstat().st_mtime, tz=UTC)
 
         extra_mkdocstrings_options.update({'members': members or False})
 

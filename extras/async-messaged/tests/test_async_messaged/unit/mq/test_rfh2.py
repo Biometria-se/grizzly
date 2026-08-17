@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -151,10 +151,10 @@ class TestRfh2Encoder:
 
         # test generating timestamp
         tstamp_before = str(round(time.time() * 1000))
-        datetime_before = datetime.fromtimestamp(int(tstamp_before) / 1000, tz=timezone.utc)
+        datetime_before = datetime.fromtimestamp(int(tstamp_before) / 1000, tz=UTC)
         e = Rfh2Encoder(b'test payload', queue_name='OTHERQUEUE')
         generated_tstamp = e.name_values[80:93].decode('utf-8')
-        generated_datetime = datetime.fromtimestamp(int(generated_tstamp) / 1000, tz=timezone.utc)
+        generated_datetime = datetime.fromtimestamp(int(generated_tstamp) / 1000, tz=UTC)
         assert generated_datetime >= datetime_before
         assert generated_datetime - timedelta(hours=1) < datetime_before
 

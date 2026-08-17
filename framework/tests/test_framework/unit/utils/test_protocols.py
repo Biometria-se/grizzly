@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from http.cookiejar import Cookie, CookieJar
 from os import utime
 from typing import TYPE_CHECKING
@@ -73,7 +73,7 @@ EXPLANATION:
 
     assert len(caplog.messages) == 0
 
-    entry_date_1 = (datetime.now() + timedelta(hours=1)).astimezone(tz=timezone.utc)
+    entry_date_1 = (datetime.now() + timedelta(hours=1)).astimezone(tz=UTC)
 
     # one AMQERR*.LOG file, one entry
     with amqerr_log_file_1.open('a') as fd:

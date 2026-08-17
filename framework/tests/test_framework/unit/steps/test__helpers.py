@@ -63,7 +63,7 @@ def test_add_request_task_response_status_codes(grizzly_fixture: GrizzlyFixture,
     assert request.response.status_codes == [200, 302, 400]
 
 
-@pytest.mark.parametrize('request_type,', ['sync', 'async'])
+@pytest.mark.parametrize('request_type', ['sync', 'async'])
 def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory, *, request_type: str) -> None:  # noqa: PLR0915
     behave = grizzly_fixture.behave.context
     grizzly = cast('GrizzlyContext', behave.grizzly)
@@ -130,7 +130,8 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
 
     assert add_request_task(behave, method=RequestMethod.SEND, source=str(template_full_path), name='my_blob', endpoint='my_container') == []
 
-    template_source = json.dumps(json.load(template_full_path.open()))
+    with template_full_path.open() as template_file:
+        template_source = json.dumps(json.load(template_file))
 
     assert len(tasks) == 4
     assert isinstance(tasks[-1], RequestTask)
@@ -272,7 +273,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     assert task.response.content_type == TransformerContentType.UNDEFINED
 
 
-@pytest.mark.parametrize(('as_async', 'default_value'), product([False, True], [None, 'foobar']))
+@pytest.mark.parametrize(('as_async', 'default_value'), list(product([False, True], [None, 'foobar'])))
 def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool, default_value: str | None) -> None:  # noqa: PLR0915
     parent = grizzly_fixture()
     behave = grizzly_fixture.behave.context

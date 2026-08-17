@@ -37,7 +37,8 @@ def test_quick_fix_no_step_impl(lsp_fixture: LspFixture, mocker: MockerFixture) 
 
     text_document = TextDocument(feature_file.as_uri())
 
-    def assert_quick_fix_edit(quick_fix: lsp.CodeAction, new_text: str) -> None:
+    def assert_quick_fix_edit(quick_fix: lsp.CodeAction | None, new_text: str) -> None:
+        assert quick_fix is not None
         actual_edit = quick_fix.edit
         assert isinstance(actual_edit, lsp.WorkspaceEdit)
         assert actual_edit.changes is not None
@@ -151,7 +152,7 @@ def step_impl(context: Context) -> None:
 
         # <!-- with arguments
         mocker.patch(
-            'random_word.RandomWords.get_random_word',
+            'grizzly_ls.server.features.code_actions.RandomWord.word',
             return_value='foobar',
         )
         diagnostic = lsp.Diagnostic(
@@ -188,6 +189,45 @@ def step_impl(context: Context, book: str, foobar: str) -> None:
 
         assert quick_fix_no_step_impl(ls, diagnostic, text_document) is None
         # // -->
+    finally:
+        feature_file.unlink()
+
+
+def test_quick_fix_no_step_impl_generates_distinct_argument_names(lsp_fixture: LspFixture, mocker: MockerFixture) -> None:
+    ls = lsp_fixture.server
+    ls.root_path = GRIZZLY_PROJECT
+    feature_file = lsp_fixture.datadir / 'features' / 'test_quick_fix_no_step_impl_distinct.feature'
+    feature_file.write_text('Given foobar\n')
+    text_document = TextDocument(feature_file.as_uri())
+    diagnostic = lsp.Diagnostic(
+        range=lsp.Range(
+            start=lsp.Position(line=0, character=0),
+            end=lsp.Position(line=0, character=0),
+        ),
+        message=f'{MARKER_NO_STEP_IMPL}:\nGiven "100" and "200"',
+        severity=lsp.DiagnosticSeverity.Warning,
+        source='Dummy',
+    )
+    mocker.patch(
+        'grizzly_ls.server.features.code_actions.RandomWord.word',
+        side_effect=['foobar', 'foobar', 'bazqux'],
+    )
+
+    try:
+        quick_fix = quick_fix_no_step_impl(ls, diagnostic, text_document)
+
+        assert quick_fix is not None
+        assert quick_fix.edit is not None
+        assert quick_fix.edit.changes is not None
+        actual_text_edit = quick_fix.edit.changes[GRIZZLY_PROJECT.joinpath('steps', 'steps.py').as_uri()][0]
+        assert (
+            actual_text_edit.new_text
+            == """
+@step(given, en=u'"{foobar}" and "{bazqux}"')
+def step_impl(context: Context, foobar: str, bazqux: str) -> None:
+    raise NotImplementedError('no step implementation')
+"""
+        )
     finally:
         feature_file.unlink()
 

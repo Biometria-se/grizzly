@@ -75,6 +75,6 @@ class WaitBetweenTask(GrizzlyTask):
 
             bound_wait_time = wait_time.__get__(parent.user, parent.user.__class__)
 
-            parent.user.wait_time = bound_wait_time
+            parent.user.wait_time = bound_wait_time  # type: ignore[method-assign]
 
         return task

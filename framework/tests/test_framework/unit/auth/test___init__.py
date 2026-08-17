@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import call
 from uuid import uuid4
@@ -62,7 +62,7 @@ class DummyAuthCredential(AzureAadCredential):
         self._token_payload = None
 
     def get_token(self, *scopes: str, claims: str | None = None, tenant_id: str | None = None, **_kwargs: Any) -> AccessToken:  # noqa: ARG002
-        now = datetime.now(tz=timezone.utc).timestamp()
+        now = datetime.now(tz=UTC).timestamp()
 
         if self._access_token is None or self._access_token.expires_on <= now:
             self._refreshed = self._access_token is not None and self._access_token.expires_on <= now
@@ -112,7 +112,7 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
     get_token_mock = mocker.patch(
         'grizzly.auth.RefreshTokenDistributor.get_token',
         side_effect=[
-            (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
+            (AccessToken('dummy', (int(datetime.now(tz=UTC).timestamp()) + 3600)), False),
         ],
     )
 
@@ -163,6 +163,7 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
     with caplog.at_level(logging.INFO):
         parent.user.request(request_task)
 
+    assert parent.user.credential is not None
     assert parent.user.credential == SOME(AzureAadCredential, auth_method=AuthMethod.CLIENT)
     assert parent.user.credential._access_token is not None
     get_token_mock.assert_called_once_with(parent.user)
@@ -189,9 +190,9 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
 
     # authorization is set, but it is time to refresh token
     get_token_mock.side_effect = [
-        (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), True),
+        (AccessToken('dummy', int(datetime.now(tz=UTC).timestamp())), True),
     ]
-    old_access_token = AccessToken('dummy', expires_on=int(datetime.now(tz=timezone.utc).timestamp() - 3600))
+    old_access_token = AccessToken('dummy', expires_on=int(datetime.now(tz=UTC).timestamp() - 3600))
     parent.user.credential._access_token = old_access_token
 
     with caplog.at_level(logging.INFO):
@@ -219,7 +220,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     get_token_mock = mocker.patch(
         'grizzly.auth.RefreshTokenDistributor.get_token',
         side_effect=[
-            (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
+            (AccessToken('dummy', (int(datetime.now(tz=UTC).timestamp()) + 3600)), False),
         ],
     )
 
@@ -278,6 +279,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     get_token_mock.reset_mock()
 
     assert parent.user.metadata['Authorization'] == 'Bearer dummy'
+    assert parent.user.credential is not None
     assert parent.user.credential == SOME(AzureAadCredential, auth_method=AuthMethod.USER)
     assert parent.user.credential._access_token is not None
     assert len(caplog.messages) == 1
@@ -298,9 +300,9 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
 
     # authorization is set, but it is time to refresh token
     get_token_mock.side_effect = [
-        (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), True),
+        (AccessToken('dummy', int(datetime.now(tz=UTC).timestamp())), True),
     ]
-    old_access_token = AccessToken('dummy', expires_on=int(datetime.now(tz=timezone.utc).timestamp() - 3600))
+    old_access_token = AccessToken('dummy', expires_on=int(datetime.now(tz=UTC).timestamp() - 3600))
     parent.user.credential._access_token = old_access_token
 
     with caplog.at_level(logging.INFO):
@@ -316,7 +318,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
 
     # change user -> new credential/access token
     get_token_mock.side_effect = [
-        (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), True),
+        (AccessToken('dummy', int(datetime.now(tz=UTC).timestamp())), True),
     ]
     old_access_token = parent.user.credential._access_token
     parent.user.add_context({'auth': {'user': {'username': 'alice@example.com', 'password': 'foobar'}}})
@@ -334,7 +336,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
 
     # new user in context, needs to get a new token
     get_token_mock.side_effect = [
-        (AccessToken('dummy', int(datetime.now(tz=timezone.utc).timestamp())), False),
+        (AccessToken('dummy', int(datetime.now(tz=UTC).timestamp())), False),
     ]
     parent.user.request(request_task)
     get_token_mock.assert_called_once_with(parent.user)
@@ -353,7 +355,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
     get_token_mock = mocker.patch(
         'grizzly.auth.RefreshTokenDistributor.get_token',
         side_effect=[
-            (AccessToken('dummy', (int(datetime.now(tz=timezone.utc).timestamp()) + 3600)), False),
+            (AccessToken('dummy', (int(datetime.now(tz=UTC).timestamp()) + 3600)), False),
         ],
     )
 
@@ -474,7 +476,7 @@ class TestRefreshTokenDistributor:
     def test_handle_request(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         parent = grizzly_fixture()
 
-        expires_on = int(datetime.now(tz=timezone.utc).timestamp())
+        expires_on = int(datetime.now(tz=UTC).timestamp())
         environment = grizzly_fixture.behave.locust.environment
         send_message_mock = mocker.patch.object(environment.runner, 'send_message', return_value=None)
         module_loader_mock = mocker.patch('grizzly.auth.ModuleLoader.load', return_value=AzureAadCredential)
@@ -727,7 +729,7 @@ class TestRefreshTokenDistributor:
             scope=None,
         )
 
-        expires_on = int(datetime.now(tz=timezone.utc).timestamp())
+        expires_on = int(datetime.now(tz=UTC).timestamp())
         access_token = AccessToken('dummy', expires_on)
         access_token_mock = mocker.patch('grizzly_common.azure.aad.AzureAadCredential.access_token', new_callable=mocker.PropertyMock, return_value=access_token)
 

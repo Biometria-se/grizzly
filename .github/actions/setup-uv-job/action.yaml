@@ -9,7 +9,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-  - uses: MathRobin/timezone-action@v1.1
+  - uses: ./.github/actions/set-timezone
     with:
       timezoneLinux: "Europe/Stockholm"
       timezoneWindows: "W. Europe Standard Time"

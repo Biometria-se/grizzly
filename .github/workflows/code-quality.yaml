@@ -22,7 +22,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
-    - uses: dorny/paths-filter@v3
+    - uses: dorny/paths-filter@v4
       id: filter
       with:
         filters: ./.github/changes-filter.yaml
@@ -45,13 +45,13 @@ jobs:
       fail-fast: false
       matrix:
         image: ["ubuntu-latest"]
-        python-version: ["3.10", "3.13"]
+        python-version: ["3.11", "3.14"]
         changes: ${{ fromJSON(needs.changes.outputs.changes_uv) }}
         exclude:
           - image: "windows-latest"
-            python-version: "3.10"
+            python-version: "3.11"
           - image: "macos-15-intel"
-            python-version: "3.10"
+            python-version: "3.11"
 
     steps:
     - uses: actions/checkout@v6
@@ -94,13 +94,13 @@ jobs:
       fail-fast: false
       matrix:
         image: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
-        python-version: ["3.10", "3.13"]
+        python-version: ["3.11", "3.14"]
         changes: ${{ fromJSON(needs.uv-lint.outputs.changes_uv || '[]') }}
         exclude:
           - image: "windows-latest"
-            python-version: "3.10"
+            python-version: "3.11"
           - image: "macos-15-intel"
-            python-version: "3.10"
+            python-version: "3.11"
 
     steps:
     - uses: actions/checkout@v6
@@ -193,7 +193,7 @@ jobs:
         uv run pytest ${{ matrix.changes.tests.e2e.local }}
 
     - name: "E2E local test log"
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: failure() && matrix.changes.tests.e2e.local != '' && steps.e2e_local.outcome == 'failure'
       env:
         GRIZZLY_TMP_LOGFILE: ${{ env.GRIZZLY_TMP_LOGFILE }}
@@ -214,7 +214,7 @@ jobs:
         uv run pytest ${{ matrix.changes.tests.e2e.dist }}
 
     - name: "E2E distributed test log"
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: failure() && matrix.changes.tests.e2e.dist != '' && steps.e2e_dist.outcome == 'failure'
       env:
         GRIZZLY_TMP_LOGFILE: ${{ env.GRIZZLY_TMP_LOGFILE }}
@@ -234,7 +234,7 @@ jobs:
       fail-fast: false
       matrix:
         image: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
-        python-version: ["3.10"]
+        python-version: ["3.11"]
         changes: ${{ fromJSON(needs.changes.outputs.changes_npm || '[]') }}
         exclude:
           - image: "windows-latest"
@@ -277,7 +277,7 @@ jobs:
       fail-fast: false
       matrix:
         image: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
-        python-version: ["3.10"]
+        python-version: ["3.11"]
         changes: ${{ fromJSON(needs.npm-lint.outputs.changes_npm || '[]') }}
 
     steps:
@@ -320,7 +320,7 @@ jobs:
 
     - name: "Run E2E tests"
       if: matrix.changes.tests.e2e.local != ''
-      uses: mgor/setup-xvfb@v1
+      uses: ./.github/actions/setup-xvfb
       env:
         VERBOSE: true
         VIRTUAL_ENV: ${{ env.VIRTUAL_ENV }}
@@ -329,7 +329,7 @@ jobs:
         run: npm run test:e2e
 
     - name: "E2E server logs"
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: failure() && matrix.changes.tests.e2e.local != ''
       with:
         name: "grizzly-ls-server-logs-${{ matrix.image }}"

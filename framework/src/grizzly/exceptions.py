@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from random import uniform
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from gevent import sleep as gsleep
 from grizzly_common.exceptions import StopScenario
 from locust.exception import StopUser
-from typing_extensions import Self
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Callable

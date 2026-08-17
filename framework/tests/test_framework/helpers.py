@@ -267,13 +267,15 @@ def get_property_decorated_attributes(target: Any) -> set[str]:
         name
         for name, _ in inspect.getmembers(
             target,
-            lambda p: isinstance(
-                p,
-                property | MethodType,
-            )
-            and not isinstance(
-                p,
-                classmethod | MethodType,  # @classmethod anotated methods becomes @property
+            lambda p: (
+                isinstance(
+                    p,
+                    property | MethodType,
+                )
+                and not isinstance(
+                    p,
+                    classmethod | MethodType,  # @classmethod anotated methods becomes @property
+                )
             ),
         )
         if not name.startswith('_')
@@ -427,7 +429,7 @@ def create_mocked_fast_response_context_manager(
     if content is not None:
         response._cached_content = content.encode()
 
-    context_manager = FastResponseContextManager(response, None, {})
+    context_manager = FastResponseContextManager(response, None, {}, catch_response=False)
     context_manager._entered = True
 
     return context_manager

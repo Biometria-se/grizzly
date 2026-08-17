@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from behave.i18n import languages
 from lsprotocol import types as lsp
-from random_word import RandomWords
+from wonderwords import RandomWord
 
 from grizzly_ls.constants import (
     MARKER_LANG_NOT_VALID,
@@ -54,17 +54,20 @@ def quick_fix_no_step_impl(ls: GrizzlyLanguageServer, diagnostic: lsp.Diagnostic
         variable_matches = list(re.finditer(r'"([^"]*)"', expression or '', flags=re.MULTILINE))
 
         if variable_matches:
-            generator = RandomWords()
+            generator = RandomWord()
             args: list[str] = []
+            variable_names: set[str] = set()
             offset = 0
             for variable_match in variable_matches:
                 variable_name = normalize_text(variable_match.group(1)).lower()
                 if not variable_name.isidentifier():
-                    variable_name = generator.get_random_word().lower()
+                    while not variable_name.isidentifier() or variable_name in variable_names:
+                        variable_name = normalize_text(generator.word()).lower()
 
                 expression = f'{expression[0 : variable_match.start() + offset]}"{{{variable_name}}}"{expression[variable_match.end() + offset :]}'
                 offset += abs(len(variable_match.group(1)) - len(variable_name)) + 2  # we're also adding { and }
                 args.append(f'{variable_name}: str')
+                variable_names.add(variable_name)
 
             arguments = f', {", ".join(args)}'
         else:

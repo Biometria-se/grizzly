@@ -162,7 +162,7 @@ def compile_inventory(ls: GrizzlyLanguageServer, *, standalone: bool = False) ->
         for path in paths:
             try:
                 ls.behave_steps.update(load_step_registry([path]))
-            except Exception as e:  # noqa: PERF203
+            except Exception as e:
                 ls.logger.exception(f'failed to load steps from {path}:\n{e!s}')
     except Exception as e:
         if not standalone:

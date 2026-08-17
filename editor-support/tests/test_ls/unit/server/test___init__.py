@@ -1015,7 +1015,7 @@ class TestInitialize(ServerInitialize):
             'file_ignore_patterns': ['**/*.py'],
             'quick_fix': {'step_impl_template': "@{keyword}('{expression}')"},
         }
-        assert self.ls.markup_kind.value == lsp.MarkupKind.PlainText
+        assert self.ls.markup_kind == lsp.MarkupKind.PlainText
 
 
 class TestTextDocumentCompletion(ServerTextDocumentCompletion):

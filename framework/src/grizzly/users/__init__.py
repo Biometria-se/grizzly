@@ -17,7 +17,7 @@ import logging
 from abc import ABCMeta, abstractmethod
 from contextlib import suppress
 from copy import copy, deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from errno import ENAMETOOLONG
 from itertools import chain
 from json import dumps as jsondumps
@@ -257,7 +257,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
         start_time = perf_counter()
 
-        timestamp_start = datetime.now(tz=timezone.utc).isoformat()
+        timestamp_start = datetime.now(tz=UTC).isoformat()
 
         try:
             if len(self.metadata or {}) > 0:
@@ -279,7 +279,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
                 self.logger.exception(message)
         finally:
             response_time = int((perf_counter() - start_time) * 1000)
-            timestamp_finished = datetime.now(tz=timezone.utc).isoformat()
+            timestamp_finished = datetime.now(tz=UTC).isoformat()
             response_length = len((payload or '').encode())
 
             if isinstance(exception, StopScenario):

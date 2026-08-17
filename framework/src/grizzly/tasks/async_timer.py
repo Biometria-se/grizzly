@@ -25,7 +25,7 @@ as failed.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal
 
 from grizzly.tasks import GrizzlyTask, grizzlytask, template
@@ -70,7 +70,7 @@ class AsyncTimerTask(GrizzlyTask):
                     timestamp = datetime.strptime(
                         f'{timestamp_date} {timestamp_time}',
                         '%Y%m%d %H%M%S%f',
-                    ).replace(tzinfo=timezone.utc)
+                    ).replace(tzinfo=UTC)
 
                 name = parent.user.render(self.tname)
                 tid = parent.user.render(self.tid)

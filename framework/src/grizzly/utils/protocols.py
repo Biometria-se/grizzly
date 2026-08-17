@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http.cookiejar import Cookie
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, cast
@@ -105,7 +105,7 @@ def mq_client_logs(context: Context) -> None:
     if not hasattr(context, 'started'):
         return
 
-    started = cast('datetime', context.started).astimezone(tz=timezone.utc)
+    started = cast('datetime', context.started).astimezone(tz=UTC)
 
     amqerr_log_entries: list[tuple[datetime, str]] = []
     amqerr_fdc_files: list[tuple[datetime, str]] = []
@@ -124,7 +124,7 @@ def mq_client_logs(context: Context) -> None:
                 while line and not re.match(r'^\s+Time\(', line):
                     try:
                         line = next(fd)  # noqa: PLW2901
-                    except StopIteration:  # noqa: PERF203
+                    except StopIteration:
                         break
 
                 if not line:
@@ -147,7 +147,7 @@ def mq_client_logs(context: Context) -> None:
                 amqerr_log_entries.append((time_date, line.strip()))
 
     for amqerr_fdc_file in log_directory.glob('AMQ*.FDC'):
-        modification_date = datetime.fromtimestamp(amqerr_fdc_file.stat().st_mtime).astimezone(tz=timezone.utc)
+        modification_date = datetime.fromtimestamp(amqerr_fdc_file.stat().st_mtime).astimezone(tz=UTC)
 
         if modification_date < started:
             continue

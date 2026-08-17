@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from dateutil.parser import parse as dateparser
@@ -63,7 +63,7 @@ class TestAsyncTimerTask:
         # // -->
 
         # <!-- stop, timestamp from MQ message properties
-        expected_datetime = dateparser('2024-12-03 10:12:00.123456Z').replace(tzinfo=timezone.utc)
+        expected_datetime = dateparser('2024-12-03 10:12:00.123456Z').replace(tzinfo=UTC)
 
         parent.user.variables.update(
             {

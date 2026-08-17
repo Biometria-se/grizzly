@@ -25,7 +25,7 @@ This is a monorepo for all Grizzly-related projects, managed as a [uv workspace]
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.11 or higher
 - [uv](https://docs.astral.sh/uv/) package manager
 - Node.js 24 (for VS Code extension development)
 - Git
@@ -364,7 +364,7 @@ Then visit [http://localhost:8000](http://localhost:8000)
    - Run `npm run compile` or use watch mode
 
 4. **Python version compatibility**
-   - Test across all supported versions (3.10-3.13)
+   - Test across all supported versions (3.11-3.14)
    - Use `hatch` matrix environments
 
 5. **Workflow file changes**

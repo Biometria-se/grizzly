@@ -10,14 +10,14 @@ authors = [
 maintainers = [
     { name = "Mikael Göransson", email = "github@mgor.se" }
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "colorama>=0.4.6,<1.0.0",
     "ordered-set>=4.1.0,<5.0.0",
     "pip>=26.0",
     "pygls>=2.0.0,<3.0.0",
-    "random-word>=1.0.13,<2.0.0",
     "uv>=0.5.12,<1.0.0",
+    "wonderwords>=3.0.1,<4.0.0",
     "grizzly-loadtester-common",
 ]
 classifiers = [
@@ -26,10 +26,10 @@ classifiers = [
     'Natural Language :: English',
     'Programming Language :: Python',
     'Programming Language :: Python :: 3 :: Only',
-    'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
     'Programming Language :: Python :: Implementation :: CPython'
 ]
 keywords = [

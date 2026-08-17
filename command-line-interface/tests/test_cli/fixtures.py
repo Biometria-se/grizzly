@@ -15,10 +15,9 @@ from os.path import pathsep, sep
 from pathlib import Path
 from tempfile import gettempdir
 from textwrap import dedent, indent
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, Self, cast
 
 from grizzly_cli.utils import rm_rf
-from typing_extensions import Self
 
 from test_cli.helpers import run_command
 

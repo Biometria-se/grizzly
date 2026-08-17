@@ -1,24 +1,9 @@
 from __future__ import annotations
 
 import string
-import sys
+from re._constants import ANY, BRANCH, IN, LITERAL, MAX_REPEAT, SUBPATTERN
+from re._constants import _NamedIntConstant as SreNamedIntConstant
 from typing import cast
-
-if sys.version_info >= (3, 11):
-    from re._constants import ANY, BRANCH, IN, LITERAL, MAX_REPEAT, SUBPATTERN
-    from re._constants import _NamedIntConstant as SreNamedIntConstant
-else:
-    from sre_constants import (
-        ANY,
-        BRANCH,
-        IN,
-        LITERAL,
-        MAX_REPEAT,
-        SUBPATTERN,
-    )
-    from sre_constants import (
-        _NamedIntConstant as SreNamedIntConstant,
-    )
 
 import pytest
 from grizzly_ls.text import (

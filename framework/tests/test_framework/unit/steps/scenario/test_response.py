@@ -83,7 +83,7 @@ def test_parse_response_content_type() -> None:
 
 @pytest.mark.parametrize(
     ('response_target', 'step_impl'),
-    product(ResponseTarget, [step_response_save_matches, step_response_save_matches_optional, step_response_save, step_response_save_optional]),
+    list(product(ResponseTarget, [step_response_save_matches, step_response_save_matches_optional, step_response_save, step_response_save_optional])),
 )
 def test_step_response_save(grizzly_fixture: GrizzlyFixture, response_target: ResponseTarget, step_impl: Callable[..., None]) -> None:
     behave = grizzly_fixture.behave.context

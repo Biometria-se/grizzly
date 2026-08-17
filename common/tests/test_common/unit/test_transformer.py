@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from json import dumps as jsondumps
 from json import loads as jsonloads
 from json.decoder import JSONDecodeError
@@ -318,7 +318,7 @@ class TestJsonTransformer:
         # // -->
 
         # <!-- greater than or equals, datetime
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         actual_timestamp = now.isoformat().replace('+00:00', 'Z')
         message = f"""{{
   "externalId": "2fc91fbb-091a-4132-8d00-c84d2c8dd85b",

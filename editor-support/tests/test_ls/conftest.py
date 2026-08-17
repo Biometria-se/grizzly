@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -34,12 +35,15 @@ GRIZZLY_PROJECT = (Path(__file__) / '..' / '..' / '..' / 'tests' / 'project').re
 
 assert GRIZZLY_PROJECT.is_dir()
 
+# macOS runners are consistently slower, give e2e tests more headroom there
+E2E_TIMEOUT = 600 if sys.platform == 'darwin' else 300
+
 
 # give E2E tests a little bit more time
 def pytest_collection_modifyitems(items: list[pytest.Function]) -> None:
     for item in items:
         if 'e2e' in item.path.as_posix() and item.get_closest_marker('timeout') is None:
-            item.add_marker(pytest.mark.timeout(300))
+            item.add_marker(pytest.mark.timeout(E2E_TIMEOUT))
 
 
 @pytest.fixture

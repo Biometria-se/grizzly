@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from itertools import product
 from json import dumps as jsondumps
@@ -43,14 +43,14 @@ class TestAzureAadCredential:
 
         get_oauth_token_mock = mocker.patch(
             'grizzly.auth.aad.AzureAadCredential.get_oauth_token',
-            return_value=AccessToken('asdf', expires_on=int(datetime.now(tz=timezone.utc).timestamp())),
+            return_value=AccessToken('asdf', expires_on=int(datetime.now(tz=UTC).timestamp())),
         )
 
         get_oauth_authorization_mock = mocker.patch(
             'grizzly.auth.aad.AzureAadCredential.get_oauth_authorization',
             side_effect=[
-                AccessToken('asdf', expires_on=int(datetime.now(tz=timezone.utc).timestamp()) + 3600),
-                AccessToken('foobar', expires_on=int(datetime.now(tz=timezone.utc).timestamp()) + 4000),
+                AccessToken('asdf', expires_on=int(datetime.now(tz=UTC).timestamp()) + 3600),
+                AccessToken('foobar', expires_on=int(datetime.now(tz=UTC).timestamp()) + 4000),
             ],
         )
 
@@ -88,7 +88,7 @@ class TestAzureAadCredential:
 
         # token is refreshed
         datetime_mock = mocker.patch('grizzly_common.azure.aad.datetime')
-        datetime_mock.now.return_value = datetime.now(tz=timezone.utc) + timedelta(seconds=5000)
+        datetime_mock.now.return_value = datetime.now(tz=UTC) + timedelta(seconds=5000)
 
         assert access_token is not credential.get_token()
 
@@ -184,7 +184,7 @@ class TestAzureAadCredential:
         payload = parent.user.variables.get('test_payload', None)
         assert payload is not None
 
-    @pytest.mark.parametrize(('version', 'login_start'), product(['v2.0'], ['initialize_uri', 'redirect_uri']))
+    @pytest.mark.parametrize(('version', 'login_start'), list(product(['v2.0'], ['initialize_uri', 'redirect_uri'])))
     def test_get_oauth_authorization(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture, version: str, login_start: str) -> None:  # noqa: PLR0915, C901
         parent = grizzly_fixture(user_type=RestApiUser)
 

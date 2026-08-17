@@ -1,0 +1,19 @@
+name: set-timezone
+description: Set the runner's timezone based on its operating system
+inputs:
+  timezoneLinux:
+    description: 'Timezone to set on Linux runners'
+    required: false
+    default: 'UTC'
+  timezoneWindows:
+    description: 'Timezone to set on Windows runners'
+    required: false
+    default: 'UTC'
+  timezoneMacos:
+    description: 'Timezone to set on macOS runners'
+    required: false
+    default: 'GMT'
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'

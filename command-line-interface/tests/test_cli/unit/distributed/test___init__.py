@@ -6,7 +6,7 @@ import json
 import sys
 from argparse import ArgumentParser, Namespace
 from contextlib import suppress
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from os import environ
 from tempfile import gettempdir
 from typing import TYPE_CHECKING
@@ -77,7 +77,7 @@ def test_distributed_run(capsys: CaptureFixture, mocker: MockerFixture, tmp_path
     mocker.patch.object(grizzly_cli.distributed, 'PROJECT_NAME', 'grizzly-cli-test-project')
 
     run_command_result = RunCommandResult(return_code=1)
-    run_command_result.abort_timestamp = datetime.now(tz=timezone.utc)
+    run_command_result.abort_timestamp = datetime.now(tz=UTC)
 
     run_command_mock = mocker.patch('grizzly_cli.distributed.run_command', return_value=None)
     check_output_mock = mocker.patch('grizzly_cli.distributed.subprocess.check_output', return_value=None)
@@ -179,7 +179,7 @@ def test_distributed_run(capsys: CaptureFixture, mocker: MockerFixture, tmp_path
 
         # docker-compose v2
         rcr = RunCommandResult(return_code=1)
-        rcr.abort_timestamp = datetime.now(tz=timezone.utc)
+        rcr.abort_timestamp = datetime.now(tz=UTC)
         run_command_mock.return_value = None
         run_command_mock.side_effect = [RunCommandResult(return_code=0), rcr, RunCommandResult(return_code=0)]
         do_build_mock.return_value = 0

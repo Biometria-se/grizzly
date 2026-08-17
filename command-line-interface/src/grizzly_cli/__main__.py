@@ -111,7 +111,7 @@ def _parse_run(parser: ArgumentParser, args: argparse.Namespace) -> None:
             try:
                 [name, value] = variable.split('=', 1)
                 os.environ[f'TESTDATA_VARIABLE_{name}'] = value
-            except ValueError:  # noqa: PERF203
+            except ValueError:
                 parser.error_no_help('-T/--testdata-variable needs to be in the format NAME=VALUE')
 
     if args.csv_prefix is None:
@@ -178,7 +178,7 @@ def _inject_additional_arguments_from_metadata(args: argparse.Namespace) -> argp
             index = argv.index(additional_arguments[0]) + 1
             for zindex, additional_argument in enumerate(additional_arguments[1:]):
                 argv.insert(index + zindex, additional_argument)
-        except ValueError:  # noqa: PERF203
+        except ValueError:
             print('?? ignoring {}'.format(' '.join(additional_arguments)))
 
     sys.argv = sys.argv[0:1] + argv

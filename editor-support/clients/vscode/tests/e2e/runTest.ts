@@ -71,6 +71,9 @@ async function main() {
         console.log(`!! dirname=${__dirname}, extenstionTestsPath=${extensionTestsPath}, testWorkspace=${testWorkspace}`);
         console.log(`!! VIRTUAL_ENV=${process.env['VIRTUAL_ENV']}`);
 
+        // remove any previous, possibly partial/corrupted, VS Code download to avoid spawn ENOENT on re-runs
+        await fs.rm(path.resolve(__dirname, '../../../.vscode-test'), { recursive: true, force: true });
+
         const vscodeExecutablePath = await downloadAndUnzipVSCode();
 
         await runVSCodeCommand(['--install-extension', 'ms-python.python', '--force']);

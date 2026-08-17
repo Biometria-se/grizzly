@@ -98,7 +98,7 @@ from __future__ import annotations
 import json
 from abc import ABCMeta
 from copy import copy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from hashlib import sha256
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -339,7 +339,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
                     message = self._get_error_message(response)
                     message = f'{response.status_code} not in {request.response.status_codes}: {message}'
                     if response.status_code == 401 and self.credential is not None and self.credential._access_token is not None:
-                        token_expires = datetime.fromtimestamp(self.credential._access_token.expires_on, tz=timezone.utc).astimezone(tz=None)
+                        token_expires = datetime.fromtimestamp(self.credential._access_token.expires_on, tz=UTC).astimezone(tz=None)
                         message = f'{message} (token expires {token_expires})'
 
                     response.failure(ResponseError(message))

@@ -8,14 +8,13 @@ import socket
 from contextlib import suppress
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 import gevent
 import requests
 from flask import Flask, jsonify, request
 from flask import Response as FlaskResponse
 from gevent.pywsgi import WSGIServer
-from typing_extensions import Self
 
 if TYPE_CHECKING:
     from types import TracebackType

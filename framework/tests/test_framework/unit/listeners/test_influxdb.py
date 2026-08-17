@@ -6,7 +6,7 @@ import logging
 import os
 import socket
 from contextlib import suppress
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import cycle
 from json import dumps as jsondumps
 from platform import node as get_hostname
@@ -522,7 +522,7 @@ class TestInfluxDblistener:
     def test__log_request(self, grizzly_fixture: GrizzlyFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
         patch_influxdblistener()
 
-        expected_datetime = datetime(2022, 12, 16, 10, 28, 0, 123456, timezone.utc)
+        expected_datetime = datetime(2022, 12, 16, 10, 28, 0, 123456, UTC)
 
         datetime_mock = mocker.patch(
             'grizzly.listeners.influxdb.datetime',

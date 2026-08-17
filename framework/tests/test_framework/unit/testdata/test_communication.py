@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from contextlib import suppress
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from os import environ, sep
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -183,7 +183,7 @@ class TestAsyncTimersConsumer:
         assert timers._stop == []
 
     def test_parse_date(self) -> None:
-        assert AsyncTimersConsumer.parse_date('2024-12-03T09:02:29.000Z') == datetime(2024, 12, 3, 9, 2, 29, 0, tzinfo=timezone.utc)
+        assert AsyncTimersConsumer.parse_date('2024-12-03T09:02:29.000Z') == datetime(2024, 12, 3, 9, 2, 29, 0, tzinfo=UTC)
         assert AsyncTimersConsumer.parse_date('2024-12-03 09:02:29').isoformat() == datetime(2024, 12, 3, 9, 2, 29).astimezone().isoformat()
 
     def test_on_report_to_master(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:

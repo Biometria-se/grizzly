@@ -6,7 +6,7 @@
     "dockerfile": "Dockerfile",
     "context": "..",
     "args": {
-      "VARIANT": "3.13",
+      "VARIANT": "3.14",
       // Options
       "INSTALL_NODE": "true",
       "NODE_VERSION": "lts/*"
@@ -102,7 +102,9 @@
   // Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
   "remoteUser": "vscode",
   "features": {
-    "ghcr.io/devcontainers/features/docker-from-docker:1": {},
+    "ghcr.io/devcontainers/features/docker-from-docker:1": {
+      "moby": false
+    },
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/itsmechlark/features/act:1": {},

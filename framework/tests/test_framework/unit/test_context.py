@@ -479,13 +479,13 @@ class TestGrizzlyContextTasksTmp:
         tmp.conditional = conditional
 
         assert len(tmp.__stack__) == 1
-        assert tmp.__stack__[-1] is conditional
+        assert tmp.__stack__[0] is conditional
 
         loop = LoopTask('loop-1', '["hello", "world"]', 'loop_value')
         tmp.loop = loop
 
         assert len(tmp.__stack__) == 2
-        assert tmp.__stack__[-1] is loop
+        assert tmp.__stack__[1] is loop
 
         tmp.loop = None
 
@@ -495,24 +495,24 @@ class TestGrizzlyContextTasksTmp:
         tmp.loop = loop
 
         assert len(tmp.__stack__) == 2
-        assert tmp.__stack__[-1] is loop
+        assert tmp.__stack__[1] is loop
 
         async_group = AsyncRequestGroupTask(name='async-group-1')
         tmp.async_group = async_group
 
         assert len(tmp.__stack__) == 3
-        assert tmp.__stack__[-1] is async_group
+        assert tmp.__stack__[2] is async_group
 
         with pytest.raises(AssertionError, match='loop is not last in stack'):
             tmp.loop = None
 
         assert len(tmp.__stack__) == 3
-        assert tmp.__stack__[-1] is async_group
+        assert tmp.__stack__[2] is async_group
 
         tmp.async_group = None
 
         assert len(tmp.__stack__) == 2
-        assert tmp.__stack__[-1] is loop
+        assert tmp.__stack__[1] is loop
 
         with pytest.raises(AssertionError, match='conditional is not last in stack'):
             tmp.conditional = None

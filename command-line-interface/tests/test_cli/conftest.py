@@ -29,8 +29,9 @@ PYTEST_TIMEOUT = 300 if E2E_RUN_DIST or E2E_RUN_MODE == 'dist' else 150
 # programatically load plugin, since pytest is started with `-p no:requests_mock` in pyproject.toml[tool.pytest.ini_options::addopts]
 pytest_plugins = ['requests_mock.contrib._pytest_plugin']
 
-if sys.platform == 'darwin' and PYTEST_TIMEOUT > 150:
-    PYTEST_TIMEOUT = 500
+# macOS runners are consistently slower, bump timeout regardless of local/dist mode
+if sys.platform == 'darwin':
+    PYTEST_TIMEOUT = 500 if PYTEST_TIMEOUT > 150 else 300
 
 
 @pytest.fixture(autouse=True)

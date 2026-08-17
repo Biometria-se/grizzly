@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING, Any, Union, cast
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Callable, Iterable, Sequence
-
-    from typing_extensions import Self
+    from typing import Self
 
 
 __all__ = [

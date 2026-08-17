@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from contextlib import suppress
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from platform import node as get_hostname
 from typing import TYPE_CHECKING, Any, Literal, Protocol, TypedDict, cast
 from urllib.parse import parse_qs, unquote, urlparse
@@ -360,7 +360,7 @@ class InfluxDbListener:
 
         while not self._quit_event.is_set():
             events: list[Any] = []
-            timestamp = datetime.now(timezone.utc).isoformat()
+            timestamp = datetime.now(UTC).isoformat()
 
             for user_class_name, user_count in runner.user_classes_count.items():
                 event: InfluxDbPoint = {
@@ -499,7 +499,7 @@ class InfluxDbListener:
         except ValueError:
             pass
 
-        timestamp_finished = datetime.now(timezone.utc)
+        timestamp_finished = datetime.now(UTC)
         timestamp_started = timestamp = timestamp_finished - timedelta(milliseconds=metrics['response_time'])
 
         metrics.update(
@@ -567,7 +567,7 @@ class InfluxDbListener:
         return self._heartbeat(client_id=client_id, direction='received', timestamp=timestamp)
 
     def _heartbeat(self, client_id: str, direction: Literal['sent', 'received'], timestamp: float) -> None:
-        _timestamp = datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
+        _timestamp = datetime.fromtimestamp(timestamp, tz=UTC).isoformat()
 
         tags: dict[str, str | None] = {
             'client_id': client_id,
@@ -579,7 +579,7 @@ class InfluxDbListener:
         self._create_event(_timestamp, 'heartbeat', tags, metrics)
 
     def usage_monitor(self, environment: Environment, cpu_usage: float, memory_usage: float) -> None:  # noqa: ARG002
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
 
         metrics: dict[str, float] = {
             'cpu': cpu_usage,

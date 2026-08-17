@@ -432,7 +432,7 @@ class ResponseContextManagerFixture:
         if request_body is not None:
             response.request_body = request_body
 
-        response_context_manager = FastResponseContextManager(response, None, {})
+        response_context_manager = FastResponseContextManager(response, None, {}, catch_response=False)
         response_context_manager._entered = True
         response_context_manager.request_meta = {
             'method': None,
@@ -483,7 +483,7 @@ class NoopZmqFixture:
                         ),
                     },
                 )
-            except AttributeError as e:  # noqa: PERF203
+            except AttributeError as e:
                 if 'gsleep' in str(e):
                     continue
 

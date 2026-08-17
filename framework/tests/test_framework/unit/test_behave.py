@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from contextlib import suppress
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from json import dumps as jsondumps
 from os import environ
 from time import perf_counter
@@ -235,11 +235,11 @@ def test_after_feature_async_timers(grizzly_fixture: GrizzlyFixture, mocker: Moc
 
     grizzly.state.producer.async_timers.toggle(
         'start',
-        {'name': 'timer-1', 'tid': 'foobar', 'version': '1', 'timestamp': datetime(2024, 12, 3, 10, 54, 59, tzinfo=timezone.utc).isoformat()},
+        {'name': 'timer-1', 'tid': 'foobar', 'version': '1', 'timestamp': datetime(2024, 12, 3, 10, 54, 59, tzinfo=UTC).isoformat()},
     )
     grizzly.state.producer.async_timers.toggle(
         'stop',
-        {'name': 'timer-2', 'tid': 'barfoo', 'version': '1', 'timestamp': datetime(2024, 12, 3, 10, 56, 9, tzinfo=timezone.utc).isoformat()},
+        {'name': 'timer-2', 'tid': 'barfoo', 'version': '1', 'timestamp': datetime(2024, 12, 3, 10, 56, 9, tzinfo=UTC).isoformat()},
     )
 
     after_feature(behave, feature)

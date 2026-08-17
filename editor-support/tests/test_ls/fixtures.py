@@ -7,7 +7,7 @@ from importlib import reload as reload_module
 from logging import DEBUG
 from pathlib import Path
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from grizzly_ls.server.progress import Progress
 from grizzly_ls.utils import LogOutputChannelLogger
@@ -17,7 +17,6 @@ from pip._internal.configuration import Configuration as PipConfiguration
 from pygls.lsp.server import LanguageServer
 from pygls.workspace import Workspace
 from pytest_mock.plugin import MockerFixture
-from typing_extensions import Self
 
 from test_ls.helpers import rm_rf
 

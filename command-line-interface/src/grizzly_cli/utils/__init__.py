@@ -14,7 +14,7 @@ from collections.abc import Callable, Mapping
 from contextlib import suppress
 from copy import deepcopy
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 from hashlib import sha1
 from importlib.metadata import version as get_version
@@ -103,7 +103,7 @@ def run_command(command: list[str], env: dict[str, str] | None = None, *, silent
 
     def sig_handler(*_args: Any, **_kwargs: Any) -> None:  # pragma: no cover
         if result.abort_timestamp is None:
-            result.abort_timestamp = datetime.now(timezone.utc)
+            result.abort_timestamp = datetime.now(UTC)
             process.terminate()
 
     with SignalHandler(sig_handler, psignal.SIGINT, psignal.SIGTERM):

@@ -110,7 +110,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
                     try:
                         _, payload = greenlet.get()
                         response_length += len(payload.encode()) if payload is not None else 0
-                    except Exception as e:  # noqa: PERF203
+                    except Exception as e:
                         parent.user.logger.exception('async request failed')
                         if exception is None:
                             exception = e

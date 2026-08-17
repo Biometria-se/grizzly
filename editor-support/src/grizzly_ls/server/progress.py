@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 from uuid import uuid4
 
 from lsprotocol import types as lsp
-from typing_extensions import Self
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import TracebackType

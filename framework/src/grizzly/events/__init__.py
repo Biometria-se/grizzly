@@ -6,7 +6,7 @@ import logging
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Protocol
@@ -168,7 +168,7 @@ def event(
                 raise
             finally:
                 response_time = (perf_counter() - start) * 1000
-                timestamp = datetime.now(timezone.utc).isoformat()
+                timestamp = datetime.now(UTC).isoformat()
 
                 try:
                     if decoder:

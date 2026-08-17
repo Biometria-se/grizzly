@@ -1,0 +1,16 @@
+name: setup-xvfb
+description: Run a command wrapped with Xvfb on Linux runners for headless GUI tests
+inputs:
+  run:
+    description: 'Command(s) to execute, one per line. Wrapped with xvfb-run on Linux, run as-is on other platforms.'
+    required: true
+  working-directory:
+    description: 'Directory to run the command(s) in, defaults to the workspace root'
+    required: false
+  options:
+    description: 'Xvfb server options'
+    required: false
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'

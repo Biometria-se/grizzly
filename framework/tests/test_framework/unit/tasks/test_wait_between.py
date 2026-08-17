@@ -28,7 +28,7 @@ class TestWaitBetweenTask:
         parent = grizzly_fixture()
 
         # force the scenario user to not have a wait_time method
-        parent.user.wait_time = None
+        parent.user.wait_time = None  # type: ignore[method-assign, assignment]
 
         with pytest.raises(MissingWaitTimeError):
             parent.wait_time()

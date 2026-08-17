@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from typing import TYPE_CHECKING, Any
 
 from grizzly_ls.constants import FEATURE_INSTALL
@@ -10,6 +11,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from pygls.lsp.server import LanguageServer
+
+# macOS runners are consistently slower, give installation requests more headroom there
+_LSP_REQUEST_TIMEOUT = 599 if sys.platform == 'darwin' else 299
 
 
 def initialize(
@@ -52,9 +56,9 @@ def initialize(
         client.protocol.send_request(
             lsp.INITIALIZE,
             params,
-        ).result(timeout=299)
+        ).result(timeout=_LSP_REQUEST_TIMEOUT)
 
-        client.protocol.send_request(FEATURE_INSTALL).result(timeout=299)
+        client.protocol.send_request(FEATURE_INSTALL).result(timeout=_LSP_REQUEST_TIMEOUT)
     finally:
         logger.setLevel(level)
 

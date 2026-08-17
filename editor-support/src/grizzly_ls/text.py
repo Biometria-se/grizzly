@@ -23,38 +23,10 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly_ls.server import GrizzlyLanguageServer
 
 
-if sys.version_info >= (3, 11):
-    from re._constants import ANY, BRANCH, LITERAL, MAX_REPEAT, SUBPATTERN
-    from re._constants import _NamedIntConstant as SreNamedIntConstant
-    from re._parser import SubPattern
-    from re._parser import parse as sre_parse
-else:  # pragma: no cover
-    from abc import abstractmethod
-    from sre_constants import (
-        ANY,
-        BRANCH,
-        LITERAL,
-        MAX_REPEAT,
-        SUBPATTERN,
-    )
-    from sre_constants import (
-        _NamedIntConstant as SreNamedIntConstant,
-    )
-    from sre_parse import parse as sre_parse
-    from typing import Protocol
-
-    if TYPE_CHECKING:  # pragma: no cover
-        from collections.abc import Iterator
-
-    class SubPattern(Protocol):
-        """Tricking mypy into thinking SubPattern is iterable for py 3.10."""
-
-        @abstractmethod
-        def __iter__(self) -> Iterator[tuple[SreNamedIntConstant, int | tuple[int, int, list[tuple[SreNamedIntConstant, int]]]]]: ...
-
-        @abstractmethod
-        def __next__(self) -> tuple[SreNamedIntConstant, int | tuple[int, int, list[tuple[SreNamedIntConstant, int]]]]: ...
-
+from re._constants import ANY, BRANCH, LITERAL, MAX_REPEAT, SUBPATTERN
+from re._constants import _NamedIntConstant as SreNamedIntConstant
+from re._parser import SubPattern
+from re._parser import parse as sre_parse
 
 SreParseTokens: TypeAlias = Union[
     list[
