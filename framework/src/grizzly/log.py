@@ -21,6 +21,23 @@ logger = logging.getLogger('grizzly.log')
 
 
 def setup_logging(loglevel: str | int, logfile: str | None = None, maxsize: int = 10000) -> None:
+    """Configure the root logging setup for Grizzly and Locust.
+
+    This configures the console handlers used by Locust together with a queue-based
+    logging pipeline that drops excess log records instead of blocking the worker.
+
+    Args:
+        loglevel: The minimum log level to emit, such as ``INFO`` or ``DEBUG``.
+        logfile: Optional path to a file that should also receive logs.
+        maxsize: Maximum number of queued log records before the queue starts
+            discarding excess messages.
+
+    Notes:
+        When ``logfile`` is provided, the file handler is added alongside the
+        standard console handlers and both the Locust logger and the root logger
+        will write to it.
+
+    """
     if isinstance(loglevel, str):
         loglevel = loglevel.upper()
 

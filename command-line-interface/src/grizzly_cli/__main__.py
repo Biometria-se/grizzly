@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 def _create_parser() -> ArgumentParser:
     parser = ArgumentParser(
         description=(
-            'the command line interface for grizzly, which makes it easer to start a test with all features of grizzly wrapped up nicely.\n\n'
+            'command line interface for grizzly, which makes it easer to start a test with all features of grizzly wrapped up nicely.\n\n'
             'installing it is a matter of:\n\n'
             '```bash\n'
             'pip install grizzly-loadtester-cli\n'

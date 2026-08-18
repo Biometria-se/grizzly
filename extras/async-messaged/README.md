@@ -1,6 +1,6 @@
 # async-messaged
 
-Can be seen as an integration gateway for different messaging types. It has support for:
+Can be seen as an integration gateway for different messaging types. Supported message services:
 - IBM MQ
 - Azure Service Bus
 

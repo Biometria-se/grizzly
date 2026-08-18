@@ -46,14 +46,14 @@ from grizzly.environment import before_feature as grizzly_before_feature
 from grizzly.environment import after_feature as grizzly_after_feature
 from grizzly.environment import before_scenario, after_scenario, before_step
 
-def before_feature(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+def before_feature(context: Context, *args: Any, **kwargs: Any) -> None:
     # custom code that should run before feature file is started, e.g. notify something that a test
     # is started
 
     grizzly_before_feature(context, *args, **kwargs)
 
 
-def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+def after_feature(context: Context, feature: Feature, *args: Any, **kwargs: Any) -> None:
     grizzly_after_feature(context, feature, *args, **kwargs)
 
     # custom code that should run before feature file is started, e.g. notify something that a test

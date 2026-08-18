@@ -11,7 +11,7 @@ from grizzly_common.text import has_sequence
 
 
 def split_value(value: str, separator: str = '|') -> tuple[str, str]:
-    """Split a value string into two parts using a separator.
+    """Split value string into two parts using separator.
 
     Handles special cases where the separator appears multiple times by checking
     if the character after the separator is an operator (= or |). If so, uses

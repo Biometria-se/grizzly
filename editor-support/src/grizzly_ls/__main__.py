@@ -102,6 +102,21 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def setup_logging(args: argparse.Namespace) -> None:
+    """Configure logging for the language server process.
+
+    The server writes INFO-level output to stderr by default, switches to DEBUG
+    when verbose mode is enabled, and optionally logs to a local file when started
+    outside socket mode and without verbose logging.
+
+    Args:
+        args: Parsed command-line arguments, including the socket/embedded mode
+            flags and the list of loggers to silence.
+
+    Notes:
+        ``parse`` and ``pip`` are always silenced, and ``pygls`` is suppressed in
+        non-verbose mode to reduce noisy output from the underlying protocol stack.
+
+    """
     handlers: list[logging.Handler] = []
     level = logging.INFO if not args.verbose else logging.DEBUG
 
