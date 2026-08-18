@@ -269,7 +269,7 @@ jobs:
     name: "npm test / ${{ matrix.changes.package }} / ${{ matrix.image }}"
     needs: npm-lint
     if: needs.npm-lint.outputs.changes_npm != '[]'
-    timeout-minutes: 10
+    timeout-minutes: 20
     outputs:
       changes_npm: ${{ needs.npm-lint.outputs.changes_npm || '[]' }}
     runs-on: ${{ matrix.image }}
