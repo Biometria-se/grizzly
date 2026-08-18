@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../../../../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -3693,9 +3693,9 @@
   <h1>Clients</h1>
 
 
-<span class="md-source-file__fact" data-updated="2026-01-27 18:44:53.793461+00:00">
+<span class="md-source-file__fact" data-updated="2026-08-18 10:39:23.159019+00:00">
     
-    <span class="md-icon" title="Last update 2026-01-27">
+    <span class="md-icon" title="Last update 2026-08-18">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
     <span id="md-source-file__fact-updated">formatting...</span>
@@ -3708,7 +3708,7 @@
 
     <div class="doc doc-contents first">
 
-        <p>Module contains step implementations for <a class="autorefs autorefs-internal" title="clients" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> tasks.</p>
+        <p>Module contains step implementations for <a class="autorefs autorefs-internal" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> tasks.</p>
 
 
 
@@ -3738,10 +3738,10 @@
 
     <div class="doc doc-contents ">
 
-        <p>Create an instance of a <a class="autorefs autorefs-internal" title="clients" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task, actual implementation of the task is determined
+        <p>Create an instance of a <a class="autorefs autorefs-internal" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task, actual implementation of the task is determined
 based on the URL scheme specified in <code>endpoint</code>.</p>
 <p>Get information from another host or endpoint than the scenario is load testing and saves the response in a variable.</p>
-<p>See <a class="autorefs autorefs-internal" title="clients" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task documentation for more information about client tasks.</p>
+<p>See <a class="autorefs autorefs-internal" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task documentation for more information about client tasks.</p>
 <h3 id="grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload--example">Example</h3><div class="language-gherkin highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">Then </span><span class="nf">get from "</span><span class="s">https://www.example.org/example.json</span><span class="nf">" with name "</span><span class="s">example-1</span><span class="nf">" and save response payload in "</span><span class="s">example_openapi</span><span class="nf">"</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">Then </span><span class="nf">get from "</span><span class="s">http://{{ endpoint }}</span><span class="nf">" with name "</span><span class="s">example-2</span><span class="nf">" and save response payload in "</span><span class="s">endpoint_result</span><span class="nf">"</span>
 </span></code></pre></div>
@@ -3821,10 +3821,10 @@ based on the URL scheme specified in <code>endpoint</code>.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Create an instance of a <a class="autorefs autorefs-internal" title="clients" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task, actual implementation of the task is determined
+        <p>Create an instance of a <a class="autorefs autorefs-internal" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task, actual implementation of the task is determined
 based on the URL scheme specified in <code>endpoint</code>.</p>
 <p>Get information from another host or endpoint than the scenario is load testing and saves the response in a variable.</p>
-<p>See <a class="autorefs autorefs-internal" title="clients" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task documentation for more information about client tasks.</p>
+<p>See <a class="autorefs autorefs-internal" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task documentation for more information about client tasks.</p>
 <h3 id="grizzly.steps.scenario.tasks.clients.step_task_client_from_endpoint_payload_and_metadata--example">Example</h3><div class="language-gherkin highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">Then </span><span class="nf">get from "</span><span class="s">https://www.example.org/example.json</span><span class="nf">" with name "</span><span class="s">example-1</span><span class="nf">" and save response payload in "</span><span class="s">example_openapi</span><span class="nf">" and metadata in "</span><span class="s">example_metadata</span><span class="nf">"</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">Then </span><span class="nf">get from "</span><span class="s">http://{{ endpoint }}</span><span class="nf">" with name "</span><span class="s">example-2</span><span class="nf">" and save response payload in "</span><span class="s">endpoint_result</span><span class="nf">" and metadata in "</span><span class="s">result_metadata</span><span class="nf">"</span>
 </span></code></pre></div>
@@ -3920,11 +3920,11 @@ based on the URL scheme specified in <code>endpoint</code>.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Create an instance of a <a class="autorefs autorefs-internal" title="clients" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task, actual implementation of the task is determined
+        <p>Create an instance of a <a class="autorefs autorefs-internal" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task, actual implementation of the task is determined
 based on the URL scheme specified in <code>endpoint</code>.</p>
 <p>Put information, source being a file, to another host or endpoint than the scenario
 is load testing and saves the response in a variable</p>
-<p>See <a class="autorefs autorefs-internal" title="clients" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task documentation for more information about client tasks.</p>
+<p>See <a class="autorefs autorefs-internal" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task documentation for more information about client tasks.</p>
 <h3 id="grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file--example">Example</h3><div class="language-gherkin highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">Then </span><span class="nf">put "</span><span class="s">test-file.json</span><span class="nf">" to "</span><span class="s">bs://my-storage?AccountKey=aaaabbb=&amp;Container=my-container</span><span class="nf">" with name "</span><span class="s">upload-file</span><span class="nf">"</span>
 </span></code></pre></div>
 
@@ -4003,11 +4003,11 @@ is load testing and saves the response in a variable</p>
 
     <div class="doc doc-contents ">
 
-        <p>Create an instance of a <a class="autorefs autorefs-internal" title="clients" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task, actual implementation of the task is
+        <p>Create an instance of a <a class="autorefs autorefs-internal" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task, actual implementation of the task is
 determined based on the URL scheme specified in <code>endpoint</code>.</p>
 <p>Put information, source being a file, to another host or endpoint than the scenario is load testing
 and saves the response in a variable</p>
-<p>See <a class="autorefs autorefs-internal" title="clients" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task documentation for more information about client tasks.</p>
+<p>See <a class="autorefs autorefs-internal" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task documentation for more information about client tasks.</p>
 <h3 id="grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_file_destination--example">Example</h3><div class="language-gherkin highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">Then </span><span class="nf">put "</span><span class="s">test-file.json</span><span class="nf">" to "</span><span class="s">bs://my-storage/my-container?AccountKey=aaaabbb=</span><span class="nf">" with name "</span><span class="s">upload-file</span><span class="nf">" as "</span><span class="s">uploaded-test-file.json</span><span class="nf">"</span>
 </span></code></pre></div>
 
@@ -4102,11 +4102,11 @@ and saves the response in a variable</p>
 
     <div class="doc doc-contents ">
 
-        <p>Create an instance of a <a class="autorefs autorefs-internal" title="clients" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task, actual implementation of the task is determined
+        <p>Create an instance of a <a class="autorefs autorefs-internal" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task, actual implementation of the task is determined
 based on the URL scheme specified in <code>endpoint</code>.</p>
 <p>Put information, source step text, to another host or endpoint than the scenario
 is load testing and saves the response in a variable</p>
-<p>See <a class="autorefs autorefs-internal" title="clients" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task documentation for more information about client tasks.</p>
+<p>See <a class="autorefs autorefs-internal" href="../../../../tasks/clients/#grizzly.tasks.clients">client</a> task documentation for more information about client tasks.</p>
 <h3 id="grizzly.steps.scenario.tasks.clients.step_task_client_to_endpoint_text--example">Example</h3><div class="language-gherkin highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">Then </span><span class="nf">put to "</span><span class="s">https://api.example.com/v2/echo</span><span class="nf">" with name "</span><span class="s">put-request</span><span class="nf">"</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nf">  </span><span class="k">"""</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="s">  hello world</span>
